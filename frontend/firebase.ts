@@ -3,13 +3,13 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCxPTTbS3BlIQfi4hAZbadwVUd3eOCvsXQ",
-  authDomain: "stepup-ecommerce.firebaseapp.com",
-  projectId: "stepup-ecommerce",
-  storageBucket: "stepup-ecommerce.appspot.com",
-  messagingSenderId: "743437742921",
-  appId: "1:743437742921:web:6f64a6b1770aff5913e098",
-  measurementId: "G-B45C0GHFSE"
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_API_KEY,
+  projectId: process.env.FIREBASE_API_KEY,
+  storageBucket: process.env.FIREBASE_API_KEY,
+  messagingSenderId: process.env.FIREBASE_API_KEY,
+  appId: process.env.FIREBASE_API_KEY,
+  measurementId: process.env.FIREBASE_API_KEY
 };
 
 // Initialize Firebase
