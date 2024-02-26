@@ -16,7 +16,8 @@ const Navbar = () => {
             alt="Logo"
             sizes="(max-width: 767px) 50px, 50px"
             quality={100}
-            className="w-10 md:w-20"
+            className="w-10 md:w-14"
+            placeholder="blur"
           />
 
           <span className="self-center text-base md:text-2xl font-semibold whitespace-nowrap ">
