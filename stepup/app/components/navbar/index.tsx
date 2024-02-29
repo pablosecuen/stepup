@@ -38,7 +38,7 @@ const Navbar = () => {
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto ">
         <Link
           href="/"
-          className="flex items-center space-x-3 rtl:space-x-reverse rounded-full px-8 md:backdrop-blur-sm"
+          className="flex items-center space-x-3 rtl:space-x-reverse rounded-full px-8 "
         >
           <Image
             src={logo}
@@ -50,7 +50,7 @@ const Navbar = () => {
           />
 
           <span
-            style={{ textShadow: "4px 4px 4px rgba(0, 0, 0, 0.2)" }}
+            style={{ textShadow: "4px 4px 6px rgba(0, 0, 0, 0.1)" }}
             className="self-center text-base md:text-2xl font-semibold whitespace-nowrap drop-shadow-xl shadow-black "
           >
             Sneakers
@@ -84,14 +84,14 @@ const Navbar = () => {
             isMenuOpen ? "translate-x-0" : "translate-x-full w-0 overflow-hidden md:w-auto "
           } md:translate-x-0 transform transition-transform z-50 w-full md:w-auto mt-16 md:mt-0 absolute top-0 left-0 md:relative md:top-auto md:left-auto bg-white md:bg-transparent md:p-0 md:space-x-8 md:flex md:flex-row md:border-0 md:items-center`}
         >
-          <ul className="font-medium text-center flex flex-col p-4 md:p-0     md:flex-row md:space-x-8 rtl:space-x-reverse mt-0 border border-black md:border-0 md:rounded-full md:backdrop-blur-sm ">
+          <ul className="font-medium text-center flex flex-col p-4 md:p-0     md:flex-row md:space-x-8 rtl:space-x-reverse mt-0 border border-black md:border-0 md:rounded-full  ">
             <li>
               <Link
                 href="/"
                 className="block py-2 px-3 "
                 aria-current="page"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                style={{ textShadow: "4px 4px 4px rgba(0, 0, 0, 0.2)" }}
+                style={{ textShadow: "4px 4px 6px rgba(0, 0, 0, 0.1)" }}
               >
                 Home
               </Link>
@@ -101,7 +101,7 @@ const Navbar = () => {
                 href="/tienda"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                style={{ textShadow: "4px 4px 4px rgba(0, 0, 0, 0.2)" }}
+                style={{ textShadow: "4px 4px 6px rgba(0, 0, 0, 0.1)" }}
               >
                 Tienda
               </Link>
@@ -111,7 +111,7 @@ const Navbar = () => {
                 href="/contacto"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                style={{ textShadow: "4px 4px 4px rgba(0, 0, 0, 0.2)" }}
+                style={{ textShadow: "4px 4px 6px rgba(0, 0, 0, 0.1)" }}
               >
                 Contacto
               </Link>
@@ -121,7 +121,7 @@ const Navbar = () => {
                 href="/tracking"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                style={{ textShadow: "4px 4px 4px rgba(0, 0, 0, 0.2)" }}
+                style={{ textShadow: "4px 4px 6px rgba(0, 0, 0, 0.1)" }}
               >
                 Tracking
               </Link>
