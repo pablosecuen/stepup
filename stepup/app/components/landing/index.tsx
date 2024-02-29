@@ -6,7 +6,7 @@ import nikeShoe from "@/public/assets/jordan1/jordan1.png";
 const Landing = () => {
   return (
     <div className="flex w-full h-screen ">
-      <div className="element1 flex items-center justify-center relative">
+      <div className="element1 flex items-center justify-center relative overflow-hidden">
         <Image
           src={nikeShoe}
           alt="nike shoe"
@@ -19,7 +19,7 @@ const Landing = () => {
         </span>
         <div className="shadow  bg-gradient-to-t from-gray-700 to-transparent opacity-10 rounded-full transition duration-500"></div>
       </div>
-      <div className="element2 flex items-center justify-center relative">
+      <div className="element2 flex items-center justify-center relative overflow-hidden">
         {" "}
         <Image
           src={nikeShoe}
@@ -33,7 +33,7 @@ const Landing = () => {
         </span>
         <div className="shadow  bg-gradient-to-t from-gray-700 to-transparent opacity-10 rounded-full transition duration-500"></div>
       </div>
-      <div className="element3 flex items-center justify-center relative">
+      <div className="element3 flex items-center justify-center relative overflow-hidden">
         {" "}
         <Image
           src={nikeShoe}
