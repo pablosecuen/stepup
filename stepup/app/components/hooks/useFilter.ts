@@ -8,7 +8,7 @@ export const useFilter = (initialZapatillas: Zapatilla[]) => {
 
   const filterByMarca = (marca: string | null) => {
     if (marca === null) {
-      setFilteredZapatillas(initialZapatillas); // Mostrar todos los productos
+      setFilteredZapatillas(initialZapatillas); 
     } else {
       const filteredProducts = initialZapatillas.filter(zapatilla => zapatilla.marca === marca);
       setFilteredZapatillas(filteredProducts);

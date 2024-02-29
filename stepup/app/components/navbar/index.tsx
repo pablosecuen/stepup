@@ -1,26 +1,58 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import logo from "@/public/assets/logo/logo.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const navbar = document?.querySelector("nav");
+      let lastScrollTop = 0;
+      if (navbar) {
+        window.addEventListener(
+          "scroll",
+          () => {
+            const scrollY = window.scrollY || window.pageYOffset;
+
+            if (scrollY > lastScrollTop) {
+              navbar.classList.add("-translate-y-28");
+              navbar.classList.remove("translate-y-0");
+            } else if (scrollY < lastScrollTop) {
+              navbar.classList.add("translate-y-0");
+              navbar.classList.remove("-translate-y-28");
+            }
+
+            lastScrollTop = scrollY > 0 ? scrollY : 0;
+          },
+          { passive: true }
+        );
+      }
+    }
+  }, []);
+
   return (
-    <nav className=" relative border border-black">
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-        <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
+    <nav className=" fixed top-8 right-0 left-0 translate-x-0 max-w-7xl mx-auto  transition duration-200   z-50  rounded-full ">
+      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto ">
+        <Link
+          href="/"
+          className="flex items-center space-x-3 rtl:space-x-reverse rounded-full px-8 backdrop-blur-sm"
+        >
           <Image
             src={logo}
             alt="Logo"
             sizes="(max-width: 767px) 50px, 50px"
             quality={100}
-            className="w-10 md:w-14"
+            className="w-10 md:w-14 "
             placeholder="blur"
           />
 
-          <span className="self-center text-base md:text-2xl font-semibold whitespace-nowrap ">
+          <span
+            style={{ textShadow: "4px 4px 10px rgba(0, 0, 0, 0.2)" }}
+            className="self-center text-base md:text-2xl font-semibold whitespace-nowrap drop-shadow-xl shadow-black "
+          >
             Sneakers
           </span>
         </Link>
@@ -49,16 +81,17 @@ const Navbar = () => {
         </button>
         <div
           className={`${
-            isMenuOpen ? "translate-x-0" : "translate-x-full !w-0 overflow-hidden"
+            isMenuOpen ? "translate-x-0" : "translate-x-full w-0 overflow-hidden md:w-auto "
           } md:translate-x-0 transform transition-transform z-50 w-full md:w-auto mt-16 md:mt-0 absolute top-0 left-0 md:relative md:top-auto md:left-auto bg-white md:bg-transparent md:p-0 md:space-x-8 md:flex md:flex-row md:border-0 md:items-center`}
         >
-          <ul className="font-medium text-center flex flex-col p-4 md:p-0  mt-4 border border-black  md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 ">
+          <ul className="font-medium text-center flex flex-col p-4 md:p-0  mt-4   md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 border border-black md:border-0 rounded-full backdrop-blur-sm ">
             <li>
               <Link
                 href="/"
                 className="block py-2 px-3 "
                 aria-current="page"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ textShadow: "4px 4px 10px rgba(0, 0, 0, 0.2)" }}
               >
                 Home
               </Link>
@@ -68,6 +101,7 @@ const Navbar = () => {
                 href="/tienda"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ textShadow: "4px 4px 10px rgba(0, 0, 0, 0.2)" }}
               >
                 Tienda
               </Link>
@@ -77,6 +111,7 @@ const Navbar = () => {
                 href="/contacto"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ textShadow: "4px 4px 10px rgba(0, 0, 0, 0.2)" }}
               >
                 Contacto
               </Link>
@@ -86,6 +121,7 @@ const Navbar = () => {
                 href="/tracking"
                 className="block py-2 px-3 "
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ textShadow: "4px 4px 10px rgba(0, 0, 0, 0.2)" }}
               >
                 Tracking
               </Link>
