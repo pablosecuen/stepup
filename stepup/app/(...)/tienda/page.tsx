@@ -8,7 +8,7 @@ import React from "react";
 const Tienda = () => {
   const { filteredZapatillas, filterByMarca } = useFilter(zapatillasJordan);
   return (
-    <div className="flex  flex-col items-center pt-4 min-h-screen h-full">
+    <div className="flex  flex-col items-center pt-4 min-h-screen h-full m-20">
       <Filters marcas={brands} handleFilterByMarca={filterByMarca} />
       <CardContainer zapatillasJordan={filteredZapatillas} />
     </div>

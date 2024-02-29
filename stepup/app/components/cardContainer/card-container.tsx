@@ -19,7 +19,7 @@ interface CardContainerProps {
 const CardContainer = ({ zapatillasJordan }: CardContainerProps) => {
   const [animationParent] = useAutoAnimate();
   return (
-    <ul className="flex flex-col gap-4 py-4" ref={animationParent}>
+    <ul className="flex flex-col gap-4 md:grid sm:grid-cols-2 py-4" ref={animationParent}>
       {zapatillasJordan.map((zapatilla: Zapatilla, index: number) => (
         <SneakersCard
           // Asegúrate de agregar la clave única para cada iteración

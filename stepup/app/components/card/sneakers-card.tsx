@@ -13,8 +13,8 @@ export interface CardProps {
 
 const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) => {
   return (
-    <div className="w-[350px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl ">
-      <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2">
+    <div className="w-[350px] md:w-[500px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl ">
+      <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2 md:p-8">
         <div className="bg-gradient-to-br rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center ">
           <Image
             src={img}
@@ -33,7 +33,7 @@ const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) 
           {talles.map((talle: TalleDisponible, index: number) => (
             <div
               key={index}
-              className={`w-8 h-8 flex gap-3 items-center justify-center border border-gray-300 rounded-md relative ${
+              className={`w-8 h-8 flex gap-3 items-center justify-center border border-gray-200 rounded-md relative ${
                 Object.values(talle)[0] > 0 ? "" : ""
               }`}
             >
