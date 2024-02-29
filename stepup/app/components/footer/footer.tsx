@@ -15,9 +15,8 @@ import PortfolioIcon from "../icons/portfolio-icon";
 import LinkedInIcon from "../icons/linkedin-icon";
 const Footer = () => {
   return (
-    <footer className="h-full max-w-7xl mx-auto">
-      <hr className=" border-blue-500 sm:mx-auto dark:border-gray-700  lg:mt-10 bg-blue-600 border w-full opacity-40 mb-4" />
-      <div className="footer-wrapper">
+    <footer className="h-full max-w-7xl mx-auto bg-white border-t-2 border-blue-500/40">
+      <div className="footer-wrapper py-10">
         <div className="flex flex-col md:flex-row">
           <div className="">
             <Link href="/" aria-label="Go to  homepage" title="Go to  Homepage">
@@ -117,8 +116,8 @@ const Footer = () => {
         </div>
       </div>
 
-      <hr className=" border-blue-500 sm:mx-auto dark:border-gray-700  lg:mt-10 bg-blue-600 border w-full opacity-40" />
-      <div className="sm:flex sm:items-center sm:justify-between p-4 max-w-7xl mx-auto">
+    
+      <div className="sm:flex sm:items-center sm:justify-between p-4 max-w-7xl mx-auto border-t-2 border-blue-500/40 ">
         <span className="text-sm md:text-md  sm:text-center ">
           <Link href="https://pablosecuen.github.io/portfolio/" className="hover:underline ml-2">
             Pablo Amico
