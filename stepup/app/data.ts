@@ -17,6 +17,7 @@ export interface TalleDisponible {
 }
 
 export interface ZapatillaJordan {
+  marca: string
   modelo: string;
   color: string;
   precio: number;

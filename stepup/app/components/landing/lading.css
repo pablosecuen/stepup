@@ -50,6 +50,6 @@
 .element1:hover .shadow,
 .element2:hover .shadow,
 .element3:hover .shadow {
-  transform: scale(2);
+  transform: scale(2) scaleX(1.5);
   bottom: 200px;
 }
