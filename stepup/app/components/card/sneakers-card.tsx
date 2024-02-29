@@ -4,17 +4,18 @@ import React from "react";
 
 export interface CardProps {
   img: StaticImageData;
+  marca: string;
   modelo: string;
   color: string;
   precio: number;
   talles: any;
 }
 
-const SneakersCard = ({ img, modelo, color, precio, talles }: CardProps) => {
+const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) => {
   return (
-    <div className="w-[90vw] mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl ">
-      <div className="relative w-2/5 flex items-center justify-center rounded-xl ">
-        <div className="bg-gradient-to-br rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center w-10/12">
+    <div className="w-[350px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl ">
+      <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2">
+        <div className="bg-gradient-to-br rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center ">
           <Image
             src={img}
             alt={modelo}
@@ -22,11 +23,12 @@ const SneakersCard = ({ img, modelo, color, precio, talles }: CardProps) => {
           />
         </div>
       </div>
-      <div className="py-1 px-4 mx-auto flex flex-col">
-        <h2 className="text-xl font-bold">{modelo}</h2>
+      <div className="py-1 px-4 mx-auto flex flex-col justify-center">
+        <h2 className="text-xl font-bold whitespace-nowrap">
+          {marca} {modelo}
+        </h2>
         <p className="text-gray-600 font semi-bold">Color: {color}</p>
         <p className="text-gray-600">Precio: ${precio}</p>
-        <p className="text-gray-600">Talles disponibles:</p>
         <ul className="text-gray-600 mt-4 flex gap-1">
           {talles.map((talle: TalleDisponible, index: number) => (
             <div

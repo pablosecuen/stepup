@@ -49,8 +49,8 @@ const Navbar = () => {
         </button>
         <div
           className={`${
-            isMenuOpen ? "translate-x-0" : "translate-x-full"
-          } md:translate-x-0 transform transition-transform   z-50 w-full md:w-auto mt-16 md:mt-0  absolute top-0 left-0 md:relative md:top-auto md:left-auto bg-white md:bg-transparent  md:p-0 md:space-x-8 md:flex md:flex-row md:border-0  md:items-center`}
+            isMenuOpen ? "translate-x-0" : "translate-x-full !w-0 overflow-hidden"
+          } md:translate-x-0 transform transition-transform z-50 w-full md:w-auto mt-16 md:mt-0 absolute top-0 left-0 md:relative md:top-auto md:left-auto bg-white md:bg-transparent md:p-0 md:space-x-8 md:flex md:flex-row md:border-0 md:items-center`}
         >
           <ul className="font-medium text-center flex flex-col p-4 md:p-0  mt-4 border border-black  md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 ">
             <li>
