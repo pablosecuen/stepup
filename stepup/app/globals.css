@@ -7,3 +7,9 @@
     text-wrap: balance;
   }
 }
+
+body {
+  background-image: url("../public/assets/background/whitebg.webp");
+  background-attachment: fixed;
+  background-size: cover;
+}
