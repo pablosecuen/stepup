@@ -24,7 +24,7 @@ const Filters: React.FC<FilterProps> = ({ marcas, handleFilterByMarca }) => {
               }`}
               onClick={() => handleFilterByMarca(marca.marca)}
             >
-              <Image src={marca.img} alt={marca.marca} className="h-10 w-auto max-h-8" />
+              <Image src={marca.img} alt={marca.marca} className=" w-auto max-w-10 max-h-8" />
               <span>{marca.marca}</span>
             </li>
           </div>
