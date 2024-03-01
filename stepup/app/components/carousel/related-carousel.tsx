@@ -1,4 +1,3 @@
-"use client";
 import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -6,7 +5,7 @@ import "slick-carousel/slick/slick-theme.css";
 import Image from "next/image";
 import { useRef } from "react";
 
-const ProductsCarousel = () => {
+const RelatedCarousel = () => {
   let sliderRef = useRef<Slider>(null);
 
   const next = () => {
@@ -108,4 +107,4 @@ const ProductsCarousel = () => {
   );
 };
 
-export default ProductsCarousel;
+export default RelatedCarousel;

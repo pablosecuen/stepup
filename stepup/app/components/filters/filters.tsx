@@ -22,7 +22,7 @@ const Filters: React.FC<FilterProps> = ({ marcas, handleFilterByMarca }) => {
               className={`cursor-pointer flex items-center border-2 rounded-full px-3 py-1 h-10 ${
                 index === marcas.length - 1 ? "mr-2" : ""
               }`}
-              onClick={() => handleFilterByMarca(marca.marca)}
+              onClick={() => handleFilterByMarca(marca.marca.toLowerCase())}
             >
               <Image src={marca.img} alt={marca.marca} className=" w-auto max-w-10 max-h-8" />
               <span>{marca.marca}</span>

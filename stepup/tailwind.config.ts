@@ -12,8 +12,9 @@ const config: Config = {
     extend: {
       
       backgroundImage: {
-        "salesbg": "url('../../public/assets/banner/salesbg.jpg')",
-        "service": "url('../../public/assets/banner/service.png')",
+        "jumpman": "url('../public/assets/jumpman/jumpman.jpg')",
+        "messi": "url('../public/assets/messi/messi.webp')",
+           "bolt": "url('../public/assets/bolt/bolt.jpg')",
       },
         fontFamily: {
           "newake": ['NewakeFont-Demo', 'sans'],

@@ -3,6 +3,7 @@ import CardContainer from "@/app/components/cardContainer/card-container";
 import Filters from "@/app/components/filters/filters";
 import { useFilter } from "@/app/components/hooks/useFilter";
 import { brands, zapatillasJordan } from "@/app/data";
+
 import React from "react";
 
 const Tienda = () => {
