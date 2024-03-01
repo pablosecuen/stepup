@@ -12,17 +12,24 @@ import nikelogo from "@/public/assets/logo/nike.png"
 import { StaticImageData } from "next/image";
 
 
+export const createUrl = (...segments: string[]) => {
+  const encodedSegments = segments.map(encodeURIComponent);
+  return `http://localhost:3000/${encodedSegments.join('/')}`;
+};
+
 export interface TalleDisponible {
   [talle: string]: number;
 }
 
 export interface ZapatillaJordan {
+  id?: string;
   marca: string
   modelo: string;
   color: string;
   precio: number;
   talles: any;
-  img: StaticImageData ;
+  img: StaticImageData;
+  quantity?: number;
 }
 
 

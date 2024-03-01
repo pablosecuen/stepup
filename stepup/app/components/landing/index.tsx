@@ -1,11 +1,29 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "./lading.css";
 import Image from "next/image";
 import nikeShoe from "@/public/assets/jordan1/jordan1.png";
+import { useInView } from "react-intersection-observer";
 const Landing = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.6, 
+  });
+
+  useEffect(() => {
+ 
+    if (inView) {
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  }, [inView]);
+
+
+
   return (
-    <div className="flex w-full h-screen ">
+    <div className={`flex w-full h-screen  ${isVisible ? "animate-fadeIn" : ""}`} ref={ref}>
       <div className="element1 flex items-center justify-center relative overflow-hidden">
         <Image
           src={nikeShoe}
