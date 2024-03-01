@@ -63,7 +63,10 @@ export default function App() {
       <div onClick={onOpen}>
         {" "}
         <ShoppingCartIcon
-          className={clsx("h-8 transition-all ease-in-out hover:scale-110  cursor-pointer")}
+          style={{ strokeWidth: "md:1.8px" }}
+          className={clsx(
+            "md:h-10 h-8  transition-all ease-in-out hover:scale-110  cursor-pointer "
+          )}
         />
       </div>
 

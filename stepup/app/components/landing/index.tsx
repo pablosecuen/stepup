@@ -8,19 +8,16 @@ const Landing = () => {
   const [isVisible, setIsVisible] = useState(false);
   const { ref, inView } = useInView({
     triggerOnce: true,
-    threshold: 0.6, 
+    threshold: 0.6,
   });
 
   useEffect(() => {
- 
     if (inView) {
       setIsVisible(true);
     } else {
       setIsVisible(false);
     }
   }, [inView]);
-
-
 
   return (
     <div className={`flex w-full h-screen  ${isVisible ? "animate-fadeIn" : ""}`} ref={ref}>

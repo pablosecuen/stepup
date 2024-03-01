@@ -10,23 +10,6 @@ import { useInView } from "react-intersection-observer";
 const ProductsCarousel = () => {
   let sliderRef = useRef<Slider>(null);
 
-  const [isVisible, setIsVisible] = useState(false);
-  const { ref, inView } = useInView({
-    triggerOnce: false,
-    threshold: 1, 
-  });
-
-  useEffect(() => {
-
-    if (inView) {
-      setIsVisible(true);
-    } else {
-      setIsVisible(false);
-    }
-  }, [inView]);
-
-
-
   const next = () => {
     if (sliderRef.current) {
       sliderRef.current.slickNext(); // Accede al método slickNext() a través de current
@@ -42,7 +25,7 @@ const ProductsCarousel = () => {
     dots: false,
     infinite: true,
     speed: 500,
-    slidesToShow: 4,
+    slidesToShow: 5,
     slidesToScroll: 1,
     swipeToSlide: true,
     responsive: [
@@ -74,9 +57,9 @@ const ProductsCarousel = () => {
   };
 
   return (
-    <section className={`w-full py-20  ${isVisible ? "animate-fadeIn" : ""}`} ref={ref}>
+    <section className="w-full py-20 animate-fadeIn">
       <div className="flex items-center justify-end px-16 w-full">
-        <h2 className="font-bold tracking-wider text-xl uppercase mr-4">Nuestras Zapatillas</h2>
+        <h2 className="font-bold tracking-wider text-xl uppercase mr-4">Nuestras Sneakers</h2>
         <button className="button w-10" onClick={previous}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="scale-x-[-1]">
             <g data-name="Circle Right">
@@ -107,7 +90,7 @@ const ProductsCarousel = () => {
           {zapatillasJordan.map((zapatilla: ZapatillaJordan, index: number) => (
             <div key={zapatilla.modelo}>
               {" "}
-              <div className="sm:w-96 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">
+              <div className="sm:w-92 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">
                 <div className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1">
                   {" "}
                   <Image src={zapatilla.img} alt={zapatilla.modelo} width={0} height={0} />
