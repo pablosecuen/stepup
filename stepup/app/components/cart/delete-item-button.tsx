@@ -18,10 +18,8 @@ export default function DeleteItemButton({
       try {
         // Llamar a la función onDelete del padre pasándole el ID del producto
         onDelete(item.id);
-        toast.success("Producto eliminado del carrito");
       } catch (error) {
         console.error("Error al eliminar el producto al carrito:", error);
-        toast.error("Error al eliminar el producto al carrito");
       }
     });
   };

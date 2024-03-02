@@ -15,48 +15,12 @@ import EditItemQuantityButton from "./edit-item-quantity-button";
 import Link from "next/link";
 import DeleteItemButton from "./delete-item-button";
 import Image from "next/image";
-import { ZapatillaJordan } from "@/app/data";
+import { useCart } from "@/app/providers/CartContextProvider";
+import { Toaster } from "sonner";
 
 export default function App() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [cart, setCart] = useState([]);
-
-  useEffect(() => {
-    const storedCartString = localStorage.getItem("SneakersCart");
-    const storedCart = storedCartString ? JSON.parse(storedCartString) : [];
-    setCart(storedCart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleQuantityUpdate = () => {
-    // Obtener el carrito actualizado del local storage
-    const storedCartString = localStorage.getItem("SneakersCart");
-    const updatedCart = storedCartString ? JSON.parse(storedCartString) : [];
-
-    // Actualizar el estado del carrito en el componente padre
-    setCart(updatedCart);
-  };
-
-  const handleItemDelete = (itemId: any) => {
-    // Filtrar el carrito para eliminar el item con el ID correspondiente
-    const updatedCart = cart?.filter((item: ZapatillaJordan) => item.id !== itemId);
-
-    // Actualizar el estado del carrito
-    setCart(updatedCart);
-
-    // Actualizar el carrito en el local storage
-    localStorage.setItem("neoTechCart", JSON.stringify(updatedCart));
-  };
-
-  const calculateTotal = () => {
-    let totalAmount = 0;
-
-    cart.forEach((item: ZapatillaJordan) => {
-      totalAmount += item.precio * (item.quantity ?? 0);
-    });
-
-    return totalAmount;
-  };
+  const { cart, calculateTotal, deleteItem } = useCart();
 
   return (
     <div className="flex flex-col gap-2">
@@ -103,6 +67,7 @@ export default function App() {
         <ModalContent>
           {(onClose) => (
             <>
+              <Toaster position="top-center" />
               <ModalHeader className="flex flex-col gap-1 mt-4 ml-4">Carrito</ModalHeader>
               <ModalBody>
                 {!cart || cart.length === 0 ? (
@@ -122,7 +87,7 @@ export default function App() {
                           >
                             <div className="relative flex w-full flex-row justify-between px-1 py-4">
                               <div className="absolute z-40 -mt-2 ml-[55px]">
-                                <DeleteItemButton item={item} onDelete={handleItemDelete} />
+                                <DeleteItemButton item={item} onDelete={deleteItem} />
                               </div>
                               <Link
                                 href={`/tienda/${item.modelo}`}
@@ -131,11 +96,11 @@ export default function App() {
                               >
                                 <div className="relative h-16 w-16 cursor-pointer overflow-hidden rounded-md border border-neutral-300 bg-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800">
                                   <Image
-                                    className="h-full w-full object-cover"
+                                    className="h-full w-full object-contain"
                                     width={64}
                                     height={64}
                                     alt={item.modelo}
-                                    src={image}
+                                    src={item.img}
                                   />
                                 </div>
 
@@ -149,19 +114,11 @@ export default function App() {
                               <div className="flex h-16 flex-col justify-between">
                                 <div className="text-center ">${item.precio}</div>
                                 <div className="ml-auto flex h-9 flex-row items-center rounded-full border border-neutral-200 dark:border-neutral-700">
-                                  <EditItemQuantityButton
-                                    item={item}
-                                    type="minus"
-                                    onUpdateQuantity={handleQuantityUpdate}
-                                  />
+                                  <EditItemQuantityButton item={item} type="minus" />
                                   <p className="w-6 text-center">
                                     <span className="w-full text-sm ">{item.quantity}</span>
                                   </p>
-                                  <EditItemQuantityButton
-                                    item={item}
-                                    type="plus"
-                                    onUpdateQuantity={handleQuantityUpdate}
-                                  />
+                                  <EditItemQuantityButton item={item} type="plus" />
                                 </div>
                               </div>
                             </div>
@@ -176,7 +133,7 @@ export default function App() {
                       </div>
                       <div className="mb-3 flex items-center justify-between border-b border-neutral-200 pb-1 pt-1 dark:border-neutral-700">
                         <p>Total</p>
-                        <div className="tracking-widest">$ {calculateTotal()}</div>
+                        <div className="tracking-widest">$ {calculateTotal}</div>
                       </div>
                     </div>
                   </div>

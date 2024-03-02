@@ -1,14 +1,20 @@
+"use client";
 import React from "react";
-import { zapatillasJordan } from "@/app/data";
+import { ItemCart, zapatillasJordan } from "@/app/data";
 import Image from "next/image";
 import RelatedCarousel from "@/app/components/carousel/related-carousel";
+import { Toaster, toast } from "sonner";
+import { useCart } from "@/app/providers/CartContextProvider";
+
 const Product = () => {
+  const { addToCart } = useCart();
   const relatedZapatillas = zapatillasJordan.filter(
     (zapatilla) => zapatilla.marca === zapatillasJordan[0].marca
   );
 
   return (
     <>
+      <Toaster position="top-center" closeButton={true} />
       <div className="mt-32 grid grid-cols-12 max-w-screen-2xl  min-h-[80vh] mx-auto ">
         <div className="col-span-4 relative">
           <div className=" sticky top-0 min-h-[80vh] flex items-center justify-center">
@@ -230,7 +236,9 @@ const Product = () => {
                 <button className="transition-fg relative inline-flex items-center justify-center overflow-hidden rounded-md outline-none disabled:bg-ui-bg-disabled disabled:border-ui-border-base disabled:text-ui-fg-disabled disabled:shadow-buttons-neutral disabled:after:hidden after:transition-fg after:absolute after:inset-0 after:content-[''] shadow-buttons-inverted text-ui-fg-on-inverted bg-ui-button-inverted after:button-inverted-gradient hover:bg-ui-button-inverted-hover hover:after:button-inverted-hover-gradient active:bg-ui-button-inverted-pressed active:after:button-inverted-pressed-gradient focus:!shadow-buttons-inverted-focus txt-compact-small-plus gap-x-1.5 px-3 py-1.5 w-full h-10">
                   Seleccionar variante
                 </button>
-                <div className="lg:hidden inset-x-0 bottom-0 fixed pointer-events-none"></div>
+                <button onClick={() => addToCart(zapatillasJordan[0])}>Agregar al carro</button>
+
+                <div className="lg:hidden inset-x-0 bottom-0 fixed pointer-events-none">bu</div>
               </div>
             </div>
           </div>

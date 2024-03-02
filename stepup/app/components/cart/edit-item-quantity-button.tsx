@@ -1,43 +1,26 @@
-import { ZapatillaJordan } from "@/app/data";
+import { ItemCart } from "@/app/data";
+import { useCart } from "@/app/providers/CartContextProvider";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 import clsx from "clsx";
 import { toast } from "sonner";
 
 interface EditItemQuantityButtonProps {
-  item: ZapatillaJordan;
+  item: ItemCart;
   type: "plus" | "minus";
-  onUpdateQuantity: () => void; // Función de actualización
 }
 
-export default function EditItemQuantityButton({
-  item,
-  type,
-  onUpdateQuantity,
-}: EditItemQuantityButtonProps) {
+export default function EditItemQuantityButton({ item, type }: EditItemQuantityButtonProps) {
+  const { updateQuantity } = useCart();
   const handleQuantityChange = () => {
-    // Clonar el item para no modificar el original directamente
-    const updatedItem = { ...item, quantity: item.quantity || 0 };
-
-    if (type === "plus" && updatedItem.quantity) {
-      updatedItem.quantity += 1;
-      toast.success(`Unidad agregada al carrito. Total: ${item.quantity}`);
-    } else if (type === "minus" && updatedItem.quantity > 1) {
-      updatedItem.quantity -= 1;
-      toast.success(`Unidad restada del carrito. Total: ${item.quantity}`);
-    }
-
-    const storedCartString = localStorage.getItem("SneakersCart");
-    let cart = storedCartString ? JSON.parse(storedCartString) : [];
-
-    const itemIndex = cart.findIndex((cartItem: any) => cartItem.id === updatedItem.id);
-
-    if (itemIndex !== -1) {
-      cart[itemIndex].quantity = updatedItem.quantity;
-      localStorage.setItem("SneakersCart", JSON.stringify(cart));
-
-      // Llamar a la función de actualización proporcionada por el componente padre
-      onUpdateQuantity();
+    if (type === "plus" && item) {
+      const newQuantity = item.quantity ? item.quantity + 1 : 1;
+      updateQuantity(item.id, newQuantity);
+      toast.success("Sumado al carrito");
+    } else if (type === "minus" && item && item.quantity && item.quantity > 1) {
+      const newQuantity = item.quantity - 1;
+      updateQuantity(item.id, newQuantity);
+      toast.success("Restado del carrito");
     }
   };
 

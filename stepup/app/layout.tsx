@@ -4,6 +4,8 @@ import "./globals.css";
 import Navbar from "./components/navbar";
 import Script from "next/script";
 import Footer from "./components/footer/footer";
+import { CartProvider } from "./providers/CartContextProvider";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,8 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} max-w-screen overflow-x-hidden`}>
-        <Navbar />
-        {children}
+        <Toaster position="top-center" closeButton={true} />
+        <CartProvider>
+          <Navbar />
+          {children}
+        </CartProvider>
         <Footer />
         <Script src="../path/to/flowbite/dist/flowbite.min.js"></Script>
       </body>

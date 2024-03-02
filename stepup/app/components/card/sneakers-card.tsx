@@ -1,6 +1,8 @@
 import { TalleDisponible } from "@/app/data";
 import Image, { StaticImageData } from "next/image";
 import React from "react";
+import CartButton from "../button/button/cart-button";
+import { Toaster } from "sonner";
 
 export interface CardProps {
   img: StaticImageData;
@@ -12,8 +14,10 @@ export interface CardProps {
 }
 
 const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) => {
+  let product = { img, marca, modelo, color, precio, talles };
   return (
-    <div className="w-[350px] md:w-[500px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl ">
+    <div className="w-[350px] md:w-[500px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl relative">
+      <Toaster position="top-center" />
       <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2 md:p-8">
         <div className="bg-gradient-to-br rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center ">
           <Image

@@ -22,19 +22,22 @@ export interface TalleDisponible {
 }
 
 export interface ZapatillaJordan {
-  id?: string;
+  id: string;
   marca: string
   modelo: string;
   color: string;
   precio: number;
   talles: any;
   img: StaticImageData;
-  quantity?: number;
+  quantity?: number ;
 }
 
 
+
+
 export const zapatillasJordan = [
-    {
+  {
+      id: "1",
     marca: "Adidas",
     modelo: "Superstar",
     color: "Blanco/Negro",
@@ -46,9 +49,10 @@ export const zapatillasJordan = [
       { "43": 12 },
       { "44": 8 }
     ],
-    img: superstars
+    img: superstars,
   },
   {
+      id: "2",
     marca: "Adidas",
     modelo: "Bad Bunny",
     color: "Blanco/Verde",
@@ -63,6 +67,7 @@ export const zapatillasJordan = [
     img: badbunny
   },
   {
+      id: "2",
     marca: "Puma",
     modelo: "Suede",
     color: "Negro/Blanco",
@@ -77,6 +82,7 @@ export const zapatillasJordan = [
     img: suede
   },
   {
+      id: "3",
     marca: "Puma",
     modelo: "Clyde",
     color: "Rojo/Blanco",
@@ -91,6 +97,7 @@ export const zapatillasJordan = [
     img: clyde
   },
   {
+      id: "4",
     marca: "Nike",
     modelo: "Air Jordan 1",
     color: "Negro/Rojo",
@@ -105,6 +112,7 @@ export const zapatillasJordan = [
     img: jordan1,
   },
   {
+      id: "5",
         marca: "Nike",
     modelo: "Air Jordan 4",
     color: "Blanco/Negro/Rojo",
@@ -119,6 +127,7 @@ export const zapatillasJordan = [
     img: jordan4,
   },
   {
+      id: "6",
         marca: "Nike",
     modelo: "Air Jordan 11",
     color: "Negro/Gamma Azul",
@@ -133,6 +142,7 @@ export const zapatillasJordan = [
     img: jordan11
   },
   {
+      id: "7",
         marca: "Nike",
     modelo: "Air Jordan 6",
     color: "Negro/Infrarrojo",
@@ -148,5 +158,15 @@ export const zapatillasJordan = [
   }
 ];
 
+export interface ItemCart {
+  id: string;
+  marca: string
+  modelo: string;
+  color: string;
+  precio: number;
+  talles: any;
+  img: StaticImageData;
+  quantity?: number ;
+}
 
 export const brands = [{marca:"Adidas", img:adidaslogo},{marca:"Nike", img:nikelogo},{marca:"Puma", img:pumalogo}, ];
