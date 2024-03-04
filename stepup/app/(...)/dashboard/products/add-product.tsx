@@ -29,7 +29,7 @@ const AddProduct = () => {
     setIsOpen(false);
   };
 
-  /*   const handleAddProduct = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddProduct = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // Agregar los archivos al formData
@@ -50,7 +50,7 @@ const AddProduct = () => {
       .catch((error) => {
         console.error("Error:", error);
       });
-  }; */
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
