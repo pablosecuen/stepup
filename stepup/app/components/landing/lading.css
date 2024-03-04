@@ -23,16 +23,17 @@
   width: 66.66%; /* Cambiar el ancho en hover */
 }
 
-.element1:hover img,
-.element2:hover img,
-.element3:hover img {
-  transform: rotate(15deg) scaleX(-1) scale(2) translateY(20px);
+.element1:hover .shoe,
+.element2:hover .shoe,
+.element3:hover .shoe {
+  transform: rotate(15deg) scaleX(-1) scale(2) translateY(80px);
 }
 
-.element1:hover span,
-.element2:hover span,
-.element3:hover span {
-  transform: scale(2) translateY(-60px);
+.element1:hover .tipo,
+.element2:hover .tipo,
+.element3:hover .tipo {
+  transform: scale(1.5) translateY(-60px);
+  transition: 300ms;
 }
 
 .shadow {
@@ -50,6 +51,6 @@
 .element1:hover .shadow,
 .element2:hover .shadow,
 .element3:hover .shadow {
-  transform: scale(2) scaleX(1.2) translateX(-20px);
+  transform: scale(2) scaleX(1.2) translateX(-20px) translateY(50px);
   bottom: 200px;
 }
