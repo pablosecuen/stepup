@@ -2,6 +2,7 @@
 import React from "react";
 import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import AddProduct from "./add-product";
 
 interface ProductProps {
   filteredProducts: ZapatillaJordan[];
@@ -9,11 +10,15 @@ interface ProductProps {
 }
 
 const Products = ({ filteredProducts, handleSearchInputChange }: ProductProps) => {
-
   return (
     <div className="w-full   h-full p-10">
       <h3 className="text-2xl">Products</h3>
-      <input type="text" placeholder="Search products" onChange={handleSearchInputChange} />
+      <div className="flex justify-between">
+        {" "}
+        <input type="text" placeholder="Search products" onChange={handleSearchInputChange} />
+        <AddProduct />
+      </div>
+
       <table className="table-auto w-full rounded-xl">
         <thead className="rounded-xl">
           <tr className="rounded-xl b">

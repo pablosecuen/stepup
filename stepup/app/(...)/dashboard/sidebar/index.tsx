@@ -44,11 +44,15 @@ const SideBar = () => {
           <div className="sidebar-links">
             <ul>
               <li>
-                <div className="tooltip whitespace-nowrap flex gap-2 ml-3">
+                <Link
+                  href="#dashboard"
+                  title="dashboard"
+                  className="tooltip"
+                  onClick={() => handleLinkClick("products")}
+                >
                   <TvIcon />
-
                   <span className="link hide">Dashboard</span>
-                </div>
+                </Link>
               </li>
             </ul>
 
@@ -58,7 +62,7 @@ const SideBar = () => {
               <li>
                 <Link
                   href="#productos"
-                  title="Time Tracking"
+                  title="productos"
                   className="tooltip"
                   onClick={() => handleLinkClick("products")}
                 >
@@ -69,7 +73,7 @@ const SideBar = () => {
               <li>
                 <Link
                   href="#tickets"
-                  title="Time Tracking"
+                  title="tickets"
                   className="tooltip"
                   onClick={() => handleLinkClick("tickets")}
                 >

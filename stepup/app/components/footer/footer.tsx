@@ -62,22 +62,22 @@ const Footer = () => {
                 <h3>Producto</h3>
                 <ul>
                   <li>
-                    <Link href="#" title="Features">
+                    <Link href="/tienda" title="tienda">
                       Nuestra tienda
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" title="Auth">
+                    <Link href="/envios" title="envios">
                       Envios a todo el pais
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" title="Functions">
+                    <Link href="/tracking" title="tracking">
                       Seguimiento en tiempo real
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" title="Realtime">
+                    <Link href="/calidad" title="calidad">
                       Control de calidad
                     </Link>
                   </li>
@@ -89,23 +89,23 @@ const Footer = () => {
                 <h3>Company</h3>
                 <ul>
                   <li>
-                    <Link href="#" title="Privacy Policy">
+                    <Link href="/feedback" title="feedback">
                       Feedback de clientes
                     </Link>
                   </li>
 
                   <li>
-                    <Link href="#" title="Company">
+                    <Link href="/nosotros" title="nosotros">
                       Nosotros
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" title="Terms Of Service">
+                    <Link href="/terminosycondiciones" title="terminos y condiciones">
                       Terminos de servicio
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" title="Privacy Policy">
+                    <Link href="/privacidad" title="politica de privacidad">
                       Politica de privadidad
                     </Link>
                   </li>
