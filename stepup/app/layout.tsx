@@ -5,6 +5,9 @@ import Navbar from "./components/navbar";
 import Script from "next/script";
 import Footer from "./components/footer/footer";
 import { CartProvider } from "./providers/CartContextProvider";
+import { ClerkProvider } from "@clerk/nextjs";
+import { esES } from "@clerk/localizations";
+
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -20,16 +23,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} max-w-screen overflow-x-hidden`}>
-        <Toaster position="top-center" closeButton={true} />
-        <CartProvider>
-          <Navbar />
-          {children}
-        </CartProvider>
-        <Footer />
-        <Script src="../path/to/flowbite/dist/flowbite.min.js"></Script>
-      </body>
-    </html>
+    <ClerkProvider localization={esES}>
+      <CartProvider>
+        <html lang="en">
+          <body className={`${inter.className} max-w-screen overflow-x-hidden`}>
+            <Toaster position="top-center" closeButton={true} />
+            <Navbar />
+            {children}
+            <Footer />
+            <Script src="../path/to/flowbite/dist/flowbite.min.js"></Script>
+          </body>
+        </html>
+      </CartProvider>
+    </ClerkProvider>
   );
 }

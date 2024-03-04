@@ -9,8 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/localizations": "^1.26.16",
+    "@clerk/nextjs": "^4.29.9",
     "@formkit/auto-animate": "^0.8.1",
     "@heroicons/react": "^2.1.1",
+    "@mercadopago/sdk-react": "^0.0.18",
     "@nextui-org/react": "^2.2.9",
     "clsx": "^2.1.0",
     "firebase": "^10.8.0",

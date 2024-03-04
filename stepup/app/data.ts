@@ -71,6 +71,7 @@ export const zapatillasJordan = [
     marca: "Puma",
     modelo: "Suede",
     color: "Negro/Blanco",
+    descripcion:"una descripcion",
     precio: 90,
     talles: [
       { "40": 10 },
@@ -86,6 +87,7 @@ export const zapatillasJordan = [
     marca: "Puma",
     modelo: "Clyde",
     color: "Rojo/Blanco",
+        descripcion:"una descripcion",
     precio: 110,
     talles: [
       { "40": 10 },
@@ -101,6 +103,7 @@ export const zapatillasJordan = [
     marca: "Nike",
     modelo: "Air Jordan 1",
     color: "Negro/Rojo",
+        descripcion:"una descripcion",
     precio: 150,
     talles: [
       { "40": 0 },
@@ -116,6 +119,7 @@ export const zapatillasJordan = [
         marca: "Nike",
     modelo: "Air Jordan 4",
     color: "Blanco/Negro/Rojo",
+        descripcion:"una descripcion",
     precio: 200,
     talles: [
     { "40": 10 },
@@ -131,6 +135,7 @@ export const zapatillasJordan = [
         marca: "Nike",
     modelo: "Air Jordan 11",
     color: "Negro/Gamma Azul",
+        descripcion:"una descripcion",
     precio: 220,
     talles: [
     { "40": 10 },
@@ -146,6 +151,7 @@ export const zapatillasJordan = [
         marca: "Nike",
     modelo: "Air Jordan 6",
     color: "Negro/Infrarrojo",
+        descripcion:"una descripcion",
     precio: 180,
     talles: [
       { "40": 10 },
@@ -162,6 +168,7 @@ export interface ItemCart {
   id: string;
   marca: string
   modelo: string;
+      descripcion:string,
   color: string;
   precio: number;
   talles: any;

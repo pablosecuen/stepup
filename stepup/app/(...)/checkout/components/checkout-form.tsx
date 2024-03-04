@@ -31,11 +31,11 @@ function CheckoutForm() {
         items: cart.map((item) => ({
           id: item.id,
           title: item.modelo,
-          description: item.otrosDetalles,
+          description: item.descripcion,
           category_id: item.categoria,
           unit_price: item.precio,
           quantity: item.quantity,
-          picture_url: item.imagen || item.imagen[0],
+          picture_url: item.img || item.img[0],
         })),
         back_urls: {
           success: "http://localhost:3001/checkout/success",
