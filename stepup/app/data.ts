@@ -27,9 +27,12 @@ export interface ZapatillaJordan {
   modelo: string;
   color: string;
   precio: number;
+  descripcion:string
   talles: any;
+  categoria: string,
   img: StaticImageData;
-  quantity?: number ;
+  quantity?: number;
+    status?: boolean;
 }
 
 
@@ -41,6 +44,8 @@ export const zapatillasJordan = [
     marca: "Adidas",
     modelo: "Superstar",
     color: "Blanco/Negro",
+    categoria: "Sneakers",
+      descripcion:"una descripcion",
     precio: 120,
     talles: [
       { "40": 10 },
@@ -50,12 +55,15 @@ export const zapatillasJordan = [
       { "44": 8 }
     ],
     img: superstars,
+    status: true,
   },
   {
       id: "2",
     marca: "Adidas",
     modelo: "Bad Bunny",
     color: "Blanco/Verde",
+    categoria: "Sneakers",
+      descripcion:"una descripcion",
     precio: 100,
     talles: [
       { "40": 10 },
@@ -64,13 +72,15 @@ export const zapatillasJordan = [
       { "43": 12 },
       { "44": 8 }
     ],
-    img: badbunny
+    img: badbunny,
+      status: true,
   },
   {
-      id: "2",
+      id: "3",
     marca: "Puma",
     modelo: "Suede",
     color: "Negro/Blanco",
+    categoria: "Sneakers",
     descripcion:"una descripcion",
     precio: 90,
     talles: [
@@ -80,14 +90,16 @@ export const zapatillasJordan = [
       { "43": 12 },
       { "44": 8 }
     ],
-    img: suede
+    img: suede,
+      status: true,
   },
   {
-      id: "3",
+      id: "4",
     marca: "Puma",
     modelo: "Clyde",
     color: "Rojo/Blanco",
-        descripcion:"una descripcion",
+    descripcion: "una descripcion",
+        categoria: "Sneakers",
     precio: 110,
     talles: [
       { "40": 10 },
@@ -96,14 +108,16 @@ export const zapatillasJordan = [
       { "43": 12 },
       { "44": 8 }
     ],
-    img: clyde
+    img: clyde,
+      status: true,
   },
   {
-      id: "4",
+      id: "5",
     marca: "Nike",
     modelo: "Air Jordan 1",
     color: "Negro/Rojo",
-        descripcion:"una descripcion",
+    descripcion: "una descripcion",
+        categoria: "Sneakers",
     precio: 150,
     talles: [
       { "40": 0 },
@@ -113,13 +127,15 @@ export const zapatillasJordan = [
       { "44": 8 }
         ],
     img: jordan1,
+    status: true,
   },
   {
-      id: "5",
+      id: "6",
         marca: "Nike",
     modelo: "Air Jordan 4",
     color: "Blanco/Negro/Rojo",
-        descripcion:"una descripcion",
+    descripcion: "una descripcion",
+        categoria: "Sneakers",
     precio: 200,
     talles: [
     { "40": 10 },
@@ -129,13 +145,15 @@ export const zapatillasJordan = [
       { "44": 8 }
       ],
     img: jordan4,
+      status: true,
   },
   {
-      id: "6",
+      id: "7",
         marca: "Nike",
     modelo: "Air Jordan 11",
     color: "Negro/Gamma Azul",
-        descripcion:"una descripcion",
+    descripcion: "una descripcion",
+        categoria: "Sneakers",
     precio: 220,
     talles: [
     { "40": 10 },
@@ -144,14 +162,16 @@ export const zapatillasJordan = [
       { "43": 0 },
       { "44": 8 }
       ],
-    img: jordan11
+    img: jordan11,
+      status: true,
   },
   {
-      id: "7",
+      id: "8",
         marca: "Nike",
     modelo: "Air Jordan 6",
     color: "Negro/Infrarrojo",
-        descripcion:"una descripcion",
+    descripcion: "una descripcion",
+        categoria: "Sneakers",
     precio: 180,
     talles: [
       { "40": 10 },
@@ -160,7 +180,8 @@ export const zapatillasJordan = [
       { "43": 12 },
       { "44": 0 }
       ],
-        img: jordan6
+    img: jordan6,
+          status: true,
   }
 ];
 
@@ -168,12 +189,14 @@ export interface ItemCart {
   id: string;
   marca: string
   modelo: string;
-      descripcion:string,
+  descripcion: string,
+  categoria: string,
   color: string;
   precio: number;
   talles: any;
   img: StaticImageData;
-  quantity?: number ;
+  quantity?: number;
+  status?: boolean;
 }
 
 export const brands = [{marca:"Adidas", img:adidaslogo},{marca:"Nike", img:nikelogo},{marca:"Puma", img:pumalogo}, ];

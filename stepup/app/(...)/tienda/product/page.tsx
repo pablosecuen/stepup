@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
-import { ItemCart, zapatillasJordan } from "@/app/data";
+import { zapatillasJordan } from "@/app/data";
 import Image from "next/image";
 import RelatedCarousel from "@/app/components/carousel/related-carousel";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "sonner";
 import { useCart } from "@/app/providers/CartContextProvider";
 
 const Product = () => {

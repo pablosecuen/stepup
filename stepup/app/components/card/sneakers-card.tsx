@@ -14,7 +14,6 @@ export interface CardProps {
 }
 
 const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) => {
-  let product = { img, marca, modelo, color, precio, talles };
   return (
     <div className="w-[350px] md:w-[500px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl relative">
       <Toaster position="top-center" />

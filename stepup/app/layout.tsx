@@ -26,6 +26,7 @@ export default function RootLayout({
     <ClerkProvider localization={esES}>
       <CartProvider>
         <html lang="en">
+          <link rel="icon" href="/favicon.ico" />
           <body className={`${inter.className} max-w-screen overflow-x-hidden`}>
             <Toaster position="top-center" closeButton={true} />
             <Navbar />
