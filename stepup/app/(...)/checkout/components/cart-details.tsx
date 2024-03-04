@@ -6,7 +6,6 @@ import "@/app/globals.css";
 import { ShoppingCartIcon } from "@heroicons/react/24/outline";
 import { useCart } from "@/app/providers/CartContextProvider";
 
-
 interface cartDetailsProps {
   isOpen: boolean;
   toggleDetails: () => void;
@@ -15,6 +14,7 @@ interface cartDetailsProps {
 
 function CartDetails({ isOpen, toggleDetails, calculateTotal }: cartDetailsProps) {
   const { cart } = useCart();
+  console.log(cart);
 
   return (
     <aside className="border md:border-l md:border-none md:w-1/2 md:pt-10 md:order-last  rounded-lg md:rounded-none py-4 px-2 w-full">
@@ -39,8 +39,9 @@ function CartDetails({ isOpen, toggleDetails, calculateTotal }: cartDetailsProps
               <div>
                 <div className="relative">
                   <Image
-                    src={item.imagen}
-                    alt={item.title}
+                    src={item.img}
+                    alt={item.modelo}
+                    blurDataURL={item.blurDataURL}
                     width={80}
                     height={80}
                     className="border border-gray-500/80 rounded-xl"
@@ -52,7 +53,7 @@ function CartDetails({ isOpen, toggleDetails, calculateTotal }: cartDetailsProps
               </div>
               <div className="flex flex-col w-full px-6">
                 <span>{item.modelo}</span>
-                <span className="text-sm opacity-70">{item.otrosDetalles}</span>
+                <span className="text-sm opacity-70">{item.talle}</span>
               </div>
               <div>
                 <span className="font-semibold tracking-wide w-auto flex text-sm">
@@ -74,7 +75,7 @@ function CartDetails({ isOpen, toggleDetails, calculateTotal }: cartDetailsProps
             <div>
               <div className="relative w-20 h-20">
                 <Image
-                  src={item.imagen}
+                  src={item.img}
                   alt={item.modelo}
                   width={80}
                   height={80}
@@ -87,7 +88,7 @@ function CartDetails({ isOpen, toggleDetails, calculateTotal }: cartDetailsProps
             </div>
             <div className="flex flex-col w-full px-6 overflow-hidden">
               <span>{item.modelo}</span>
-              <span className="text-sm opacity-70">{item.otrosDetalles}</span>
+              <span className="text-sm opacity-70">{item.descripcion}</span>
             </div>
             <div>
               <span className="font-semibold tracking-wide w-auto flex text-sm">

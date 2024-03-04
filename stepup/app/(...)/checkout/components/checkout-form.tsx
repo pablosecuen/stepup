@@ -136,7 +136,7 @@ function CheckoutForm() {
                   name="area_code"
                   value={formData.area_code}
                   onChange={handleChange}
-                  className=" text-sm h-6 w-full "
+                  className=" text-sm h-6 w-full focus:bg-white border-none !focus:outline-none !focus:border-0"
                   required
                 />
               </div>
@@ -150,7 +150,7 @@ function CheckoutForm() {
                   name="number"
                   value={formData.number}
                   onChange={handleChange}
-                  className=" text-sm h-6 w-full "
+                  className=" text-sm h-6 w-full focus:bg-white border-none"
                   required
                 />
               </div>
@@ -163,7 +163,7 @@ function CheckoutForm() {
                   id="mail"
                   name="mail"
                   onChange={handleChange}
-                  className="  h-6 text-sm md:h-8   w-full"
+                  className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                   required
                 />
               </div>
@@ -176,7 +176,7 @@ function CheckoutForm() {
                   id="dni"
                   name="dni"
                   onChange={handleChange}
-                  className="  h-6 text-sm md:h-8   w-full"
+                  className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                   required
                 />
               </div>
@@ -194,7 +194,7 @@ function CheckoutForm() {
                     name="firstname"
                     value={formData.firstname}
                     onChange={handleChange}
-                    className="  h-6 text-sm md:h-8   w-full"
+                    className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                     required
                   />
                 </div>
@@ -208,7 +208,7 @@ function CheckoutForm() {
                     name="lastname"
                     value={formData.lastname}
                     onChange={handleChange}
-                    className="  h-6 text-sm md:h-8   w-full"
+                    className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                     required
                   />
                 </div>
@@ -224,7 +224,7 @@ function CheckoutForm() {
                   name="calle"
                   value={formData.calle}
                   onChange={handleChange}
-                  className="  h-6 text-sm md:h-8   w-full"
+                  className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                   required
                 />
               </div>
@@ -238,7 +238,7 @@ function CheckoutForm() {
                   name="altura"
                   value={formData.altura}
                   onChange={handleChange}
-                  className="  h-6 text-sm md:h-8   w-full"
+                  className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                   required
                 />
               </div>
@@ -253,7 +253,7 @@ function CheckoutForm() {
                     name="ciudad"
                     value={formData.ciudad}
                     onChange={handleChange}
-                    className="  h-6 text-sm md:h-8   w-full"
+                    className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                     required
                   />
                 </div>
@@ -267,7 +267,7 @@ function CheckoutForm() {
                     name="provincia"
                     value={formData.provincia}
                     onChange={handleChange}
-                    className="  h-6 text-sm md:h-8   w-full"
+                    className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                     required
                   />
                 </div>
@@ -281,7 +281,7 @@ function CheckoutForm() {
                     name="codigoPostal"
                     value={formData.codigoPostal}
                     onChange={handleChange}
-                    className="  h-6 text-sm md:h-8   w-full"
+                    className="  h-6 text-sm md:h-8   w-full focus:bg-white border-none"
                     required
                   />
                 </div>
