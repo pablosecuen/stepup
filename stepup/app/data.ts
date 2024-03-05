@@ -22,6 +22,7 @@ export interface TalleDisponible {
 }
 
 export interface ZapatillaJordan {
+  imagenes: string[]
   id: string;
   marca: string
   modelo: string;
@@ -30,7 +31,6 @@ export interface ZapatillaJordan {
   descripcion:string
   talles: any;
   categoria: string,
-  img: StaticImageData;
   quantity?: number;
     status?: boolean;
 }

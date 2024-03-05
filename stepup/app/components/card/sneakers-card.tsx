@@ -5,7 +5,7 @@ import CartButton from "../button/button/cart-button";
 import { Toaster } from "sonner";
 
 export interface CardProps {
-  img: StaticImageData;
+  img: string;
   marca: string;
   modelo: string;
   color: string;
@@ -17,12 +17,14 @@ const SneakersCard = ({ img, marca, modelo, color, precio, talles }: CardProps) 
   return (
     <div className="w-[350px] md:w-[500px] h-40 mx-auto flex border border-gray-300 rounded-lg overflow-hidden shadow-xl relative">
       <Toaster position="top-center" />
-      <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2 md:p-8">
-        <div className="bg-gradient-to-br rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center ">
+      <div className="relative w-2/5 flex items-center justify-center rounded-xl p-2 md:p-8 ">
+        <div className="bg-gradient-to-br w-full rounded-xl from-[#010187] to-[#170011] via-[#18000E] aspect-square relative flex items-center justify-center ">
           <Image
             src={img}
             alt={modelo}
-            className="scale-150 hover:scale-[160%] transition duration-500"
+            width={250}
+            height={250}
+            className="hover:scale-[125%] transition duration-500"
           />
         </div>
       </div>

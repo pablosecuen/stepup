@@ -18,11 +18,13 @@
     "clsx": "^2.1.0",
     "firebase": "^10.8.0",
     "flowbite": "^2.3.0",
+    "ga-gtag": "^1.2.0",
     "next": "14.1.0",
     "react": "^18",
     "react-dom": "^18",
     "react-draggable": "^4.4.6",
     "react-intersection-observer": "^9.8.1",
+    "react-query": "^3.39.3",
     "react-slick": "^0.30.2",
     "slick-carousel": "^1.8.1",
     "sonner": "^1.4.2"

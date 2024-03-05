@@ -3,13 +3,14 @@ import CardContainer from "@/app/components/cardContainer/card-container";
 import Filters from "@/app/components/filters/filters";
 import { useFilter } from "@/app/components/hooks/useFilter";
 import { brands, zapatillasJordan } from "@/app/data";
-import { CartProvider } from "@/app/providers/CartContextProvider";
+import { useProducts } from "@/app/providers/ProductsContextProvider";
 
 import React from "react";
 import { Toaster } from "sonner";
 
 const Tienda = () => {
-  const { filteredZapatillas, filterByMarca } = useFilter(zapatillasJordan);
+  const { data } = useProducts();
+  const { filteredZapatillas, filterByMarca } = useFilter(data || undefined);
   return (
     <>
       {" "}

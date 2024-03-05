@@ -1,8 +1,8 @@
 // useFilter.tsx
 import { useState, useEffect } from 'react';
-import { Zapatilla } from '../cardContainer/card-container';
+import { ZapatillaJordan } from '@/app/data';
 
-export const useFilter = (initialZapatillas: Zapatilla[]) => {
+export const useFilter = (initialZapatillas: ZapatillaJordan[] = []) => {
   const [filteredZapatillas, setFilteredZapatillas] = useState(initialZapatillas);
 
   useEffect(() => {

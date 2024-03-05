@@ -2,6 +2,9 @@
 import Image from "next/image";
 import React, { useRef, useState } from "react";
 import Draggable from "react-draggable";
+import { ref, uploadBytes } from "firebase/storage";
+import { db, storage } from "@/firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 interface Talle {
   [talle: string]: number;
@@ -10,7 +13,13 @@ interface Talle {
 const AddProduct = () => {
   const draggableRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState<FormData>(new FormData());
+  const [formData, setFormData] = useState({
+    modelo: "",
+    marca: "",
+    descripcion: "",
+    color: "",
+    categoria: "",
+  });
   const [files, setFiles] = useState<File[]>([]);
   const [talles, setTalles] = useState<Talle[]>([
     { "40": 0 },
@@ -29,27 +38,33 @@ const AddProduct = () => {
     setIsOpen(false);
   };
 
-  const handleAddProduct = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddProduct = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Agregar los archivos al formData
-    files.forEach((file, index) => {
-      formData.append(`files[${index}]`, file);
-    });
-
-    // Enviar formData al servidor
-    fetch("URL_DEL_SERVIDOR", {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-        closeModal();
-      })
-      .catch((error) => {
-        console.error("Error:", error);
+    try {
+      const uploadTasks = files.map(async (file) => {
+        const storageRef = ref(storage, `images/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return `images/${file.name}`;
       });
+
+      const urls = await Promise.all(uploadTasks);
+
+      const productData = {
+        ...formData,
+        talles: talles,
+        imagenes: urls,
+        status: true,
+      };
+
+      await addDoc(collection(db, "products"), productData);
+
+      console.log("Producto agregado correctamente a Firestore");
+
+      closeModal();
+    } catch (error) {
+      console.error("Error al agregar producto:", error);
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,31 +72,22 @@ const AddProduct = () => {
     if (selectedFiles) {
       const filesArray = Array.from(selectedFiles);
       setFiles(filesArray);
-
-      const newFormData = new FormData();
-      filesArray.forEach((file, index) => {
-        newFormData.append(`files[${index}]`, file);
-      });
-      setFormData(newFormData);
     }
   };
 
-  const handleInputChange = (talle: string, cantidad: string, index: number) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleTalleChange = (talle: string, cantidad: string, index: number) => {
     const newTalles = [...talles];
     newTalles[index][talle] = parseInt(cantidad);
     setTalles(newTalles);
-
-    // Agregar los talles al formData
-    const newFormData = new FormData();
-    newTalles.forEach((talle, index) => {
-      const talleKey = Object.keys(talle)[0];
-      const talleValue = Object.values(talle)[0];
-      newFormData.append(`talles[${talleKey}]`, talleValue.toString());
-    });
-    setFormData(newFormData);
   };
-
-  console.log(formData);
 
   return (
     <div>
@@ -94,7 +100,7 @@ const AddProduct = () => {
       {isOpen && (
         <Draggable handle=".modal-header" ref={draggableRef}>
           <form
-            /*  onClick={handleAddProduct} */
+            onSubmit={handleAddProduct}
             className="fixed top-20 left-1/2 transform -translate-x-1/2  bg-white p-8 rounded-lg shadow-black shadow-2xl"
           >
             <div
@@ -124,41 +130,54 @@ const AddProduct = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="modelo" className="block mb-1 font-medium">
-                  Modelo
-                </label>
                 <input
-                  id="modelo"
-                  name="modelo"
+                  placeholder="modelo"
                   type="text"
-                  onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  name="modelo"
+                  value={formData.modelo}
+                  onChange={handleInputChange}
                 />
               </div>
               <div>
-                <label htmlFor="marca" className="block mb-1 font-medium">
-                  Marca
-                </label>
                 <input
                   type="text"
                   name="marca"
-                  id="marca"
-                  onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  placeholder="marca"
+                  value={formData.marca}
+                  onChange={handleInputChange}
                 />
               </div>
               <div>
-                <label htmlFor="descripcion" className="block mb-1 font-medium">
-                  descripcion
-                </label>
                 <input
                   type="text"
-                  name="descripcion"
-                  id="descripcion"
-                  onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  placeholder="categoria"
+                  name="categoria"
+                  id="categoria"
+                  value={formData.categoria}
+                  onChange={handleInputChange}
                 />
               </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="descripcion"
+                  name="descripcion"
+                  id="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="color"
+                  placeholder="color"
+                  value={formData.color}
+                  onChange={handleInputChange}
+                />
+              </div>
+
               <div>
                 <label htmlFor="talles" className="block mb-1 font-medium">
                   Talles
@@ -166,14 +185,19 @@ const AddProduct = () => {
                 <div className="flex flex-wrap gap-4">
                   {talles.map((talle, index) => (
                     <div key={index} className="flex items-center">
-                      <label htmlFor={`cantidad-${index}`}>{Object.keys(talle)[0]}</label>
+                      <input
+                        type="text"
+                        value={Object.keys(talle)[0]}
+                        disabled
+                        className="w-12 border border-gray-300 rounded-md px-2 py-1 ml-2"
+                      />
                       <input
                         type="number"
-                        id={`cantidad-${index}`}
-                        className="w-12 border border-gray-300 rounded-md px-2 py-1 ml-2"
                         min="0"
+                        value={Object.values(talle)[0]}
+                        className="w-12 border border-gray-300 rounded-md px-2 py-1 ml-2"
                         onChange={(e) =>
-                          handleInputChange(Object.keys(talle)[0], e.target.value, index)
+                          handleTalleChange(Object.keys(talle)[0], e.target.value, index)
                         }
                       />
                     </div>
@@ -182,29 +206,7 @@ const AddProduct = () => {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium" htmlFor="color">
-                  Color
-                </label>
-                <input
-                  type="text"
-                  name="color"
-                  id="color"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="file" className="block mb-1 font-medium">
-                  Imagenes
-                </label>
-                <input
-                  type="file"
-                  id="file"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  multiple
-                  accept=".jpg, .png, .avif, .svg"
-                  onChange={handleFileChange}
-                />
+                <input type="file" placeholder="imagenes" onChange={handleFileChange} multiple />
                 {files.length > 0 && (
                   <div className="mt-4">
                     <h2 className="text-lg font-semibold">Selected Files:</h2>
@@ -227,7 +229,11 @@ const AddProduct = () => {
               </div>
             </div>
             <div className="mt-8 flex justify-end">
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-800 mr-4">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="text-gray-500 hover:text-gray-800 mr-4"
+              >
                 Close
               </button>
               <button

@@ -5,8 +5,11 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import Image from "next/image";
 import { useRef } from "react";
+import { useProducts } from "@/app/providers/ProductsContextProvider";
 
 const ProductsCarousel = () => {
+  const { data } = useProducts();
+
   let sliderRef = useRef<Slider>(null);
 
   const next = () => {
@@ -86,14 +89,25 @@ const ProductsCarousel = () => {
       <div className=" flex flex-col w-full mx-4 md:pt-10 z-50  overflow-hidden ">
         {" "}
         <Slider ref={sliderRef} {...settings}>
-          {zapatillasJordan.map((zapatilla: ZapatillaJordan, index: number) => (
+          {data?.map((zapatilla: ZapatillaJordan, index: number) => (
             <div key={zapatilla.modelo}>
               {" "}
               <div className="sm:w-92 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">
-                <div className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1">
-                  {" "}
-                  <Image src={zapatilla.img} alt={zapatilla.modelo} width={0} height={0} />
-                </div>
+                {zapatilla.imagenes.map((imagen, idx) => (
+                  <div
+                    key={idx}
+                    className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1"
+                  >
+                    <Image
+                      src={imagen}
+                      alt={zapatilla.modelo}
+                      width={250}
+                      height={250}
+                      className=""
+                      quality={100}
+                    />
+                  </div>
+                ))}
 
                 <span className="text-[#fb7633] font-semibold">{zapatilla.marca}</span>
                 <span className="text-gray-500">{zapatilla.modelo}</span>
