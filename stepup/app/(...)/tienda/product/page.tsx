@@ -1,15 +1,17 @@
 "use client";
 import React from "react";
-import { zapatillasJordan } from "@/app/data";
+import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
 import Image from "next/image";
 import RelatedCarousel from "@/app/components/carousel/related-carousel";
 import { Toaster } from "sonner";
 import { useCart } from "@/app/providers/CartContextProvider";
+import { useProducts } from "@/app/providers/ProductsContextProvider";
 
 const Product = () => {
+  const { data } = useProducts();
   const { addToCart } = useCart();
   const relatedZapatillas = zapatillasJordan.filter(
-    (zapatilla) => zapatilla.marca === zapatillasJordan[0].marca
+    (zapatilla: ZapatillaJordan) => zapatilla.marca === zapatillasJordan[0].marca
   );
 
   return (

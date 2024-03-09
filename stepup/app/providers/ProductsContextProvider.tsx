@@ -1,25 +1,20 @@
 "use client";
-import React, { createContext, useContext } from "react";
-import { useQuery } from "react-query";
-import { getDocs, collection } from "firebase/firestore";
+import React, { createContext, useContext, useState } from "react";
+import { useMutation, useQuery } from "react-query";
+import { getDocs, collection, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/firebase";
 import { ZapatillaJordan } from "../data";
-import { FirebaseError } from "firebase/app";
 import { getDownloadURL, getStorage, ref } from "firebase/storage";
+import { toast } from "sonner";
 
-// Definir el tipo del contexto de productos
-interface ProductsContextType {
-  data: ZapatillaJordan[] | undefined;
-}
-
-// Crear el contexto de productos con el tipo definido
 const ProductsContext = createContext<ProductsContextType>({
-  data: undefined,
+  productsData: undefined,
+  isLoading: false,
+  isError: false,
+  error: "",
+  updateProductStatus: () => {},
+  loadingStates: {},
 });
-
-interface ProductsProviderProps {
-  children: React.ReactNode;
-}
 
 // Función para obtener las URLs de las imágenes
 const getImageUrls = async (imageNames: string[]) => {
@@ -39,27 +34,133 @@ const getImageUrls = async (imageNames: string[]) => {
 };
 
 export const ProductsProvider = ({ children }: ProductsProviderProps) => {
-  const { data, isLoading, isError, error } = useQuery("products", async () => {
-    const querySnapshot = await getDocs(collection(db, "products"));
-    const productsData: ZapatillaJordan[] = [];
-    // Usar Promise.all para esperar a que todas las llamadas asíncronas se completen
-    await Promise.all(
-      querySnapshot.docs.map(async (doc) => {
-        const productData = doc.data() as ZapatillaJordan;
-        // Obtener las URLs de las imágenes de la zapatilla y guardarlas en la propiedad imagenes
-        if (productData.imagenes && productData.imagenes.length > 0) {
-          productData.imagenes = await getImageUrls(productData.imagenes);
-        }
-        productsData.push(productData);
-      })
-    );
-    return productsData;
-  });
-  console.log(data);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
+  const [isError, setIsError] = useState<boolean>(false);
+  const [error, setError] = useState<any | null>(null);
+  const [productsData, setProductsData] = useState<ZapatillaJordan[] | undefined>(undefined);
 
-  // Renderizar el proveedor de contexto
-  return <ProductsContext.Provider value={{ data }}>{children}</ProductsContext.Provider>;
+  const { data } = useQuery("products", async () => {
+    setIsLoading(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const productsData: ZapatillaJordan[] = [];
+
+      await Promise.all(
+        querySnapshot.docs.map(async (doc) => {
+          try {
+            const productData = doc.data() as ZapatillaJordan;
+            const productWithId: ZapatillaJordan = {
+              ...productData,
+              id: doc.id,
+            };
+
+            if (productWithId.imagenes && productWithId.imagenes.length > 0) {
+              productWithId.imagenes = await getImageUrls(productWithId.imagenes);
+            }
+            productsData.push(productWithId);
+            setLoadingStates((prevLoadingStates) => ({ ...prevLoadingStates, [doc.id]: false }));
+          } catch (error: any) {
+            setIsError(true);
+            setError(error);
+          }
+        })
+      );
+
+      // Ordenar los productos alfabéticamente por la propiedad 'modelo'
+      productsData.sort((a, b) => a.modelo.localeCompare(b.modelo));
+
+      setIsLoading(false);
+      setProductsData(productsData); // Actualiza el estado local con los nuevos datos
+      return productsData;
+    } catch (error: any) {
+      toast.error("Error al cargar productos");
+      setIsError(true);
+      setError(error.message);
+      throw error;
+    }
+  });
+
+  const updateProductStatusMutation = useMutation(
+    async ({ productId, status }: { productId: string; status: boolean }) => {
+      try {
+        setLoadingStates((prevLoadingStates) => ({ ...prevLoadingStates, [productId]: true }));
+        await updateDoc(doc(db, "products", productId), { status });
+      } catch (error) {
+        console.error("Error al actualizar el estado del producto:", error);
+        throw error;
+      }
+    },
+    {
+      onSuccess: async () => {
+        try {
+          const querySnapshot = await getDocs(collection(db, "products"));
+          const updatedProductsData: ZapatillaJordan[] = [];
+
+          await Promise.all(
+            querySnapshot.docs.map(async (doc) => {
+              try {
+                const productData = doc.data() as ZapatillaJordan;
+                const productWithId: ZapatillaJordan = {
+                  ...productData,
+                  id: doc.id,
+                };
+
+                if (productWithId.imagenes && productWithId.imagenes.length > 0) {
+                  productWithId.imagenes = await getImageUrls(productWithId.imagenes);
+                }
+                updatedProductsData.push(productWithId);
+                setLoadingStates((prevLoadingStates) => ({
+                  ...prevLoadingStates,
+                  [doc.id]: false,
+                }));
+              } catch (error: any) {
+                setIsError(true);
+                setError(error);
+              }
+            })
+          );
+          updatedProductsData.sort((a, b) => a.modelo.localeCompare(b.modelo));
+          setProductsData(updatedProductsData);
+          toast.success("Status editado exitosamente");
+        } catch (error: any) {
+          toast.error("Error al cargar productos");
+          setIsError(true);
+          setError(error.message);
+        }
+      },
+    }
+  );
+
+  const updateProductStatus = async (productId: string, status: boolean) => {
+    try {
+      await updateProductStatusMutation.mutateAsync({ productId, status });
+    } catch (error) {
+      console.error("Error al actualizar el estado del producto:", error);
+      throw error;
+    }
+  };
+
+  return (
+    <ProductsContext.Provider
+      value={{ productsData, isLoading, isError, error, updateProductStatus, loadingStates }}
+    >
+      {children}
+    </ProductsContext.Provider>
+  );
 };
 
-// Crear un hook personalizado para acceder al contexto de productos
 export const useProducts = (): ProductsContextType => useContext(ProductsContext);
+
+interface ProductsProviderProps {
+  children: React.ReactNode;
+}
+
+interface ProductsContextType {
+  productsData: ZapatillaJordan[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: string | undefined;
+  updateProductStatus: (productId: string, status: boolean) => void;
+  loadingStates: { [key: string]: boolean };
+}

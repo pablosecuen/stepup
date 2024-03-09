@@ -6,32 +6,25 @@ import logo from "@/public/assets/logo/logo.png";
 import Link from "next/link";
 import { UserCircleIcon } from "@heroicons/react/16/solid";
 import { TicketIcon, TvIcon } from "@heroicons/react/24/outline";
-import Products from "../products";
-import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
+import Products from "../(...)/products/page";
+import { ZapatillaJordan } from "@/app/data";
+import { useProducts } from "@/app/providers/ProductsContextProvider";
+
 const SideBar = () => {
   const [selectedComponent, setSelectedComponent] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState(zapatillasJordan);
 
-  const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const searchTerm = event.target.value.toLowerCase();
-    const filtered = zapatillasJordan.filter((product: ZapatillaJordan) => {
-      return (
-        product.marca.toLowerCase().includes(searchTerm) ||
-        product.modelo.toLowerCase().includes(searchTerm) ||
-        product.color.toLowerCase().includes(searchTerm)
-      );
-    });
-    console.log("Filtered:", filtered);
-    setFilteredProducts(filtered);
-  };
+  useEffect(() => {
+    const currentPath = window.location.pathname.split("/").pop();
+    setSelectedComponent(currentPath || "");
+  }, []);
 
   const handleLinkClick = (component: any) => {
     setSelectedComponent(component);
   };
 
   return (
-    <div className="w-full flex min-h-[80vh] relative mt-20">
-      <nav className="sidebar shrink-0 w-full top-20   min-h-[90vh]">
+    <div className="w-full flex min-h-[80vh] relative mt-20 ">
+      <nav className="sidebar shrink-0 w-full top-20   min-h-[90vh] ">
         <div className="sidebar-top-wrapper">
           <div className="sidebar-top">
             <Link href="#" className="logo__wrapper">
@@ -61,7 +54,7 @@ const SideBar = () => {
             <ul>
               <li>
                 <Link
-                  href="#productos"
+                  href="products"
                   title="productos"
                   className="tooltip"
                   onClick={() => handleLinkClick("products")}
@@ -72,7 +65,7 @@ const SideBar = () => {
               </li>
               <li>
                 <Link
-                  href="#tickets"
+                  href="tickets"
                   title="tickets"
                   className="tooltip"
                   onClick={() => handleLinkClick("tickets")}
@@ -97,15 +90,7 @@ const SideBar = () => {
       </nav>
       {/*       {selectedComponent === "dashboard" && <Dashboard />}
       {selectedComponent === "tickets" && <Tickets />} */}
-      <div className="w-full shrink">
-        {" "}
-        {selectedComponent === "products" && (
-          <Products
-            filteredProducts={filteredProducts}
-            handleSearchInputChange={handleSearchInputChange}
-          />
-        )}
-      </div>
+      <div className="w-full shrink"> {selectedComponent === "products" && <Products />}</div>
     </div>
   );
 };

@@ -19,6 +19,7 @@ const AddProduct = () => {
     descripcion: "",
     color: "",
     categoria: "",
+    precio: 0,
   });
   const [files, setFiles] = useState<File[]>([]);
   const [talles, setTalles] = useState<Talle[]>([
@@ -58,7 +59,6 @@ const AddProduct = () => {
       };
 
       await addDoc(collection(db, "products"), productData);
-
       console.log("Producto agregado correctamente a Firestore");
 
       closeModal();
@@ -174,6 +174,15 @@ const AddProduct = () => {
                   name="color"
                   placeholder="color"
                   value={formData.color}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  name="precio"
+                  placeholder="precio"
+                  value={formData.precio}
                   onChange={handleInputChange}
                 />
               </div>
