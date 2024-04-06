@@ -9,8 +9,8 @@ import React from "react";
 import { Toaster } from "sonner";
 
 const Tienda = () => {
-  const { data } = useProducts();
-  const { filteredZapatillas, filterByMarca } = useFilter(data || undefined);
+  const { productsData } = useProducts();
+  const { filteredZapatillas, filterByMarca } = useFilter(productsData || undefined);
   return (
     <>
       {" "}

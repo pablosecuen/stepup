@@ -1,5 +1,5 @@
 "use client";
-import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
+import { ZapatillaJordan } from "@/app/data";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -8,7 +8,7 @@ import { useRef } from "react";
 import { useProducts } from "@/app/providers/ProductsContextProvider";
 
 const ProductsCarousel = () => {
-  const { data } = useProducts();
+  const { productsData } = useProducts();
 
   let sliderRef = useRef<Slider>(null);
 
@@ -89,7 +89,7 @@ const ProductsCarousel = () => {
       <div className=" flex flex-col w-full mx-4 md:pt-10 z-50  overflow-hidden ">
         {" "}
         <Slider ref={sliderRef} {...settings}>
-          {data?.map((zapatilla: ZapatillaJordan, index: number) => (
+          {productsData?.map((zapatilla: ZapatillaJordan, index: number) => (
             <div key={zapatilla.modelo}>
               {" "}
               <div className="sm:w-92 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">

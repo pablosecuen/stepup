@@ -25,7 +25,8 @@ export interface ZapatillaJordan {
   talles: any;
   categoria: string,
   quantity?: number;
-    status?: boolean;
+  status?: boolean;
+    img?: StaticImageData | string;
 }
 
 
@@ -38,7 +39,8 @@ export interface ItemCart {
   color: string;
   precio: number;
   talles: any;
-  img: StaticImageData;
+  img: StaticImageData | string;
+  imagenes?: string[]
   quantity?: number;
   status?: boolean;
 }

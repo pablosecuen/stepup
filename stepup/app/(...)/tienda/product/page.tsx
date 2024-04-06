@@ -1,19 +1,26 @@
 "use client";
 import React from "react";
-import { ZapatillaJordan, zapatillasJordan } from "@/app/data";
 import Image from "next/image";
 import RelatedCarousel from "@/app/components/carousel/related-carousel";
 import { Toaster } from "sonner";
 import { useCart } from "@/app/providers/CartContextProvider";
 import { useProducts } from "@/app/providers/ProductsContextProvider";
+import { ItemCart } from "@/app/data";
 
 const Product = () => {
-  const { data } = useProducts();
+  const { productsData } = useProducts();
   const { addToCart } = useCart();
-  const relatedZapatillas = zapatillasJordan.filter(
-    (zapatilla: ZapatillaJordan) => zapatilla.marca === zapatillasJordan[0].marca
-  );
+  const relatedZapatillas = productsData && productsData.length > 0 ? productsData[0] : null;
 
+  const img1 = productsData && productsData[0].imagenes[0];
+  const img2 = productsData && productsData[1].imagenes[0];
+  const img3 = productsData && productsData[2].imagenes[0];
+  const img4 = productsData && productsData[3].imagenes[0];
+  const img5 = productsData && productsData[4].imagenes[0];
+  const img6 = productsData && productsData[5].imagenes[0];
+  const firstProductWithImage = productsData?.find(
+    (product) => product.imagenes && product.imagenes.length > 0
+  );
   return (
     <>
       <Toaster position="top-center" closeButton={true} />
@@ -27,13 +34,13 @@ const Product = () => {
                     className="text-medium text-ui-fg-muted hover:text-ui-fg-subtle"
                     href="/us/collections/merch"
                   >
-                    {zapatillasJordan[0].marca}
+                    {relatedZapatillas?.marca}
                   </a>
                   <h2 className="font-sans font-medium h2-core text-3xl leading-10 text-ui-fg-base">
-                    {zapatillasJordan[0].modelo}
+                    {relatedZapatillas?.modelo}
                   </h2>
                   <p className="font-normal font-sans txt-medium text-ui-fg-subtle">
-                    {zapatillasJordan[0].color}
+                    {relatedZapatillas?.color}
                   </p>
                 </div>
               </div>
@@ -129,64 +136,75 @@ const Product = () => {
         <div className="col-span-4  h-full flex flex-col  overflow-y-hidden">
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
             {" "}
-            <Image
-              src={zapatillasJordan[0].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img1 && (
+              <Image
+                src={img1}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
 
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
             {" "}
-            <Image
-              src={zapatillasJordan[1].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img2 && (
+              <Image
+                src={img2}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
             {" "}
-            <Image
-              src={zapatillasJordan[2].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img3 && (
+              <Image
+                src={img3}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
             {" "}
-            <Image
-              src={zapatillasJordan[3].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img4 && (
+              <Image
+                src={img4}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
             {" "}
-            <Image
-              src={zapatillasJordan[4].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img5 && (
+              <Image
+                src={img5}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
           <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            <Image
-              src={zapatillasJordan[5].img}
-              alt="zapatilla"
-              width={0}
-              height={0}
-              className="object-cover w-full "
-            />
+            {img6 && (
+              <Image
+                src={img6}
+                alt="zapatilla"
+                width={300}
+                height={300}
+                className="object-cover w-full "
+              />
+            )}
           </div>
         </div>
         <div className="col-span-4 relative ">
@@ -214,18 +232,19 @@ const Product = () => {
                       <div className="flex flex-col gap-y-3">
                         <span className="text-sm">Eleccion de talles</span>
                         <div className="flex flex-wrap justify-between gap-2">
-                          {zapatillasJordan[0].talles.map((talle: any, talleIndex: number) => {
-                            const talla = Object.keys(talle)[0];
+                          {productsData &&
+                            productsData[0].talles.map((talle: any, talleIndex: number) => {
+                              const talla = Object.keys(talle)[0];
 
-                            return (
-                              <button
-                                key={talleIndex}
-                                className="border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150"
-                              >
-                                {talla}
-                              </button>
-                            );
-                          })}
+                              return (
+                                <button
+                                  key={talleIndex}
+                                  className="border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150"
+                                >
+                                  {talla}
+                                </button>
+                              );
+                            })}
                         </div>
                       </div>
                     </div>
@@ -233,12 +252,50 @@ const Product = () => {
                   </div>
                 </div>
                 <div className="flex flex-col text-ui-fg-base">
-                  <span className="text-xl-semi">$ {zapatillasJordan[0].precio}</span>
+                  <span className="text-xl-semi">$ {productsData && productsData[0].precio}</span>
                 </div>
                 <button className="transition-fg relative inline-flex items-center justify-center overflow-hidden rounded-md outline-none disabled:bg-ui-bg-disabled disabled:border-ui-border-base disabled:text-ui-fg-disabled disabled:shadow-buttons-neutral disabled:after:hidden after:transition-fg after:absolute after:inset-0 after:content-[''] shadow-buttons-inverted text-ui-fg-on-inverted bg-ui-button-inverted after:button-inverted-gradient hover:bg-ui-button-inverted-hover hover:after:button-inverted-hover-gradient active:bg-ui-button-inverted-pressed active:after:button-inverted-pressed-gradient focus:!shadow-buttons-inverted-focus txt-compact-small-plus gap-x-1.5 px-3 py-1.5 w-full h-10">
                   Seleccionar variante
                 </button>
-                <button onClick={() => addToCart(zapatillasJordan[0])}>Agregar al carro</button>
+                <button
+                  onClick={() => {
+                    if (firstProductWithImage) {
+                      const {
+                        id,
+                        marca,
+                        modelo,
+                        descripcion,
+                        categoria,
+                        color,
+                        precio,
+                        talles,
+                        imagenes,
+                        quantity,
+                        status,
+                      } = firstProductWithImage;
+                      const itemCart: ItemCart = {
+                        id,
+                        marca,
+                        modelo,
+                        descripcion,
+                        categoria,
+                        color,
+                        precio,
+                        talles,
+                        img:
+                          typeof firstProductWithImage.img === "string"
+                            ? firstProductWithImage.img
+                            : "", // Ajustar el tipo de la imagen
+                        imagenes,
+                        quantity,
+                        status,
+                      };
+                      addToCart(itemCart);
+                    }
+                  }}
+                >
+                  Agregar al carro
+                </button>
 
                 <div className="lg:hidden inset-x-0 bottom-0 fixed pointer-events-none">bu</div>
               </div>
@@ -246,7 +303,7 @@ const Product = () => {
           </div>
         </div>
       </div>
-      <RelatedCarousel relatedZapatillas={relatedZapatillas} />
+      {relatedZapatillas && <RelatedCarousel relatedZapatillas={[relatedZapatillas]} />}
     </>
   );
 };

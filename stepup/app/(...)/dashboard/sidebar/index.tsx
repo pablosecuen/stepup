@@ -57,7 +57,7 @@ const SideBar = () => {
                   href="products"
                   title="productos"
                   className="tooltip"
-                  onClick={() => handleLinkClick("products")}
+                  onClick={() => handleLinkClick("/products")}
                 >
                   <UserCircleIcon />
                   <span className="link hide">Productos</span>
@@ -68,7 +68,7 @@ const SideBar = () => {
                   href="tickets"
                   title="tickets"
                   className="tooltip"
-                  onClick={() => handleLinkClick("tickets")}
+                  onClick={() => handleLinkClick("/tickets")}
                 >
                   <TicketIcon />
                   <span className="link hide">tickets</span>

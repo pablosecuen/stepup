@@ -8,7 +8,7 @@ import { getDownloadURL, getStorage, ref } from "firebase/storage";
 import { toast } from "sonner";
 
 const ProductsContext = createContext<ProductsContextType>({
-  productsData: undefined,
+  productsData: [],
   isLoading: false,
   isError: false,
   error: "",
