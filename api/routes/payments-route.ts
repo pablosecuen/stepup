@@ -17,7 +17,7 @@ router.post('/webhook', paymentController.webHookController);
 
 router.get('/merchantOrder', paymentController.searchPaymentInfo);
 
-router.post('/shipping-cost', paymentController.calculateShippingCost);
+/* router.post('/shipping-cost', paymentController.calculateShippingCost); */
 
 
 

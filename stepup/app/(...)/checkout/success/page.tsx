@@ -34,8 +34,6 @@ const Success = () => {
     }
   };
 
-  console.log(localPaymentInfo);
-
   return (
     <Suspense>
       {localPaymentInfo ? (
@@ -45,9 +43,9 @@ const Success = () => {
               <header className="flex gap-3 w-full ">
                 <div className="flex flex-col mx-auto">
                   <span className="mx-auto">
-                    <img src="/assets/logo/Recurso 19.png" className="h-8" alt="Los Leños Logo" />
+                    <img src="/assets/logo/logo.png" className="h-8" alt="Los Leños Logo" />
                   </span>
-                  <p className="text-small text-default-500 text-center">Los Leños</p>
+                  <p className="text-small text-default-500 text-center">Sneakers Freakers</p>
                 </div>
               </header>
               <hr />
