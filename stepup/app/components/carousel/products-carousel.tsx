@@ -6,6 +6,7 @@ import "slick-carousel/slick/slick-theme.css";
 import Image from "next/image";
 import { useRef } from "react";
 import { useProducts } from "@/app/providers/ProductsContextProvider";
+import Link from "next/link";
 
 const ProductsCarousel = () => {
   const { productsData } = useProducts();
@@ -93,21 +94,19 @@ const ProductsCarousel = () => {
             <div key={zapatilla.modelo}>
               {" "}
               <div className="sm:w-92 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">
-                {zapatilla.imagenes.map((imagen, idx) => (
-                  <div
-                    key={idx}
-                    className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1"
-                  >
-                    <Image
-                      src={imagen}
-                      alt={zapatilla.modelo}
-                      width={250}
-                      height={250}
-                      className=""
-                      quality={100}
-                    />
-                  </div>
-                ))}
+                <Link
+                  href={`/tienda/${zapatilla.modelo}`}
+                  className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1"
+                >
+                  <Image
+                    src={zapatilla.imagenes[0]}
+                    alt={zapatilla.modelo}
+                    width={250}
+                    height={250}
+                    className=""
+                    quality={100}
+                  />
+                </Link>
 
                 <span className="text-[#fb7633] font-semibold">{zapatilla.marca}</span>
                 <span className="text-gray-500">{zapatilla.modelo}</span>

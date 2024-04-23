@@ -2,9 +2,9 @@ import { authMiddleware } from "@clerk/nextjs";
 
 export default authMiddleware({
   // Rutas que pueden ser accedidas sin autenticación
-  publicRoutes: ['/',"/checkout","/contacto","/tienda","/tracking"],
+  publicRoutes: ['/',"/checkout","/contacto","/tienda","/tracking", "/tienda/:modelo"],
   // Rutas que siempre pueden ser accedidas y no requieren información de autenticación
-  ignoredRoutes: [],
+  ignoredRoutes: ["/tienda"],
 });
 
 export const config = {

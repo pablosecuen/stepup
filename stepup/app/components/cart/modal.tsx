@@ -17,6 +17,7 @@ import DeleteItemButton from "./delete-item-button";
 import Image from "next/image";
 import { useCart } from "@/app/providers/CartContextProvider";
 import { Toaster } from "sonner";
+import OpenCart from "./Open-cart";
 
 export default function App() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -26,12 +27,13 @@ export default function App() {
     <div className="flex flex-col gap-2">
       <div onClick={onOpen}>
         {" "}
-        <ShoppingCartIcon
+        {/*      <ShoppingCartIcon
           style={{ strokeWidth: "md:1.8px" }}
           className={clsx(
             "md:h-10 h-8  transition-all ease-in-out hover:scale-110  cursor-pointer "
           )}
-        />
+        /> */}
+        <OpenCart cart={cart} />
       </div>
 
       <Modal

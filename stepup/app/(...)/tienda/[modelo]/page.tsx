@@ -1,30 +1,41 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
-import React from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import RelatedCarousel from "@/app/components/carousel/related-carousel";
 import { Toaster } from "sonner";
 import { useCart } from "@/app/providers/CartContextProvider";
 import { useProducts } from "@/app/providers/ProductsContextProvider";
 import { ItemCart } from "@/app/data";
 
-const Product = () => {
-  const { productsData } = useProducts();
+const Product = ({ params }: { params: { modelo: string } }) => {
+  const { productsData, productData, searchProductByName, isLoading, isError } = useProducts();
+  const [selectedSize, setSelectedSize] = useState<any>(null);
   const { addToCart } = useCart();
-  const relatedZapatillas = productsData && productsData.length > 0 ? productsData[0] : null;
 
-  const img1 = productsData && productsData[0].imagenes[0];
-  const img2 = productsData && productsData[1].imagenes[0];
-  const img3 = productsData && productsData[2].imagenes[0];
-  const img4 = productsData && productsData[3].imagenes[0];
-  const img5 = productsData && productsData[4].imagenes[0];
-  const img6 = productsData && productsData[5].imagenes[0];
+  const decodedModile = params.modelo ? decodeURIComponent(params.modelo as string) : "";
+
+  useEffect(() => {
+    searchProductByName(decodedModile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const currentBrand = productData?.marca;
+
+  // Filtrar otros productos con la misma marca
+  const relatedZapatillas = currentBrand
+    ? productsData?.filter(
+        (product) => product.marca === currentBrand && product.id !== productData?.id
+      )
+    : null;
+
   const firstProductWithImage = productsData?.find(
     (product) => product.imagenes && product.imagenes.length > 0
   );
+
   return (
     <>
       <Toaster position="top-center" closeButton={true} />
-      <div className="mt-32 grid grid-cols-12 max-w-screen-2xl  min-h-[80vh] mx-auto ">
+      <div className=" grid grid-cols-12 max-w-screen-2xl  min-h-[80vh] mx-auto ">
         <div className="col-span-4 relative">
           <div className=" sticky top-0 min-h-[80vh] flex items-center justify-center">
             <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-6 p-20 ">
@@ -34,24 +45,20 @@ const Product = () => {
                     className="text-medium text-ui-fg-muted hover:text-ui-fg-subtle"
                     href="/us/collections/merch"
                   >
-                    {relatedZapatillas?.marca}
+                    {productData?.marca}
                   </a>
                   <h2 className="font-sans font-medium h2-core text-3xl leading-10 text-ui-fg-base">
-                    {relatedZapatillas?.modelo}
+                    {productData?.modelo}
                   </h2>
                   <p className="font-normal font-sans txt-medium text-ui-fg-subtle">
-                    {relatedZapatillas?.color}
+                    {productData?.color}
                   </p>
                 </div>
               </div>
               <div className="w-full">
-                <div data-orientation="vertical">
-                  <div
-                    data-state="closed"
-                    data-orientation="vertical"
-                    className="border-grey-20 group border-t last:mb-0 last:border-b py-3"
-                  >
-                    <h3 data-orientation="vertical" data-state="closed" className="px-1">
+                <div>
+                  <div className="border-grey-20 group first:border-t last:mb-0 last:border-b py-3">
+                    <h3 className="px-1">
                       <div className="flex flex-col">
                         <div className="flex w-full items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -59,15 +66,7 @@ const Product = () => {
                               Product Information
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            aria-controls="radix-:r1:"
-                            aria-expanded="false"
-                            data-state="closed"
-                            data-orientation="vertical"
-                            id="radix-:r0:"
-                            data-radix-collection-item=""
-                          >
+                          <button type="button" id="button1">
                             <div className="text-grey-90 hover:bg-grey-5 active:bg-grey-5 active:text-violet-60 focus:border-violet-60 disabled:text-grey-30 bg-transparent disabled:bg-transparent rounded-rounded group relative p-[6px]">
                               <div className="h-5 w-5">
                                 <span className="bg-grey-50 rounded-circle group-radix-state-open:rotate-90 absolute inset-y-[31.75%] left-[48%] right-1/2 w-[1.5px] duration-300"></span>
@@ -79,7 +78,6 @@ const Product = () => {
                       </div>
                     </h3>
                     <div
-                      data-state="closed"
                       id="radix-:r1:"
                       role="region"
                       aria-labelledby="radix-:r0:"
@@ -88,11 +86,10 @@ const Product = () => {
                     ></div>
                   </div>
                   <div
-                    data-state="closed"
                     data-orientation="vertical"
                     className="border-grey-20 group border-t last:mb-0 last:border-b py-3"
                   >
-                    <h3 data-orientation="vertical" data-state="closed" className="px-1">
+                    <h3 data-orientation="vertical" className="px-1">
                       <div className="flex flex-col">
                         <div className="flex w-full items-center justify-between">
                           <div className="flex items-center gap-4">
@@ -104,7 +101,6 @@ const Product = () => {
                             type="button"
                             aria-controls="radix-:r3:"
                             aria-expanded="false"
-                            data-state="closed"
                             data-orientation="vertical"
                             id="radix-:r2:"
                             data-radix-collection-item=""
@@ -120,7 +116,6 @@ const Product = () => {
                       </div>
                     </h3>
                     <div
-                      data-state="closed"
                       id="radix-:r3:"
                       role="region"
                       aria-labelledby="radix-:r2:"
@@ -134,82 +129,24 @@ const Product = () => {
           </div>
         </div>
         <div className="col-span-4  h-full flex flex-col  overflow-y-hidden">
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            {img1 && (
-              <Image
-                src={img1}
-                alt="zapatilla"
+          {productData?.imagenes.map((img) => (
+            <div
+              key={productData.id}
+              className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100"
+            >
+              <img
+                src={img}
+                alt={productData.modelo}
                 width={300}
                 height={300}
-                className="object-cover w-full "
+                className="object-cover w-full"
               />
-            )}
-          </div>
-
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            {img2 && (
-              <Image
-                src={img2}
-                alt="zapatilla"
-                width={300}
-                height={300}
-                className="object-cover w-full "
-              />
-            )}
-          </div>
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            {img3 && (
-              <Image
-                src={img3}
-                alt="zapatilla"
-                width={300}
-                height={300}
-                className="object-cover w-full "
-              />
-            )}
-          </div>
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            {img4 && (
-              <Image
-                src={img4}
-                alt="zapatilla"
-                width={300}
-                height={300}
-                className="object-cover w-full "
-              />
-            )}
-          </div>
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {" "}
-            {img5 && (
-              <Image
-                src={img5}
-                alt="zapatilla"
-                width={300}
-                height={300}
-                className="object-cover w-full "
-              />
-            )}
-          </div>
-          <div className="w-full min-h-[80vh] border flex items-center justify-center bg-gray-100">
-            {img6 && (
-              <Image
-                src={img6}
-                alt="zapatilla"
-                width={300}
-                height={300}
-                className="object-cover w-full "
-              />
-            )}
-          </div>
+            </div>
+          ))}
         </div>
-        <div className="col-span-4 relative ">
+        <div className="col-span-4 relative">
           <div className=" sticky top-0 min-h-[80vh] flex items-center justify-center flex-col">
-            <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-12 p-20 ">
+            <div className="flex flex-col small:sticky small:top-30 small:py-0 small:max-w-[300px] w-full py-8 gap-y-12 p-20 ">
               <div className="shadow-elevation-card-rest rounded-lg max-w-4xl h-full bg-ui-bg-subtle w-full p-8">
                 <div className="flex flex-col gap-y-4 center">
                   <p className="font-normal font-sans txt-medium text-ui-fg-base text-xl">
@@ -232,19 +169,22 @@ const Product = () => {
                       <div className="flex flex-col gap-y-3">
                         <span className="text-sm">Eleccion de talles</span>
                         <div className="flex flex-wrap justify-between gap-2">
-                          {productsData &&
-                            productsData[0].talles.map((talle: any, talleIndex: number) => {
-                              const talla = Object.keys(talle)[0];
+                          {productData?.talles.map((talle: any, talleIndex: number) => {
+                            const talla = Object.keys(talle)[0];
+                            const isSelected = talla === selectedSize;
 
-                              return (
-                                <button
-                                  key={talleIndex}
-                                  className="border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150"
-                                >
-                                  {talla}
-                                </button>
-                              );
-                            })}
+                            return (
+                              <button
+                                key={talleIndex}
+                                className={`border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 hover:shadow-elevation-card-rest transition-all ease-in-out duration-300  ${
+                                  isSelected ? "bg-gray-200" : ""
+                                }`}
+                                onClick={() => setSelectedSize(talla)}
+                              >
+                                {talla}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -252,7 +192,7 @@ const Product = () => {
                   </div>
                 </div>
                 <div className="flex flex-col text-ui-fg-base">
-                  <span className="text-xl-semi">$ {productsData && productsData[0].precio}</span>
+                  <span className="text-xl-semi">$ {productData?.precio}</span>
                 </div>
                 <button className="transition-fg relative inline-flex items-center justify-center overflow-hidden rounded-md outline-none disabled:bg-ui-bg-disabled disabled:border-ui-border-base disabled:text-ui-fg-disabled disabled:shadow-buttons-neutral disabled:after:hidden after:transition-fg after:absolute after:inset-0 after:content-[''] shadow-buttons-inverted text-ui-fg-on-inverted bg-ui-button-inverted after:button-inverted-gradient hover:bg-ui-button-inverted-hover hover:after:button-inverted-hover-gradient active:bg-ui-button-inverted-pressed active:after:button-inverted-pressed-gradient focus:!shadow-buttons-inverted-focus txt-compact-small-plus gap-x-1.5 px-3 py-1.5 w-full h-10">
                   Seleccionar variante
@@ -281,7 +221,7 @@ const Product = () => {
                         categoria,
                         color,
                         precio,
-                        talles,
+                        talles: [{ [selectedSize]: true }],
                         img:
                           typeof firstProductWithImage.img === "string"
                             ? firstProductWithImage.img
@@ -303,7 +243,7 @@ const Product = () => {
           </div>
         </div>
       </div>
-      {relatedZapatillas && <RelatedCarousel relatedZapatillas={[relatedZapatillas]} />}
+      {relatedZapatillas && <RelatedCarousel relatedZapatillas={relatedZapatillas} />}
     </>
   );
 };

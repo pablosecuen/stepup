@@ -7,8 +7,6 @@ import Link from "next/link";
 import { UserCircleIcon } from "@heroicons/react/16/solid";
 import { TicketIcon, TvIcon } from "@heroicons/react/24/outline";
 import Products from "../(...)/products/page";
-import { ZapatillaJordan } from "@/app/data";
-import { useProducts } from "@/app/providers/ProductsContextProvider";
 
 const SideBar = () => {
   const [selectedComponent, setSelectedComponent] = useState("");
@@ -41,7 +39,7 @@ const SideBar = () => {
                   href="#dashboard"
                   title="dashboard"
                   className="tooltip"
-                  onClick={() => handleLinkClick("products")}
+                  onClick={() => handleLinkClick("dashboard")}
                 >
                   <TvIcon />
                   <span className="link hide">Dashboard</span>
@@ -54,10 +52,10 @@ const SideBar = () => {
             <ul>
               <li>
                 <Link
-                  href="products"
+                  href="dashboard/products"
                   title="productos"
                   className="tooltip"
-                  onClick={() => handleLinkClick("/products")}
+                  onClick={() => handleLinkClick("products")}
                 >
                   <UserCircleIcon />
                   <span className="link hide">Productos</span>

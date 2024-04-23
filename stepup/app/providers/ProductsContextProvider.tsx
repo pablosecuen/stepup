@@ -9,11 +9,13 @@ import { toast } from "sonner";
 
 const ProductsContext = createContext<ProductsContextType>({
   productsData: [],
+  productData: null,
   isLoading: false,
   isError: false,
   error: "",
   updateProductStatus: () => {},
   loadingStates: {},
+  searchProductByName: () => {},
 });
 
 // Función para obtener las URLs de las imágenes
@@ -38,7 +40,8 @@ export const ProductsProvider = ({ children }: ProductsProviderProps) => {
   const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<any | null>(null);
-  const [productsData, setProductsData] = useState<ZapatillaJordan[] | undefined>(undefined);
+  const [productsData, setProductsData] = useState<ZapatillaJordan[]>([]);
+  const [productData, setProductData] = useState<ZapatillaJordan | null>(null);
 
   const { data } = useQuery("products", async () => {
     setIsLoading(true);
@@ -141,9 +144,52 @@ export const ProductsProvider = ({ children }: ProductsProviderProps) => {
     }
   };
 
+  // Dentro de tu componente ProductsProvider
+  const searchProductByName = async (modelName: string) => {
+    setIsLoading(true);
+    setIsError(false);
+
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      let foundProduct: ZapatillaJordan | null = null;
+
+      querySnapshot.forEach(async (doc) => {
+        const productData = doc.data() as ZapatillaJordan;
+
+        if (productData.modelo.toLowerCase().includes(modelName.toLowerCase())) {
+          const productWithId: ZapatillaJordan = {
+            ...productData,
+            id: doc.id,
+          };
+
+          if (productWithId.imagenes && productWithId.imagenes.length > 0) {
+            productWithId.imagenes = await getImageUrls(productWithId.imagenes);
+          }
+          foundProduct = productWithId;
+        }
+        setIsLoading(false);
+        setProductData(foundProduct);
+      });
+    } catch (error: any) {
+      toast.error("Error al buscar el producto");
+      setIsError(true);
+      setError(error.message);
+      setIsLoading(false);
+    }
+  };
+
   return (
     <ProductsContext.Provider
-      value={{ productsData, isLoading, isError, error, updateProductStatus, loadingStates }}
+      value={{
+        productsData,
+        productData,
+        isLoading,
+        isError,
+        error,
+        updateProductStatus,
+        loadingStates,
+        searchProductByName,
+      }}
     >
       {children}
     </ProductsContext.Provider>
@@ -158,9 +204,11 @@ interface ProductsProviderProps {
 
 interface ProductsContextType {
   productsData: ZapatillaJordan[] | undefined;
+  productData: ZapatillaJordan | null; // Nuevo estado para almacenar los detalles del producto buscado
   isLoading: boolean;
   isError: boolean;
   error: string | undefined;
   updateProductStatus: (productId: string, status: boolean) => void;
   loadingStates: { [key: string]: boolean };
+  searchProductByName: (modelName: string) => void; // Nueva función para buscar un producto por su nombre de modelo
 }

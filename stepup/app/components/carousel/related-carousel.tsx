@@ -1,11 +1,12 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import { ZapatillaJordan } from "@/app/data";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import Image from "next/image";
+
 import { useRef } from "react";
-import { useProducts } from "@/app/providers/ProductsContextProvider";
+
 interface RelatedCarouselProps {
   relatedZapatillas: ZapatillaJordan[];
 }
@@ -94,21 +95,9 @@ const RelatedCarousel = ({ relatedZapatillas }: RelatedCarouselProps) => {
             <div key={zapatilla.modelo}>
               {" "}
               <div className="sm:w-92 w-11/12 flex flex-col  aspect-square  text-lg leading-tight">
-                {zapatilla.imagenes.map((imagen, idx) => (
-                  <div
-                    key={idx}
-                    className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1"
-                  >
-                    <Image
-                      src={imagen}
-                      alt={zapatilla.modelo}
-                      width={250}
-                      height={250}
-                      className=""
-                      quality={100}
-                    />
-                  </div>
-                ))}
+                <div className="w-full h-full bg-gradient-to-b from-white to-gray-400/40 flex items-center justify-center mb-1">
+                  <img src={zapatilla?.imagenes[0]} alt={zapatilla.modelo} />
+                </div>
 
                 <span className="text-[#fb7633] font-semibold">{zapatilla.marca}</span>
                 <span className="text-gray-500">{zapatilla.modelo}</span>
