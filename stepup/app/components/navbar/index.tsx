@@ -51,6 +51,8 @@ const Navbar = () => {
                 quality={100}
                 className="w-10 md:w-14 "
                 placeholder="blur"
+                width={0}
+                height={0}
               />
 
               <span

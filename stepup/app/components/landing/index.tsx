@@ -53,8 +53,8 @@ const Landing = () => {
         <Image
           src={adidastipo}
           alt="adidas tipo"
-          width={0}
-          height={0}
+          width={300}
+          height={3000}
           className="tipo w-96 max-w-64"
         />
         <div className="shadow  bg-gradient-to-t from-gray-700 to-transparent opacity-10 rounded-full transition duration-500"></div>

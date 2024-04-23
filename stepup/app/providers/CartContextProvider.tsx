@@ -26,12 +26,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addToCart = (product: ItemCart) => {
-    // Obtener el carrito del localStorage
+    if (product.talles[0].null) {
+      toast.error("Por favor selecciona un talle para poder agregar el producto al carrito");
+      return;
+    }
     const storedCart = JSON.parse(localStorage.getItem("SneakersCart") || "[]") as ItemCart[];
-
     let updatedCart: ItemCart[];
-
-    const existingProductIndex = storedCart.findIndex((item) => item.id === product.id);
+    const existingProductIndex = storedCart.findIndex(
+      (item) => item.id === product.id && item.talles[0] === product.talles[0]
+    );
     if (existingProductIndex !== -1) {
       updatedCart = storedCart.map((item, index) => {
         if (index === existingProductIndex) {
@@ -44,18 +47,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatedCart = [...storedCart, { ...product, quantity: 1 }];
       toast.success("Producto agregado al carrito");
     }
-
-    // Actualizar localStorage con el carrito actualizado
     localStorage.setItem("SneakersCart", JSON.stringify(updatedCart));
-
-    // Actualizar el estado del carrito
     setCart(updatedCart);
   };
 
   const deleteItem = (itemId: string) => {
-    const updatedCart = cart.filter((item) => item.id !== itemId);
+    // Identificar el índice del ítem a eliminar
+    const itemIndex = cart.findIndex((item) => item.id === itemId);
+
+    if (itemIndex === -1) {
+      // Si no se encuentra el ítem, mostrar un mensaje de error o manejar la situación según sea necesario
+      toast.error("El producto que intentas eliminar no se encuentra en el carrito");
+      return;
+    }
+
+    // Crear un nuevo array de carrito excluyendo el ítem a eliminar
+    const updatedCart = [...cart.slice(0, itemIndex), ...cart.slice(itemIndex + 1)];
+
+    // Actualizar el estado del carrito y el almacenamiento local
     setCart(updatedCart);
     localStorage.setItem("SneakersCart", JSON.stringify(updatedCart));
+
     toast.success("Producto eliminado del carrito");
   };
 

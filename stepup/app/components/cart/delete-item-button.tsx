@@ -7,9 +7,11 @@ import LoadingDots from "./loading-dots";
 export default function DeleteItemButton({
   item,
   onDelete,
+  i,
 }: {
   item: any;
-  onDelete: (itemId: string) => void;
+  onDelete: (itemId: string, index: number) => void;
+  i: number;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -17,7 +19,7 @@ export default function DeleteItemButton({
     startTransition(async () => {
       try {
         // Llamar a la función onDelete del padre pasándole el ID del producto
-        onDelete(item.id);
+        onDelete(item.id, i); // Pasamos el índice como segundo argumento a onDelete
       } catch (error) {
         console.error("Error al eliminar el producto al carrito:", error);
       }

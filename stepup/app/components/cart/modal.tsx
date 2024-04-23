@@ -26,13 +26,6 @@ export default function App() {
   return (
     <div className="flex flex-col gap-2">
       <div onClick={onOpen}>
-        {" "}
-        {/*      <ShoppingCartIcon
-          style={{ strokeWidth: "md:1.8px" }}
-          className={clsx(
-            "md:h-10 h-8  transition-all ease-in-out hover:scale-110  cursor-pointer "
-          )}
-        /> */}
         <OpenCart cart={cart} />
       </div>
 
@@ -89,7 +82,7 @@ export default function App() {
                           >
                             <div className="relative flex w-full flex-row justify-between px-1 py-4">
                               <div className="absolute z-40 -mt-2 ml-[55px]">
-                                <DeleteItemButton item={item} onDelete={deleteItem} />
+                                <DeleteItemButton item={item} i={i} onDelete={deleteItem} />
                               </div>
                               <Link
                                 href={`/tienda/${item.modelo}`}
@@ -110,6 +103,7 @@ export default function App() {
                                   <span className="leading-tight">{item.modelo}</span>
                                   <span className="leading-tight opacity-60 text-sm ">
                                     Detalles: {item.otrosDetalles}
+                                    Talle: {Object.keys(item.talles[0])[0]}
                                   </span>
                                 </div>
                               </Link>
