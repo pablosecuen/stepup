@@ -1,72 +1,41 @@
 import type { Config } from "tailwindcss";
-const {nextui} = require("@nextui-org/react");
+
+// Paleta copiada de TeacherFlow móvil (src/theme/colors.ts) — no se modifica
+// el original, sólo se reutilizan los mismos valores hexadecimales para que
+// la web mantenga la identidad visual actual.
 const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/flowbite/**/*.js",
-      "./node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}"
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
-      
-      backgroundImage: {
-        "jumpman": "url('../public/assets/jumpman/jumpman.jpg')",
-        "messi": "url('../public/assets/messi/messi.webp')",
-           "bolt": "url('../public/assets/bolt/bolt.jpg')",
+      colors: {
+        background: "#FAFAF8",
+        surface: "#FFFFFF",
+        border: "#E3E5E8",
+        textPrimary: "#080808",
+        textSecondary: "#5D6168",
+        textMuted: "#9499A1",
+        brandBlue: "#168CF4",
+        brandBlueDark: "#0060DF",
+        statusVerde: "#2FB350",
+        statusAmarillo: "#E8B400",
+        statusNaranja: "#F07C1D",
+        statusRojo: "#E0362B",
+        statusPendiente: "#4361B8",
+        statusSinDatos: "#9499A1",
+        ink: "#080808",
+        ivory: "#F2EEDF",
       },
-        fontFamily: {
-          "newake": ['NewakeFont-Demo', 'sans'],
-           "play": ['Play-Regular', 'sans'],
+      borderRadius: {
+        sm: "8px",
+        md: "12px",
+        lg: "16px",
+        pill: "999px",
       },
-      keyframes: {
-      
-        marquee: {
-          '0%': { transform: 'translateX(0%)' },
-          '100%': { transform: 'translateX(-100%)' }
-        },
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        fadeOut: {
-          '0%': { opacity: '1' },
-          '100%': { opacity: '0' },
-        },
-        slideInRight: {
-          '0%': { transform: 'translateX(100%)', opacity: '0' },
-          '100%': { transform: 'translateX(0%)', opacity: '1' },
-        },
-        slideOutRight: {
-          '0%': { transform: 'translateX(0%)', opacity: '1' },
-          '100%': { transform: 'translateX(100%)', opacity: '0' },
-        },
-        slideInLeft: {
-          '0%': { transform: 'translateX(-100%)', opacity: '0' },
-          '100%': { transform: 'translateX(0%)', opacity: '1' },
-        },
-        slideOutLeft: {
-          '0%': { transform: 'translateX(0%)', opacity: '1' },
-          '100%': { transform: 'translateX(-100%)', opacity: '0' },
-        },
-           backgroundShine: {
-          'from': { backgroundPosition: '0 0' },
-          'to': { backgroundPosition: '-200% 0' },
-        },
-      },
-              animation: {
-        carousel: 'marquee 240s linear infinite',
-        fadeIn: 'fadeIn 0.9s ease-in-out',
-        fadeOut: 'fadeOut 0.9s ease-in-out',
-        slideInRight: 'slideInRight 0.5s ease-in-out',
-        slideOutRight: 'slideOutRight 0.5s ease-in-out',
-        slideInLeft: 'slideInLeft 0.5s ease-in-out',
-        slideOutLeft: 'slideOutLeft 0.5s ease-in-out',
-           backgroundShine: 'backgroundShine 2s linear infinite',
-      }
     },
   },
-  plugins: [ require('flowbite/plugin' ), nextui()],
+  plugins: [],
 };
 export default config;

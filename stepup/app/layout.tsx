@@ -1,17 +1,25 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Navbar from "./components/navbar";
-import Script from "next/script";
-import Footer from "./components/footer/footer";
-import { Toaster } from "sonner";
-import MainProvider from "./App";
 
-const inter = Inter({ subsets: ["latin"] });
+// TeacherFlow móvil no usa una fuente custom (ver src/theme/typography.ts:
+// "Sin fuente custom por ahora... se apoya en la fuente de sistema") — la
+// web reproduce la misma decisión, sin depender de una fuente externa.
 
 export const metadata: Metadata = {
-  title: "Step Up",
-  description: "Sneaker freaks",
+  title: "TeacherFlow",
+  description: "TeacherFlow — gestión de alumnos, calendario y cobros para profesoras particulares.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "TeacherFlow",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#080808",
 };
 
 export default function RootLayout({
@@ -20,16 +28,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <link rel="icon" href="/favicon.ico" />
-      <body className={`${inter.className} max-w-screen overflow-x-hidden`}>
-        <MainProvider>
-          <Toaster position="top-center" closeButton={true} />
-          <Navbar />
-          {children}
-          <Footer />
-        </MainProvider>
-        <Script src="../path/to/flowbite/dist/flowbite.min.js"></Script>
+    <html lang="es">
+      <body className="min-h-screen max-w-screen overflow-x-hidden bg-background text-textPrimary antialiased">
+        {children}
       </body>
     </html>
   );

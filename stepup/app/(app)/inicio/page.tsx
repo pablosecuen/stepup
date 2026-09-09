@@ -1,0 +1,41 @@
+import { FIXTURE_TODAY_LESSONS } from "@/lib/fixtures";
+import { EmptyState } from "@/components/ui/states";
+
+export const metadata = { title: "Inicio · TeacherFlow" };
+
+export default function InicioPage() {
+  const hasLessons = FIXTURE_TODAY_LESSONS.length > 0;
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-bold text-textPrimary">Inicio</h1>
+      <p className="mt-1 text-sm text-textMuted">Datos de ejemplo — vista previa sin conexión real.</p>
+
+      <section className="mt-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-textSecondary">
+          Clases de hoy
+        </h2>
+        {hasLessons ? (
+          <ul className="mt-3 flex flex-col gap-2">
+            {FIXTURE_TODAY_LESSONS.map((lesson) => (
+              <li
+                key={lesson.id}
+                className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-textPrimary">{lesson.studentName}</p>
+                  <p className="text-xs text-textMuted">{lesson.modality}</p>
+                </div>
+                <span className="text-sm font-semibold text-brandBlue">{lesson.time}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mt-3">
+            <EmptyState message="No hay clases agendadas para hoy." />
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
