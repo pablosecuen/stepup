@@ -7,20 +7,20 @@ export default function InicioPage() {
   const hasLessons = FIXTURE_TODAY_LESSONS.length > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-bold text-textPrimary">Inicio</h1>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-bold tracking-tight text-textPrimary">Inicio</h1>
       <p className="mt-1 text-sm text-textMuted">Datos de ejemplo — vista previa sin conexión real.</p>
 
-      <section className="mt-6">
+      <section className="mt-8">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-textSecondary">
           Clases de hoy
         </h2>
         {hasLessons ? (
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {FIXTURE_TODAY_LESSONS.map((lesson) => (
               <li
                 key={lesson.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+                className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 shadow-sm transition hover:border-brandBlue/40"
               >
                 <div>
                   <p className="text-sm font-semibold text-textPrimary">{lesson.studentName}</p>

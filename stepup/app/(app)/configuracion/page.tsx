@@ -8,13 +8,16 @@ const SECTIONS = [
 
 export default function ConfiguracionPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-bold text-textPrimary">Configuración</h1>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-bold tracking-tight text-textPrimary">Configuración</h1>
       <p className="mt-1 text-sm text-textMuted">Vista previa — sin conexión a tu cuenta real todavía.</p>
 
-      <ul className="mt-6 flex flex-col gap-2">
+      <ul className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {SECTIONS.map((section) => (
-          <li key={section.title} className="rounded-lg border border-border bg-surface px-4 py-3">
+          <li
+            key={section.title}
+            className="rounded-lg border border-border bg-surface px-4 py-3 shadow-sm transition hover:border-brandBlue/40"
+          >
             <p className="text-sm font-semibold text-textPrimary">{section.title}</p>
             <p className="text-xs text-textMuted">{section.description}</p>
           </li>
