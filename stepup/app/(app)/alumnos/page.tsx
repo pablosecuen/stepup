@@ -2,6 +2,7 @@ import { FIXTURE_STUDENTS } from "@/lib/fixtures";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/states";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Alumnos · TeacherFlow" };
 
 export default function AlumnosPage() {

@@ -1,6 +1,7 @@
 import { FIXTURE_TODAY_LESSONS } from "@/lib/fixtures";
 import { EmptyState } from "@/components/ui/states";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Inicio · TeacherFlow" };
 
 export default function InicioPage() {

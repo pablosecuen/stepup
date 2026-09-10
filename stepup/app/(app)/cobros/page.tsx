@@ -2,6 +2,7 @@ import { FIXTURE_CHARGES } from "@/lib/fixtures";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/states";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Cobros · TeacherFlow" };
 
 function formatCurrency(amount: number): string {

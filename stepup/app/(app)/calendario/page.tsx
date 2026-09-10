@@ -1,5 +1,6 @@
 import { WeekCalendar } from "@/components/calendar/week-calendar";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Calendario · TeacherFlow" };
 
 // Revisión visual: grilla semanal real (réplica de la app móvil — misma
