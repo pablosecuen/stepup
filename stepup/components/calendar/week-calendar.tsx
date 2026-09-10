@@ -38,6 +38,11 @@ export function WeekCalendar() {
   // Se calcula en el cliente (nunca en el server) para que "hoy"/"ahora"
   // siempre reflejen la hora real del navegador de quien mira la vista
   // previa — evita cualquier desajuste de huso horario servidor/cliente.
+  // No es el patrón de "estado derivado" que la regla busca evitar: no hay
+  // forma de calcular esto durante el render sin desajustar la hidratación
+  // (server y cliente verían "ahora" distinto), por eso se pospone a un
+  // efecto que sólo corre en el cliente, tras montar.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const initial = new Date();
     setWeekStart(startOfWeek(initial));
@@ -45,6 +50,7 @@ export function WeekCalendar() {
     const interval = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(interval);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const days = useMemo(() => (weekStart ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)) : []), [weekStart]);
 
