@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           este aviso deja claro que lo mostrado es una vista previa. */}
       <div className="border-b border-border bg-brandBlue/5 px-4 py-2 text-center text-xs font-medium text-brandBlueDark">
         Vista previa con datos ficticios — todavía sin conexión a tu cuenta real.{" "}
-        <Link href="/" className="underline">
+        <Link href="/" className="underline decoration-brandBlueDark/40 underline-offset-2 transition hover:decoration-brandBlueDark">
           Volver al inicio
         </Link>
       </div>

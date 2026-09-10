@@ -167,4 +167,20 @@ export const CALENDAR_FIXTURE_LESSONS: CalendarFixtureLesson[] = [
     participantCount: 1,
     isRecurring: true,
   },
+  {
+    // Cancelada SIN reemplazo — la única forma de demostrar el color ámbar
+    // de "Cancelada" (el otro caso cancelado del fixture, demo-ju-cancelada,
+    // tiene reemplazo activo y por regla congelada se oculta de la grilla).
+    id: "demo-sa-cancelada",
+    title: "Alumno de ejemplo 10",
+    dayOffset: 5,
+    startHour: 15,
+    startMinute: 0,
+    durationMinutes: 60,
+    modality: "online",
+    status: "cancelled",
+    activityKind: "class",
+    participantCount: 1,
+    isRecurring: false,
+  },
 ];

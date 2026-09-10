@@ -35,7 +35,7 @@ export function PrimaryNav() {
     <>
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface/90 backdrop-blur-md md:hidden"
       >
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
@@ -45,9 +45,15 @@ export function PrimaryNav() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium text-textMuted focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-inset"
+              className="group flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-textMuted transition-transform duration-150 ease-premium active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-inset"
             >
-              <Icon className={`h-6 w-6 ${isActive ? "text-brandBlue" : "text-textMuted"}`} aria-hidden />
+              <span
+                className={`flex h-7 w-11 items-center justify-center rounded-pill transition-colors duration-200 ease-premium ${
+                  isActive ? "bg-brandBlue/10" : "group-active:bg-background"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${isActive ? "text-brandBlue" : "text-textMuted"}`} aria-hidden />
+              </span>
               <span className={isActive ? "text-brandBlue" : ""}>{item.label}</span>
             </Link>
           );
@@ -66,11 +72,13 @@ export function PrimaryNav() {
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue ${
-                isActive ? "bg-brandBlue/10 text-brandBlue" : "text-textSecondary hover:bg-background"
+              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150 ease-premium focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue ${
+                isActive
+                  ? "bg-brandBlue/10 text-brandBlue"
+                  : "text-textSecondary hover:translate-x-0.5 hover:bg-background hover:text-textPrimary"
               }`}
             >
-              <Icon className="h-5 w-5" aria-hidden />
+              <Icon className="h-5 w-5 shrink-0" aria-hidden />
               {item.label}
             </Link>
           );

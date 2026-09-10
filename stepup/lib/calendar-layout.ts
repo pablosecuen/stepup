@@ -4,9 +4,14 @@ import type { CalendarFixtureLesson } from "./calendar-fixtures";
 // semana lunes->domingo, eje de horas 08:00-21:00, franjas de 60 minutos.
 export const START_HOUR = 8;
 export const END_HOUR = 22; // exclusivo: se muestran las horas 08..21
-export const HOUR_HEIGHT_PX = 56;
+export const HOUR_HEIGHT_PX = 64;
 export const TIME_COLUMN_WIDTH_PX = 48;
-export const DAY_COLUMN_MIN_WIDTH_PX = 112;
+export const DAY_COLUMN_MIN_WIDTH_PX = 128;
+// Piso de alto de tarjeta — suficiente para título en hasta 3 renglones +
+// horario, para que nunca haga falta cortar texto (nunca "..."). Igual que
+// móvil, el alto real crece si el contenido lo necesita (ver LessonCard:
+// se aplica como minHeight, no como height fijo).
+export const LESSON_CARD_MIN_HEIGHT_PX = 56;
 
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
@@ -62,6 +67,30 @@ export function isActiveReplacement(lesson: CalendarFixtureLesson, all: Calendar
   return !!original && original.status === "cancelled" && lesson.status !== "cancelled";
 }
 
+function hasActiveReplacementForCancelledSlot(lesson: CalendarFixtureLesson, all: CalendarFixtureLesson[]): boolean {
+  return all.some((other) => other.freedByLessonId === lesson.id && other.status !== "cancelled");
+}
+
+/**
+ * Qué tarjetas se dibujan en la grilla — misma regla EXACTA que
+ * `hideCancelledLessonsWithActiveReplacement` en móvil
+ * (`src/features/calendar/utils/cancelledSlotReuse.ts`): nunca dos tarjetas
+ * relacionadas en el mismo horario.
+ *   - Una clase cancelada que es en sí misma un reemplazo -> se oculta.
+ *   - Una clase cancelada con un reemplazo activo apuntándole -> se oculta
+ *     (se muestra sólo el reemplazo, a tamaño completo).
+ * Ocultar nunca borra el dato: `CALENDAR_FIXTURE_LESSONS` completo se sigue
+ * usando para resolver colores (p. ej. el coral del reemplazo necesita ver
+ * la cancelada original, aunque esa cancelada no se dibuje).
+ */
+export function visibleWeekLessons(all: CalendarFixtureLesson[]): CalendarFixtureLesson[] {
+  return all.filter((lesson) => {
+    if (lesson.freedByLessonId && lesson.status === "cancelled") return false;
+    if (lesson.status === "cancelled" && hasActiveReplacementForCancelledSlot(lesson, all)) return false;
+    return true;
+  });
+}
+
 export interface PositionedLesson {
   lesson: CalendarFixtureLesson;
   top: number;
@@ -105,7 +134,7 @@ export function layoutDayLessons(weekStart: Date, lessons: CalendarFixtureLesson
     const columnCount = Math.max(concurrent, column + 1);
     const minutesFromStart = (start.getHours() - START_HOUR) * 60 + start.getMinutes();
     const top = Math.max(0, (minutesFromStart / 60) * HOUR_HEIGHT_PX);
-    const height = Math.max(28, (lesson.durationMinutes / 60) * HOUR_HEIGHT_PX - 2);
+    const height = Math.max(LESSON_CARD_MIN_HEIGHT_PX, (lesson.durationMinutes / 60) * HOUR_HEIGHT_PX - 2);
     const widthPercent = 100 / columnCount;
     return { lesson, top, height, leftPercent: column * widthPercent, widthPercent };
   });

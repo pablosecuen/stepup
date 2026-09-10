@@ -16,6 +16,7 @@ import {
   resolveLessonEnd,
   resolveLessonStart,
   startOfWeek,
+  visibleWeekLessons,
 } from "@/lib/calendar-layout";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
 import { CalendarToolbar } from "./calendar-toolbar";
@@ -66,9 +67,12 @@ export function WeekCalendar() {
           desborda de costado, sólo esta caja, cuando el ancho no alcanza
           para las 7 columnas legibles. */}
       <div className="overflow-x-auto px-4 pb-8 sm:px-8">
-        <div style={{ minWidth: GRID_MIN_WIDTH }}>
+        {/* Sin overflow-hidden acá: una tarjeta que necesite crecer verticalmente
+            (título largo, ver LessonCard) nunca debe quedar cortada por el
+            borde redondeado del contenedor. */}
+        <div className="rounded-lg border border-border bg-surface shadow-card" style={{ minWidth: GRID_MIN_WIDTH }}>
           <div
-            className="grid border-b border-border"
+            className="grid rounded-t-lg border-b border-border"
             style={{ gridTemplateColumns: GRID_TEMPLATE_COLUMNS }}
           >
             <div />
@@ -77,15 +81,13 @@ export function WeekCalendar() {
               return (
                 <div
                   key={index}
-                  className={`flex flex-col items-center gap-0.5 rounded-t-md py-2 text-center ${
-                    today ? "bg-brandBlue/5" : ""
-                  }`}
+                  className={`flex flex-col items-center gap-1 py-2.5 text-center ${today ? "rounded-t-lg bg-brandBlue/5" : ""}`}
                 >
-                  <span className={`text-[11px] font-semibold ${today ? "text-brandBlue" : "text-textMuted"}`}>
+                  <span className={`text-[11px] font-semibold tracking-wide ${today ? "text-brandBlue" : "text-textMuted"}`}>
                     {WEEKDAY_SHORT[index]}
                   </span>
                   <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${
                       today ? "bg-brandBlue text-white" : "text-textPrimary"
                     }`}
                   >
@@ -109,7 +111,14 @@ export function WeekCalendar() {
 
             {days.map((day, dayIndex) => {
               const today = isSameDay(day, now);
-              const dayLessons = CALENDAR_FIXTURE_LESSONS.filter((lesson) => lesson.dayOffset === dayIndex);
+              // Nunca dos tarjetas relacionadas en el mismo horario: una
+              // cancelada con reemplazo activo (o un reemplazo ya cancelado)
+              // no se dibuja — ver visibleWeekLessons(). El color de cada
+              // tarjeta visible se sigue resolviendo contra el universo
+              // COMPLETO (CALENDAR_FIXTURE_LESSONS), nunca el filtrado.
+              const dayLessons = visibleWeekLessons(CALENDAR_FIXTURE_LESSONS).filter(
+                (lesson) => lesson.dayOffset === dayIndex
+              );
               const positioned = layoutDayLessons(weekStart, dayLessons);
 
               return (

@@ -12,7 +12,7 @@ const STATUS_STYLES: Record<FixtureStudentStatus, string> = {
 
 export function StatusPill({ status }: { status: FixtureStudentStatus }) {
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[status]}`}>
+    <span className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-semibold tracking-tight ${STATUS_STYLES[status]}`}>
       {status}
     </span>
   );

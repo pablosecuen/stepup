@@ -14,7 +14,10 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold text-textPrimary">Ingresá a TeacherFlow</h1>
         </div>
 
-        <form className="flex flex-col gap-4" aria-label="Formulario de inicio de sesión (vista previa)">
+        <form
+          className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6 shadow-card"
+          aria-label="Formulario de inicio de sesión (vista previa)"
+        >
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-sm font-medium text-textSecondary">
               Correo electrónico
@@ -24,7 +27,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               placeholder="profesora@ejemplo.com"
-              className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+              className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -36,13 +39,13 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
-              className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+              className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
             />
           </div>
 
           <Link
             href="/inicio"
-            className="mt-2 rounded-md bg-brandBlue px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+            className="mt-2 rounded-md bg-brandBlue px-4 py-2.5 text-center text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
           >
             Ingresar
           </Link>

@@ -26,14 +26,14 @@ export default function HomePage() {
         </div>
         <Link
           href="/login"
-          className="rounded-md bg-brandBlue px-4 py-2 text-sm font-semibold text-white transition hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="rounded-md bg-brandBlue px-4 py-2 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Iniciar sesión
         </Link>
       </header>
 
       <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center sm:px-10">
-        <h1 className="text-3xl font-extrabold tracking-tight text-textPrimary sm:text-5xl">
+        <h1 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-textPrimary sm:text-5xl">
           Todo tu trabajo docente, ordenado.
         </h1>
         <p className="max-w-xl text-base text-textSecondary sm:text-lg">
@@ -42,7 +42,7 @@ export default function HomePage() {
         </p>
         <Link
           href="/login"
-          className="mt-2 rounded-md bg-brandBlue px-6 py-3 text-base font-semibold text-white transition hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="mt-2 rounded-md bg-brandBlue px-6 py-3 text-base font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark hover:shadow-cardHover active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Empezar
         </Link>
@@ -52,7 +52,7 @@ export default function HomePage() {
         {FEATURES.map((feature) => (
           <div
             key={feature.title}
-            className="rounded-lg border border-border bg-surface p-5 text-left shadow-sm"
+            className="rounded-lg border border-border bg-surface p-5 text-left shadow-card transition-all duration-200 ease-premium hover:-translate-y-0.5 hover:shadow-cardHover"
           >
             <h2 className="text-base font-bold text-textPrimary">{feature.title}</h2>
             <p className="mt-1 text-sm text-textSecondary">{feature.description}</p>

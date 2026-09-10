@@ -35,7 +35,7 @@ export function LessonDetailModal({ lesson, start, onClose }: LessonDetailModalP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center"
       role="presentation"
       onClick={onClose}
     >
@@ -43,7 +43,7 @@ export function LessonDetailModal({ lesson, start, onClose }: LessonDetailModalP
         role="dialog"
         aria-modal="true"
         aria-labelledby="lesson-detail-title"
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-lg sm:rounded-2xl"
+        className="max-h-[85vh] w-full max-w-md animate-[modal-in_0.2s_cubic-bezier(0.22,1,0.36,1)] overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-panel sm:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -54,13 +54,13 @@ export function LessonDetailModal({ lesson, start, onClose }: LessonDetailModalP
             type="button"
             onClick={onClose}
             aria-label="Cerrar detalle de la clase"
-            className="rounded-full p-1.5 text-textMuted hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+            className="rounded-full p-1.5 text-textMuted transition-all duration-150 ease-premium hover:bg-background hover:text-textPrimary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           <MetaChip>{dateLabel}</MetaChip>
           <MetaChip>{timeLabel}</MetaChip>
           <MetaChip>{lesson.durationMinutes} min</MetaChip>
@@ -99,10 +99,12 @@ export function LessonDetailModal({ lesson, start, onClose }: LessonDetailModalP
                 type="button"
                 disabled
                 aria-disabled="true"
-                className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textMuted opacity-60"
+                className="flex cursor-not-allowed items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textMuted opacity-60"
               >
                 {action}
-                <span className="text-xs font-semibold uppercase tracking-wide">Demo</span>
+                <span className="rounded-pill bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                  Demo
+                </span>
               </button>
             ))}
           </div>
@@ -111,7 +113,7 @@ export function LessonDetailModal({ lesson, start, onClose }: LessonDetailModalP
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 w-full rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="mt-5 w-full rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Cerrar
         </button>
