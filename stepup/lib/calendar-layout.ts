@@ -4,14 +4,21 @@ import type { CalendarFixtureLesson } from "./calendar-fixtures";
 // semana lunes->domingo, eje de horas 08:00-21:00, franjas de 60 minutos.
 export const START_HOUR = 8;
 export const END_HOUR = 22; // exclusivo: se muestran las horas 08..21
-export const HOUR_HEIGHT_PX = 64;
+export const HOUR_HEIGHT_PX = 80;
 export const TIME_COLUMN_WIDTH_PX = 48;
-export const DAY_COLUMN_MIN_WIDTH_PX = 128;
-// Piso de alto de tarjeta — suficiente para título en hasta 3 renglones +
-// horario, para que nunca haga falta cortar texto (nunca "..."). Igual que
-// móvil, el alto real crece si el contenido lo necesita (ver LessonCard:
-// se aplica como minHeight, no como height fijo).
-export const LESSON_CARD_MIN_HEIGHT_PX = 56;
+// Ancho mínimo de columna diaria — cada actividad ocupa SIEMPRE el 100% de
+// esta columna (corrección 2026-09-10: se eliminó el diseño anterior de
+// carriles paralelos, que partía el ancho a la mitad y cortaba nombres
+// palabra por palabra). En teléfono/tablet este mínimo se mantiene vía
+// scroll horizontal dentro del calendario, nunca comprimiendo el texto.
+export const DAY_COLUMN_MIN_WIDTH_PX = 168;
+// Separación visual entre una tarjeta y la siguiente del mismo día.
+const CARD_GAP_PX = 6;
+// Piso de alto — sólo para clases muy cortas; nunca se usa para "inflar"
+// una tarjeta más allá del hueco real hasta la próxima actividad (ver
+// layoutDayLessons: el alto siempre queda acotado por ese hueco, así una
+// tarjeta nunca invade a la que sigue).
+const MIN_CARD_HEIGHT_PX = 46;
 
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
@@ -95,15 +102,24 @@ export interface PositionedLesson {
   lesson: CalendarFixtureLesson;
   top: number;
   height: number;
-  leftPercent: number;
-  widthPercent: number;
+}
+
+function minutesFromDayStart(date: Date): number {
+  return (date.getHours() - START_HOUR) * 60 + date.getMinutes();
 }
 
 /**
- * Distribución de columnas por superposición horaria — mismo criterio que
- * `computeLessonColumnLayout` en móvil: una clase que se solapa con otra(s)
- * comparte el ancho de la columna con ellas; una clase sin superposición
- * ocupa el ancho completo.
+ * Posición vertical de cada tarjeta de un día — SIEMPRE a ancho completo
+ * de la columna (corrección 2026-09-10: se eliminó el diseño anterior de
+ * carriles paralelos por superposición; ver findSchedulingConflict en
+ * calendar-conflicts.ts, que reemplaza esa lógica como validación pura
+ * para una futura creación/edición real de clases).
+ *
+ * Asume que `lessons` no se superponen en el tiempo — eso se garantiza con
+ * datos de fixture que no se cruzan. El alto de cada tarjeta nunca excede
+ * el hueco real hasta el inicio de la próxima clase del día (o el final de
+ * la grilla si es la última), para que una tarjeta nunca invada a la
+ * siguiente aunque su contenido sea largo.
  */
 export function layoutDayLessons(weekStart: Date, lessons: CalendarFixtureLesson[]): PositionedLesson[] {
   const withTimes = lessons
@@ -114,29 +130,23 @@ export function layoutDayLessons(weekStart: Date, lessons: CalendarFixtureLesson
     }))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-  const columnEndTimes: number[] = [];
-  const assigned: Array<{ lesson: CalendarFixtureLesson; start: Date; end: Date; column: number }> = [];
+  const gridBottomPx = (END_HOUR - START_HOUR) * HOUR_HEIGHT_PX;
 
-  withTimes.forEach(({ lesson, start, end }) => {
-    let column = columnEndTimes.findIndex((endTime) => endTime <= start.getTime());
-    if (column === -1) {
-      column = columnEndTimes.length;
-      columnEndTimes.push(end.getTime());
-    } else {
-      columnEndTimes[column] = end.getTime();
-    }
-    assigned.push({ lesson, start, end, column });
-  });
+  return withTimes.map(({ lesson, start }, index) => {
+    const top = Math.max(0, (minutesFromDayStart(start) / 60) * HOUR_HEIGHT_PX);
+    const naturalHeight = (lesson.durationMinutes / 60) * HOUR_HEIGHT_PX - CARD_GAP_PX;
 
-  return assigned.map(({ lesson, start, end, column }) => {
-    // Máximo de columnas concurrentes en el instante de inicio de esta clase.
-    const concurrent = assigned.filter((other) => other.start < end && other.end > start).length;
-    const columnCount = Math.max(concurrent, column + 1);
-    const minutesFromStart = (start.getHours() - START_HOUR) * 60 + start.getMinutes();
-    const top = Math.max(0, (minutesFromStart / 60) * HOUR_HEIGHT_PX);
-    const height = Math.max(LESSON_CARD_MIN_HEIGHT_PX, (lesson.durationMinutes / 60) * HOUR_HEIGHT_PX - 2);
-    const widthPercent = 100 / columnCount;
-    return { lesson, top, height, leftPercent: column * widthPercent, widthPercent };
+    const next = withTimes[index + 1];
+    const nextTopPx = next ? (minutesFromDayStart(next.start) / 60) * HOUR_HEIGHT_PX : gridBottomPx;
+    const availableToNextPx = Math.max(0, nextTopPx - top - CARD_GAP_PX);
+
+    // El hueco disponible siempre gana: nunca se invade la próxima tarjeta,
+    // aunque eso implique quedar por debajo del piso mínimo (caso límite,
+    // no esperado con los datos de fixture actuales, que dejan huecos
+    // generosos entre actividades consecutivas).
+    const height = Math.min(availableToNextPx, Math.max(MIN_CARD_HEIGHT_PX, naturalHeight));
+
+    return { lesson, top, height };
   });
 }
 

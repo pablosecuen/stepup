@@ -50,6 +50,9 @@ export const CALENDAR_FIXTURE_LESSONS: CalendarFixtureLesson[] = [
     isRecurring: true,
   },
   {
+    // Primera de un par exactamente consecutivo (termina 11:00, ver
+    // demo-ma-2 abajo, que empieza 11:00) — prueba de "dos clases
+    // consecutivas, no superpuestas" pedida en la corrección 2026-09-10.
     id: "demo-ma-1",
     title: "Alumno de ejemplo 2",
     dayOffset: 1,
@@ -63,11 +66,14 @@ export const CALENDAR_FIXTURE_LESSONS: CalendarFixtureLesson[] = [
     isRecurring: false,
   },
   {
+    // Exactamente consecutiva con demo-ma-1 (termina 11:00, esta empieza
+    // 11:00) — corrección 2026-09-10: antes se superponía 30 minutos con
+    // demo-ma-1 y forzaba el diseño de carriles paralelos ya eliminado.
     id: "demo-ma-2",
     title: "Alumno de ejemplo 3",
     dayOffset: 1,
-    startHour: 10,
-    startMinute: 30,
+    startHour: 11,
+    startMinute: 0,
     durationMinutes: 45,
     modality: "presencial",
     status: "scheduled",
@@ -179,6 +185,22 @@ export const CALENDAR_FIXTURE_LESSONS: CalendarFixtureLesson[] = [
     durationMinutes: 60,
     modality: "online",
     status: "cancelled",
+    activityKind: "class",
+    participantCount: 1,
+    isRecurring: false,
+  },
+  {
+    // Nombre ficticio largo, en un día sin ninguna otra actividad — así su
+    // alto puede crecer libremente sin riesgo de invadir una clase vecina
+    // (domingo queda deliberadamente aislado para esta prueba).
+    id: "demo-do-nombre-largo",
+    title: "Alumna Rodríguez Fernández de la Torre",
+    dayOffset: 6,
+    startHour: 11,
+    startMinute: 0,
+    durationMinutes: 60,
+    modality: "presencial",
+    status: "scheduled",
     activityKind: "class",
     participantCount: 1,
     isRecurring: false,
