@@ -4,6 +4,7 @@ import type { StudentRow, StudentStatus } from "@/lib/db/database.types";
 import {
   toStudentRecord,
   validateNewStudentInput,
+  validateUpdateStudentInput,
   studentInputToRowPatch,
   updateInputToRowPatch,
   type StudentRecord,
@@ -77,11 +78,24 @@ export async function createStudent(
   return toStudentRecord(data as StudentRow);
 }
 
+/**
+ * Actualiza un alumno propio. `.single()` exige exactamente una fila
+ * afectada — si el id no existe o pertenece a otro profesor (RLS lo
+ * excluye igual que el filtro explícito de `owner_id`), Postgres/PostgREST
+ * devuelven 0 filas y `.single()` falla con `PGRST116`, que se traduce acá
+ * a `StudentNotFoundError` — nunca se distingue "no existe" de "no
+ * autorizado" en el mensaje (mismo criterio anti-enumeración que el resto
+ * de la app), pero la ruta que lo llama sí puede tratarlo como 404 real.
+ */
 export async function updateStudent(
   ctx: AuthenticatedDbContext,
   id: string,
   patch: UpdateStudentInput
 ): Promise<StudentRecord> {
+  const errors = validateUpdateStudentInput(patch);
+  if (errors.length > 0) {
+    throw new Error(`Alumno inválido: ${errors.map((e) => e.message).join(" ")}`);
+  }
   const { data, error } = await ctx.supabase
     .from("students")
     .update(updateInputToRowPatch(patch))
@@ -89,40 +103,45 @@ export async function updateStudent(
     .eq("id", id)
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "PGRST116") throw new StudentNotFoundError("Alumno no encontrado.");
+    throw error;
+  }
   return toStudentRecord(data as StudentRow);
 }
 
+export class StudentNotFoundError extends Error {}
+
 /**
- * Cambio de estado — espeja applyStatusChange del móvil: sólo actualiza
+ * Cambio de estado — espeja applyStatusChange del móvil: actualiza
  * `status`/`status_change_date` y agrega una entrada a
- * `student_status_history`. Nunca borra nada. La versión completa con
- * poda de series futuras (equivalente a `archiveStudent` con
- * `removeFromFuture: true`) queda para la Fase 2, cuando
- * recurrence_rules/calendar_lessons ya tengan datos reales que podar.
+ * `student_status_history`. Nunca borra nada.
+ *
+ * Corrección Fase 2 (a pedido explícito — "cada cambio debe ser atómico"):
+ * usa el RPC `change_student_status` (ver
+ * `supabase/migrations/20260920120000_student_mutation_rpcs.sql`), una
+ * única transacción real de Postgres — nunca dos escrituras secuenciales
+ * que puedan quedar a medias si la segunda falla.
+ *
+ * La versión completa con poda de series futuras (equivalente a
+ * `archiveStudent` con `removeFromFuture: true`) depende de
+ * `recurrence_rules`/`calendar_lessons` con datos reales — Fase 3.
  */
 export async function changeStudentStatus(
   ctx: AuthenticatedDbContext,
   id: string,
   input: { status: StudentStatus; occurredOn: string; reason?: string; internalNote?: string }
 ): Promise<StudentRecord> {
-  const { error: historyError } = await ctx.supabase.from("student_status_history").insert({
-    owner_id: ctx.ownerId,
-    student_id: id,
-    status: input.status,
-    occurred_on: input.occurredOn,
-    reason: input.reason ?? null,
-    internal_note: input.internalNote ?? null,
+  const { data, error } = await ctx.supabase.rpc("change_student_status", {
+    p_student_id: id,
+    p_status: input.status,
+    p_occurred_on: input.occurredOn,
+    p_reason: input.reason ?? null,
+    p_internal_note: input.internalNote ?? null,
   });
-  if (historyError) throw historyError;
-
-  const { data, error } = await ctx.supabase
-    .from("students")
-    .update({ status: input.status, status_change_date: input.occurredOn })
-    .eq("owner_id", ctx.ownerId)
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw error;
+  if (error) {
+    if (error.code === "P0002") throw new StudentNotFoundError("Alumno no encontrado.");
+    throw error;
+  }
   return toStudentRecord(data as StudentRow);
 }

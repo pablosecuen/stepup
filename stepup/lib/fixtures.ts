@@ -2,21 +2,14 @@
 // área privada. Ningún nombre, monto ni fecha corresponde a un alumno o
 // cuenta real. No se conecta a Supabase ni a ningún backend todavía.
 
+// Corrección Fase 2 (a pedido explícito — "eliminar el uso de
+// FIXTURE_STUDENTS en /alumnos"): `FIXTURE_STUDENTS`/`FixtureStudent` se
+// quitaron por completo — `/alumnos` ya lee datos reales de Supabase (ver
+// `lib/repositories/students.ts`). `FixtureStudentStatus` se conserva:
+// sigue siendo el tipo real de `FixtureCharge.status` (`/cobros`, todavía
+// ficticio, Fase 5) y de `StatusPill`, ninguno de los dos tocado en esta
+// fase.
 export type FixtureStudentStatus = "Pago pendiente" | "Vence pronto" | "Vence hoy" | "Pago vencido" | "Pagado";
-
-export interface FixtureStudent {
-  id: string;
-  name: string;
-  level: string;
-  status: FixtureStudentStatus;
-}
-
-export const FIXTURE_STUDENTS: FixtureStudent[] = [
-  { id: "demo-1", name: "Alumno de ejemplo 1", level: "B1", status: "Pago pendiente" },
-  { id: "demo-2", name: "Alumno de ejemplo 2", level: "A2", status: "Vence pronto" },
-  { id: "demo-3", name: "Alumno de ejemplo 3", level: "C1", status: "Pagado" },
-  { id: "demo-4", name: "Alumno de ejemplo 4", level: "B2", status: "Pago vencido" },
-];
 
 export interface FixtureLesson {
   id: string;

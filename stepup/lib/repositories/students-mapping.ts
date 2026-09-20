@@ -184,3 +184,29 @@ export function updateInputToRowPatch(patch: UpdateStudentInput): Record<string,
   if (patch.isFeatured !== undefined) rowPatch.is_featured = patch.isFeatured;
   return rowPatch;
 }
+
+/**
+ * Validación de edición — mismas reglas que `validateNewStudentInput`,
+ * pero sólo sobre los campos REALMENTE provistos en el patch (un campo
+ * ausente nunca es un error: la edición es siempre parcial). Corre en el
+ * servidor (Server Action), nunca sólo en el navegador.
+ */
+export function validateUpdateStudentInput(input: UpdateStudentInput): StudentValidationError[] {
+  const errors: StudentValidationError[] = [];
+  if (input.name !== undefined && !input.name.trim()) {
+    errors.push({ field: "name", message: "El nombre es obligatorio." });
+  }
+  if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
+    errors.push({ field: "price", message: "El precio debe ser un número mayor o igual a cero." });
+  }
+  if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes <= 0) {
+    errors.push({ field: "usualDurationMinutes", message: "La duración habitual debe ser mayor a cero." });
+  }
+  if (input.weeklyFrequency !== undefined && input.weeklyFrequency < 0) {
+    errors.push({ field: "weeklyFrequency", message: "La frecuencia semanal no puede ser negativa." });
+  }
+  if (input.dateJoined !== undefined && !input.dateJoined.trim()) {
+    errors.push({ field: "dateJoined", message: "La fecha de alta es obligatoria." });
+  }
+  return errors;
+}
