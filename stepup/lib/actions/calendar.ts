@@ -1,0 +1,392 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
+import { createSingleLesson, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
+import { createRecurrenceSeries, setRecurrenceRuleStatus, setRecurrenceRuleParticipants, getRecurrenceRule, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { splitRecurrenceThisAndFuture } from "@/lib/repositories/recurrence-split";
+import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
+import { listStudents } from "@/lib/repositories/students";
+import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/availability";
+import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
+import { loadCalendarViewForRange } from "@/lib/calendar/view";
+import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
+import { addDaysToDateKey, getDateKeyJsDay, getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { jsDayToAppWeekday } from "@/lib/calendar/weekday";
+import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
+import type { RecurrenceWeek } from "@/lib/calendar/types";
+
+// Server Actions — Calendario. Nunca reciben `ownerId` del navegador;
+// siempre resuelven la sesión real en el servidor. Toda validación de
+// conflictos/disponibilidad corre acá (servidor), nunca sólo en el
+// navegador.
+
+export interface FormState {
+  error?: string;
+}
+
+function readString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function friendlyErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Ocurrió un error inesperado. Intentá de nuevo.";
+}
+
+const TIMEZONE = "America/Argentina/Buenos_Aires";
+
+async function buildConflictCandidates(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, aroundIso: string): Promise<ConflictCandidateLesson[]> {
+  const center = new Date(aroundIso);
+  const rangeStart = new Date(center.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const rangeEnd = new Date(center.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
+  return items.map((item) => ({
+    id: item.id,
+    start: item.start,
+    end: item.end,
+    status: item.status,
+    isRecurring: item.isRecurring,
+    lessonType: item.lessonType,
+    overlapAllowed: false,
+  }));
+}
+
+async function checkConflictsAndAvailability(
+  ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>,
+  startAt: string,
+  endAt: string,
+  ignoredLessonId?: string
+): Promise<string | null> {
+  const [candidates, availability] = await Promise.all([buildConflictCandidates(ctx, startAt), getTeacherAvailability(ctx)]);
+  const conflicts = findCalendarConflicts(startAt, endAt, candidates, ignoredLessonId);
+  if (hasBlockingConflict(conflicts)) {
+    return "El horario elegido se superpone con otra clase ya agendada.";
+  }
+  try {
+    const evaluation = evaluateAvailability(startAt, endAt, availability);
+    if (!evaluation.isAvailable) {
+      return `Ese horario está bloqueado en tu disponibilidad (${evaluation.label ?? "no disponible"}).`;
+    }
+  } catch {
+    // Rango inválido ya se habría rechazado antes por validación propia del formulario.
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Crear clase única
+// ---------------------------------------------------------------------------
+
+export async function createSingleLessonAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  const date = readString(formData, "date");
+  const hour = Number(readString(formData, "hour"));
+  const minute = Number(readString(formData, "minute"));
+  const durationMinutes = Number(readString(formData, "durationMinutes"));
+  const modality = readString(formData, "modality") as CalendarModality;
+  const activityKind = readString(formData, "activityKind") as ActivityKind;
+  const classTitle = readString(formData, "classTitle").trim() || null;
+  const notes = readString(formData, "notes").trim() || null;
+  const freedByLessonId = readString(formData, "freedByLessonId").trim() || null;
+
+  if (studentIds.length === 0) return { error: "Elegí al menos un alumno." };
+  if (!date || Number.isNaN(hour) || Number.isNaN(minute) || Number.isNaN(durationMinutes) || durationMinutes <= 0) {
+    return { error: "Completá fecha, hora y duración." };
+  }
+
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const students = await listStudents(ctx);
+    const selected = studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
+    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible." };
+    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado." };
+
+    const startAt = localDateTimeToInstantIso({ date, hour, minute, timeZone: TIMEZONE });
+    const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60_000).toISOString();
+
+    const conflictMessage = await checkConflictsAndAvailability(ctx, startAt, endAt);
+    if (conflictMessage) return { error: conflictMessage };
+
+    const primary = selected[0];
+    await createSingleLesson(ctx, {
+      primaryStudentId: primary.id,
+      studentName: primary.name,
+      level: primary.levels[0] ?? "",
+      lessonType: selected.length > 1 ? "group" : "individual",
+      startAt,
+      endAt,
+      modality,
+      classTitle,
+      activityKind,
+      notes,
+      color: modality === "online" ? "#DDEBFF" : modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
+      participants: selected.map((s) => ({ studentId: s.id, studentName: s.name, level: s.levels[0] ?? "" })),
+      freedByLessonId,
+    });
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+
+  revalidatePath("/calendario");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Crear serie recurrente
+// ---------------------------------------------------------------------------
+
+export async function createRecurrenceSeriesAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  const startDate = readString(formData, "startDate");
+  const endDate = readString(formData, "endDate").trim() || null;
+  const modality = readString(formData, "modality") as CalendarModality;
+  const activityKind = readString(formData, "activityKind") as ActivityKind;
+  const classTitle = readString(formData, "classTitle").trim() || null;
+
+  let weeks: RecurrenceWeek[];
+  try {
+    weeks = JSON.parse(readString(formData, "weeksJson"));
+  } catch {
+    return { error: "El patrón semanal no es válido." };
+  }
+  if (studentIds.length === 0) return { error: "Elegí al menos un alumno." };
+  if (!startDate) return { error: "La fecha de inicio es obligatoria." };
+  if (!Array.isArray(weeks) || weeks.length === 0 || !weeks.some((w) => w.sessions.length > 0)) {
+    return { error: "Definí al menos un día y horario." };
+  }
+
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const students = await listStudents(ctx);
+    const selected = studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
+    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible." };
+    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado." };
+
+    // El lunes real de la semana de `startDate` — nunca otro día (regla del motor de recurrencia).
+    const monday = addDaysToDateKey(startDate, -jsDayToAppWeekday(getDateKeyJsDay(startDate)));
+
+    const created = await createRecurrenceSeries(ctx, {
+      primaryStudentId: selected[0]?.id ?? null,
+      ruleType: weeks.length > 1 ? "custom" : "weekly",
+      cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
+      weeks,
+      modality,
+      timezone: TIMEZONE,
+      startDate: monday,
+      endDate,
+      classTitle,
+      activityKind,
+      participantIds: selected.map((s) => s.id),
+    });
+
+    // Conflicto/disponibilidad sobre las próximas ocurrencias reales — nunca
+    // un horizonte infinito, mismo criterio que el móvil
+    // (DEFAULT_RECURRENCE_HORIZON_DAYS).
+    const engineRule = {
+      recurrenceId: created.id,
+      studentId: created.primaryStudentId,
+      participantIds: created.participantIds,
+      cycleLengthWeeks: created.cycleLengthWeeks,
+      weeks: created.weeks,
+      modality: created.modality,
+      timezone: created.timezone,
+      startDate: created.startDate,
+      endDate: created.endDate,
+      status: created.status,
+      classTitle: created.classTitle,
+      activityKind: created.activityKind,
+    };
+    const horizonStart = new Date(`${monday}T00:00:00.000Z`);
+    const horizonEnd = new Date(horizonStart.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const occurrences = generateOccurrences(engineRule, horizonStart, horizonEnd);
+    for (const occurrence of occurrences.slice(0, 8)) {
+      const conflictMessage = await checkConflictsAndAvailability(ctx, occurrence.start, occurrence.end);
+      if (conflictMessage) {
+        // La serie ya quedó creada (la profesora la ve y decide qué hacer) —
+        // nunca se revierte en silencio; se informa el conflicto real
+        // encontrado para que lo resuelva desde "Series"/"Editar futuras".
+        return { error: `Serie creada, pero hay un conflicto real: ${conflictMessage}` };
+      }
+    }
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+
+  revalidatePath("/calendario");
+  revalidatePath("/calendario/series");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Cancelar / reprogramar una ocurrencia
+// ---------------------------------------------------------------------------
+
+export interface CancelOccurrenceActionInput {
+  lessonId: string | null;
+  recurrenceId: string | null;
+  occurrenceKey: string | null;
+  recurrenceIndex: number | null;
+  primaryStudentId: string;
+  studentName: string;
+  level: string;
+  lessonType: "individual" | "group";
+  startAt: string;
+  endAt: string;
+  modality: string;
+  classTitle: string | null;
+  activityKind: string;
+}
+
+export async function cancelOccurrenceAction(input: CancelOccurrenceActionInput): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await cancelCalendarOccurrence(ctx, {
+      ...input,
+      color: input.modality === "online" ? "#DDEBFF" : input.modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
+    });
+  } catch (error) {
+    if (error instanceof CalendarLessonNotFoundError) return { error: "Clase no encontrada." };
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario");
+  return {};
+}
+
+export interface RescheduleOccurrenceActionInput {
+  recurrenceId: string | null;
+  occurrenceKey: string | null;
+  originalLessonId: string | null;
+  originalStartAt: string;
+  primaryStudentId: string;
+  studentName: string;
+  level: string;
+  lessonType: "individual" | "group";
+  modality: string;
+  classTitle: string | null;
+  activityKind: string;
+  participants: { studentId: string; studentName: string; level: string }[];
+  newDate: string;
+  newHour: number;
+  newMinute: number;
+  durationMinutes: number;
+}
+
+export async function rescheduleOccurrenceAction(input: RescheduleOccurrenceActionInput): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const newStartAt = localDateTimeToInstantIso({ date: input.newDate, hour: input.newHour, minute: input.newMinute, timeZone: TIMEZONE });
+    const newEndAt = new Date(new Date(newStartAt).getTime() + input.durationMinutes * 60_000).toISOString();
+
+    const conflictMessage = await checkConflictsAndAvailability(ctx, newStartAt, newEndAt, input.originalLessonId ?? undefined);
+    if (conflictMessage) return { error: conflictMessage };
+
+    await rescheduleCalendarOccurrence(ctx, {
+      recurrenceId: input.recurrenceId,
+      occurrenceKey: input.occurrenceKey,
+      originalLessonId: input.originalLessonId,
+      originalStartAt: input.originalStartAt,
+      primaryStudentId: input.primaryStudentId,
+      studentName: input.studentName,
+      level: input.level,
+      lessonType: input.lessonType,
+      newStartAt,
+      newEndAt,
+      modality: input.modality,
+      classTitle: input.classTitle,
+      activityKind: input.activityKind,
+      color: input.modality === "online" ? "#DDEBFF" : input.modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
+      participants: input.participants,
+    });
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Series: pausar / reanudar / finalizar / editar futuras (split)
+// ---------------------------------------------------------------------------
+
+export async function setRecurrenceStatusAction(ruleId: string, status: "active" | "paused" | "ended"): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await setRecurrenceRuleStatus(ctx, ruleId, status);
+  } catch (error) {
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "Serie no encontrada." };
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario");
+  revalidatePath("/calendario/series");
+  return {};
+}
+
+export interface EditFutureActionInput {
+  originalRecurrenceId: string;
+  effectiveDate: string;
+  weeksJson: string;
+  modality?: string;
+  classTitle?: string | null;
+  activityKind?: "class" | "training";
+  participantIds: string[];
+}
+
+export async function editFutureRecurrenceAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const originalRecurrenceId = readString(formData, "originalRecurrenceId");
+  const effectiveDate = readString(formData, "effectiveDate");
+  const participantIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  let weeks: RecurrenceWeek[];
+  try {
+    weeks = JSON.parse(readString(formData, "weeksJson"));
+  } catch {
+    return { error: "El patrón semanal no es válido." };
+  }
+  if (!effectiveDate) return { error: "Elegí la fecha efectiva." };
+  if (participantIds.length === 0) return { error: "Elegí al menos un alumno." };
+
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const todayDate = getLocalDateKey(new Date().toISOString(), TIMEZONE);
+    await splitRecurrenceThisAndFuture(ctx, {
+      originalRecurrenceId,
+      effectiveDate,
+      todayDate,
+      ruleType: weeks.length > 1 ? "custom" : "weekly",
+      cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
+      weeks,
+      participantIds,
+    });
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario");
+  revalidatePath("/calendario/series");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Disponibilidad
+// ---------------------------------------------------------------------------
+
+export async function saveAvailabilityAction(availability: TeacherAvailability): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await saveTeacherAvailability(ctx, availability);
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario/disponibilidad");
+  return {};
+}
+
+export async function getRecurrenceRuleAction(ruleId: string) {
+  const ctx = await requireAuthenticatedDbContext();
+  return getRecurrenceRule(ctx, ruleId);
+}
+
+export async function getCalendarLessonAction(lessonId: string) {
+  const ctx = await requireAuthenticatedDbContext();
+  return getCalendarLesson(ctx, lessonId);
+}
