@@ -8,6 +8,10 @@ import {
   type RecurrenceRuleRecord,
   type NewRecurrenceSeriesInput,
 } from "./recurrence-rules-mapping";
+import { planParticipantFreeze } from "@/lib/calendar/participants-split";
+import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
+import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
+import { listStudents } from "./students";
 
 /**
  * Repositorio de series de recurrencia — única puerta de entrada real a
@@ -84,11 +88,79 @@ export async function setRecurrenceRuleStatus(
   return record;
 }
 
-/** Reemplaza el roster completo de la serie (alcance "esta y las siguientes"/"toda la serie", ver `RegisterParticipants` en la UI). Atómico (RPC). */
-export async function setRecurrenceRuleParticipants(ctx: AuthenticatedDbContext, ruleId: string, participantIds: string[]): Promise<void> {
-  const { error } = await ctx.supabase.rpc("set_recurrence_participants", { p_rule_id: ruleId, p_participant_ids: participantIds });
+/**
+ * Cambia el roster de una serie DESDE una fecha efectiva, sin tocar el
+ * patrón ni crear una serie nueva — puerto de `planParticipantsFromDate`
+ * del móvil (`lib/calendar/participants-split.ts`). Antes de reemplazar el
+ * roster de la regla, congela/materializa con el roster VIEJO cualquier
+ * ocurrencia virtual entre "ahora" y la fecha efectiva que todavía no esté
+ * materializada — así ninguna clase ya pasada (o a punto de pasar) cambia
+ * de participantes retroactivamente. Todo en una sola transacción (RPC).
+ */
+export async function changeRecurrenceParticipantsFromDate(
+  ctx: AuthenticatedDbContext,
+  input: { ruleId: string; effectiveDateIso: string; now: Date; newParticipantIds: string[] }
+): Promise<RecurrenceRuleRecord> {
+  const rule = await getRecurrenceRule(ctx, input.ruleId);
+  if (!rule) throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
+
+  const [lessons, students] = await Promise.all([listCalendarLessonsForRecurrence(ctx, input.ruleId), listStudents(ctx)]);
+  const studentsById = new Map(students.map((s) => [s.id, s]));
+
+  const engineRule: RecurrenceRuleForEngine = {
+    recurrenceId: rule.id,
+    studentId: rule.primaryStudentId,
+    participantIds: rule.participantIds,
+    cycleLengthWeeks: rule.cycleLengthWeeks,
+    weeks: rule.weeks,
+    modality: rule.modality,
+    timezone: rule.timezone,
+    startDate: rule.startDate,
+    endDate: rule.endDate,
+    status: rule.status,
+    classTitle: rule.classTitle,
+    activityKind: rule.activityKind,
+  };
+
+  const toFreeze = planParticipantFreeze({
+    rule: engineRule,
+    now: input.now,
+    effectiveDateIso: input.effectiveDateIso,
+    existingLessons: lessons.map((lesson) => ({
+      id: lesson.id,
+      recurrenceId: lesson.recurrenceId,
+      recurrenceOccurrenceKey: lesson.recurrenceOccurrenceKey,
+      status: lesson.status,
+    })),
+  });
+
+  const oldParticipants = rule.participantIds.map((id) => studentsById.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
+  const primary = oldParticipants[0] ?? null;
+  const color = rule.modality === "online" ? "#DDEBFF" : rule.modality === "mixta" ? "#F2E8FF" : "#FFE4D2";
+
+  const freezeOccurrences = toFreeze.map((occurrence) => ({
+    occurrence_key: occurrence.occurrenceKey,
+    recurrence_index: occurrence.recurrenceIndex,
+    start_at: occurrence.start,
+    end_at: occurrence.end,
+    primary_student_id: primary?.id ?? null,
+    student_name: primary?.name ?? "",
+    level: primary?.levels[0] ?? "",
+    lesson_type: oldParticipants.length > 1 ? "group" : "individual",
+    modality: rule.modality,
+    class_title: rule.classTitle,
+    activity_kind: rule.activityKind,
+    color,
+    participants: oldParticipants.map((s) => ({ student_id: s.id, student_name: s.name, level: s.levels[0] ?? "" })),
+  }));
+
+  const { data, error } = await ctx.supabase.rpc("apply_recurrence_participants_from_date", {
+    p_payload: { rule_id: input.ruleId, new_participant_ids: input.newParticipantIds, freeze_occurrences: freezeOccurrences },
+  });
   if (error) {
     if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
     throw error;
   }
+  const row = data as RecurrenceRuleRow;
+  return toRecurrenceRuleRecord(row, input.newParticipantIds);
 }

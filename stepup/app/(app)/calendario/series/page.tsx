@@ -9,6 +9,7 @@ import { MODALITY_LABEL } from "@/lib/students/constants";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { SeriesStatusActions } from "./series-status-actions";
+import { ScrollToLastSeries } from "@/components/calendar/scroll-to-last-series";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Series · TeacherFlow" };
@@ -51,7 +52,10 @@ export default async function SeriesPage() {
       <Link href="/calendario" className="text-sm font-medium text-brandBlue hover:underline">
         ← Volver al Calendario
       </Link>
-      <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Series</h1>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Series</h1>
+        {manageable.length > 4 && <ScrollToLastSeries lastRuleId={manageable[manageable.length - 1].id} />}
+      </div>
       <p className="mt-1.5 text-sm text-textMuted">{manageable.length} serie{manageable.length === 1 ? "" : "s"} vigente{manageable.length === 1 ? "" : "s"}.</p>
 
       {manageable.length === 0 ? (
@@ -69,7 +73,7 @@ export default async function SeriesPage() {
                 .join(" · ") || "Sin horario";
 
             return (
-              <li key={rule.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
+              <li key={rule.id} id={`series-${rule.id}`} className="rounded-lg border border-border bg-surface p-4 shadow-card scroll-mt-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-textPrimary">{rule.classTitle || participantNames}</p>
@@ -80,7 +84,7 @@ export default async function SeriesPage() {
                 <p className="mt-2 text-xs text-textSecondary">
                   {scheduleLabel} · {MODALITY_LABEL[rule.modality]} · {rule.status === "active" ? "Activa" : rule.status === "paused" ? "Pausada" : "Finalizada"}
                 </p>
-                <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} />
+                <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} students={students} />
               </li>
             );
           })}

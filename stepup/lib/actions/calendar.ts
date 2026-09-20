@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSingleLesson, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
-import { createRecurrenceSeries, setRecurrenceRuleStatus, setRecurrenceRuleParticipants, getRecurrenceRule, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { splitRecurrenceThisAndFuture } from "@/lib/repositories/recurrence-split";
 import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { listStudents } from "@/lib/repositories/students";
@@ -260,13 +260,11 @@ export interface RescheduleOccurrenceActionInput {
   originalLessonId: string | null;
   originalStartAt: string;
   primaryStudentId: string;
-  studentName: string;
-  level: string;
+  participantIds: string[];
   lessonType: "individual" | "group";
   modality: string;
   classTitle: string | null;
   activityKind: string;
-  participants: { studentId: string; studentName: string; level: string }[];
   newDate: string;
   newHour: number;
   newMinute: number;
@@ -282,14 +280,24 @@ export async function rescheduleOccurrenceAction(input: RescheduleOccurrenceActi
     const conflictMessage = await checkConflictsAndAvailability(ctx, newStartAt, newEndAt, input.originalLessonId ?? undefined);
     if (conflictMessage) return { error: conflictMessage };
 
+    // Los nombres/niveles nunca se toman del cliente — se resuelven acá
+    // contra los alumnos reales del profesor, mismo criterio que crear una
+    // clase nueva (evita nombres vacíos o falsificados en la clase reprogramada).
+    const students = await listStudents(ctx);
+    const studentsById = new Map(students.map((s) => [s.id, s]));
+    const primary = studentsById.get(input.primaryStudentId);
+    if (!primary) return { error: "El alumno principal ya no está disponible." };
+    const participants = input.participantIds.map((id) => studentsById.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
+    if (participants.length !== input.participantIds.length) return { error: "Alguno de los alumnos ya no está disponible." };
+
     await rescheduleCalendarOccurrence(ctx, {
       recurrenceId: input.recurrenceId,
       occurrenceKey: input.occurrenceKey,
       originalLessonId: input.originalLessonId,
       originalStartAt: input.originalStartAt,
       primaryStudentId: input.primaryStudentId,
-      studentName: input.studentName,
-      level: input.level,
+      studentName: primary.name,
+      level: primary.levels[0] ?? "",
       lessonType: input.lessonType,
       newStartAt,
       newEndAt,
@@ -297,7 +305,7 @@ export async function rescheduleOccurrenceAction(input: RescheduleOccurrenceActi
       classTitle: input.classTitle,
       activityKind: input.activityKind,
       color: input.modality === "online" ? "#DDEBFF" : input.modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
-      participants: input.participants,
+      participants: participants.map((s) => ({ studentId: s.id, studentName: s.name, level: s.levels[0] ?? "" })),
     });
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
@@ -359,6 +367,36 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       participantIds,
     });
   } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/calendario");
+  revalidatePath("/calendario/series");
+  return {};
+}
+
+export interface ChangeParticipantsActionInput {
+  ruleId: string;
+  effectiveDate: string;
+  newParticipantIds: string[];
+}
+
+/**
+ * Cambiar participantes de una serie desde una fecha — acción SEPARADA de
+ * "Editar futuras" (que sólo cambia el patrón día/hora y crea una serie
+ * sucesora). Nunca crea una serie nueva: muta el roster de la MISMA regla,
+ * congelando primero con el roster viejo cualquier ocurrencia virtual entre
+ * ahora y la fecha efectiva (ver `changeRecurrenceParticipantsFromDate`).
+ */
+export async function changeParticipantsAction(input: ChangeParticipantsActionInput): Promise<FormState> {
+  if (input.newParticipantIds.length === 0) return { error: "Elegí al menos un alumno." };
+  if (!input.effectiveDate) return { error: "Elegí la fecha efectiva." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const now = new Date();
+    const effectiveDateIso = localDateTimeToInstantIso({ date: input.effectiveDate, hour: 0, minute: 0, timeZone: TIMEZONE });
+    await changeRecurrenceParticipantsFromDate(ctx, { ruleId: input.ruleId, effectiveDateIso, now, newParticipantIds: input.newParticipantIds });
+  } catch (error) {
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "Serie no encontrada." };
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/calendario");

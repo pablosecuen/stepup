@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen md:pl-56">
       <div className="border-b border-border bg-brandBlue/5 px-4 py-2 text-center text-xs font-medium text-brandBlueDark">
         {configured ? (
-          <>Vista previa con datos ficticios — tu cuenta está conectada, pero los datos mostrados todavía son de ejemplo.</>
+          <>Alumnos y Calendario ya muestran datos reales de tu cuenta — Inicio y Cobros todavía muestran datos de ejemplo mientras se conectan.</>
         ) : (
           <>
             Vista previa con datos ficticios — todavía sin conexión a tu cuenta real.{" "}

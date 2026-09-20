@@ -49,6 +49,13 @@ export async function listCalendarLessonsInRange(ctx: AuthenticatedDbContext, ra
   return attachParticipants(ctx, data as CalendarLessonRow[]);
 }
 
+/** Todas las clases materializadas de una regla (cualquier fecha) — usado para saber qué ocurrencias ya NO son vírgenes antes de congelar participantes. */
+export async function listCalendarLessonsForRecurrence(ctx: AuthenticatedDbContext, recurrenceId: string): Promise<CalendarLessonRecord[]> {
+  const { data, error } = await ctx.supabase.from("calendar_lessons").select("*").eq("owner_id", ctx.ownerId).eq("recurrence_id", recurrenceId);
+  if (error) throw error;
+  return attachParticipants(ctx, data as CalendarLessonRow[]);
+}
+
 export async function getCalendarLesson(ctx: AuthenticatedDbContext, id: string): Promise<CalendarLessonRecord | null> {
   const { data, error } = await ctx.supabase.from("calendar_lessons").select("*").eq("owner_id", ctx.ownerId).eq("id", id).maybeSingle();
   if (error) throw error;

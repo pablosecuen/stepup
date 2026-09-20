@@ -24,6 +24,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [reschedulingOpen, setReschedulingOpen] = useState(false);
+  const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [now, setNow] = useState<number | null>(null);
 
@@ -68,10 +69,22 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
     });
   }
 
-  function handleReschedule(formData: FormData) {
+  function openReschedulePreview(formData: FormData) {
     setError(null);
     const date = String(formData.get("date") ?? "");
     const [hourStr, minuteStr] = String(formData.get("time") ?? "").split(":");
+    const hour = Number(hourStr);
+    const minute = Number(minuteStr ?? "0");
+    if (!date || Number.isNaN(hour) || Number.isNaN(minute)) {
+      setError("Elegí una fecha y hora válidas.");
+      return;
+    }
+    setReschedulePreview({ date, hour, minute });
+  }
+
+  function confirmReschedule() {
+    if (!reschedulePreview) return;
+    setError(null);
     startTransition(async () => {
       const result = await rescheduleOccurrenceAction({
         recurrenceId: item.recurrenceId,
@@ -79,19 +92,21 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         originalLessonId: item.materializedLessonId,
         originalStartAt: item.start,
         primaryStudentId: item.studentId ?? "",
-        studentName: item.studentName,
-        level: item.level,
+        participantIds: item.participantIds,
         lessonType: item.lessonType,
         modality: item.modality,
         classTitle: item.title,
         activityKind: item.activityKind,
-        participants: item.participantIds.map((id) => ({ studentId: id, studentName: "", level: "" })),
-        newDate: date,
-        newHour: Number(hourStr),
-        newMinute: Number(minuteStr ?? "0"),
+        newDate: reschedulePreview.date,
+        newHour: reschedulePreview.hour,
+        newMinute: reschedulePreview.minute,
         durationMinutes,
       });
       if (result.error) {
+        // Vuelve al paso de elegir fecha/hora (nunca deja la vista previa
+        // abierta con un resultado que en realidad falló) — el mensaje real
+        // del conflicto/disponibilidad queda visible para reintentar.
+        setReschedulePreview(null);
         setError(result.error);
         return;
       }
@@ -99,6 +114,15 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
       onClose();
     });
   }
+
+  const previewNewEndLabel = reschedulePreview
+    ? (() => {
+        const endMinutes = reschedulePreview.hour * 60 + reschedulePreview.minute + durationMinutes;
+        const endHour = Math.floor(endMinutes / 60) % 24;
+        const endMinute = endMinutes % 60;
+        return `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+      })()
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" role="presentation" onClick={onClose}>
@@ -152,23 +176,46 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
           </div>
         )}
 
-        {reschedulingOpen ? (
-          <form
-            action={(fd) => handleReschedule(fd)}
-            className="mt-5 flex flex-col gap-3 rounded-md border border-border p-3"
-          >
-            <p className="text-sm font-semibold text-textPrimary">Nuevo horario</p>
-            <input type="date" name="date" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
-            <input type="time" name="time" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
+        {reschedulingOpen && reschedulePreview ? (
+          <div className="mt-5 flex flex-col gap-3 rounded-md border border-brandBlue/30 bg-brandBlue/5 p-3">
+            <p className="text-sm font-semibold text-textPrimary">Confirmar nuevo horario</p>
+            <p className="text-sm text-textSecondary">
+              {new Date(`${reschedulePreview.date}T00:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })} de{" "}
+              {String(reschedulePreview.hour).padStart(2, "0")}:{String(reschedulePreview.minute).padStart(2, "0")} a {previewNewEndLabel} ({durationMinutes} min)
+            </p>
+            <p className="text-xs text-textMuted">El horario original queda liberado y marcado como reprogramado — el historial se conserva.</p>
             <div className="flex gap-2">
               <button
-                type="submit"
+                type="button"
+                onClick={confirmReschedule}
                 disabled={pending}
                 className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {pending ? "Guardando..." : "Confirmar reprogramación"}
               </button>
-              <button type="button" onClick={() => setReschedulingOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm">
+              <button type="button" onClick={() => setReschedulePreview(null)} disabled={pending} className="rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50">
+                Volver
+              </button>
+            </div>
+          </div>
+        ) : reschedulingOpen ? (
+          <form action={(fd) => openReschedulePreview(fd)} className="mt-5 flex flex-col gap-3 rounded-md border border-border p-3">
+            <p className="text-sm font-semibold text-textPrimary">Nuevo horario</p>
+            <input type="date" name="date" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
+            <input type="time" name="time" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
+            <p className="text-xs text-textMuted">La duración ({durationMinutes} min) se mantiene igual a la clase original.</p>
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white">
+                Ver vista previa
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReschedulingOpen(false);
+                  setReschedulePreview(null);
+                }}
+                className="rounded-md border border-border px-3 py-2 text-sm"
+              >
                 Cancelar
               </button>
             </div>

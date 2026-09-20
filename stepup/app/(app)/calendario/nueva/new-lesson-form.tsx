@@ -3,11 +3,11 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createSingleLessonAction, createRecurrenceSeriesAction, type FormState } from "@/lib/actions/calendar";
-import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { FormErrorBox } from "@/components/auth/form-boxes";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
-import { WeekdayScheduleEditor, defaultWeekdayRows, weekdayRowsToWeeksJson, type WeekdayRow } from "@/components/calendar/weekday-schedule-editor";
+import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 
 const INITIAL_STATE: FormState = {};
 
@@ -45,7 +45,13 @@ export function NewLessonForm({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const isReplacement = !!presetFromReplacement?.freedByLessonId;
 
-  const [weekdayRows, setWeekdayRows] = useState<WeekdayRow[]>(defaultWeekdayRows());
+  const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(1);
+  const [weekCycles, setWeekCycles] = useState<WeekRows[]>(defaultWeekCycles(1));
+
+  function handleCycleLengthChange(weeks: 1 | 2 | 3 | 4) {
+    setCycleLengthWeeks(weeks);
+    setWeekCycles((prev) => resizeWeekCycles(prev, weeks));
+  }
 
   const boundAction = (prevState: FormState, formData: FormData) => dispatchAction(mode, prevState, formData);
   const [state, formAction] = useActionState(boundAction, INITIAL_STATE);
@@ -59,7 +65,7 @@ export function NewLessonForm({
     });
   }
 
-  const weeksJson = weekdayRowsToWeeksJson(weekdayRows);
+  const weeksJson = weekCyclesToWeeksJson(weekCycles);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de nueva clase">
@@ -194,11 +200,8 @@ export function NewLessonForm({
             </div>
           </div>
 
-          <WeekdayScheduleEditor rows={weekdayRows} onChange={setWeekdayRows} />
+          <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
           <input type="hidden" name="weeksJson" value={weeksJson} />
-          <FormInfoBox>
-            Ciclos de 2, 3 o 4 semanas todavía no están disponibles en esta pantalla — esta fase sólo cubre un patrón semanal fijo.
-          </FormInfoBox>
         </>
       )}
 
