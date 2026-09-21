@@ -122,6 +122,18 @@ export async function getLessonRegistrationDetailByCalendarLessonId(ctx: Authent
   return fetchDetail(ctx, (data as { id: string }).id);
 }
 
+/** Sólo las fechas reales de edición (auditoría append-only) — nunca el snapshot completo, que no tiene una vista dedicada en esta ronda. */
+export async function listEditHistoryTimestamps(ctx: AuthenticatedDbContext, registrationId: string): Promise<string[]> {
+  const { data, error } = await ctx.supabase
+    .from("lesson_registration_edit_history")
+    .select("edited_at")
+    .eq("owner_id", ctx.ownerId)
+    .eq("lesson_registration_id", registrationId)
+    .order("edited_at", { ascending: false });
+  if (error) throw error;
+  return (data as { edited_at: string }[]).map((row) => row.edited_at);
+}
+
 /** Historial real de registros de un alumno (ficha del alumno) — más reciente primero, conserva el historial aunque el alumno esté archivado. */
 export async function listLessonRegistrationsForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<LessonRegistrationRecord[]> {
   const { data: rosterRows, error: rosterError } = await ctx.supabase
@@ -267,6 +279,11 @@ export interface StartLessonRegistrationInput {
   countsAsClass: boolean;
   color: string;
   participants: { studentId: string; studentName: string; level: string }[];
+  /** Sólo tienen efecto real en el camino ad-hoc (`calendarLessonId: null`) — ver `lib/lessons/adhoc.ts`. */
+  outcome?: string;
+  holidayException?: boolean;
+  /** Obligatorio cuando `calendarLessonId` es `null` — idempotencia real del camino ad-hoc (ver migración). Generado UNA vez del lado del cliente, nunca acá. */
+  operationId?: string | null;
 }
 
 export async function startLessonRegistration(ctx: AuthenticatedDbContext, input: StartLessonRegistrationInput): Promise<LessonRegistrationRecord> {
@@ -288,8 +305,80 @@ export async function startLessonRegistration(ctx: AuthenticatedDbContext, input
       counts_as_class: input.countsAsClass,
       color: input.color,
       participants: input.participants.map((p) => ({ student_id: p.studentId, student_name: p.studentName, level: p.level })),
+      outcome: input.outcome,
+      holiday_exception: input.holidayException,
+      operation_id: input.operationId,
     },
   });
+  if (error) {
+    if (error.code === "P0002") throw new LessonRegistrationNotFoundError("No encontrado.");
+    throw error;
+  }
+  return toLessonRegistrationRecord(data as LessonRegistrationRow);
+}
+
+export interface EditCompletedRegistrationParticipantInput {
+  studentId: string;
+  attendance: { status: string; lateMinutes: number | null } | null;
+  evaluation: {
+    generalGrade: number | null;
+    skillGrades: Record<string, number>;
+    strengths: string[];
+    areasToImprove: string[];
+    individualObservation: string | null;
+    individualHomeworkDescription: string | null;
+    individualHomeworkDueDate: string | null;
+  } | null;
+  homeworkReviews: { taskId: string; outcome: string }[];
+}
+
+export interface EditCompletedRegistrationInput {
+  lessonRegistrationId: string;
+  /** Idempotencia real de esta edición — generado UNA vez del lado del cliente por cada intento de "Guardar cambios", nunca acá. */
+  editOperationId: string;
+  homeworkDescription?: string | null;
+  homeworkDueDate?: string | null;
+  countsAsClass?: boolean;
+  actualStartedAt?: string | null;
+  actualEndedAt?: string | null;
+  participants: EditCompletedRegistrationParticipantInput[];
+}
+
+/**
+ * Única vía real para editar un registro ya finalizado — snapshot de
+ * auditoría + todos los cambios académicos (encabezado + N participantes)
+ * en UNA SOLA RPC atómica (ver `edit_completed_lesson_registration` en
+ * `20260922100000_adhoc_registration_and_edit_history.sql`). Nunca dos
+ * escrituras separadas del lado del cliente.
+ */
+export async function editCompletedLessonRegistration(ctx: AuthenticatedDbContext, input: EditCompletedRegistrationInput): Promise<LessonRegistrationRecord> {
+  const payload: Record<string, unknown> = {
+    lesson_registration_id: input.lessonRegistrationId,
+    edit_operation_id: input.editOperationId,
+    participants: input.participants.map((p) => ({
+      student_id: p.studentId,
+      attendance: p.attendance ? { status: p.attendance.status, late_minutes: p.attendance.lateMinutes } : null,
+      evaluation: p.evaluation
+        ? {
+            general_grade: p.evaluation.generalGrade,
+            skill_grades: p.evaluation.skillGrades,
+            strengths: p.evaluation.strengths,
+            areas_to_improve: p.evaluation.areasToImprove,
+            individual_observation: p.evaluation.individualObservation,
+            individual_homework_description: p.evaluation.individualHomeworkDescription,
+            individual_homework_due_date: p.evaluation.individualHomeworkDueDate,
+          }
+        : null,
+      homework_reviews: p.homeworkReviews.map((h) => ({ task_id: h.taskId, outcome: h.outcome })),
+    })),
+  };
+  if (input.homeworkDescription !== undefined) payload.homework_description = input.homeworkDescription;
+  if (input.homeworkDueDate !== undefined) payload.homework_due_date = input.homeworkDueDate;
+  if (input.countsAsClass !== undefined) payload.counts_as_class = input.countsAsClass;
+  if (input.actualStartedAt !== undefined) payload.actual_started_at = input.actualStartedAt;
+  if (input.actualEndedAt !== undefined) payload.actual_ended_at = input.actualEndedAt;
+
+  const { data, error } = await ctx.supabase.rpc("edit_completed_lesson_registration", { p_payload: payload });
   if (error) {
     if (error.code === "P0002") throw new LessonRegistrationNotFoundError("No encontrado.");
     throw error;

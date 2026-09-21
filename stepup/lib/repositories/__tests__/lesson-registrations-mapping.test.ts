@@ -20,8 +20,13 @@ function registrationRow(overrides: Partial<LessonRegistrationRow> = {}): Lesson
     homework_due_date: null,
     billed_amount: null,
     scheduled_start_at: "2026-09-20T21:00:00.000Z",
+    scheduled_end_at: "2026-09-20T22:00:00.000Z",
     actual_started_at: null,
     actual_ended_at: null,
+    outcome: "clase_dictada",
+    holiday_exception: false,
+    modality: null,
+    operation_id: null,
     created_at: "2026-09-20T21:00:00.000Z",
     updated_at: "2026-09-20T21:00:00.000Z",
     ...overrides,
@@ -33,6 +38,16 @@ test("toLessonRegistrationRecord: mapea cada columna snake_case a su campo camel
   assert.equal(record.status, "completed");
   assert.equal(record.countsAsClass, false);
   assert.equal(record.calendarLessonId, "cl_1");
+});
+
+test("toLessonRegistrationRecord: mapea outcome/holiday_exception/modality real de un registro ad-hoc", () => {
+  const record = toLessonRegistrationRecord(
+    registrationRow({ calendar_lesson_id: null, outcome: "feriado", holiday_exception: true, modality: "online" })
+  );
+  assert.equal(record.calendarLessonId, null);
+  assert.equal(record.outcome, "feriado");
+  assert.equal(record.holidayException, true);
+  assert.equal(record.modality, "online");
 });
 
 test("toLessonRegistrationStudentRecord: conserva participant_status tal cual", () => {

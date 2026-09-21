@@ -2,12 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveParticipantAction, finalizeRegistrationAction } from "@/lib/actions/lesson-registrations";
+import { saveParticipantAction, finalizeRegistrationAction, editCompletedRegistrationAction } from "@/lib/actions/lesson-registrations";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import type { LessonRegistrationAttendanceRecord, LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import type { ParticipantRegistrationStatus } from "@/lib/lessons/group-progress";
 import { ATTENDANCE_STATUS_LABEL, hasResolvedAttendanceStatus, type AttendanceStatus } from "@/lib/lessons/attendance";
 import { getBlockingHomeworkTasks, homeworkReviewSelectionKey, type PendingHomeworkTask, type HomeworkReviewOutcome } from "@/lib/lessons/homework";
+import { normalizeSkillGradeValue } from "@/lib/lessons/grades";
+import { SKILLS, SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
+import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
+import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 
 const HOMEWORK_OUTCOME_LABEL: Record<HomeworkReviewOutcome, string> = {
@@ -22,6 +26,7 @@ interface ParticipantForm {
   attendanceStatus: AttendanceStatus | null;
   lateMinutes: string;
   generalGrade: string;
+  skillGrades: Record<string, number>;
   individualObservation: string;
   strengths: string;
   areasToImprove: string;
@@ -38,6 +43,7 @@ function buildInitialForm(
     attendanceStatus: attendance?.status && attendance.status !== "sin_registrar" ? attendance.status : null,
     lateMinutes: attendance?.lateMinutes != null ? String(attendance.lateMinutes) : "",
     generalGrade: evaluation?.generalGrade != null ? String(evaluation.generalGrade) : "",
+    skillGrades: evaluation?.skillGrades ?? {},
     individualObservation: evaluation?.individualObservation ?? "",
     strengths: evaluation?.strengths.join(", ") ?? "",
     areasToImprove: evaluation?.areasToImprove.join(", ") ?? "",
@@ -47,19 +53,39 @@ function buildInitialForm(
   };
 }
 
-// Construye el payload real de `saveParticipantAction` a partir del formulario
-// de un participante — compartido entre el guardado individual (botones de la
-// tarjeta) y el volcado masivo previo a "Guardar cambios"/"Finalizar registro",
-// para que ambos caminos persistan exactamente los mismos campos.
-function buildSaveParticipantInput(registrationId: string, studentId: string, form: ParticipantForm, nextStatus: ParticipantRegistrationStatus | null) {
+// Chip + control numérico por área — puerto real de `SkillGradeChips.tsx`
+// (móvil): 0 (o vacío) significa "sin calificar" y NUNCA se persiste como
+// nota real (`normalizeSkillGradeValue`), sólo 1-10 es una nota real.
+function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: number | null; onChange: (value: number | null) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-28 shrink-0 text-xs text-textSecondary">{SKILL_LABEL[skill]}</span>
+      <input
+        type="range"
+        min="0"
+        max="10"
+        step="1"
+        value={value ?? 0}
+        onChange={(e) => onChange(normalizeSkillGradeValue(Number(e.target.value)))}
+        className="h-2 flex-1 accent-brandBlue"
+        aria-label={`${SKILL_LABEL[skill]}: ${value != null ? `${value} de 10` : "sin calificar"}`}
+      />
+      <span className="w-20 shrink-0 text-right text-xs font-semibold text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
+    </div>
+  );
+}
+
+// Parsing puro y compartido de un `ParticipantForm` — única fuente para los
+// tres caminos que persisten los datos de un participante (guardado
+// individual de la tarjeta, `saveParticipantAction` del registro inicial, y
+// el array de participantes de `editCompletedRegistrationAction`), para que
+// los tres persistan exactamente los mismos campos de la misma forma.
+function parseParticipantFormFields(form: ParticipantForm) {
   return {
-    lessonRegistrationId: registrationId,
-    studentId,
-    participantStatus: nextStatus,
     attendanceStatus: form.attendanceStatus,
     lateMinutes: form.attendanceStatus === "tarde" && form.lateMinutes ? Number(form.lateMinutes) : null,
     generalGrade: form.generalGrade ? Number(form.generalGrade) : null,
-    skillGrades: {},
+    skillGrades: form.skillGrades,
     strengths: form.strengths
       .split(",")
       .map((s) => s.trim())
@@ -73,6 +99,19 @@ function buildSaveParticipantInput(registrationId: string, studentId: string, fo
     individualHomeworkDueDate: form.homeworkDueDate || null,
     homeworkReviews: Object.entries(form.homeworkReviews).map(([key, outcome]) => ({ taskId: key.split("::")[0], outcome })),
   };
+}
+
+// Payload real de `saveParticipantAction` — usado por el registro inicial
+// (guardado individual de cada tarjeta, todavía `in_progress`).
+function buildSaveParticipantInput(registrationId: string, studentId: string, form: ParticipantForm, nextStatus: ParticipantRegistrationStatus | null) {
+  return { lessonRegistrationId: registrationId, studentId, participantStatus: nextStatus, ...parseParticipantFormFields(form) };
+}
+
+// Un elemento del array `participants` de `editCompletedRegistrationAction`
+// — nunca lleva `participantStatus` (la RPC atómica de edición nunca
+// cambia el estado de avance de un participante, sólo sus datos académicos).
+function buildEditParticipantInput(studentId: string, form: ParticipantForm) {
+  return { studentId, ...parseParticipantFormFields(form) };
 }
 
 function ParticipantCard({
@@ -222,6 +261,25 @@ function ParticipantCard({
             </div>
           </div>
 
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Notas por área (opcional)</legend>
+            {SKILLS.map((skill) => (
+              <SkillGradeField
+                key={skill}
+                skill={skill}
+                value={normalizeSkillGradeValue(form.skillGrades[skill] ?? null)}
+                onChange={(value) =>
+                  updateForm({
+                    skillGrades:
+                      value == null
+                        ? Object.fromEntries(Object.entries(form.skillGrades).filter(([k]) => k !== skill))
+                        : { ...form.skillGrades, [skill]: value },
+                  })
+                }
+              />
+            ))}
+          </fieldset>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-textSecondary">Observaciones</label>
             <textarea
@@ -291,6 +349,7 @@ export function RegistrationWorkspace({
   evaluationByStudentId,
   pendingHomeworkByStudentId,
   scheduledStartAt,
+  scheduledEndAt,
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -302,13 +361,25 @@ export function RegistrationWorkspace({
   scheduledEndAt: string;
 }) {
   const router = useRouter();
+  // Idempotencia real de ESTA edición que sobrevive una RECARGA (a pedido
+  // explícito de Joaquín) — persistida en `sessionStorage`, identificada
+  // por `registration.id` (para no confundir el borrador de edición de UN
+  // registro con el de otro, si la profesora edita varios en la misma
+  // pestaña/sesión). Se recupera si ya había un intento sin confirmar
+  // sobre ESTE registro, se genera sólo si no existe, y se limpia
+  // ÚNICAMENTE tras una respuesta exitosa confirmada. Sólo tiene efecto
+  // real cuando el registro ya estaba finalizado — el primer finalizado
+  // usa `finalizeRegistrationAction`, que no necesita snapshot ni
+  // idempotencia por id (su propia RPC ya es idempotente por status).
+  const { operationId: editOperationId, clear: clearEditOperationId } = useDraftOperationId(`teacherflow:registro-edit:${registration.id}`);
   const [statusByStudentId, setStatusByStudentId] = useState(participantStatusByStudentId);
   const [formByStudentId, setFormByStudentId] = useState<Record<string, ParticipantForm>>(() =>
     Object.fromEntries(participants.map((p) => [p.studentId, buildInitialForm(attendanceByStudentId[p.studentId], evaluationByStudentId[p.studentId])]))
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [durationMinutes, setDurationMinutes] = useState("60");
+  const initialDurationMinutes = Math.max(1, Math.round((new Date(scheduledEndAt).getTime() - new Date(scheduledStartAt).getTime()) / 60_000)) || 60;
+  const [durationMinutes, setDurationMinutes] = useState(String(initialDurationMinutes));
   const [commonHomeworkDescription, setCommonHomeworkDescription] = useState(registration.homeworkDescription ?? "");
   const [commonHomeworkDueDate, setCommonHomeworkDueDate] = useState(registration.homeworkDueDate ?? "");
 
@@ -316,6 +387,13 @@ export function RegistrationWorkspace({
   const completedCount = Object.values(statusByStudentId).filter((s) => s === "completed").length;
   const allComplete = participants.every((p) => statusByStudentId[p.studentId] === "completed");
   const isFinalized = registration.status === "completed";
+  // Cuando el resultado no implica que la actividad se dictó (profesora
+  // ausente, feriado sin excepción — ver `lib/lessons/adhoc.ts`), no hay
+  // asistencia/evaluación/tarea que completar: el servidor ya insertó a
+  // todos los participantes como `completed` (`start_lesson_registration`),
+  // así que acá sólo hace falta ocultar las secciones que no aplican,
+  // mismo criterio que `classHeld` en el móvil (que ni las muestra).
+  const countsAsClass = registration.countsAsClass;
 
   function handleParticipantFormChange(studentId: string, patch: Partial<ParticipantForm>) {
     setFormByStudentId((prev) => ({ ...prev, [studentId]: { ...prev[studentId], ...patch } }));
@@ -335,13 +413,48 @@ export function RegistrationWorkspace({
   function handleFinalize() {
     setError(null);
     startTransition(async () => {
-      // "Guardar cambios"/"Finalizar registro" es la acción visible y principal
-      // de la pantalla — el docente espera que guarde TODO lo que ve, no sólo
-      // la tarea común y la duración. Por eso, antes de tocar el encabezado,
-      // volcamos el formulario actual de cada participante (nextStatus: null
-      // preserva su estado real, nunca lo fuerza a completed/omitted) — si no
-      // se hiciera esto, editar la asistencia/nota de un participante ya
-      // guardado y tocar sólo este botón perdería esos cambios en silencio.
+      const headerFields = {
+        homeworkDescription: countsAsClass && registration.activityKind === "class" ? commonHomeworkDescription.trim() || null : undefined,
+        homeworkDueDate: countsAsClass && registration.activityKind === "class" ? commonHomeworkDueDate || null : undefined,
+        actualDurationMinutes: countsAsClass ? Number(durationMinutes) || null : null,
+        scheduledStartAt: countsAsClass ? scheduledStartAt : null,
+      };
+
+      if (isFinalized) {
+        if (!editOperationId) return; // todavía no se recuperó/generó el id — nunca enviar sin él.
+        // Editar un registro ya finalizado — UNA sola llamada atómica
+        // (snapshot de auditoría + todos los cambios académicos de
+        // encabezado y de cada participante, en la misma transacción real
+        // del servidor). Nunca dos operaciones separadas del lado del
+        // cliente: "Guardar cambios" espera exactamente lo que dice —
+        // todo lo que la profesora ve en pantalla, atómico o nada.
+        const result = await editCompletedRegistrationAction({
+          lessonRegistrationId: registration.id,
+          editOperationId,
+          ...headerFields,
+          participants: participants.map((p) => buildEditParticipantInput(p.studentId, formByStudentId[p.studentId])),
+        });
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        // Recién ahora, con la respuesta exitosa confirmada, se limpia el
+        // borrador — un error de arriba nunca llega hasta acá, así que el
+        // mismo editOperationId sigue disponible para un reintento real.
+        clearEditOperationId();
+        router.push("/registro");
+        return;
+      }
+
+      // Primer finalizado (todavía `in_progress`): cada participante ya se
+      // guardó de forma independiente vía su propio "Completar alumno"
+      // (`saveParticipantAction`, ya idempotente por las constraints
+      // reales de cada tabla hija) — igual se vuelca el formulario vigente
+      // una última vez acá (nextStatus: null preserva su estado real)
+      // para no perder un ajuste de último momento hecho sin volver a
+      // tocar "Completar alumno". `finalizeRegistrationAction` sólo toca
+      // el encabezado y no necesita snapshot (no hay "antes" que conservar
+      // en un primer finalizado).
       for (const p of participants) {
         const form = formByStudentId[p.studentId];
         const result = await saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, form, null));
@@ -351,13 +464,7 @@ export function RegistrationWorkspace({
         }
       }
 
-      const result = await finalizeRegistrationAction({
-        lessonRegistrationId: registration.id,
-        homeworkDescription: registration.activityKind === "class" ? commonHomeworkDescription.trim() || null : undefined,
-        homeworkDueDate: registration.activityKind === "class" ? commonHomeworkDueDate || null : undefined,
-        actualDurationMinutes: Number(durationMinutes) || null,
-        scheduledStartAt,
-      });
+      const result = await finalizeRegistrationAction({ lessonRegistrationId: registration.id, ...headerFields });
       if (result.error) {
         setError(result.error);
         return;
@@ -370,7 +477,14 @@ export function RegistrationWorkspace({
     <div className="flex flex-col gap-4">
       {isFinalized && <p className="rounded-md border border-statusVerde/30 bg-statusVerde/5 px-3 py-2 text-sm font-medium text-statusVerde">Este registro ya está finalizado — podés editar cualquier dato y guardar de nuevo.</p>}
 
-      {isGroup && (
+      {!countsAsClass && (
+        <p className="rounded-md border border-border bg-background px-3 py-2.5 text-sm text-textSecondary">
+          <span className="font-semibold text-textPrimary">{ADHOC_OUTCOME_LABEL[registration.outcome]}</span> — esta actividad no se dictó, así que no
+          corresponde cargar asistencia, evaluación ni tarea. Sólo hace falta confirmar el registro.
+        </p>
+      )}
+
+      {countsAsClass && isGroup && (
         <div>
           <p className="text-sm font-semibold text-textPrimary">
             Progreso: {completedCount} de {participants.length} completados
@@ -381,25 +495,27 @@ export function RegistrationWorkspace({
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {participants.map((p) => (
-          <ParticipantCard
-            key={p.studentId}
-            registrationId={registration.id}
-            studentId={p.studentId}
-            name={p.name}
-            level={p.level}
-            activityKind={registration.activityKind}
-            status={statusByStudentId[p.studentId] ?? "pending"}
-            form={formByStudentId[p.studentId]}
-            onFormChange={(patch) => handleParticipantFormChange(p.studentId, patch)}
-            pendingHomework={pendingHomeworkByStudentId[p.studentId] ?? []}
-            onSaved={(status) => handleParticipantSaved(p.studentId, status)}
-          />
-        ))}
-      </div>
+      {countsAsClass && (
+        <div className="flex flex-col gap-3">
+          {participants.map((p) => (
+            <ParticipantCard
+              key={p.studentId}
+              registrationId={registration.id}
+              studentId={p.studentId}
+              name={p.name}
+              level={p.level}
+              activityKind={registration.activityKind}
+              status={statusByStudentId[p.studentId] ?? "pending"}
+              form={formByStudentId[p.studentId]}
+              onFormChange={(patch) => handleParticipantFormChange(p.studentId, patch)}
+              pendingHomework={pendingHomeworkByStudentId[p.studentId] ?? []}
+              onSaved={(status) => handleParticipantSaved(p.studentId, status)}
+            />
+          ))}
+        </div>
+      )}
 
-      {registration.activityKind === "class" && (
+      {countsAsClass && registration.activityKind === "class" && (
         <fieldset className="flex flex-col gap-1.5 rounded-md border border-border p-3">
           <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Tarea común para todo el grupo (opcional)</legend>
           <input
@@ -417,16 +533,18 @@ export function RegistrationWorkspace({
         </fieldset>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-textSecondary">Duración real (minutos)</label>
-        <input
-          type="number"
-          min="1"
-          value={durationMinutes}
-          onChange={(e) => setDurationMinutes(e.target.value)}
-          className="w-40 rounded-md border border-border px-2 py-1.5 text-sm"
-        />
-      </div>
+      {countsAsClass && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-textSecondary">Duración real (minutos)</label>
+          <input
+            type="number"
+            min="1"
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+            className="w-40 rounded-md border border-border px-2 py-1.5 text-sm"
+          />
+        </div>
+      )}
 
       {error && <FormErrorBox message={error} />}
 
@@ -435,7 +553,7 @@ export function RegistrationWorkspace({
           <button
             type="button"
             onClick={handleFinalize}
-            disabled={pending}
+            disabled={pending || (isFinalized && !editOperationId)}
             className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card disabled:opacity-60"
           >
             {pending ? "Guardando..." : isFinalized ? "Guardar cambios" : "Finalizar registro"}

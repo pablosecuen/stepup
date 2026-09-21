@@ -392,6 +392,9 @@ export interface PackageCreditMovementRow {
 
 export type LessonRegistrationStatus = "in_progress" | "completed";
 
+/** Subconjunto real y acotado de `EventType` (móvil) — ver comentario de `20260922100000_adhoc_registration_and_edit_history.sql` para qué se excluye y por qué (campos financieros de Fase 5, reprogramación). */
+export type LessonRegistrationOutcome = "clase_dictada" | "profesora_ausente" | "feriado";
+
 export interface LessonRegistrationRow {
   id: UUID;
   owner_id: UUID;
@@ -404,10 +407,26 @@ export interface LessonRegistrationRow {
   homework_due_date: ISODateString | null;
   billed_amount: number | null;
   scheduled_start_at: ISODateTimeString | null;
+  scheduled_end_at: ISODateTimeString | null;
   actual_started_at: ISODateTimeString | null;
   actual_ended_at: ISODateTimeString | null;
+  outcome: LessonRegistrationOutcome;
+  holiday_exception: boolean;
+  modality: string | null;
+  /** Idempotencia real del camino ad-hoc — ver `lesson_registrations_owner_operation_unique`. `null` para el camino ligado a Calendario. */
+  operation_id: UUID | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
+}
+
+export interface LessonRegistrationEditHistoryRow {
+  id: UUID;
+  owner_id: UUID;
+  lesson_registration_id: UUID;
+  /** Idempotencia real de una edición — ver `lesson_registration_edit_history_operation_unique`. */
+  edit_operation_id: UUID;
+  edited_at: ISODateTimeString;
+  previous_snapshot: unknown;
 }
 
 export type ParticipantRegistrationStatusRow = "pending" | "completed" | "omitted";

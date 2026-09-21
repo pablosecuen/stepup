@@ -3,6 +3,7 @@ import type {
   LessonRegistrationAttendanceRow,
   LessonRegistrationEvaluationRow,
   LessonRegistrationHomeworkReviewRow,
+  LessonRegistrationOutcome,
   LessonRegistrationRow,
   LessonRegistrationStatus,
   LessonRegistrationStudentRow,
@@ -27,8 +28,13 @@ export interface LessonRegistrationRecord {
   homeworkDueDate: string | null;
   billedAmount: number | null;
   scheduledStartAt: string | null;
+  scheduledEndAt: string | null;
   actualStartedAt: string | null;
   actualEndedAt: string | null;
+  outcome: LessonRegistrationOutcome;
+  holidayException: boolean;
+  modality: string | null;
+  operationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,8 +50,13 @@ export function toLessonRegistrationRecord(row: LessonRegistrationRow): LessonRe
     homeworkDueDate: row.homework_due_date,
     billedAmount: row.billed_amount,
     scheduledStartAt: row.scheduled_start_at,
+    scheduledEndAt: row.scheduled_end_at,
     actualStartedAt: row.actual_started_at,
     actualEndedAt: row.actual_ended_at,
+    outcome: row.outcome,
+    holidayException: row.holiday_exception,
+    modality: row.modality,
+    operationId: row.operation_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

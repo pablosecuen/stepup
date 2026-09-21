@@ -6,6 +6,7 @@ import {
   startLessonRegistration,
   saveParticipantRegistration,
   finalizeLessonRegistration,
+  editCompletedLessonRegistration,
   getLessonRegistrationDetailByCalendarLessonId,
   LessonRegistrationNotFoundError,
   type LessonRegistrationRecord,
@@ -13,6 +14,10 @@ import {
 import { listStudents } from "@/lib/repositories/students";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
+import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome } from "@/lib/lessons/adhoc";
+
+const TIMEZONE = "America/Argentina/Buenos_Aires";
 
 // Server Actions — Registro de clases. Nunca reciben `ownerId` del
 // navegador; siempre resuelven la sesión real en el servidor. Se llaman
@@ -76,6 +81,81 @@ export async function startRegistrationAction(input: StartRegistrationActionInpu
       participants: participants.map((p) => ({ studentId: p.id, studentName: p.name, level: p.levels[0] ?? "" })),
     });
     return { data: { registration, calendarLessonId: registration.calendarLessonId as string } };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+  }
+}
+
+export interface StartAdhocRegistrationActionInput {
+  studentIds: string[];
+  date: string; // YYYY-MM-DD, Argentina
+  time: string; // HH:mm, Argentina
+  durationMinutes: number;
+  modality: string;
+  activityKind: "class"; // el móvil (NewClassScreen.tsx) nunca ofrece "training" en el camino ad-hoc — diferencia real, no inventada.
+  outcome: AdhocOutcome;
+  holidayException: boolean;
+  /**
+   * Idempotencia real (a pedido explícito de Joaquín): UUID generado UNA
+   * VEZ del lado del cliente al montar `/registro/nuevo`
+   * (`useState(() => crypto.randomUUID())`), nunca acá — esta acción nunca
+   * genera su propio id, sólo lo reenvía tal cual a la RPC, que lo hace
+   * cumplir con una restricción UNIQUE real. Doble clic, reintento tras una
+   * respuesta perdida, dos pestañas o dos requests genuinamente
+   * simultáneas con el mismo `operationId` siempre convergen en la MISMA
+   * fila — nunca en la protección visual de `disabled`, que sólo evita el
+   * caso más obvio.
+   */
+  operationId: string;
+}
+
+/**
+ * Registro de una clase SIN reserva previa de Calendario — puerto real de
+ * `NewClassScreen.tsx` (móvil). Nunca crea ni materializa ninguna fila en
+ * `calendar_lessons`: llama a la MISMA `start_lesson_registration` con
+ * `calendar_lesson_id: null`.
+ */
+export async function startAdhocRegistrationAction(input: StartAdhocRegistrationActionInput): Promise<ActionResult<{ registrationId: string }>> {
+  const validationErrors = validateAdhocRegistrationInput(input);
+  if (validationErrors.length > 0) return { error: validationErrors.join(" ") };
+  if (!input.operationId) return { error: "Falta el identificador de la operación. Recargá la página e intentá de nuevo." };
+
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const students = await listStudents(ctx);
+    const activeStudents = input.studentIds
+      .map((id) => students.find((s) => s.id === id && s.status === "activo"))
+      .filter((s): s is NonNullable<typeof s> => !!s);
+    if (activeStudents.length === 0) return { error: "Elegí al menos un alumno activo." };
+
+    const [hourStr, minuteStr] = input.time.split(":");
+    const startAt = localDateTimeToInstantIso({ date: input.date, hour: Number(hourStr), minute: Number(minuteStr), timeZone: TIMEZONE });
+    const endAt = new Date(new Date(startAt).getTime() + input.durationMinutes * 60_000).toISOString();
+    const countsAsClass = isAdhocClassHeld(input.outcome, input.holidayException);
+    const primary = activeStudents[0];
+
+    const registration = await startLessonRegistration(ctx, {
+      calendarLessonId: null,
+      recurrenceId: null,
+      occurrenceKey: null,
+      recurrenceIndex: null,
+      primaryStudentId: primary.id,
+      studentName: primary.name,
+      level: primary.levels[0] ?? "",
+      lessonType: activeStudents.length > 1 ? "group" : "individual",
+      startAt,
+      endAt,
+      modality: input.modality,
+      classTitle: null,
+      activityKind: input.activityKind,
+      countsAsClass,
+      color: "#FCE4D2",
+      participants: activeStudents.map((p) => ({ studentId: p.id, studentName: p.name, level: p.levels[0] ?? "" })),
+      outcome: input.outcome,
+      holidayException: input.holidayException,
+      operationId: input.operationId,
+    });
+    return { data: { registrationId: registration.id } };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
   }
@@ -154,9 +234,74 @@ export async function finalizeRegistrationAction(input: FinalizeRegistrationActi
   return {};
 }
 
-/** Editar un registro ya finalizado — mismo mecanismo que finalizar (idempotente, nunca crea un segundo registro), sólo cambia qué campos toca. */
-export async function updateRegistrationHeaderAction(input: FinalizeRegistrationActionInput): Promise<ActionResult> {
-  return finalizeRegistrationAction(input);
+export interface EditCompletedRegistrationParticipantActionInput {
+  studentId: string;
+  attendanceStatus: string | null;
+  lateMinutes: number | null;
+  generalGrade: number | null;
+  skillGrades: Record<string, number>;
+  strengths: string[];
+  areasToImprove: string[];
+  individualObservation: string | null;
+  individualHomeworkDescription: string | null;
+  individualHomeworkDueDate: string | null;
+  homeworkReviews: { taskId: string; outcome: string }[];
+}
+
+export interface EditCompletedRegistrationActionInput {
+  lessonRegistrationId: string;
+  /** Idempotencia real de ESTA edición — generado UNA vez del lado del cliente por cada intento de "Guardar cambios" (`useState(() => crypto.randomUUID())`), nunca regenerado en un reintento. */
+  editOperationId: string;
+  homeworkDescription?: string | null;
+  homeworkDueDate?: string | null;
+  actualDurationMinutes?: number | null;
+  scheduledStartAt?: string | null;
+  participants: EditCompletedRegistrationParticipantActionInput[];
+}
+
+/**
+ * Única acción real para editar un registro ya finalizado (a pedido
+ * explícito de Joaquín) — llama a una ÚNICA RPC atómica
+ * (`edit_completed_lesson_registration`) que hace snapshot de auditoría +
+ * aplica todos los cambios académicos (encabezado + N participantes) en la
+ * MISMA transacción. Reemplaza el flujo anterior de dos escrituras
+ * separadas (snapshot y después guardar) — nunca dos operaciones sueltas
+ * del lado del cliente.
+ */
+export async function editCompletedRegistrationAction(input: EditCompletedRegistrationActionInput): Promise<ActionResult> {
+  if (!input.editOperationId) return { error: "Falta el identificador de la edición. Recargá la página e intentá de nuevo." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const startIso = input.scheduledStartAt ?? null;
+    const endIso = startIso && input.actualDurationMinutes ? new Date(new Date(startIso).getTime() + input.actualDurationMinutes * 60_000).toISOString() : undefined;
+    await editCompletedLessonRegistration(ctx, {
+      lessonRegistrationId: input.lessonRegistrationId,
+      editOperationId: input.editOperationId,
+      homeworkDescription: input.homeworkDescription,
+      homeworkDueDate: input.homeworkDueDate,
+      actualStartedAt: startIso ?? undefined,
+      actualEndedAt: endIso,
+      participants: input.participants.map((p) => ({
+        studentId: p.studentId,
+        attendance: p.attendanceStatus ? { status: p.attendanceStatus, lateMinutes: p.lateMinutes } : null,
+        evaluation: {
+          generalGrade: p.generalGrade,
+          skillGrades: p.skillGrades,
+          strengths: p.strengths,
+          areasToImprove: p.areasToImprove,
+          individualObservation: p.individualObservation,
+          individualHomeworkDescription: p.individualHomeworkDescription,
+          individualHomeworkDueDate: p.individualHomeworkDueDate,
+        },
+        homeworkReviews: p.homeworkReviews,
+      })),
+    });
+  } catch (error) {
+    if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
+    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+  }
+  revalidatePath("/registro");
+  return {};
 }
 
 export async function getLessonRegistrationForCalendarLessonAction(calendarLessonId: string) {

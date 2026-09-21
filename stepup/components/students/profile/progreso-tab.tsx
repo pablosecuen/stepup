@@ -1,4 +1,5 @@
-import { calculateAverageGrade } from "@/lib/lessons/grades";
+import { calculateAverageGrade, normalizeSkillGradeValue } from "@/lib/lessons/grades";
+import { SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import type { LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import { EmptyState } from "@/components/ui/states";
@@ -21,18 +22,32 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
       </div>
       <ul className="flex flex-col gap-2">
         {entries
-          .filter((e) => e.evaluation.generalGrade != null || e.evaluation.individualObservation)
-          .map((entry) => (
-            <li key={entry.registration.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-textPrimary">
-                  {entry.registration.scheduledStartAt ? new Date(entry.registration.scheduledStartAt).toLocaleDateString("es-AR") : "Sin fecha"}
-                </p>
-                <p className="text-sm font-bold text-brandBlueDark">{entry.evaluation.generalGrade ?? "—"}</p>
-              </div>
-              {entry.evaluation.individualObservation && <p className="mt-1 text-xs text-textSecondary">{entry.evaluation.individualObservation}</p>}
-            </li>
-          ))}
+          .filter((e) => e.evaluation.generalGrade != null || e.evaluation.individualObservation || Object.keys(e.evaluation.skillGrades).length > 0)
+          .map((entry) => {
+            const skillEntries = (Object.entries(entry.evaluation.skillGrades) as [Skill, number][])
+              .map(([skill, value]) => [skill, normalizeSkillGradeValue(value)] as const)
+              .filter((pair): pair is [Skill, number] => pair[1] != null);
+            return (
+              <li key={entry.registration.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-textPrimary">
+                    {entry.registration.scheduledStartAt ? new Date(entry.registration.scheduledStartAt).toLocaleDateString("es-AR") : "Sin fecha"}
+                  </p>
+                  <p className="text-sm font-bold text-brandBlueDark">{entry.evaluation.generalGrade ?? "—"}</p>
+                </div>
+                {entry.evaluation.individualObservation && <p className="mt-1 text-xs text-textSecondary">{entry.evaluation.individualObservation}</p>}
+                {skillEntries.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {skillEntries.map(([skill, value]) => (
+                      <span key={skill} className="rounded-pill bg-background px-2 py-0.5 text-xs font-medium text-textSecondary">
+                        {SKILL_LABEL[skill]}: {value}/10
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
       </ul>
     </div>
   );

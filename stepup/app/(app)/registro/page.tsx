@@ -47,10 +47,20 @@ export default async function RegistroPendientesPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Clases por registrar</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {pending.length} actividad{pending.length === 1 ? "" : "es"} pendiente{pending.length === 1 ? "" : "s"} de registrar.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Clases por registrar</h1>
+          <p className="mt-1.5 text-sm text-textMuted">
+            {pending.length} actividad{pending.length === 1 ? "" : "es"} pendiente{pending.length === 1 ? "" : "s"} de registrar.
+          </p>
+        </div>
+        <Link
+          href="/registro/nuevo"
+          className="rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+        >
+          + Registrar clase no programada
+        </Link>
+      </div>
 
       {pending.length === 0 ? (
         <div className="mt-6">
