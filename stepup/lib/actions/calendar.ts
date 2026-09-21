@@ -24,6 +24,33 @@ import type { RecurrenceWeek } from "@/lib/calendar/types";
 
 export interface FormState {
   error?: string;
+  values?: NewLessonFormValues;
+}
+
+/**
+ * "Eco" de lo que la profesora ya había completado en `/calendario/nueva`
+ * cuando el servidor rechaza el envío. Next.js remonta el Client Component
+ * del formulario en cada ida y vuelta de un Server Action (confirmado:
+ * el nodo `<form>` sobrevive, pero todo el estado de React del componente
+ * se reinicia) — así que ni los inputs no controlados ni el estado local
+ * (`useState`) sobreviven por sí solos. `state` de `useActionState` es la
+ * única parte que sí persiste a través de esa transición, así que el
+ * servidor devuelve acá los valores enviados para que el cliente los use
+ * como fuente real de los campos, en vez de depender del DOM o de un
+ * `useState` que se pierde.
+ */
+export interface NewLessonFormValues {
+  participantIds: string[];
+  modality: string;
+  activityKind: string;
+  classTitle: string;
+  date: string;
+  hour: string;
+  minute: string;
+  durationMinutes: string;
+  startDate: string;
+  endDate: string;
+  weeksJson: string;
 }
 
 function readString(formData: FormData, key: string): string {
@@ -83,32 +110,50 @@ async function checkConflictsAndAvailability(
 export async function createSingleLessonAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
   const date = readString(formData, "date");
-  const hour = Number(readString(formData, "hour"));
-  const minute = Number(readString(formData, "minute"));
-  const durationMinutes = Number(readString(formData, "durationMinutes"));
+  const hourRaw = readString(formData, "hour");
+  const minuteRaw = readString(formData, "minute");
+  const durationRaw = readString(formData, "durationMinutes");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  const durationMinutes = Number(durationRaw);
   const modality = readString(formData, "modality") as CalendarModality;
   const activityKind = readString(formData, "activityKind") as ActivityKind;
-  const classTitle = readString(formData, "classTitle").trim() || null;
+  const classTitleRaw = readString(formData, "classTitle");
+  const classTitle = classTitleRaw.trim() || null;
   const notes = readString(formData, "notes").trim() || null;
   const freedByLessonId = readString(formData, "freedByLessonId").trim() || null;
 
-  if (studentIds.length === 0) return { error: "Elegí al menos un alumno." };
+  const values: NewLessonFormValues = {
+    participantIds: studentIds,
+    modality,
+    activityKind,
+    classTitle: classTitleRaw,
+    date,
+    hour: hourRaw,
+    minute: minuteRaw,
+    durationMinutes: durationRaw,
+    startDate: "",
+    endDate: "",
+    weeksJson: "",
+  };
+
+  if (studentIds.length === 0) return { error: "Elegí al menos un alumno.", values };
   if (!date || Number.isNaN(hour) || Number.isNaN(minute) || Number.isNaN(durationMinutes) || durationMinutes <= 0) {
-    return { error: "Completá fecha, hora y duración." };
+    return { error: "Completá fecha, hora y duración.", values };
   }
 
   try {
     const ctx = await requireAuthenticatedDbContext();
     const students = await listStudents(ctx);
     const selected = studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
-    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible." };
-    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado." };
+    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible.", values };
+    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado.", values };
 
     const startAt = localDateTimeToInstantIso({ date, hour, minute, timeZone: TIMEZONE });
     const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60_000).toISOString();
 
     const conflictMessage = await checkConflictsAndAvailability(ctx, startAt, endAt);
-    if (conflictMessage) return { error: conflictMessage };
+    if (conflictMessage) return { error: conflictMessage, values };
 
     const primary = selected[0];
     await createSingleLesson(ctx, {
@@ -127,7 +172,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
       freedByLessonId,
     });
   } catch (error) {
-    return { error: friendlyErrorMessage(error) };
+    return { error: friendlyErrorMessage(error), values };
   }
 
   // redirect() lanza una excepción especial de Next.js — siempre fuera del
@@ -144,29 +189,46 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
 export async function createRecurrenceSeriesAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
   const startDate = readString(formData, "startDate");
-  const endDate = readString(formData, "endDate").trim() || null;
+  const endDateRaw = readString(formData, "endDate");
+  const endDate = endDateRaw.trim() || null;
   const modality = readString(formData, "modality") as CalendarModality;
   const activityKind = readString(formData, "activityKind") as ActivityKind;
-  const classTitle = readString(formData, "classTitle").trim() || null;
+  const classTitleRaw = readString(formData, "classTitle");
+  const classTitle = classTitleRaw.trim() || null;
+  const weeksJsonRaw = readString(formData, "weeksJson");
+
+  const values: NewLessonFormValues = {
+    participantIds: studentIds,
+    modality,
+    activityKind,
+    classTitle: classTitleRaw,
+    date: "",
+    hour: "",
+    minute: "",
+    durationMinutes: "",
+    startDate,
+    endDate: endDateRaw,
+    weeksJson: weeksJsonRaw,
+  };
 
   let weeks: RecurrenceWeek[];
   try {
-    weeks = JSON.parse(readString(formData, "weeksJson"));
+    weeks = JSON.parse(weeksJsonRaw);
   } catch {
-    return { error: "El patrón semanal no es válido." };
+    return { error: "El patrón semanal no es válido.", values };
   }
-  if (studentIds.length === 0) return { error: "Elegí al menos un alumno." };
-  if (!startDate) return { error: "La fecha de inicio es obligatoria." };
+  if (studentIds.length === 0) return { error: "Elegí al menos un alumno.", values };
+  if (!startDate) return { error: "La fecha de inicio es obligatoria.", values };
   if (!Array.isArray(weeks) || weeks.length === 0 || !weeks.some((w) => w.sessions.length > 0)) {
-    return { error: "Definí al menos un día y horario." };
+    return { error: "Definí al menos un día y horario.", values };
   }
 
   try {
     const ctx = await requireAuthenticatedDbContext();
     const students = await listStudents(ctx);
     const selected = studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
-    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible." };
-    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado." };
+    if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible.", values };
+    if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado.", values };
 
     // El lunes real de la semana de `startDate` — nunca otro día (regla del motor de recurrencia).
     const monday = addDaysToDateKey(startDate, -jsDayToAppWeekday(getDateKeyJsDay(startDate)));
@@ -211,11 +273,14 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
         // La serie ya quedó creada (la profesora la ve y decide qué hacer) —
         // nunca se revierte en silencio; se informa el conflicto real
         // encontrado para que lo resuelva desde "Series"/"Editar futuras".
+        // Nunca se re-popula el formulario acá a propósito: la serie ya
+        // existe, reenviar el mismo formulario crearía una segunda serie
+        // duplicada. La profesora la resuelve desde "Series"/"Editar futuras".
         return { error: `Serie creada, pero hay un conflicto real: ${conflictMessage}` };
       }
     }
   } catch (error) {
-    return { error: friendlyErrorMessage(error) };
+    return { error: friendlyErrorMessage(error), values };
   }
 
   // Sólo se llega hasta acá si no hubo conflicto (el `return` con error
