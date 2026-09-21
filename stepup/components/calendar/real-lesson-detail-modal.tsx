@@ -240,6 +240,14 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         ) : (
           <section className="mt-5">
             <div className="flex flex-col gap-1.5">
+              {isPast && item.status !== "cancelled" && item.status !== "completed" && (
+                <Link
+                  href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"}
+                  className="flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
+                >
+                  Registrar esta clase
+                </Link>
+              )}
               {canReuseSlot && (
                 <Link
                   href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${item.start.slice(0, 10)}&hour=${start.getHours()}&minute=${start.getMinutes()}&duration=${durationMinutes}&modality=${item.modality}`}

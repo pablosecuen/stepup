@@ -390,6 +390,8 @@ export interface PackageCreditMovementRow {
 // Registro pedagógico
 // ---------------------------------------------------------------------------
 
+export type LessonRegistrationStatus = "in_progress" | "completed";
+
 export interface LessonRegistrationRow {
   id: UUID;
   owner_id: UUID;
@@ -397,6 +399,7 @@ export interface LessonRegistrationRow {
   calendar_lesson_id: UUID | null;
   activity_kind: ActivityKind;
   counts_as_class: boolean;
+  status: LessonRegistrationStatus;
   homework_description: string | null;
   homework_due_date: ISODateString | null;
   billed_amount: number | null;
@@ -404,13 +407,17 @@ export interface LessonRegistrationRow {
   actual_started_at: ISODateTimeString | null;
   actual_ended_at: ISODateTimeString | null;
   created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
 }
+
+export type ParticipantRegistrationStatusRow = "pending" | "completed" | "omitted";
 
 export interface LessonRegistrationStudentRow {
   id: UUID;
   owner_id: UUID;
   lesson_registration_id: UUID;
   student_id: UUID;
+  participant_status: ParticipantRegistrationStatusRow;
 }
 
 export type AttendanceStatus = "presente" | "ausente" | "tarde" | "ausente_aviso" | "sin_registrar";

@@ -101,6 +101,10 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
             ·{" "}
             <Link href="/calendario/disponibilidad" className="font-semibold text-brandBlue hover:underline">
               Disponibilidad
+            </Link>{" "}
+            ·{" "}
+            <Link href="/registro" className="font-semibold text-brandBlue hover:underline">
+              Clases por registrar
             </Link>
           </p>
         </div>

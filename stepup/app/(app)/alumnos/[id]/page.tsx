@@ -5,6 +5,7 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getStudent } from "@/lib/repositories/students";
 import { listStatusHistory, listLevelHistory, listPriceHistory } from "@/lib/repositories/student-history";
+import { listLessonRegistrationsForStudent, listPendingHomeworkTasksForStudent, listEvaluationsForStudent } from "@/lib/repositories/lesson-registrations";
 import { ErrorState } from "@/components/ui/states";
 import { StudentStatusBadge } from "@/components/students/student-status-badge";
 import { ChangeStatusForm } from "@/components/students/change-status-form";
@@ -12,6 +13,9 @@ import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profil
 import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
 import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
 import { PendingTabContent } from "@/components/students/profile/pending-tab";
+import { ClasesTabContent } from "@/components/students/profile/clases-tab";
+import { TareasTabContent } from "@/components/students/profile/tareas-tab";
+import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +40,9 @@ export default async function AlumnoProfilePage({
   let statusHistory: Awaited<ReturnType<typeof listStatusHistory>> = [];
   let levelHistory: Awaited<ReturnType<typeof listLevelHistory>> = [];
   let priceHistory: Awaited<ReturnType<typeof listPriceHistory>> = [];
+  let registrations: Awaited<ReturnType<typeof listLessonRegistrationsForStudent>> = [];
+  let pendingTasks: Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>> = [];
+  let evaluationEntries: Awaited<ReturnType<typeof listEvaluationsForStudent>> = [];
   try {
     const ctx = await requireAuthenticatedDbContext();
     student = await getStudent(ctx, id);
@@ -46,6 +53,9 @@ export default async function AlumnoProfilePage({
         listPriceHistory(ctx, id),
       ]);
     }
+    if (student && tab === "clases") registrations = await listLessonRegistrationsForStudent(ctx, id);
+    if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
+    if (student && tab === "progreso") evaluationEntries = await listEvaluationsForStudent(ctx, id);
   } catch {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
@@ -92,11 +102,11 @@ export default async function AlumnoProfilePage({
             <ChangeStatusForm studentId={id} currentStatus={student.status} />
           </div>
         )}
-        {tab === "clases" && <PendingTabContent title="Clases" dependsOn="Registro de clases (Fase 4)" />}
-        {tab === "progreso" && <PendingTabContent title="Progreso" dependsOn="Registro de clases y evaluaciones (Fase 4)" />}
-        {tab === "tareas" && <PendingTabContent title="Tareas" dependsOn="Registro de clases (Fase 4)" />}
+        {tab === "clases" && <ClasesTabContent registrations={registrations} />}
+        {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
+        {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
         {tab === "cobros" && <PendingTabContent title="Cobros" dependsOn="el motor de cobros (Fase 5)" />}
-        {tab === "reportes" && <PendingTabContent title="Reportes" dependsOn="Registro de clases y Cobros (Fases 4/5)" />}
+        {tab === "reportes" && <PendingTabContent title="Reportes" dependsOn="Cobros (Fase 5)" />}
         {tab === "informacion" && (
           <InformacionTabContent student={student} statusHistory={statusHistory} levelHistory={levelHistory} priceHistory={priceHistory} />
         )}

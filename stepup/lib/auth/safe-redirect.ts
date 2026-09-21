@@ -3,7 +3,7 @@
 // — nunca a un dominio externo. Esto es lo único que evita un "open
 // redirect": nunca confiar en el valor crudo de la URL.
 
-const ALLOWED_NEXT_PREFIXES = ["/inicio", "/alumnos", "/calendario", "/cobros", "/configuracion"] as const;
+const ALLOWED_NEXT_PREFIXES = ["/inicio", "/alumnos", "/calendario", "/cobros", "/configuracion", "/registro"] as const;
 
 export const DEFAULT_AUTH_REDIRECT = "/inicio";
 

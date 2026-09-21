@@ -56,5 +56,10 @@ test("isPrivatePath: reconoce rutas del área privada", () => {
 test("isPrivatePath: rutas públicas no se marcan como privadas", () => {
   assert.equal(isPrivatePath("/"), false);
   assert.equal(isPrivatePath("/login"), false);
-  assert.equal(isPrivatePath("/registro"), false);
+  assert.equal(isPrivatePath("/crear-cuenta"), false);
+});
+
+test("isPrivatePath: /registro (Fase 4, clases por registrar) es privada", () => {
+  assert.equal(isPrivatePath("/registro"), true);
+  assert.equal(isPrivatePath("/registro/abc123"), true);
 });
