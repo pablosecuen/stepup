@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSingleLesson, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
 import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
@@ -129,8 +130,11 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
     return { error: friendlyErrorMessage(error) };
   }
 
+  // redirect() lanza una excepción especial de Next.js — siempre fuera del
+  // try/catch de arriba, nunca dentro (si quedara dentro, el catch genérico
+  // la atraparía y la mostraría como un error real).
   revalidatePath("/calendario");
-  return {};
+  redirect("/calendario");
 }
 
 // ---------------------------------------------------------------------------
@@ -214,9 +218,12 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     return { error: friendlyErrorMessage(error) };
   }
 
+  // Sólo se llega hasta acá si no hubo conflicto (el `return` con error
+  // dentro del for de arriba corta el flujo antes) — redirect() siempre
+  // fuera del try/catch, nunca dentro.
   revalidatePath("/calendario");
   revalidatePath("/calendario/series");
-  return {};
+  redirect("/calendario");
 }
 
 // ---------------------------------------------------------------------------
