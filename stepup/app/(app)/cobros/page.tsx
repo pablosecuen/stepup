@@ -6,20 +6,12 @@ import { listAllCharges, listAllAllocations, listAllPayments, ensureCurrentMonth
 import { listStudents } from "@/lib/repositories/students";
 import { buildCollectionsCenterEntries, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
 import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/dates";
+import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cobros · TeacherFlow" };
-
-const CHARGE_TYPE_LABEL: Record<string, string> = {
-  mensual: "Mensualidad",
-  por_clase: "Clase suelta",
-  entrenamiento: "Entrenamiento",
-  semanal: "Semanal",
-  quincenal: "Quincenal",
-  paquete: "Paquete",
-};
 
 function statusLabel(entry: CollectionsCenterEntry): { text: string; className: string } {
   if (entry.urgency === "vence_pronto") return { text: "Vence pronto", className: "bg-statusAmarillo/10 text-statusAmarillo" };
