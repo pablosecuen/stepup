@@ -1,5 +1,5 @@
-import { addDaysToDateKey, daysBetweenDateKeys, getDateKeyJsDay } from "./timezone.ts";
-import { jsDayToAppWeekday } from "./weekday.ts";
+import { addDaysToDateKey, daysBetweenDateKeys } from "./timezone.ts";
+import { mondayOfWeekContaining } from "./weekday.ts";
 import { generateOccurrences } from "./recurrence-engine.ts";
 import type { RecurrenceRuleForEngine, RecurrenceWeek } from "./types.ts";
 
@@ -24,12 +24,6 @@ import type { RecurrenceRuleForEngine, RecurrenceWeek } from "./types.ts";
  * insertar (si ya existe una sucesora con esa combinación, la devuelve tal
  * cual, nunca crea una segunda).
  */
-
-function mondayOfWeekContaining(dateKey: string): string {
-  const jsDay = getDateKeyJsDay(dateKey);
-  const appWeekday = jsDayToAppWeekday(jsDay); // lunes=0..domingo=6
-  return addDaysToDateKey(dateKey, -appWeekday);
-}
 
 export interface SplitRecurrenceInput {
   originalRecurrenceId: string;

@@ -12,8 +12,8 @@ import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/a
 import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
-import { addDaysToDateKey, getDateKeyJsDay, getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
-import { jsDayToAppWeekday } from "@/lib/calendar/weekday";
+import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
 import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 
@@ -231,7 +231,10 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado.", values };
 
     // El lunes real de la semana de `startDate` — nunca otro día (regla del motor de recurrencia).
-    const monday = addDaysToDateKey(startDate, -jsDayToAppWeekday(getDateKeyJsDay(startDate)));
+    // La primera ocurrencia REAL sigue cayendo en `startDate` (o después, según el patrón
+    // elegido) — `mondayOfWeekContaining` sólo ancla el registro técnico de la regla, nunca
+    // mueve la fecha visible/facturable. Ver comentario de la función.
+    const monday = mondayOfWeekContaining(startDate);
 
     const created = await createRecurrenceSeries(ctx, {
       primaryStudentId: selected[0]?.id ?? null,
