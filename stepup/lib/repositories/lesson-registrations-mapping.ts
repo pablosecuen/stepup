@@ -35,6 +35,9 @@ export interface LessonRegistrationRecord {
   holidayException: boolean;
   modality: string | null;
   operationId: string | null;
+  lateCancellationPolicy: LessonRegistrationRow["late_cancellation_policy"];
+  lateCancellationPercentage: number | null;
+  rescheduledFromRegistrationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +60,9 @@ export function toLessonRegistrationRecord(row: LessonRegistrationRow): LessonRe
     holidayException: row.holiday_exception,
     modality: row.modality,
     operationId: row.operation_id,
+    lateCancellationPolicy: row.late_cancellation_policy,
+    lateCancellationPercentage: row.late_cancellation_percentage,
+    rescheduledFromRegistrationId: row.rescheduled_from_registration_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -16,6 +16,9 @@ import { PendingTabContent } from "@/components/students/profile/pending-tab";
 import { ClasesTabContent } from "@/components/students/profile/clases-tab";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
+import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
+import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
+import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +46,10 @@ export default async function AlumnoProfilePage({
   let registrations: Awaited<ReturnType<typeof listLessonRegistrationsForStudent>> = [];
   let pendingTasks: Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>> = [];
   let evaluationEntries: Awaited<ReturnType<typeof listEvaluationsForStudent>> = [];
+  let charges: Awaited<ReturnType<typeof listChargesForStudent>> = [];
+  let payments: Awaited<ReturnType<typeof listPaymentsForStudent>> = [];
+  let allocations: Awaited<ReturnType<typeof listAllocationsForStudent>> = [];
+  const todayDateKey = localDateKeyInTimeZone(new Date());
   try {
     const ctx = await requireAuthenticatedDbContext();
     student = await getStudent(ctx, id);
@@ -56,6 +63,18 @@ export default async function AlumnoProfilePage({
     if (student && tab === "clases") registrations = await listLessonRegistrationsForStudent(ctx, id);
     if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
     if (student && tab === "progreso") evaluationEntries = await listEvaluationsForStudent(ctx, id);
+    if (student && tab === "cobros") {
+      // Esta pestaña puede abrirse directamente (sin pasar antes por
+      // Centro de cobros) — genera acá también las mensualidades/cuotas de
+      // entrenamiento faltantes, mismo criterio idempotente.
+      const currentPeriod = billingPeriodOfDateKey(todayDateKey);
+      await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
+      [charges, payments, allocations] = await Promise.all([
+        listChargesForStudent(ctx, id),
+        listPaymentsForStudent(ctx, id),
+        listAllocationsForStudent(ctx, id),
+      ]);
+    }
   } catch {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
@@ -105,7 +124,7 @@ export default async function AlumnoProfilePage({
         {tab === "clases" && <ClasesTabContent registrations={registrations} />}
         {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
-        {tab === "cobros" && <PendingTabContent title="Cobros" dependsOn="el motor de cobros (Fase 5)" />}
+        {tab === "cobros" && <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />}
         {tab === "reportes" && <PendingTabContent title="Reportes" dependsOn="Cobros (Fase 5)" />}
         {tab === "informacion" && (
           <InformacionTabContent student={student} statusHistory={statusHistory} levelHistory={levelHistory} priceHistory={priceHistory} />

@@ -3,11 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { startAdhocRegistrationAction } from "@/lib/actions/lesson-registrations";
-import { ADHOC_OUTCOME_LABEL, type AdhocOutcome } from "@/lib/lessons/adhoc";
+import { ADHOC_OUTCOME_LABEL, LATE_CANCELLATION_POLICY_LABEL, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 
-const OUTCOMES: AdhocOutcome[] = ["clase_dictada", "profesora_ausente", "feriado"];
+const OUTCOMES: AdhocOutcome[] = ["clase_dictada", "profesora_ausente", "feriado", "cancelada_con_aviso", "cancelada_tarde", "reprogramada"];
+const LATE_CANCELLATION_POLICIES: LateCancellationPolicy[] = ["cobrar_100", "cobrar_porcentaje", "descontar_del_paquete", "no_cobrar"];
 
 // Clave fija — sólo existe una pantalla real de "/registro/nuevo" a la vez
 // (no hay varios borradores ad-hoc simultáneos que distinguir), a
@@ -40,6 +41,8 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
   const [modality, setModality] = useState("presencial");
   const [outcome, setOutcome] = useState<AdhocOutcome>("clase_dictada");
   const [holidayException, setHolidayException] = useState(false);
+  const [lateCancellationPolicy, setLateCancellationPolicy] = useState<LateCancellationPolicy>("no_cobrar");
+  const [lateCancellationPercentage, setLateCancellationPercentage] = useState("50");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -69,6 +72,8 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
         outcome,
         holidayException,
         operationId,
+        lateCancellationPolicy: outcome === "cancelada_tarde" ? lateCancellationPolicy : null,
+        lateCancellationPercentage: outcome === "cancelada_tarde" && lateCancellationPolicy === "cobrar_porcentaje" ? Number(lateCancellationPercentage) || 0 : null,
       });
       if (result.error) {
         setError(result.error);
@@ -173,6 +178,37 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
             <input type="checkbox" checked={holidayException} onChange={(e) => setHolidayException(e.target.checked)} />
             Excepción: igual se dictó
           </label>
+        )}
+        {outcome === "cancelada_tarde" && (
+          <div className="mt-1.5 flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+            <label className="text-xs font-medium text-textSecondary">
+              Política de cancelación tardía
+              <select
+                value={lateCancellationPolicy}
+                onChange={(e) => setLateCancellationPolicy(e.target.value as LateCancellationPolicy)}
+                className="mt-1 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+              >
+                {LATE_CANCELLATION_POLICIES.map((p) => (
+                  <option key={p} value={p}>
+                    {LATE_CANCELLATION_POLICY_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {lateCancellationPolicy === "cobrar_porcentaje" && (
+              <label className="text-xs font-medium text-textSecondary">
+                Porcentaje a cobrar
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={lateCancellationPercentage}
+                  onChange={(e) => setLateCancellationPercentage(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+                />
+              </label>
+            )}
+          </div>
         )}
       </div>
 

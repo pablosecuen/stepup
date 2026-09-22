@@ -3,22 +3,38 @@
  * `lessonRegistrationDomain.ts` (móvil) — registro de una clase SIN reserva
  * previa de Calendario (`calendar_lesson_id: null`).
  *
- * `AdhocOutcome` es un subconjunto DELIBERADO de `EventType` (móvil):
- * nunca se portan `cancelada_con_aviso`/`cancelada_tarde` (exigen
- * `lateCancellationPolicy`, motor financiero de Fase 5, todavía no
- * implementado) ni `reprogramada` (enlaza a OTRO registro ad-hoc en el
- * móvil — mecanismo distinto y redundante con el reprogramar real de
- * Calendario ya construido en Fase 3). `alumno_ausente` tampoco se porta:
- * el propio móvil dejó de ofrecerlo para elegir (ver
- * `PendingClassOutcomeSelector.tsx`) — la ausencia de un participante se
- * expresa con su asistencia individual, no con un resultado general.
+ * `AdhocOutcome` es un subconjunto de `EventType` (móvil). Fase 4 excluyó
+ * deliberadamente `cancelada_con_aviso`/`cancelada_tarde` (exigían
+ * `lateCancellationPolicy`, motor financiero de Fase 5) y `reprogramada` —
+ * Fase 5 los cierra ahora que ese motor existe (ver `adhoc-billing.ts`).
+ * `alumno_ausente` sigue sin portarse: el propio móvil dejó de ofrecerlo
+ * para elegir (ver `PendingClassOutcomeSelector.tsx`) — la ausencia de un
+ * participante se expresa con su asistencia individual, no con un
+ * resultado general.
  */
-export type AdhocOutcome = "clase_dictada" | "profesora_ausente" | "feriado";
+export type AdhocOutcome = "clase_dictada" | "profesora_ausente" | "feriado" | "cancelada_con_aviso" | "cancelada_tarde" | "reprogramada";
 
 export const ADHOC_OUTCOME_LABEL: Record<AdhocOutcome, string> = {
   clase_dictada: "Realizada",
   profesora_ausente: "Profesora ausente",
   feriado: "Feriado",
+  cancelada_con_aviso: "Cancelada con aviso",
+  cancelada_tarde: "Cancelada tarde",
+  reprogramada: "Reprogramada",
+};
+
+/**
+ * Puerto de `LateCancellationPolicy` (móvil) — sólo aplica cuando
+ * `outcome === 'cancelada_tarde'`. `'cobrar_porcentaje'` exige
+ * `lateCancellationPercentage`; el resto lo ignora.
+ */
+export type LateCancellationPolicy = "cobrar_100" | "cobrar_porcentaje" | "descontar_del_paquete" | "no_cobrar";
+
+export const LATE_CANCELLATION_POLICY_LABEL: Record<LateCancellationPolicy, string> = {
+  cobrar_100: "Cobrar el 100%",
+  cobrar_porcentaje: "Cobrar un porcentaje",
+  descontar_del_paquete: "Descontar del paquete",
+  no_cobrar: "No cobrar",
 };
 
 /**

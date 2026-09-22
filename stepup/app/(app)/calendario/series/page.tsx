@@ -10,6 +10,7 @@ import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { SeriesStatusActions } from "./series-status-actions";
 import { ScrollToLastSeries } from "@/components/calendar/scroll-to-last-series";
+import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Series · TeacherFlow" };
@@ -85,6 +86,7 @@ export default async function SeriesPage() {
                   {scheduleLabel} · {MODALITY_LABEL[rule.modality]} · {rule.status === "active" ? "Activa" : rule.status === "paused" ? "Pausada" : "Finalizada"}
                 </p>
                 <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} students={students} />
+                {rule.activityKind === "training" && <TrainingBillingConfigButton recurrenceRuleId={rule.id} agreementId={rule.trainingBillingAgreementId} />}
               </li>
             );
           })}

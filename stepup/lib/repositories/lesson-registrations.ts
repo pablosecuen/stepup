@@ -284,6 +284,11 @@ export interface StartLessonRegistrationInput {
   holidayException?: boolean;
   /** Obligatorio cuando `calendarLessonId` es `null` — idempotencia real del camino ad-hoc (ver migración). Generado UNA vez del lado del cliente, nunca acá. */
   operationId?: string | null;
+  /** Sólo tienen efecto real cuando `outcome === 'cancelada_tarde'` — Fase 5, cierre de Cancelada/Reprogramada. */
+  lateCancellationPolicy?: string | null;
+  lateCancellationPercentage?: number | null;
+  /** Enlace de trazabilidad hacia el registro original `'reprogramada'` que esta clase reemplaza — Fase 5. */
+  rescheduledFromRegistrationId?: string | null;
 }
 
 export async function startLessonRegistration(ctx: AuthenticatedDbContext, input: StartLessonRegistrationInput): Promise<LessonRegistrationRecord> {
@@ -308,6 +313,9 @@ export async function startLessonRegistration(ctx: AuthenticatedDbContext, input
       outcome: input.outcome,
       holiday_exception: input.holidayException,
       operation_id: input.operationId,
+      late_cancellation_policy: input.lateCancellationPolicy ?? null,
+      late_cancellation_percentage: input.lateCancellationPercentage ?? null,
+      rescheduled_from_registration_id: input.rescheduledFromRegistrationId ?? null,
     },
   });
   if (error) {
@@ -341,6 +349,9 @@ export interface EditCompletedRegistrationInput {
   countsAsClass?: boolean;
   actualStartedAt?: string | null;
   actualEndedAt?: string | null;
+  /** Corrección post-finalización de la política de cancelación tardía — Fase 5. */
+  lateCancellationPolicy?: string | null;
+  lateCancellationPercentage?: number | null;
   participants: EditCompletedRegistrationParticipantInput[];
 }
 
@@ -377,6 +388,8 @@ export async function editCompletedLessonRegistration(ctx: AuthenticatedDbContex
   if (input.countsAsClass !== undefined) payload.counts_as_class = input.countsAsClass;
   if (input.actualStartedAt !== undefined) payload.actual_started_at = input.actualStartedAt;
   if (input.actualEndedAt !== undefined) payload.actual_ended_at = input.actualEndedAt;
+  if (input.lateCancellationPolicy !== undefined) payload.late_cancellation_policy = input.lateCancellationPolicy;
+  if (input.lateCancellationPercentage !== undefined) payload.late_cancellation_percentage = input.lateCancellationPercentage;
 
   const { data, error } = await ctx.supabase.rpc("edit_completed_lesson_registration", { p_payload: payload });
   if (error) {

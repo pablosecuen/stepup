@@ -8,6 +8,7 @@ import {
   finalizeLessonRegistration,
   editCompletedLessonRegistration,
   getLessonRegistrationDetailByCalendarLessonId,
+  getLessonRegistrationDetail,
   LessonRegistrationNotFoundError,
   type LessonRegistrationRecord,
 } from "@/lib/repositories/lesson-registrations";
@@ -15,7 +16,10 @@ import { listStudents } from "@/lib/repositories/students";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
-import { isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome } from "@/lib/lessons/adhoc";
+import { isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
+import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
+import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
+import { syncPerClassCharge } from "@/lib/repositories/payments";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -107,6 +111,11 @@ export interface StartAdhocRegistrationActionInput {
    * caso más obvio.
    */
   operationId: string;
+  /** Sólo tienen efecto real cuando `outcome === 'cancelada_tarde'` — Fase 5, cierre de Cancelada/Reprogramada. */
+  lateCancellationPolicy?: LateCancellationPolicy | null;
+  lateCancellationPercentage?: number | null;
+  /** Enlace de trazabilidad opcional: si ESTA clase es la recuperación real de una anterior con `outcome: 'reprogramada'`, apunta al id de ESA otra registración — nunca al revés. */
+  rescheduledFromRegistrationId?: string | null;
 }
 
 /**
@@ -154,7 +163,26 @@ export async function startAdhocRegistrationAction(input: StartAdhocRegistration
       outcome: input.outcome,
       holidayException: input.holidayException,
       operationId: input.operationId,
+      lateCancellationPolicy: input.lateCancellationPolicy ?? null,
+      lateCancellationPercentage: input.lateCancellationPercentage ?? null,
+      rescheduledFromRegistrationId: input.rescheduledFromRegistrationId ?? null,
     });
+
+    // Cierre de Cancelada/Reprogramada (Fase 5): cuando el resultado no
+    // implica que la clase se dictó (o cobra por política de cancelación
+    // tardía), el registro queda 'completed' de inmediato (ver
+    // countsAsClass/v_class_held) — sincroniza el cobro por clase ahora
+    // mismo para los alumnos con plan 'por_clase', misma lógica que al
+    // finalizar un registro normal.
+    if (registration.status === "completed") {
+      // Cierre de Cancelada/Reprogramada (Fase 5): cuando el resultado no
+      // implica que la clase se dictó (o cobra por política de cancelación
+      // tardía), el registro queda 'completed' de inmediato — sincroniza el
+      // cobro por clase ahora mismo, misma función compartida que usa
+      // finalizar/editar un registro normal.
+      await syncPerClassChargesForRegistration(ctx, registration.id);
+    }
+
     return { data: { registrationId: registration.id } };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
@@ -225,13 +253,52 @@ export async function finalizeRegistrationAction(input: FinalizeRegistrationActi
       actualStartedAt: startIso ?? undefined,
       actualEndedAt: endIso,
     });
+    await syncPerClassChargesForRegistration(ctx, input.lessonRegistrationId);
   } catch (error) {
     if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
     return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
   }
   revalidatePath("/registro");
   revalidatePath("/calendario");
+  revalidatePath("/cobros");
   return {};
+}
+
+/**
+ * Materializa (o corrige) el cobro por clase real de un registro ya
+ * `completed`, para sus participantes con plan `'per_class'` — Fase 5.
+ * `counts_as_class` (ya persistido por Fase 4) es exactamente `isClassHeld`
+ * para CUALQUIER camino (calendario o ad-hoc) — nunca se recalcula acá.
+ * Se llama SIEMPRE inmediatamente después de finalizar/editar, dentro de la
+ * misma Server Action — nunca un paso manual aparte.
+ */
+async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, registrationId: string): Promise<void> {
+  const detail = await getLessonRegistrationDetail(ctx, registrationId);
+  if (!detail || detail.registration.status !== "completed") return;
+
+  const students = await listStudents(ctx);
+  const studentsById = new Map(students.map((s) => [s.id, s]));
+  const outcome = detail.registration.outcome as AdhocOutcome;
+  const lateCancellationPolicy = (detail.registration.lateCancellationPolicy ?? null) as LateCancellationPolicy | null;
+
+  const participants = detail.participants
+    .map((p) => {
+      const student = studentsById.get(p.studentId);
+      if (!student) return null;
+      const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
+      if (plan.type !== "per_class") return null;
+      const amount = computePerClassBilledAmount({
+        perClassAmount: plan.amount,
+        outcome,
+        isClassHeld: detail.registration.countsAsClass,
+        lateCancellationPolicy,
+        lateCancellationPercentage: detail.registration.lateCancellationPercentage,
+      });
+      return { studentId: p.studentId, amount: amount > 0 ? amount : null };
+    })
+    .filter((p): p is { studentId: string; amount: number | null } => p !== null);
+
+  if (participants.length > 0) await syncPerClassCharge(ctx, registrationId, participants);
 }
 
 export interface EditCompletedRegistrationParticipantActionInput {
@@ -256,6 +323,9 @@ export interface EditCompletedRegistrationActionInput {
   homeworkDueDate?: string | null;
   actualDurationMinutes?: number | null;
   scheduledStartAt?: string | null;
+  /** Corrección post-finalización — sólo tiene efecto cuando el `outcome` del registro es `'cancelada_tarde'`. */
+  lateCancellationPolicy?: LateCancellationPolicy | null;
+  lateCancellationPercentage?: number | null;
   participants: EditCompletedRegistrationParticipantActionInput[];
 }
 
@@ -281,6 +351,8 @@ export async function editCompletedRegistrationAction(input: EditCompletedRegist
       homeworkDueDate: input.homeworkDueDate,
       actualStartedAt: startIso ?? undefined,
       actualEndedAt: endIso,
+      lateCancellationPolicy: input.lateCancellationPolicy,
+      lateCancellationPercentage: input.lateCancellationPercentage,
       participants: input.participants.map((p) => ({
         studentId: p.studentId,
         attendance: p.attendanceStatus ? { status: p.attendanceStatus, lateMinutes: p.lateMinutes } : null,
@@ -296,11 +368,13 @@ export async function editCompletedRegistrationAction(input: EditCompletedRegist
         homeworkReviews: p.homeworkReviews,
       })),
     });
+    await syncPerClassChargesForRegistration(ctx, input.lessonRegistrationId);
   } catch (error) {
     if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
     return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
   }
   revalidatePath("/registro");
+  revalidatePath("/cobros");
   return {};
 }
 

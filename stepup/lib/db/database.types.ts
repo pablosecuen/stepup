@@ -254,6 +254,8 @@ export interface PaymentRow {
   void_reason: string | null;
   replaces_payment_id: UUID | null;
   source: "initial_student_setup" | null;
+  /** Idempotencia real — ver `payments_owner_operation_unique`. Fase 5. */
+  operation_id: UUID | null;
   created_at: ISODateTimeString;
 }
 
@@ -392,8 +394,16 @@ export interface PackageCreditMovementRow {
 
 export type LessonRegistrationStatus = "in_progress" | "completed";
 
-/** Subconjunto real y acotado de `EventType` (móvil) — ver comentario de `20260922100000_adhoc_registration_and_edit_history.sql` para qué se excluye y por qué (campos financieros de Fase 5, reprogramación). */
-export type LessonRegistrationOutcome = "clase_dictada" | "profesora_ausente" | "feriado";
+/** Espeja `EventType` (móvil) — completo desde Fase 5 (ver `20260925100000_payments_engine.sql`: cierre de Cancelada/Reprogramada del registro ad-hoc). */
+export type LessonRegistrationOutcome =
+  | "clase_dictada"
+  | "profesora_ausente"
+  | "feriado"
+  | "cancelada_con_aviso"
+  | "cancelada_tarde"
+  | "reprogramada";
+
+export type LateCancellationPolicyRow = "cobrar_100" | "cobrar_porcentaje" | "descontar_del_paquete" | "no_cobrar";
 
 export interface LessonRegistrationRow {
   id: UUID;
@@ -415,6 +425,11 @@ export interface LessonRegistrationRow {
   modality: string | null;
   /** Idempotencia real del camino ad-hoc — ver `lesson_registrations_owner_operation_unique`. `null` para el camino ligado a Calendario. */
   operation_id: UUID | null;
+  /** Sólo tiene efecto cuando `outcome = 'cancelada_tarde'` — espeja `LateCancellationPolicy` (móvil). Fase 5. */
+  late_cancellation_policy: LateCancellationPolicyRow | null;
+  late_cancellation_percentage: number | null;
+  /** El registro de la clase de RECUPERACIÓN apunta al original (`outcome = 'reprogramada'`) — nunca al revés. Fase 5. */
+  rescheduled_from_registration_id: UUID | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }
