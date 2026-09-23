@@ -546,6 +546,19 @@ export interface ReportRecordRow {
   pdf_url: string | null;
   snapshot: Record<string, unknown>;
   schema_version: number;
+  operation_id: UUID | null;
+}
+
+/**
+ * Claim atómico real (nunca localStorage) del borrador de generación de
+ * reporte activo, por (owner_id, student_id) — ver
+ * `lib/repositories/report-drafts.ts`.
+ */
+export interface ReportDraftClaimRow {
+  owner_id: UUID;
+  student_id: UUID;
+  operation_id: UUID;
+  created_at: ISODateTimeString;
 }
 
 /**

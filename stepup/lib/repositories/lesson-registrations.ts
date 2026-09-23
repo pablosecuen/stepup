@@ -471,3 +471,112 @@ export async function finalizeLessonRegistration(ctx: AuthenticatedDbContext, in
   }
   return toLessonRegistrationRecord(data as LessonRegistrationRow);
 }
+
+/**
+ * TODOS los registros del owner (cualquier alumno) anclados dentro de un
+ * rango real — fuente para Analíticas financieras (Fase 7: horas
+ * dictadas/canceladas/reprogramadas, modalidad, valor programado de la
+ * hora). El ancla real es `scheduled_start_at` si existe (clase ligada a
+ * Calendario), si no `created_at` (registro ad-hoc sin horario propio,
+ * mismo criterio ya usado en `listCompletedRegistrationsForStudentReport`).
+ */
+export async function listLessonRegistrationsInRange(ctx: AuthenticatedDbContext, rangeStartIso: string, rangeEndIso: string): Promise<LessonRegistrationRecord[]> {
+  const { data, error } = await ctx.supabase
+    .from("lesson_registrations")
+    .select("*")
+    .eq("owner_id", ctx.ownerId)
+    .or(`scheduled_start_at.gte.${rangeStartIso},scheduled_start_at.is.null`)
+    .order("scheduled_start_at", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  const all = (data as LessonRegistrationRow[]).map(toLessonRegistrationRecord);
+  return all.filter((r) => {
+    const anchor = r.scheduledStartAt ?? r.createdAt;
+    return anchor >= rangeStartIso && anchor <= rangeEndIso;
+  });
+}
+
+/** Roster real (uno por alumno participante) de un conjunto de registros — necesario para "alumnos únicos atendidos" (Fase 7), donde una clase grupal debe expandirse a cada participante real. */
+export async function listRosterForRegistrationIds(ctx: AuthenticatedDbContext, registrationIds: string[]): Promise<{ registrationId: string; studentId: string }[]> {
+  if (registrationIds.length === 0) return [];
+  const { data, error } = await ctx.supabase
+    .from("lesson_registration_students")
+    .select("lesson_registration_id, student_id")
+    .eq("owner_id", ctx.ownerId)
+    .in("lesson_registration_id", registrationIds);
+  if (error) throw error;
+  return (data as Pick<LessonRegistrationStudentRow, "lesson_registration_id" | "student_id">[]).map((row) => ({ registrationId: row.lesson_registration_id, studentId: row.student_id }));
+}
+
+/** Forma mínima real que necesita `buildStudentReportData` (Fase 7) — un registro dictado + la asistencia/evaluación de ESE alumno, nunca de otros participantes de una clase compartida. */
+export interface RegistrationForStudentReportRow {
+  registrationId: string;
+  dateKey: string;
+  scheduledStartAt: string | null;
+  scheduledEndAt: string | null;
+  actualStartedAt: string | null;
+  actualEndedAt: string | null;
+  homeworkDescription: string | null;
+  attendance: { status: "presente" | "ausente" | "tarde" | "ausente_aviso" | "sin_registrar"; lateMinutes: number | null } | null;
+  evaluation: {
+    generalGrade: number | null;
+    skillGrades: Record<string, number>;
+    strengths: string[];
+    areasToImprove: string[];
+    individualHomeworkDescription: string | null;
+  } | null;
+}
+
+/**
+ * Clases REALMENTE dictadas de un alumno (`status: 'completed'`,
+ * `counts_as_class: true`) con la asistencia/evaluación de ESE alumno —
+ * fuente real para Reportes (Fase 7). Nunca incluye `individualObservation`
+ * (nota interna) ni ningún campo financiero (`billed_amount`) — la
+ * selección de columnas ni los pide.
+ */
+export async function listCompletedRegistrationsForStudentReport(ctx: AuthenticatedDbContext, studentId: string): Promise<RegistrationForStudentReportRow[]> {
+  const registrations = await listLessonRegistrationsForStudent(ctx, studentId);
+  const held = registrations.filter((r) => r.status === "completed" && r.countsAsClass);
+  if (held.length === 0) return [];
+
+  const registrationIds = held.map((r) => r.id);
+  const [attendanceResult, evaluationResult] = await Promise.all([
+    ctx.supabase.from("lesson_registration_attendance").select("*").eq("owner_id", ctx.ownerId).eq("student_id", studentId).in("lesson_registration_id", registrationIds),
+    ctx.supabase.from("lesson_registration_evaluations").select("*").eq("owner_id", ctx.ownerId).eq("student_id", studentId).in("lesson_registration_id", registrationIds),
+  ]);
+  if (attendanceResult.error) throw attendanceResult.error;
+  if (evaluationResult.error) throw evaluationResult.error;
+
+  const attendanceByRegistrationId = new Map(
+    (attendanceResult.data as LessonRegistrationAttendanceRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationAttendanceRecord(row)])
+  );
+  const evaluationByRegistrationId = new Map(
+    (evaluationResult.data as LessonRegistrationEvaluationRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)])
+  );
+
+  return held
+    .map((registration) => {
+      const anchor = registration.scheduledStartAt ?? registration.actualStartedAt ?? registration.createdAt;
+      const attendance = attendanceByRegistrationId.get(registration.id);
+      const evaluation = evaluationByRegistrationId.get(registration.id);
+      return {
+        registrationId: registration.id,
+        dateKey: anchor.slice(0, 10),
+        scheduledStartAt: registration.scheduledStartAt,
+        scheduledEndAt: registration.scheduledEndAt,
+        actualStartedAt: registration.actualStartedAt,
+        actualEndedAt: registration.actualEndedAt,
+        homeworkDescription: registration.homeworkDescription,
+        attendance: attendance ? { status: attendance.status, lateMinutes: attendance.lateMinutes } : null,
+        evaluation: evaluation
+          ? {
+              generalGrade: evaluation.generalGrade,
+              skillGrades: evaluation.skillGrades,
+              strengths: evaluation.strengths,
+              areasToImprove: evaluation.areasToImprove,
+              individualHomeworkDescription: evaluation.individualHomeworkDescription,
+            }
+          : null,
+      };
+    })
+    .sort((a, b) => (a.dateKey < b.dateKey ? -1 : 1));
+}

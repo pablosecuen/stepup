@@ -12,13 +12,16 @@ import { ChangeStatusForm } from "@/components/students/change-status-form";
 import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
 import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
 import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
-import { PendingTabContent } from "@/components/students/profile/pending-tab";
 import { ClasesTabContent } from "@/components/students/profile/clases-tab";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
 import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/dates";
+import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/lesson-registrations";
+import { listReportRecordsForStudent } from "@/lib/repositories/reports";
+import { getStudentMonthsWithClasses } from "@/lib/reports/months";
+import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +52,8 @@ export default async function AlumnoProfilePage({
   let charges: Awaited<ReturnType<typeof listChargesForStudent>> = [];
   let payments: Awaited<ReturnType<typeof listPaymentsForStudent>> = [];
   let allocations: Awaited<ReturnType<typeof listAllocationsForStudent>> = [];
+  let monthsWithClasses: string[] = [];
+  let reportHistory: Awaited<ReturnType<typeof listReportRecordsForStudent>> = [];
   const todayDateKey = localDateKeyInTimeZone(new Date());
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -74,6 +79,14 @@ export default async function AlumnoProfilePage({
         listPaymentsForStudent(ctx, id),
         listAllocationsForStudent(ctx, id),
       ]);
+    }
+    if (student && tab === "reportes") {
+      const [registrationsForReport, history] = await Promise.all([listCompletedRegistrationsForStudentReport(ctx, id), listReportRecordsForStudent(ctx, id)]);
+      monthsWithClasses = getStudentMonthsWithClasses(
+        registrationsForReport.map((r) => ({ countsAsClass: true, dateKey: r.dateKey })),
+        todayDateKey
+      );
+      reportHistory = history;
     }
   } catch {
     return (
@@ -125,7 +138,9 @@ export default async function AlumnoProfilePage({
         {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
         {tab === "cobros" && <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />}
-        {tab === "reportes" && <PendingTabContent title="Reportes" dependsOn="Cobros (Fase 5)" />}
+        {tab === "reportes" && (
+          <ReportesTabContent studentId={id} studentName={student.name} monthsWithClasses={monthsWithClasses} initialHistory={reportHistory} />
+        )}
         {tab === "informacion" && (
           <InformacionTabContent student={student} statusHistory={statusHistory} levelHistory={levelHistory} priceHistory={priceHistory} />
         )}

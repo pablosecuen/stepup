@@ -63,10 +63,17 @@ export default async function CobrosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Cobros</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {entries.length} obligaci{entries.length === 1 ? "ón" : "ones"} pendiente{entries.length === 1 ? "" : "s"}.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Cobros</h1>
+          <p className="mt-1.5 text-sm text-textMuted">
+            {entries.length} obligaci{entries.length === 1 ? "ón" : "ones"} pendiente{entries.length === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <Link href="/resumen-financiero" className="text-sm font-semibold text-brandBlue hover:underline">
+          Ver resumen financiero →
+        </Link>
+      </div>
 
       {entries.length === 0 ? (
         <div className="mt-6">
