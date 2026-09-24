@@ -8,6 +8,7 @@ import {
   getReportSignedUrlAction,
   regenerateReportPdfAction,
   deleteReportAction,
+  retryPendingReportCleanupAction,
   type StudentReportPreview,
 } from "@/lib/actions/reports";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
@@ -20,6 +21,11 @@ function monthLabel(month: string): string {
   const [year, monthNumber] = month.split("-");
   const names = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   return `${names[Number(monthNumber) - 1]} ${year}`;
+}
+
+/** Reemplaza (si ya existe, por id) o agrega al frente la fila canónica devuelta por el servidor — nunca una entrada construida desde el formulario local. */
+function upsertHistoryEntry(prev: ReportRecordSummary[], entry: ReportRecordSummary): ReportRecordSummary[] {
+  return [entry, ...prev.filter((r) => r.id !== entry.id)];
 }
 
 export function ReportesTabContent({
@@ -44,10 +50,24 @@ export function ReportesTabContent({
   const [includePunctualitySummary, setIncludePunctualitySummary] = useState(true);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isStartingNew, setIsStartingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [history, setHistory] = useState(initialHistory);
   const [actionState, setActionState] = useState<{ id: string; kind: "view" | "regenerate" | "delete" } | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [isRetryingCleanup, setIsRetryingCleanup] = useState(false);
+
+  function resetForm() {
+    setPreview(null);
+    setSelectedMonths(new Set());
+    setNarrativeText("");
+    setGeneralComment("");
+    setBehaviorAndParticipation("");
+    setNextObjectives("");
+    setRecommendations("");
+  }
 
   function toggleMonth(month: string) {
     setSelectedMonths((prev) => {
@@ -59,8 +79,11 @@ export function ReportesTabContent({
     setPreview(null);
   }
 
+  /** Previsualizar NUNCA rota el borrador activo — es una lectura pura, no una transición. */
   async function handlePreview() {
     setError(null);
+    setWarning(null);
+    setNotice(null);
     if (selectedMonths.size === 0) {
       setError("Elegí al menos un mes.");
       return;
@@ -76,9 +99,12 @@ export function ReportesTabContent({
     setNarrativeText(result.data?.suggestedNarrative ?? "");
   }
 
+  /** Generar/reintentar: SIEMPRE usa el borrador activo (reclamado server-side) — una respuesta perdida y un reintento posterior convergen en el mismo reporte. */
   async function handleGenerate() {
     if (!preview) return;
     setError(null);
+    setWarning(null);
+    setNotice(null);
     setIsGenerating(true);
     const result = await generateStudentReportAction({
       studentId,
@@ -93,32 +119,53 @@ export function ReportesTabContent({
       setError(result.error);
       return;
     }
-    // Transición explícita posterior al éxito REALMENTE recibido acá —
-    // recién ahora es seguro liberar el claim server-side para que una
-    // próxima generación intencional obtenga un operation_id nuevo. Si
-    // esta llamada fallara, la próxima generación con los MISMOS meses
-    // seguiría siendo idempotente igual; con meses distintos, el propio
-    // servidor detecta el claim obsoleto y lo rota solo.
-    void startNewReportDraftAction(studentId);
-    setPreview(null);
-    setSelectedMonths(new Set());
-    setNarrativeText("");
-    setGeneralComment("");
-    setBehaviorAndParticipation("");
-    setNextObjectives("");
-    setRecommendations("");
-    setHistory((prev) => [
-      {
-        id: result.data!.reportId,
-        title: `Reporte de ${studentName}`,
-        selectedMonths: [...selectedMonths],
-        periodStart: preview.periodStart,
-        periodEnd: preview.periodEnd,
-        generatedAt: new Date().toISOString(),
-        hasPdf: true,
-      },
-      ...prev,
-    ]);
+
+    // La fila que se agrega al historial es SIEMPRE la canónica devuelta
+    // por el servidor — nunca una construida con los valores del
+    // formulario actual, que pudieron no coincidir con la operación real
+    // (ver `result.data.staleClaim`).
+    const { report, staleClaim, warning: serverWarning } = result.data!;
+    setHistory((prev) => upsertHistoryEntry(prev, report));
+
+    if (staleClaim) {
+      // El claim activo ya correspondía a un reporte completo con OTROS
+      // meses — nunca se presenta en silencio como si fuera lo recién
+      // pedido. Se conserva el formulario tal cual (nada se perdió); la
+      // usuaria debe elegir "Crear otro reporte" para continuar.
+      setWarning(serverWarning);
+      return;
+    }
+
+    resetForm();
+  }
+
+  /**
+   * Transición EXPLÍCITA y VISIBLE para empezar una generación nueva — la
+   * única forma real de rotar el borrador activo. Si falla, se muestra el
+   * error y se conserva todo el estado tal cual (nunca se sigue como si
+   * hubiera rotado). El servidor informa `transition`: sólo con
+   * 'created'/'rotated' arrancó de verdad una operación nueva y es seguro
+   * limpiar el formulario — con 'in_progress' el claim seguía en curso (no
+   * se rotó nada) y el formulario se conserva intacto, nunca se pierde
+   * trabajo de la profesora por una respuesta exitosa que en realidad no
+   * cambió nada.
+   */
+  async function handleStartNewReport() {
+    setError(null);
+    setNotice(null);
+    setIsStartingNew(true);
+    const result = await startNewReportDraftAction(studentId);
+    setIsStartingNew(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setWarning(null);
+    if (result.data!.transition === "in_progress") {
+      setNotice("Ya hay una generación en curso para este alumno — no se inició nada nuevo, tu formulario sigue igual.");
+      return;
+    }
+    resetForm();
   }
 
   async function handleView(reportId: string) {
@@ -151,12 +198,44 @@ export function ReportesTabContent({
     setHistory((prev) => prev.filter((r) => r.id !== reportId));
   }
 
+  /** Acción explícita de recuperación — reintenta toda limpieza de Storage pendiente, sin esperar a la próxima eliminación ni a la próxima carga de página. */
+  async function handleRetryCleanup() {
+    setError(null);
+    setIsRetryingCleanup(true);
+    const result = await retryPendingReportCleanupAction();
+    setIsRetryingCleanup(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setNotice(result.data!.resolvedCount > 0 ? `Se resolvieron ${result.data!.resolvedCount} archivo(s) pendiente(s) de limpieza.` : "No había limpieza pendiente.");
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {error && <div className="rounded-md border border-statusRojo/30 bg-statusRojo/5 px-4 py-3 text-sm text-statusRojo">{error}</div>}
+      {warning && (
+        <div className="rounded-md border border-statusAmarillo/40 bg-statusAmarillo/10 px-4 py-3 text-sm text-textPrimary">
+          {warning}
+          <button type="button" onClick={handleStartNewReport} disabled={isStartingNew} className="ml-2 font-semibold text-brandBlue underline hover:no-underline disabled:opacity-60">
+            {isStartingNew ? "Iniciando..." : "Crear otro reporte"}
+          </button>
+        </div>
+      )}
+      {notice && <div className="rounded-md border border-brandBlue/30 bg-brandBlue/5 px-4 py-3 text-sm text-textPrimary">{notice}</div>}
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
-        <h2 className="text-sm font-semibold text-textPrimary">Generar reporte</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-textPrimary">Generar reporte</h2>
+          <button
+            type="button"
+            onClick={handleStartNewReport}
+            disabled={isStartingNew || isGenerating || isPreviewing}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textSecondary transition-colors hover:border-brandBlue/30 hover:text-brandBlue disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isStartingNew ? "Iniciando..." : "Crear otro reporte"}
+          </button>
+        </div>
         {monthsWithClasses.length === 0 ? (
           <p className="mt-2 text-sm text-textMuted">Este alumno todavía no tiene clases dictadas registradas.</p>
         ) : (
@@ -291,7 +370,17 @@ export function ReportesTabContent({
       )}
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-textSecondary">Historial de reportes</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-textSecondary">Historial de reportes</h2>
+          <button
+            type="button"
+            onClick={handleRetryCleanup}
+            disabled={isRetryingCleanup}
+            className="text-xs font-semibold text-textMuted underline hover:text-brandBlue disabled:opacity-60"
+          >
+            {isRetryingCleanup ? "Reintentando..." : "Reintentar limpieza pendiente"}
+          </button>
+        </div>
         {history.length === 0 ? (
           <p className="mt-2 text-sm text-textMuted">Todavía no se generó ningún reporte para este alumno.</p>
         ) : (

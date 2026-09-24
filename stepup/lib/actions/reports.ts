@@ -7,17 +7,17 @@ import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/l
 import {
   listReportRecordsForStudent,
   getReportRecord,
-  getReportRecordByOperationId,
   createReportRecord,
   attachReportPdf,
   getSignedReportPdfUrl,
   deleteReportRecord,
+  sweepPendingReportPdfCleanupJobs,
   ReportRecordNotFoundError,
 } from "@/lib/repositories/reports";
-import { claimReportDraft, releaseReportDraft } from "@/lib/repositories/report-drafts";
-import { isClaimStaleForRequest } from "@/lib/reports/draft-claim";
+import { claimReportDraft, startNewReportDraft, type ReportDraftTransition } from "@/lib/repositories/report-drafts";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import { getStudentMonthsWithClasses, computeSelectedMonthsRange, buildMonthsSummaryLabel } from "@/lib/reports/months";
+import { evaluateGenerateReportOutcome } from "@/lib/reports/generate-outcome";
 import { buildStudentReportData, type StudentReportData } from "@/lib/reports/student-report-data";
 import { buildDeterministicReportNarrative, type StudentReportTeacherNotes } from "@/lib/reports/narrative";
 import { renderReportPdf } from "@/lib/reports/pdf";
@@ -117,7 +117,16 @@ export interface GenerateStudentReportInput {
   includePunctualitySummary: boolean;
 }
 
-export async function generateStudentReportAction(input: GenerateStudentReportInput): Promise<ActionResult<{ reportId: string }>> {
+export interface GenerateStudentReportResult {
+  report: ReportRecordSummary;
+  /** true si esta llamada convergió en una fila YA existente en vez de crear una nueva (idempotencia real). */
+  reused: boolean;
+  /** true si la fila reutilizada YA estaba completa y corresponde a OTROS meses — nunca se devuelve en silencio como si fuera lo recién pedido. */
+  staleClaim: boolean;
+  warning: string | null;
+}
+
+export async function generateStudentReportAction(input: GenerateStudentReportInput): Promise<ActionResult<GenerateStudentReportResult>> {
   if (input.selectedMonths.length === 0) return { error: "Elegí al menos un mes." };
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -139,23 +148,16 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
     const monthsSummaryLabel = buildMonthsSummaryLabel(input.selectedMonths);
     const title = `Reporte de ${student.name} — ${monthsSummaryLabel}`;
 
-    // Reclama el borrador activo REAL (server-side) para este alumno. Dos
-    // requests concurrentes (doble clic, dos pestañas) convergen siempre
-    // en el mismo operation_id acá, sin importar nada que hayan calculado
-    // por separado en el cliente.
-    let operationId = await claimReportDraft(ctx, input.studentId);
-    const existing = await getReportRecordByOperationId(ctx, operationId);
-    if (isClaimStaleForRequest(existing ? { selectedMonths: existing.selectedMonths, pdfPath: existing.pdfPath } : null, input.selectedMonths)) {
-      // El claim activo pertenece a una generación anterior YA completa,
-      // con OTROS meses — la usuaria nunca liberó el claim de forma
-      // explícita (por ejemplo, la transición posterior al éxito falló),
-      // pero pide ahora algo genuinamente distinto. Nunca se le devuelve
-      // el reporte viejo: se rota el claim y se reclama uno nuevo.
-      await releaseReportDraft(ctx, input.studentId);
-      operationId = await claimReportDraft(ctx, input.studentId);
-    }
+    // Reclama (o reutiliza) el borrador activo REAL — atómico en la base
+    // vía RPC (`claim_report_draft`). Dos requests concurrentes (doble
+    // clic, dos pestañas, reintento tras respuesta perdida) convergen
+    // siempre en el mismo operation_id, sin importar nada calculado en el
+    // cliente. Nunca rota el claim acá — eso es una transición EXPLÍCITA
+    // aparte (`startNewReportDraftAction`), nunca automática dentro de la
+    // generación ni implícita en la previsualización.
+    const operationId = await claimReportDraft(ctx, input.studentId);
 
-    const record = await createReportRecord(ctx, {
+    const { record, wasCreated } = await createReportRecord(ctx, {
       operationId,
       studentId: input.studentId,
       title,
@@ -173,12 +175,36 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
       },
     });
 
-    // El PDF se renderiza SIEMPRE a partir de `record.snapshot` — nunca de
-    // las variables locales recién calculadas por ESTE request: si perdió
-    // la carrera de creación contra otro request concurrente, el snapshot
-    // realmente persistido puede pertenecer al ganador, y el PDF tiene que
-    // coincidir siempre con lo que la fila efectivamente guardó.
-    if (!record.pdfPath) {
+    const outcome = evaluateGenerateReportOutcome(
+      {
+        selectedMonths: record.selectedMonths,
+        pdfPath: record.pdfPath,
+        narrativeText: record.snapshot.narrativeText,
+        teacherNotes: record.snapshot.teacherNotes,
+        includeClassDetail: record.snapshot.includeClassDetail,
+        includePunctualitySummary: record.snapshot.includePunctualitySummary,
+      },
+      {
+        selectedMonths: input.selectedMonths,
+        narrativeText: input.narrativeText,
+        teacherNotes: input.teacherNotes,
+        includeClassDetail: input.includeClassDetail,
+        includePunctualitySummary: input.includePunctualitySummary,
+      },
+      wasCreated
+    );
+
+    // Claim obsoleto: la fila reutilizada ya estaba completa y pertenece a
+    // OTROS meses — nunca se renderiza/adjunta nada a nombre de este
+    // request (no es su reporte), y se devuelve el reporte canónico real
+    // junto con el aviso, nunca datos viejos disfrazados de nuevos.
+    if (!outcome.staleClaim && !record.pdfPath) {
+      // El PDF se renderiza SIEMPRE a partir de `record.snapshot` — nunca
+      // de las variables locales recién calculadas por ESTE request: si
+      // perdió la carrera de creación contra otro request concurrente, el
+      // snapshot realmente persistido puede pertenecer al ganador, y el
+      // PDF tiene que coincidir siempre con lo que la fila efectivamente
+      // guardó.
       const pdfBytes = await renderReportPdf({
         studentName: record.snapshot.studentName,
         title: record.title,
@@ -194,27 +220,44 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
     }
 
     revalidatePath(`/alumnos/${input.studentId}`);
-    return { data: { reportId: record.id } };
+    return {
+      data: {
+        report: {
+          id: record.id,
+          title: record.title,
+          selectedMonths: record.selectedMonths,
+          periodStart: record.periodStart,
+          periodEnd: record.periodEnd,
+          generatedAt: record.generatedAt,
+          hasPdf: outcome.staleClaim ? record.pdfPath !== null : true,
+        },
+        reused: outcome.reused,
+        staleClaim: outcome.staleClaim,
+        warning: outcome.warning,
+      },
+    };
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
 }
 
 /**
- * Transición EXPLÍCITA posterior a un éxito confirmado: sólo después de
- * que la pestaña recibió de verdad la respuesta de
- * `generateStudentReportAction` (nunca automáticamente en el servidor, lo
- * que rompería el reintento ante una respuesta perdida) libera el claim
- * activo, para que una generación nueva e intencional pueda reclamar un
- * `operation_id` distinto.
+ * Transición EXPLÍCITA para empezar una generación nueva — se dispara
+ * cuando la usuaria elige armar otro reporte (nunca automáticamente apenas
+ * llega una respuesta exitosa). Rota el `operation_id` server-side sólo si
+ * el borrador activo ya tiene un reporte completo (`start_new_report_draft`,
+ * atómica en Postgres); si sigue en curso, no rota nada. Devuelve
+ * `transition` para que el llamador (la UI) sepa si REALMENTE arrancó una
+ * operación nueva (`created`/`rotated`, seguro limpiar el formulario) o si
+ * el claim seguía en curso (`in_progress`, nunca hay que limpiar nada).
  */
-export async function startNewReportDraftAction(studentId: string): Promise<ActionResult> {
+export async function startNewReportDraftAction(studentId: string): Promise<ActionResult<{ transition: ReportDraftTransition }>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const student = await getStudent(ctx, studentId);
     if (!student) return { error: "Alumno no encontrado." };
-    await releaseReportDraft(ctx, studentId);
-    return {};
+    const { transition } = await startNewReportDraft(ctx, studentId);
+    return { data: { transition } };
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
@@ -226,7 +269,22 @@ export async function listStudentReportsAction(studentId: string): Promise<Actio
     const student = await getStudent(ctx, studentId);
     if (!student) return { error: "Alumno no encontrado." };
     const reports = await listReportRecordsForStudent(ctx, studentId);
+    // Reintento oportunista de limpieza pendiente — así un trabajo nunca
+    // queda abandonado sólo porque la usuaria no vuelve a eliminar otro
+    // reporte. Best-effort: nunca bloquea ni rompe la carga del historial.
+    await sweepPendingReportPdfCleanupJobs(ctx).catch(() => {});
     return { data: reports };
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+}
+
+/** Acción explícita de recuperación — reintenta toda limpieza de Storage pendiente del owner real, sin esperar a la próxima eliminación. */
+export async function retryPendingReportCleanupAction(): Promise<ActionResult<{ resolvedCount: number }>> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const resolvedCount = await sweepPendingReportPdfCleanupJobs(ctx);
+    return { data: { resolvedCount } };
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }

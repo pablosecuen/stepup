@@ -19,7 +19,7 @@ import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
 import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/dates";
 import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/lesson-registrations";
-import { listReportRecordsForStudent } from "@/lib/repositories/reports";
+import { listReportRecordsForStudent, sweepPendingReportPdfCleanupJobs } from "@/lib/repositories/reports";
 import { getStudentMonthsWithClasses } from "@/lib/reports/months";
 import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 
@@ -81,7 +81,15 @@ export default async function AlumnoProfilePage({
       ]);
     }
     if (student && tab === "reportes") {
-      const [registrationsForReport, history] = await Promise.all([listCompletedRegistrationsForStudentReport(ctx, id), listReportRecordsForStudent(ctx, id)]);
+      // Reintento oportunista de la cola de limpieza de PDFs huérfanos —
+      // esta carga real de la página es uno de los puntos donde debe
+      // reintentarse (además de tras cada eliminación), sin cron. Nunca
+      // bloquea ni rompe la carga del historial si falla.
+      const [registrationsForReport, history] = await Promise.all([
+        listCompletedRegistrationsForStudentReport(ctx, id),
+        listReportRecordsForStudent(ctx, id),
+        sweepPendingReportPdfCleanupJobs(ctx).catch(() => 0),
+      ]);
       monthsWithClasses = getStudentMonthsWithClasses(
         registrationsForReport.map((r) => ({ countsAsClass: true, dateKey: r.dateKey })),
         todayDateKey
