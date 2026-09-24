@@ -562,9 +562,29 @@ export interface ReportDraftClaimRow {
 }
 
 /**
- * Tablas que YA EXISTEN en este mismo proyecto Supabase, creadas por la app
- * móvil — nunca redefinidas acá. Documentadas sólo para referencia de
- * futuras fases (Fase 8: sesiones; Fase 9: backup).
+ * `active_sessions` — YA EXISTE en este mismo proyecto Supabase, creada por
+ * la app móvil (control de "un solo dispositivo autorizado" para su modelo
+ * local-first). Fila real confirmada por introspección directa
+ * (`information_schema.columns`, Fase 8) — nunca inventada. Una única fila
+ * por `user_id` (no hay PK explícita documentada localmente, pero el
+ * `ON CONFLICT (user_id)` real de `transfer_active_session` lo confirma). Sin
+ * políticas RLS de insert/update/delete: toda escritura pasa por las 3 RPC
+ * `security definer` de abajo, que resuelven `auth.uid()` en servidor.
+ */
+export interface ActiveSessionRow {
+  user_id: UUID;
+  device_id: string;
+  generation: number;
+  authorized_at: ISODateTimeString;
+  expires_at: ISODateTimeString;
+  last_seen_at: ISODateTimeString;
+}
+
+/**
+ * Tablas/RPC que YA EXISTEN en este mismo proyecto Supabase, creadas por la
+ * app móvil — nunca redefinidas acá. `delete_own_account()` confirmada por
+ * introspección real (Fase 8): sin parámetros, `security definer`, resuelve
+ * `auth.uid()` internamente — nunca recibe un id del cliente.
  */
 export interface ExistingMobileManagedTables {
   active_sessions: "gestionada por la app móvil — transfer_active_session/touch_active_session/end_active_session (RPC)";

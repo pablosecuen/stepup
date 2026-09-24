@@ -27,6 +27,13 @@ const config: Config = {
         statusSinDatos: "#9499A1",
         ink: "#080808",
         ivory: "#F2EEDF",
+        // Exclusivos del plan 50/30/20 (Fase 8, `Resumen financiero`/
+        // `budgetDistributionStore.ts` móvil) — nunca reutilizar para otra
+        // pantalla (regla congelada, ver CLAUDE.md del repo móvil).
+        pastelLavender: "#E9E2FF",
+        pastelLavenderText: "#5A4780",
+        pastelSage: "#DDEDDC",
+        pastelSageText: "#35613B",
       },
       borderRadius: {
         sm: "8px",
