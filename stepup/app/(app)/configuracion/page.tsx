@@ -137,7 +137,11 @@ async function ConfiguredSections({ email }: { email: string | null }) {
         <ActiveSessionCard session={session} />
       </SectionCard>
 
-      <SectionCard title="Respaldo" description="Copias de seguridad de tus datos." />
+      <SectionCard title="Respaldo" description="Copias de seguridad de tus datos.">
+        <Link href="/configuracion/respaldo" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+          Recuperar datos del respaldo →
+        </Link>
+      </SectionCard>
     </ul>
   );
 }
