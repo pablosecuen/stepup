@@ -5,11 +5,12 @@ import {
   toStudentRecord,
   validateNewStudentInput,
   validateUpdateStudentInput,
-  studentInputToRowPatch,
+  studentInputToRpcPayload,
   updateInputToRowPatch,
   type StudentRecord,
   type NewStudentInput,
   type UpdateStudentInput,
+  type StudentDuplicateCandidate,
 } from "./students-mapping";
 
 /**
@@ -27,7 +28,7 @@ import {
  * consultas/vistas separadas que cruzan calendar_lessons/payment_charges,
  * nunca duplicados como columna.
  */
-export type { StudentRecord, NewStudentInput, UpdateStudentInput } from "./students-mapping";
+export type { StudentRecord, NewStudentInput, UpdateStudentInput, StudentDuplicateCandidate } from "./students-mapping";
 
 /**
  * Lista todos los alumnos del profesor autenticado. RLS ya garantiza el
@@ -55,27 +56,75 @@ export async function getStudent(ctx: AuthenticatedDbContext, id: string): Promi
   return data ? toStudentRecord(data as StudentRow) : null;
 }
 
+export interface CreateStudentOptions {
+  /**
+   * Id del borrador ("claim") reclamado server-side por
+   * `claimStudentCreation()` (ver `lib/repositories/student-drafts.ts`) —
+   * NUNCA un id generado en el navegador. La identidad real de la
+   * operación de alta vive enteramente en el servidor; este repositorio
+   * sólo la reenvía tal cual la recibió de la página.
+   */
+  claimId: string;
+  /** true sólo en el reenvío explícito "Es otra persona, crear igualmente". */
+  confirmDuplicate?: boolean;
+}
+
+export type CreateStudentResult =
+  | { status: "created"; student: StudentRecord; replayed: boolean }
+  | { status: "possible_duplicate"; candidates: StudentDuplicateCandidate[] };
+
+interface CreateStudentViaWebRow {
+  status: "created" | "possible_duplicate";
+  student_id: string | null;
+  replayed: boolean;
+  candidates: Array<{ id: string; name: string; phone: string | null; email: string | null; match_signals: string[] }> | null;
+}
+
 /**
- * Crea un alumno nuevo. Nunca genera el `id`/`owner_id` fuera de este
- * repositorio (el default `gen_random_uuid()` de la base decide el id
- * real; `owner_id` siempre viene de la sesión autenticada, nunca de un
- * argumento del llamador).
+ * Crea un alumno nuevo sobre un borrador ya reclamado — coordinada (Fase
+ * 2, corrección de carrera real): pasa siempre por la RPC
+ * `create_student_via_web`, NUNCA un `.insert()` directo (esa RPC
+ * comparte el mismo advisory lock por owner que `apply_backup_import`,
+ * así una alta manual nunca puede entrelazarse con una importación de
+ * respaldo en curso). Nunca genera el `id`/`owner_id` fuera del servidor;
+ * los candidatos de posible duplicado tampoco se generan acá — el
+ * servidor los calcula, almacena y revalida enteramente dentro de la RPC.
  */
 export async function createStudent(
   ctx: AuthenticatedDbContext,
-  input: NewStudentInput
-): Promise<StudentRecord> {
+  input: NewStudentInput,
+  options: CreateStudentOptions
+): Promise<CreateStudentResult> {
   const errors = validateNewStudentInput(input);
   if (errors.length > 0) {
     throw new Error(`Alumno inválido: ${errors.map((e) => e.message).join(" ")}`);
   }
-  const { data, error } = await ctx.supabase
-    .from("students")
-    .insert(studentInputToRowPatch(input, ctx.ownerId))
-    .select("*")
-    .single();
+  const { data, error } = await ctx.supabase.rpc("create_student_via_web", {
+    p_claim_id: options.claimId,
+    p_payload: studentInputToRpcPayload(input),
+    p_confirm_duplicate: options.confirmDuplicate ?? false,
+  });
   if (error) throw error;
-  return toStudentRecord(data as StudentRow);
+  const row = (data as CreateStudentViaWebRow[])[0];
+  if (!row) throw new Error("La creación del alumno no devolvió resultado.");
+
+  if (row.status === "possible_duplicate") {
+    return {
+      status: "possible_duplicate",
+      candidates: (row.candidates ?? []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        matchSignals: c.match_signals ?? [],
+      })),
+    };
+  }
+
+  if (!row.student_id) throw new Error("El alumno se creó pero no se devolvió su id.");
+  const created = await getStudent(ctx, row.student_id);
+  if (!created) throw new Error("El alumno se creó pero no se pudo leer.");
+  return { status: "created", student: created, replayed: row.replayed };
 }
 
 /**

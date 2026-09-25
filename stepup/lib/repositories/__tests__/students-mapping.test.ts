@@ -4,6 +4,7 @@ import {
   toStudentRecord,
   validateNewStudentInput,
   studentInputToRowPatch,
+  studentInputToRpcPayload,
   updateInputToRowPatch,
 } from "../students-mapping.ts";
 import type { StudentRow } from "../../db/database.types.ts";
@@ -162,6 +163,23 @@ test("studentInputToRowPatch: owner_id siempre viene del segundo argumento (la s
   );
   assert.equal(patch.owner_id, "real-session-owner");
   assert.equal("ownerId" in patch, false, "el input nunca puede inyectar su propio owner_id");
+});
+
+test("studentInputToRpcPayload: mismos defaults reales que studentInputToRowPatch, en camelCase para la RPC create_student_via_web", () => {
+  const payload = studentInputToRpcPayload({
+    name: "  Pedro Gómez  ",
+    modality: "presencial",
+    category: "secundaria",
+    billingType: "mensual",
+    dateJoined: "2026-09-16",
+    price: 18000,
+  });
+  assert.equal(payload.name, "Pedro Gómez");
+  assert.equal(payload.usualDurationMinutes, 60);
+  assert.equal(payload.weeklyFrequency, 1);
+  assert.equal(payload.initialLevel, "");
+  assert.deepEqual(payload.levels, []);
+  assert.equal("ownerId" in payload, false, "owner_id nunca viaja en el payload — lo resuelve auth.uid() en el servidor");
 });
 
 test("updateInputToRowPatch: sólo incluye los campos realmente provistos — un patch parcial nunca sobrescribe el resto con undefined", () => {

@@ -562,6 +562,27 @@ export interface ReportDraftClaimRow {
 }
 
 /**
+ * `student_creation_claims` (Fase 2, corrección de carrera real —
+ * `20260927100000_student_creation_race_fix.sql`) — el borrador
+ * server-side de una alta manual de alumno. `status='created'` es
+ * terminal e inmutable (`student_id` queda fijo). Los campos de
+ * candidatos son autoridad del SERVIDOR, nunca del navegador.
+ */
+export interface StudentCreationClaimRow {
+  id: UUID;
+  owner_id: UUID;
+  status: "pending" | "created";
+  student_id: UUID | null;
+  candidate_ids: UUID[] | null;
+  candidates_snapshot: unknown;
+  candidates_fingerprint: string | null;
+  created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
+  completed_at: ISODateTimeString | null;
+  expires_at: ISODateTimeString;
+}
+
+/**
  * `active_sessions` — YA EXISTE en este mismo proyecto Supabase, creada por
  * la app móvil (control de "un solo dispositivo autorizado" para su modelo
  * local-first). Fila real confirmada por introspección directa

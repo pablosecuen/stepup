@@ -10,6 +10,7 @@ import {
   StudentNotFoundError,
   type NewStudentInput,
   type UpdateStudentInput,
+  type StudentDuplicateCandidate,
 } from "@/lib/repositories/students";
 import {
   createCustomLevel,
@@ -29,6 +30,15 @@ import type { BillingType, StudentCategory, StudentModality, StudentStatus } fro
 
 export interface FormState {
   error?: string;
+  /**
+   * Presente sólo cuando `create_student_via_web` encontró posibles
+   * coincidencias y todavía no se confirmó "es otra persona" — CERO
+   * escritura mientras este campo esté presente. `changed=true` significa
+   * que este resultado llegó DESPUÉS de intentar confirmar — el conjunto
+   * de candidatos cambió desde la última revisión y el servidor exige una
+   * revisión nueva antes de permitir insertar.
+   */
+  duplicate?: { candidates: StudentDuplicateCandidate[]; changed: boolean };
 }
 
 function readString(formData: FormData, key: string): string {
@@ -81,16 +91,31 @@ export async function createStudentAction(_prevState: FormState, formData: FormD
     notes: readOptionalString(formData, "notes"),
   };
 
-  let created;
+  const claimId = readString(formData, "claimId").trim();
+  if (!claimId) {
+    return { error: "Ocurrió un error inesperado. Recargá la página e intentá de nuevo." };
+  }
+  const confirmDuplicate = readString(formData, "confirmDuplicate").trim() === "true";
+
+  let result;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    created = await createStudent(ctx, input);
+    result = await createStudent(ctx, input, { claimId, confirmDuplicate });
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
 
+  if (result.status === "possible_duplicate") {
+    // Si se pedía confirmar y igual volvió "possible_duplicate", el
+    // servidor detectó que el conjunto de candidatos cambió desde la
+    // última revisión y rechazó la creación — nunca porque el cliente
+    // haya mandado algo inválido (esta RPC ya no recibe ningún id de
+    // candidato del navegador).
+    return { duplicate: { candidates: result.candidates, changed: confirmDuplicate } };
+  }
+
   revalidatePath("/alumnos");
-  redirect(`/alumnos/${created.id}`);
+  redirect(`/alumnos/${result.student.id}`);
 }
 
 // ---------------------------------------------------------------------------
