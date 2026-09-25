@@ -3,8 +3,11 @@ import assert from "node:assert/strict";
 import {
   toImportPreviewDto,
   computeConfirmationSummary,
+  maskContact,
   type RawPreviewResult,
   type ImportSelections,
+  type BackupStudentSummaryMap,
+  type CandidateStudentSummaryMap,
 } from "../import-preview-mapping.ts";
 
 function baseRaw(overrides: Partial<RawPreviewResult["classification"]> = {}): RawPreviewResult {
@@ -280,4 +283,159 @@ test("computeConfirmationSummary: componentes financieras insertables suman sus 
   const dto = toImportPreviewDto(raw);
   const summary = computeConfirmationSummary(dto, EMPTY_SELECTIONS);
   assert.equal(summary.rowsToCreate, 3);
+});
+
+// ---------------------------------------------------------------------------
+// Corrección de UX post-E2E (Fase 9): identidad humana en el panel de
+// posibles duplicados -- nunca por posición, siempre por id real.
+// ---------------------------------------------------------------------------
+
+function rawDuplicate(backupLegacyMobileId: string, candidateStudentId: string) {
+  return {
+    backup_legacy_mobile_id: backupLegacyMobileId,
+    candidate_student_id: candidateStudentId,
+    match_signals: ["name"],
+    candidate_fingerprint: "no-debe-llegar-al-dto",
+    field_diff: {},
+  };
+}
+
+test("toImportPreviewDto: el DTO de un duplicado sólo trae los campos humanos autorizados, nada técnico", () => {
+  const raw = baseRaw({
+    maestros: {
+      students: { inserts: [], equal: [], conflicts: [], duplicates: [rawDuplicate("bkp1", "row-1")] },
+      custom_levels: { inserts: [], equal: [], conflicts: [] },
+      teacher_profiles: { present_in_backup: false },
+      budget_distribution_settings: { present_in_backup: false },
+      teacher_availability: { present_in_backup: false },
+    },
+  });
+  const backupStudents: BackupStudentSummaryMap = { bkp1: { name: "Juan Perez", levels: ["A1"], status: "activo", phone: "11 5555-1234", email: "juan@mail.com" } };
+  const candidateStudents: CandidateStudentSummaryMap = { "row-1": { name: "Juan P.", levels: ["A2"], status: "pausado", phone: null, email: "j@mail.com" } };
+  const dto = toImportPreviewDto(raw, { backupStudents, candidateStudents });
+  const d = dto.students.duplicates[0];
+
+  assert.deepEqual(Object.keys(d).sort(), ["backupLegacyMobileId", "backupStudent", "candidateStudentId", "candidateStudent", "fieldDiff", "matchSignals"].sort());
+  assert.deepEqual(Object.keys(d.backupStudent).sort(), ["contactMasked", "level", "name", "status"].sort());
+  assert.deepEqual(Object.keys(d.candidateStudent).sort(), ["contactMasked", "level", "name", "status"].sort());
+  assert.equal(d.backupStudent.name, "Juan Perez");
+  assert.equal(d.candidateStudent.name, "Juan P.");
+  const serialized = JSON.stringify(dto);
+  assert.equal(serialized.includes("no-debe-llegar-al-dto"), false, "candidate_fingerprint nunca debe cruzar al navegador");
+  assert.equal(serialized.includes("owner_id"), false, "owner_id nunca debe cruzar al navegador");
+});
+
+test("toImportPreviewDto: la identidad de cada duplicado se asocia por id real, nunca por posicion/orden", () => {
+  const raw = baseRaw({
+    maestros: {
+      students: {
+        inserts: [],
+        equal: [],
+        conflicts: [],
+        duplicates: [rawDuplicate("bkpA", "rowA"), rawDuplicate("bkpB", "rowB")],
+      },
+      custom_levels: { inserts: [], equal: [], conflicts: [] },
+      teacher_profiles: { present_in_backup: false },
+      budget_distribution_settings: { present_in_backup: false },
+      teacher_availability: { present_in_backup: false },
+    },
+  });
+  // Los mapas se arman en orden INVERSO a las duplicates: si el mapeo fuera
+  // por posicion en vez de por id, esto rompería la asociación.
+  const backupStudents: BackupStudentSummaryMap = { bkpB: { name: "Alumno B backup" }, bkpA: { name: "Alumno A backup" } };
+  const candidateStudents: CandidateStudentSummaryMap = { rowB: { name: "Alumno B web" }, rowA: { name: "Alumno A web" } };
+  const dto = toImportPreviewDto(raw, { backupStudents, candidateStudents });
+
+  const a = dto.students.duplicates.find((d) => d.backupLegacyMobileId === "bkpA")!;
+  const b = dto.students.duplicates.find((d) => d.backupLegacyMobileId === "bkpB")!;
+  assert.equal(a.candidateStudentId, "rowA");
+  assert.equal(a.backupStudent.name, "Alumno A backup");
+  assert.equal(a.candidateStudent.name, "Alumno A web");
+  assert.equal(b.candidateStudentId, "rowB");
+  assert.equal(b.backupStudent.name, "Alumno B backup");
+  assert.equal(b.candidateStudent.name, "Alumno B web");
+});
+
+test("toImportPreviewDto: dos alumnos con el mismo nombre se siguen diferenciando por nivel/estado/contacto", () => {
+  const raw = baseRaw({
+    maestros: {
+      students: {
+        inserts: [],
+        equal: [],
+        conflicts: [],
+        duplicates: [rawDuplicate("bkp1", "row-1"), rawDuplicate("bkp2", "row-2")],
+      },
+      custom_levels: { inserts: [], equal: [], conflicts: [] },
+      teacher_profiles: { present_in_backup: false },
+      budget_distribution_settings: { present_in_backup: false },
+      teacher_availability: { present_in_backup: false },
+    },
+  });
+  const backupStudents: BackupStudentSummaryMap = {
+    bkp1: { name: "Ana Garcia", levels: ["A1"], status: "activo", phone: "1111111111" },
+    bkp2: { name: "Ana Garcia", levels: ["B2"], status: "pausado", phone: "2222222222" },
+  };
+  const dto = toImportPreviewDto(raw, { backupStudents, candidateStudents: {} });
+  const [d1, d2] = dto.students.duplicates;
+  assert.equal(d1.backupStudent.name, d2.backupStudent.name);
+  assert.notEqual(d1.backupStudent.level, d2.backupStudent.level);
+  assert.notEqual(d1.backupStudent.status, d2.backupStudent.status);
+  assert.notEqual(d1.backupStudent.contactMasked, d2.backupStudent.contactMasked);
+});
+
+test("toImportPreviewDto: sin nombre/contacto resuelto, fallback legible, nunca vacio ni un id", () => {
+  const raw = baseRaw({
+    maestros: {
+      students: { inserts: [], equal: [], conflicts: [], duplicates: [rawDuplicate("bkp-desconocido", "row-desconocida")] },
+      custom_levels: { inserts: [], equal: [], conflicts: [] },
+      teacher_profiles: { present_in_backup: false },
+      budget_distribution_settings: { present_in_backup: false },
+      teacher_availability: { present_in_backup: false },
+    },
+  });
+  const dto = toImportPreviewDto(raw, { backupStudents: {}, candidateStudents: {} });
+  const d = dto.students.duplicates[0];
+  assert.ok(d.backupStudent.name.length > 0);
+  assert.notEqual(d.backupStudent.name, "bkp-desconocido");
+  assert.equal(d.backupStudent.level, undefined);
+  assert.equal(d.backupStudent.contactMasked, undefined);
+  assert.ok(d.candidateStudent.name.length > 0);
+  assert.notEqual(d.candidateStudent.name, "row-desconocida");
+});
+
+test("maskContact: nunca devuelve el telefono/email completo", () => {
+  assert.equal(maskContact("11 5555-1234", null), "Tel. terminado en 1234");
+  assert.equal(maskContact(null, "profesora@dominio.com"), "p•••@dominio.com");
+  assert.equal(maskContact(null, null), undefined);
+  const masked = maskContact("11 5555-1234", null)!;
+  assert.equal(masked.includes("5555"), false);
+  assert.equal(masked.includes("1155551234"), false);
+});
+
+test("toImportPreviewDto: regresion -- link/create_separate/skip siguen combinando bien con la nueva forma del duplicado", () => {
+  const raw = baseRaw({
+    maestros: {
+      students: {
+        inserts: [{ legacy_mobile_id: "alta1" }],
+        equal: [],
+        conflicts: [],
+        duplicates: [rawDuplicate("bkpLink", "rowLink"), rawDuplicate("bkpSep", "rowSep"), rawDuplicate("bkpSkip", "rowSkip")],
+      },
+      custom_levels: { inserts: [], equal: [], conflicts: [] },
+      teacher_profiles: { present_in_backup: false },
+      budget_distribution_settings: { present_in_backup: false },
+      teacher_availability: { present_in_backup: false },
+    },
+  });
+  const dto = toImportPreviewDto(raw, {
+    backupStudents: { bkpLink: { name: "Vincular" }, bkpSep: { name: "Separar" }, bkpSkip: { name: "Omitir" } },
+    candidateStudents: { rowLink: { name: "Vincular web" }, rowSep: { name: "Separar web" }, rowSkip: { name: "Omitir web" } },
+  });
+  const summary = computeConfirmationSummary(dto, {
+    fieldOverridesByRow: {},
+    duplicateDecisions: { bkpLink: "link", bkpSep: "create_separate", bkpSkip: "skip" },
+  });
+  assert.equal(summary.studentsToLink, 1);
+  assert.equal(summary.duplicatesToCreateSeparately, 1);
+  assert.equal(summary.rowsToCreate, 1 + 1);
 });

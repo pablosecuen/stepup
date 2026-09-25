@@ -42,6 +42,71 @@ export interface RawStudentDuplicate {
   field_diff: RawFieldDiffMap;
 }
 
+// ---------------------------------------------------------------------------
+// Identidad humana de cada lado de un posible duplicado (Fase 9, corrección
+// de UX real post-E2E: el panel nunca mostraba a QUÉ alumno se refería cada
+// decisión). Se arma con datos YA RESUELTOS por el servidor (fila real del
+// backup + fila real de `students`) — esta función sigue siendo pura, nunca
+// hace red acá; quien llama a `toImportPreviewDto` es responsable de
+// resolver ambos mapas antes. `candidateStudentId` sigue siendo la ÚNICA
+// clave real que ata una decisión a un candidato — el nombre es puramente
+// informativo, nunca se usa para asociar nada.
+// ---------------------------------------------------------------------------
+
+export interface RawDuplicatePersonSource {
+  name: string;
+  levels?: string[] | null;
+  initialLevel?: string | null;
+  status?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+/** `backup_legacy_mobile_id` -> datos reales de esa fila en el backup (para el lado "backup" del panel). */
+export type BackupStudentSummaryMap = Record<string, RawDuplicatePersonSource | undefined>;
+/** `candidate_student_id` -> fila real de `students` (para el lado "ya existe en la web" del panel). */
+export type CandidateStudentSummaryMap = Record<string, RawDuplicatePersonSource | undefined>;
+
+function levelLabel(source: RawDuplicatePersonSource | undefined): string | undefined {
+  if (!source) return undefined;
+  if (source.levels && source.levels.length > 0) return source.levels.join(", ");
+  if (source.initialLevel) return source.initialLevel;
+  return undefined;
+}
+
+/**
+ * Enmascara el contacto para el panel de duplicados — nunca el dato
+ * completo, sólo lo mínimo para diferenciar dos personas ("terminado en
+ * 1234" / inicial de email). Prioriza teléfono sobre email si hay ambos
+ * (es el dato que más suele diferenciar en la práctica real).
+ */
+export function maskContact(phone?: string | null, email?: string | null): string | undefined {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length >= 4) return `Tel. terminado en ${digits.slice(-4)}`;
+  if (email && email.includes("@")) {
+    const [user, domain] = email.split("@");
+    if (user && domain) return `${user.slice(0, 1)}•••@${domain}`;
+  }
+  return undefined;
+}
+
+export interface DuplicatePersonSummary {
+  /** Nunca vacío: si no hay nombre real resuelto, es un fallback legible explícito, nunca un id ni un string vacío. */
+  name: string;
+  level?: string;
+  status?: string;
+  contactMasked?: string;
+}
+
+function toDuplicatePersonSummary(source: RawDuplicatePersonSource | undefined, fallbackName: string): DuplicatePersonSummary {
+  return {
+    name: source?.name && source.name.trim() !== "" ? source.name : fallbackName,
+    level: levelLabel(source),
+    status: source?.status ?? undefined,
+    contactMasked: maskContact(source?.phone, source?.email),
+  };
+}
+
 export interface RawMasterBucket {
   inserts: RawMasterInsert[];
   equal: RawMasterEqual[];
@@ -148,6 +213,10 @@ export interface StudentDuplicate {
   candidateStudentId: string;
   matchSignals: string[];
   fieldDiff: FieldDiffMap;
+  /** Alumno tal como viene en el backup — sólo informativo, nunca se usa para asociar la decisión. */
+  backupStudent: DuplicatePersonSummary;
+  /** Alumno ya existente en la web (mismo id que `candidateStudentId`) — sólo informativo. */
+  candidateStudent: DuplicatePersonSummary;
 }
 
 export interface MasterBucket {
@@ -265,8 +334,17 @@ function toExcludedCollections(raw: RawExcludedCollections): ExcludedCollections
   };
 }
 
-/** Única puerta real entre la forma cruda de Postgres y lo que ve el navegador — nunca deja pasar `candidate_fingerprint` ni ningún otro campo técnico. */
-export function toImportPreviewDto(raw: RawPreviewResult): ImportPreviewDto {
+/**
+ * Única puerta real entre la forma cruda de Postgres y lo que ve el
+ * navegador — nunca deja pasar `candidate_fingerprint` ni ningún otro campo
+ * técnico. `duplicateContext` trae los datos humanos YA RESUELTOS por quien
+ * llama (fila real del backup + fila real de `students`, ver
+ * `lib/repositories/backup-import.ts`) — esta función sigue sin tocar red.
+ */
+export function toImportPreviewDto(
+  raw: RawPreviewResult,
+  duplicateContext: { backupStudents: BackupStudentSummaryMap; candidateStudents: CandidateStudentSummaryMap } = { backupStudents: {}, candidateStudents: {} }
+): ImportPreviewDto {
   return {
     previewId: raw.previewId,
     expiresAt: raw.expiresAt,
@@ -277,6 +355,8 @@ export function toImportPreviewDto(raw: RawPreviewResult): ImportPreviewDto {
         candidateStudentId: d.candidate_student_id,
         matchSignals: d.match_signals,
         fieldDiff: d.field_diff,
+        backupStudent: toDuplicatePersonSummary(duplicateContext.backupStudents[d.backup_legacy_mobile_id], "Alumno del backup sin nombre disponible"),
+        candidateStudent: toDuplicatePersonSummary(duplicateContext.candidateStudents[d.candidate_student_id], "Alumno existente sin nombre disponible"),
         // candidate_fingerprint deliberadamente omitido.
       })),
     },

@@ -2,7 +2,8 @@
 
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { validateBackupPayload } from "@/lib/backup/validation";
-import { toImportPreviewDto, type ImportPreviewDto } from "@/lib/backup/import-preview-mapping";
+import { toImportPreviewDto, type ImportPreviewDto, type BackupStudentSummaryMap, type RawDuplicatePersonSource } from "@/lib/backup/import-preview-mapping";
+import { toHumanBlockedRow, UNDO_BLOCKED_EXPLANATION, type UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import {
   fetchOwnLatestCloudBackup,
   previewBackupImport,
@@ -11,10 +12,11 @@ import {
   applyUndoBackupImport,
   discardImportUndo,
   listImportRuns,
+  fetchStudentsSummaryByIds,
+  resolveUndoBlockers,
   type FieldOverride,
   type DuplicateDecision,
   type ApplyRunSummary,
-  type PreviewUndoResult,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 
@@ -73,12 +75,33 @@ export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ p
       validation.backup as unknown as Record<string, unknown>,
       validation.excludedCollections as unknown as Record<string, unknown>
     );
-    const preview = toImportPreviewDto({
-      previewId: result.previewId,
-      expiresAt: result.expiresAt,
-      classification: result.classification,
-      excludedCollections: result.excludedCollections,
-    });
+
+    // Corrección de UX post-E2E: el panel de "posible duplicado" necesita
+    // identificar a ambos alumnos por nombre — se resuelve acá, server-side,
+    // ANTES del DTO. El backup ya está en memoria (validado); el candidato
+    // web se lee de verdad (RLS + owner explícito).
+    const duplicates = result.classification.maestros.students.duplicates;
+    const backupStudents: BackupStudentSummaryMap = {};
+    for (const legacyId of duplicates.map((d) => d.backup_legacy_mobile_id)) {
+      const raw = validation.backup.students.find((s) => s.id === legacyId);
+      if (raw) {
+        backupStudents[legacyId] = { name: raw.name, levels: raw.levels, initialLevel: raw.initialLevel, status: raw.status, phone: raw.phone, email: raw.email } satisfies RawDuplicatePersonSource;
+      }
+    }
+    const candidateStudents = await fetchStudentsSummaryByIds(
+      ctx,
+      duplicates.map((d) => d.candidate_student_id)
+    );
+
+    const preview = toImportPreviewDto(
+      {
+        previewId: result.previewId,
+        expiresAt: result.expiresAt,
+        classification: result.classification,
+        excludedCollections: result.excludedCollections,
+      },
+      { backupStudents, candidateStudents }
+    );
     return { data: { preview } };
   } catch (error) {
     return { error: friendlyError(error) };
@@ -99,11 +122,25 @@ export async function applyImportPreviewAction(
   }
 }
 
-export async function previewUndoImportAction(importRunId: string): Promise<ActionResult<PreviewUndoResult>> {
+export async function previewUndoImportAction(importRunId: string): Promise<ActionResult<UndoBlockedPreview>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const result = await previewUndoBackupImport(ctx, importRunId);
-    return { data: result };
+    if (result.isSafe) {
+      return { data: { undoPreviewId: result.undoPreviewId, isSafe: true, explanation: "", blockedRows: [] } };
+    }
+    // Corrección de UX post-E2E: nunca devolver table_name/row_id crudos —
+    // se resuelven a nombre real de alumno + fecha/concepto real ANTES de
+    // que esto vuelva al cliente.
+    const resolved = await resolveUndoBlockers(ctx, result.unsafeRows);
+    return {
+      data: {
+        undoPreviewId: result.undoPreviewId,
+        isSafe: false,
+        explanation: UNDO_BLOCKED_EXPLANATION,
+        blockedRows: resolved.map(toHumanBlockedRow),
+      },
+    };
   } catch (error) {
     return { error: friendlyError(error) };
   }

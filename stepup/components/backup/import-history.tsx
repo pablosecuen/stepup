@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { listImportRunsAction, previewUndoImportAction, applyUndoImportAction, discardImportUndoAction } from "@/lib/actions/backup";
 import { computeUndoAvailability, type ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import type { PreviewUndoResult } from "@/lib/repositories/backup-import";
+import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { LoadingState } from "@/components/ui/states";
 
@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [undoState, setUndoState] = useState<PreviewUndoResult | null>(null);
+  const [undoState, setUndoState] = useState<UndoBlockedPreview | null>(null);
 
   const availability = computeUndoAvailability(run, new Date());
 
@@ -129,11 +129,16 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
             </>
           ) : (
             <>
-              <p className="text-xs text-statusRojo">No se puede deshacer automáticamente: hay datos creados después que dependen de ella. Nada se tocó.</p>
+              <p className="text-xs text-statusRojo">{undoState.explanation}</p>
               <ul className="mt-1 flex flex-col gap-1 text-xs text-textMuted">
-                {undoState.unsafeRows.map((r, i) => (
+                {undoState.blockedRows.map((r, i) => (
                   <li key={i}>
-                    {r.tableName} {r.rowId ?? ""} — {r.reason}
+                    {r.entityLabel} tiene datos posteriores que dependen de él:
+                    <ul className="ml-3 mt-0.5 list-disc">
+                      {r.dependencies.map((dep, j) => (
+                        <li key={j}>{dep}</li>
+                      ))}
+                    </ul>
                   </li>
                 ))}
               </ul>

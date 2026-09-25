@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { analyzeLatestCloudBackupAction, applyImportPreviewAction, previewUndoImportAction, applyUndoImportAction, discardImportUndoAction } from "@/lib/actions/backup";
-import type { FieldOverride, DuplicateDecision, PreviewUndoResult, ApplyRunSummary } from "@/lib/repositories/backup-import";
+import type { FieldOverride, DuplicateDecision, ApplyRunSummary } from "@/lib/repositories/backup-import";
+import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import {
   computeConfirmationSummary,
   STRONG_CONFIRMATION_PHRASE,
@@ -193,7 +194,7 @@ export function BackupImportWizard() {
   const [duplicateDecisions, setDuplicateDecisions] = useState<Record<string, DuplicateDecision["decision"]>>({});
   const [strongConfirmInput, setStrongConfirmInput] = useState("");
   const [applyResult, setApplyResult] = useState<{ importRunId: string; summary: ApplyRunSummary } | null>(null);
-  const [undoState, setUndoState] = useState<PreviewUndoResult | null>(null);
+  const [undoState, setUndoState] = useState<UndoBlockedPreview | null>(null);
   const [undoDone, setUndoDone] = useState(false);
 
   const confirmationSummary = useMemo(() => {
@@ -385,9 +386,28 @@ export function BackupImportWizard() {
             <div className="mt-2 flex flex-col gap-2">
               {preview.students.duplicates.map((d) => (
                 <div key={d.backupLegacyMobileId} className="rounded-md border border-statusAmarillo/40 bg-statusAmarillo/5 p-2.5">
-                  <p className="text-xs font-medium text-textSecondary">
-                    Posible duplicado (coincide por: {d.matchSignals.join(", ")}) — ¿es la misma persona?
-                  </p>
+                  <p className="text-xs font-medium text-textSecondary">¿Es la misma persona?</p>
+                  <dl className="mt-1.5 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold text-textPrimary">Alumno del backup</dt>
+                      <dd className="text-textSecondary">
+                        {d.backupStudent.name}
+                        {[d.backupStudent.level, d.backupStudent.status, d.backupStudent.contactMasked].filter(Boolean).length > 0 && (
+                          <span className="block text-textMuted">{[d.backupStudent.level, d.backupStudent.status, d.backupStudent.contactMasked].filter(Boolean).join(" · ")}</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-textPrimary">Alumno ya existente en la web</dt>
+                      <dd className="text-textSecondary">
+                        {d.candidateStudent.name}
+                        {[d.candidateStudent.level, d.candidateStudent.status, d.candidateStudent.contactMasked].filter(Boolean).length > 0 && (
+                          <span className="block text-textMuted">{[d.candidateStudent.level, d.candidateStudent.status, d.candidateStudent.contactMasked].filter(Boolean).join(" · ")}</span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-1 text-[11px] text-textMuted">Coincide por: {d.matchSignals.join(", ")}</p>
                   <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
                     {(["link", "create_separate", "skip"] as const).map((opt) => (
                       <label key={opt} className="flex items-center gap-1.5">
@@ -620,23 +640,16 @@ export function BackupImportWizard() {
               </>
             ) : (
               <>
-                <p className="text-xs text-statusRojo">
-                  No se puede deshacer automáticamente: hay datos creados después de la importación que dependen de ella. Nada se tocó.
-                </p>
+                <p className="text-xs text-statusRojo">{undoState.explanation}</p>
                 <ul className="mt-1 flex flex-col gap-1 text-xs text-textMuted">
-                  {undoState.unsafeRows.map((r, i) => (
+                  {undoState.blockedRows.map((r, i) => (
                     <li key={i}>
-                      {TABLE_LABEL[r.tableName] ?? r.tableName} {r.rowId ?? ""} — {r.reason}
-                      {r.blockingChildren && r.blockingChildren.length > 0 && (
-                        <ul className="ml-3 mt-0.5 list-disc">
-                          {r.blockingChildren.map((b, j) => (
-                            <li key={j}>
-                              {TABLE_LABEL[b.tableName] ?? b.tableName} {b.rowId ?? ""}
-                              {b.reason ? ` — ${b.reason}` : ""}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      {r.entityLabel} tiene datos posteriores que dependen de él:
+                      <ul className="ml-3 mt-0.5 list-disc">
+                        {r.dependencies.map((dep, j) => (
+                          <li key={j}>{dep}</li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>

@@ -1,7 +1,8 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import type { RawClassification, RawExcludedCollections } from "@/lib/backup/import-preview-mapping";
+import type { RawClassification, RawExcludedCollections, RawDuplicatePersonSource } from "@/lib/backup/import-preview-mapping";
+import type { ResolvedBlockerRow, ResolvedBlockerChild } from "@/lib/backup/undo-blocked-mapping";
 
 /**
  * Repositorio de Fase 9 — envuelve las 6 RPC reales (`fetch_own_latest_cloud_backup`,
@@ -34,6 +35,24 @@ export async function fetchOwnLatestCloudBackup(ctx: AuthenticatedDbContext): Pr
     payload: row.payload,
     createdAt: row.created_at,
   };
+}
+
+/**
+ * Fila real de `students` reducida a los campos mínimos necesarios para
+ * identificar a un alumno en el panel de "posible duplicado" (corrección de
+ * UX post-E2E) — nunca se selecciona ni se expone ningún otro campo.
+ * `RLS` ya restringe a filas del propio owner; el `.eq('owner_id', ...)`
+ * explícito es defensa en profundidad, mismo patrón que `listImportRuns`.
+ */
+export async function fetchStudentsSummaryByIds(ctx: AuthenticatedDbContext, ids: string[]): Promise<Record<string, RawDuplicatePersonSource>> {
+  if (ids.length === 0) return {};
+  const { data, error } = await ctx.supabase.from("students").select("id, name, levels, status, phone, email").eq("owner_id", ctx.ownerId).in("id", ids);
+  if (error) throw error;
+  const out: Record<string, RawDuplicatePersonSource> = {};
+  for (const row of data ?? []) {
+    out[row.id as string] = { name: row.name as string, levels: (row.levels as string[]) ?? [], status: row.status as string, phone: row.phone as string | null, email: row.email as string | null };
+  }
+  return out;
 }
 
 export interface PreviewBackupImportResult {
@@ -140,6 +159,80 @@ export async function previewUndoBackupImport(ctx: AuthenticatedDbContext, impor
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return { undoPreviewId: row.undo_preview_id, isSafe: row.is_safe, unsafeRows: (row.unsafe_rows ?? []).map(toUnsafeRow) };
+}
+
+/**
+ * Config real por tabla para resolver una dependencia bloqueante a texto
+ * humano (fecha/concepto) — sólo las columnas mínimas necesarias, nunca
+ * `owner_id` ni ninguna otra. Las tablas sin config igual se resuelven
+ * (se confirma que la fila existe) pero sin fecha/concepto propio, con el
+ * rótulo humano genérico de `humanTableLabel`.
+ */
+const BLOCKER_TABLE_SELECT: Record<string, { select: string; date: (r: Record<string, unknown>) => string | null; concept?: (r: Record<string, unknown>) => string | null }> = {
+  payment_charges: { select: "due_date, billing_period, original_amount", date: (r) => r.due_date as string | null, concept: (r) => (r.original_amount != null ? `$${r.original_amount}${r.billing_period ? ` (${r.billing_period})` : ""}` : null) },
+  payments: { select: "paid_at, amount", date: (r) => r.paid_at as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
+  payment_allocations: { select: "created_at, amount", date: (r) => r.created_at as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
+  payment_adjustments: { select: "created_at, reason", date: (r) => r.created_at as string | null, concept: (r) => (r.reason as string | null) },
+  package_purchases: { select: "valid_from, amount", date: (r) => r.valid_from as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
+  package_credit_movements: { select: "created_at, amount, reason", date: (r) => r.created_at as string | null, concept: (r) => (r.reason as string | null) },
+  lesson_registrations: { select: "scheduled_start_at, actual_started_at", date: (r) => (r.actual_started_at ?? r.scheduled_start_at) as string | null },
+  calendar_lessons: { select: "start_at, student_name", date: (r) => r.start_at as string | null, concept: (r) => (r.student_name as string | null) },
+  calendar_lesson_participants: { select: "created_at, student_name", date: (r) => r.created_at as string | null, concept: (r) => (r.student_name as string | null) },
+  recurrence_rules: { select: "effective_from_date, status", date: (r) => r.effective_from_date as string | null, concept: (r) => (r.status as string | null) },
+  recurrence_rule_participants: { select: "created_at", date: (r) => r.created_at as string | null },
+  recurrence_exceptions: { select: "created_at", date: (r) => r.created_at as string | null },
+  training_billing_agreements: { select: "created_at", date: (r) => r.created_at as string | null },
+  student_status_history: { select: "created_at, status, reason", date: (r) => r.created_at as string | null, concept: (r) => (r.status as string | null) },
+  student_level_history: { select: "achieved_on, level", date: (r) => r.achieved_on as string | null, concept: (r) => (r.level as string | null) },
+  student_price_history: { select: "created_at", date: (r) => r.created_at as string | null },
+  monthly_amount_corrections: { select: "billing_period, reason", date: () => null, concept: (r) => (r.reason as string | null) ?? (r.billing_period as string | null) },
+  initial_paid_surcharge_corrections: { select: "billing_period, reason", date: () => null, concept: (r) => (r.reason as string | null) ?? (r.billing_period as string | null) },
+  first_month_proration_decisions: { select: "billing_period, created_at", date: (r) => r.created_at as string | null, concept: (r) => (r.billing_period as string | null) },
+  report_draft_claims: { select: "created_at", date: (r) => r.created_at as string | null },
+};
+
+/**
+ * Resuelve `unsafe_rows` (crudo, de `preview_undo_backup_import`) contra la
+ * base real: nombre real del alumno para el padre bloqueado (si es
+ * `students`), y fecha/concepto real por cada dependencia hija. Nunca
+ * expone nada de esto sin pasar antes por `toHumanBlockedRow`
+ * (`lib/backup/undo-blocked-mapping.ts`) — este archivo sólo junta datos
+ * reales, no arma el texto final para el navegador.
+ */
+export async function resolveUndoBlockers(ctx: AuthenticatedDbContext, unsafeRows: UnsafeUndoRow[]): Promise<ResolvedBlockerRow[]> {
+  const studentParentIds = unsafeRows.filter((r) => r.tableName === "students" && r.rowId).map((r) => r.rowId as string);
+  const studentNames = studentParentIds.length > 0 ? await fetchStudentsSummaryByIds(ctx, studentParentIds) : {};
+
+  const out: ResolvedBlockerRow[] = [];
+  for (const row of unsafeRows) {
+    const children: ResolvedBlockerChild[] = [];
+    for (const child of row.blockingChildren ?? []) {
+      if (!child.rowId) {
+        children.push({ tableName: child.tableName, resolved: false });
+        continue;
+      }
+      const config = BLOCKER_TABLE_SELECT[child.tableName];
+      if (!config) {
+        // Tabla sin config de detalle: igual confirmamos que la fila existe realmente.
+        const { data } = await ctx.supabase.from(child.tableName).select("id").eq("owner_id", ctx.ownerId).eq("id", child.rowId).maybeSingle();
+        children.push({ tableName: child.tableName, resolved: Boolean(data) });
+        continue;
+      }
+      const { data } = await ctx.supabase.from(child.tableName).select(config.select).eq("owner_id", ctx.ownerId).eq("id", child.rowId).maybeSingle();
+      if (!data) {
+        children.push({ tableName: child.tableName, resolved: false });
+        continue;
+      }
+      const record = data as unknown as Record<string, unknown>;
+      children.push({ tableName: child.tableName, resolved: true, dateIso: config.date(record), concept: config.concept?.(record) ?? null });
+    }
+    out.push({
+      parentTableName: row.tableName,
+      parentStudentName: row.tableName === "students" && row.rowId ? studentNames[row.rowId]?.name : undefined,
+      children,
+    });
+  }
+  return out;
 }
 
 export async function applyUndoBackupImport(ctx: AuthenticatedDbContext, undoPreviewId: string): Promise<ApplyRunSummary> {
