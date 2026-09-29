@@ -22,7 +22,7 @@
 -- resto de la app), y que las llamadas con datos propios siguen funcionando.
 
 begin;
-select plan(12);
+select plan(11);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, role)
 values
@@ -199,9 +199,9 @@ select throws_ok(
        'start_at', '2026-09-21T21:00:00Z', 'end_at', '2026-09-21T22:00:00Z',
        'modality', 'presencial', 'participants', '[]'::jsonb
      )) $$,
-  '28000',
+  '42501',
   null,
-  'create_calendar_lesson rechaza una sesión anónima (28000, sin auth.uid())'
+  'create_calendar_lesson rechaza una sesión anónima — 42501 por REVOKE explícito (20260926120000_legacy_rpcs_revoke_anon_execute.sql), bloquea antes de llegar a evaluar auth.uid() dentro del cuerpo (que daría 28000, expectativa vieja de este test, escrito antes de esa migración)'
 );
 
 select * from finish();

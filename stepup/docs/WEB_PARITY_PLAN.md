@@ -31,7 +31,7 @@ Este documento es el plan de trabajo vivo para llevar TeacherFlow Web a paridad 
 | Auditoría/historial | `student_status_history`, `student_level_history`, `student_price_history`, `monthly_amount_corrections`, `initial_paid_surcharge_corrections`, `first_month_proration_decisions`, `pending_training_billing_operations` — todas append-only | Completo |
 | Adaptadores/repositorios web | `lib/db/server-context.ts` (contexto autenticado real), `lib/db/database.types.ts` (tipos de fila), `lib/repositories/students-mapping.ts` + `students.ts` (patrón de referencia completo: mapeo puro + I/O real) | Patrón completo y probado; el resto de los repositorios (calendario, cobros, etc.) se escriben en su propia fase (Fase 2+), siguiendo este mismo patrón |
 | Preparación del importador de backup | Ver §"Compatibilidad con TeacherFlowBackupV2" abajo — columna `legacy_mobile_id` en toda tabla, sin implementar importación todavía | Preparado, no implementado (Fase 9) |
-| Pruebas de aislamiento entre dos usuarios | `supabase/tests/rls_isolation_test.sql` (pgTAP real, 17 aserciones) | **Escrito, sigue SIN ejecutar** — reconfirmado en Fase 10: este entorno sigue sin Docker (`docker --version` no encontrado), `supabase test db` lo requiere. Es el único gap de seguridad genuinamente abierto de Fase 1 — ver §"Validación pendiente" y el plan de cierre sin Docker documentado en Fase 10 |
+| Pruebas de aislamiento entre dos usuarios | `supabase/tests/rls_isolation_test.sql` (pgTAP real, 17 aserciones) | **Ejecutado de verdad contra el proyecto real en Fase 10** — 17/17 `ok`, cero residuos, sin Docker (procedimiento transaccional descartable, ver §"Ejecución real de pgTAP sin Docker (Fase 10)" más abajo). Ya no es un gap abierto |
 | Pruebas de los repositorios | `lib/repositories/__tests__/students-mapping.test.ts` (11 pruebas reales, `node --test`) | Completo y verde |
 
 ### Validación pendiente (Fase 1) — actualizado en Fase 10 (housekeeping), no se repite el texto original abajo por precisión histórica
@@ -39,8 +39,33 @@ Este documento es el plan de trabajo vivo para llevar TeacherFlow Web a paridad 
 **Estado real verificado en Fase 10** (corrige lo que decía esta sección al cerrar Fase 1 — en ese momento el entorno de esa sesión no tenía Docker ni CLI de Supabase instalados y por eso las migraciones ni siquiera se habían vinculado al proyecto real todavía; sesiones posteriores sí instalaron y usaron el CLI de Supabase de verdad):
 
 1. **Las migraciones SÍ se aplicaron contra el proyecto real**, desde Fase 2 en adelante, siempre con `supabase db push` real y autorización explícita antes de cada push. Confirmado de nuevo en Fase 10 vía `supabase migration list --linked`: las 26 migraciones actuales están en estado `local=remote`, ninguna pendiente. Esto sí prueba semántica real, no sólo gramática — todas las Fases 2-9 se verificaron con datos reales usando este esquema.
-2. **`supabase/tests/rls_isolation_test.sql` sigue sin correr nunca**, junto con `calendar_rpc_ownership_test.sql` y `lesson_registration_rpc_ownership_test.sql` (también pgTAP). Reconfirmado en Fase 10: este entorno de trabajo sigue sin Docker (`docker --version` no encontrado). Éste es el único punto de la lista original que sigue siendo genuinamente cierto. Ver el plan de cierre de este gap sin depender de Docker, documentado en la sección de Fase 10 más abajo.
-3. Dos auditorías SQL de solo lectura (no pgTAP, no requieren Docker) sí corren de verdad contra el proyecto real en cada ronda: `supabase/tests/anon_execute_audit.sql` y `supabase/tests/backup_import_dependency_registry_audit.sql` — ambas confirmadas en verde otra vez en Fase 10.
+2. **Los 3 archivos pgTAP (`rls_isolation_test.sql`, `calendar_rpc_ownership_test.sql`, `lesson_registration_rpc_ownership_test.sql`) ya corrieron de verdad contra el proyecto real, sin Docker**, mediante un procedimiento transaccional descartable (extensión `pgtap` instalada dentro de una transacción, ejecutada, y siempre revertida con `ROLLBACK` antes de que nada persista) — ver detalle completo en §"Ejecución real de pgTAP sin Docker (Fase 10)" más abajo. Este entorno de trabajo sigue sin Docker (`docker --version` no encontrado), pero ya no hace falta para estas 3 pruebas.
+3. Dos auditorías SQL de solo lectura (no pgTAP, no requieren Docker ni extensión) corren de verdad contra el proyecto real en cada ronda: `supabase/tests/anon_execute_audit.sql` y `supabase/tests/backup_import_dependency_registry_audit.sql` — ambas confirmadas en verde otra vez en Fase 10.
+
+### Ejecución real de pgTAP sin Docker (Fase 10)
+
+Este entorno de trabajo nunca tuvo Docker Desktop instalado, así que `supabase test db` (que lo requiere) nunca fue una opción. En Fase 10 se encontró que el proyecto real SÍ tiene la extensión `pgtap` disponible (`pg_available_extensions`, versión `1.3.3`, `installed_version: null` — disponible pero no habilitada) y que el rol usado por `supabase db query --linked` (`postgres`, real pero no superusuario) puede instalarla y usarla. `CREATE EXTENSION` es DDL transaccional en Postgres, así que se ejecutaron los 3 archivos reales contra el proyecto real dentro de una transacción descartable:
+
+```sql
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path to public, auth, extensions, pg_catalog;
+-- (contenido real del archivo de prueba trackeado, sin su propio BEGIN/ROLLBACK exterior)
+rollback;
+```
+
+Verificado antes de aceptar el resultado como válido: una prueba mínima (`plan(1)`/`ok(true, ...)`/`finish()`) confirmó que `plan/ok/finish` funcionan dentro de esa transacción, y que tras el `ROLLBACK` la extensión vuelve a `installed_version: null` — confirmado de nuevo después de cada uno de los 3 archivos reales. Los archivos trackeados nunca se modificaron para esto — se generaron copias temporales fuera del repositorio (`scratchpad`, nunca commiteadas), con una única instrumentación añadida (una tabla temporal `__tap_capture__` que graba cada línea TAP para poder leerla completa, porque la herramienta de consulta usada sólo muestra el resultado del último `SELECT` de un archivo) — la lógica, el orden, los roles y los datos de cada aserción quedaron exactamente iguales a los archivos trackeados.
+
+**Resultado real, 79/79 aserciones en verde** (tras corregir 2 problemas reales encontrados en los propios archivos de prueba — nunca en el código de producción — detallados abajo):
+- `rls_isolation_test.sql`: **17/17 `ok`**, `finish()` sin diagnóstico de mismatch.
+- `calendar_rpc_ownership_test.sql`: **11/11 `ok`** (corregido `plan(12)`→`plan(11)`: el archivo, en un único commit desde su creación, nunca tuvo una 12ª aserción — cubre completo el propósito declarado en su propio commit original, "las 6 RPC de escritura rechazan la referencia cruzada" más idempotencia y rechazo anónimo; se trató como un error de conteo manual del autor original, no como una prueba perdida).
+- `lesson_registration_rpc_ownership_test.sql`: **51/51 `ok`**.
+
+**2 correcciones reales aplicadas a los archivos de prueba (nunca a producción), verificadas con evidencia antes de tocarlas:**
+- `calendar_rpc_ownership_test.sql`: la aserción de sesión anónima esperaba `28000` (código que el propio cuerpo de `create_calendar_lesson` lanzaría al evaluar `auth.uid()`); el resultado real es `42501`, porque `20260926120000_legacy_rpcs_revoke_anon_execute.sql` (aplicada después de que este test se escribiera) ya revoca `EXECUTE` a `anon` explícitamente — la función está protegida en una capa anterior, más estricta de lo que el test todavía esperaba. Corregido el código esperado y el texto descriptivo.
+- `lesson_registration_rpc_ownership_test.sql`: 3 aserciones usaban `count(*)` sin filtrar sobre `calendar_lessons`/`lesson_registrations`, válido sólo contra una base vacía — contra el proyecto real (con datos reales/QA de toda la sesión) devolvían el total de la tabla completa, no el del propio fixture. Corregidas para filtrar por `owner_id`/`operation_id` sintéticos del propio test, sin cambiar ningún valor esperado ni relajar ninguna aserción.
+
+Cero residuos verificados por consulta real después de cada archivo: 0 filas en `auth.users`/`students`/`recurrence_rules`/`payments`/`payment_charges`/`teacher_availability`/`calendar_lessons`/`lesson_registrations`/`lesson_registration_edit_history` con los ids sintéticos de cada test, 0 tablas `__tap_capture__` residuales, `pgtap` siempre `installed_version: null` al final.
 
 ### Compatibilidad con TeacherFlowBackupV2 (preparación, sin importar nada)
 
@@ -507,7 +532,7 @@ Checklist final — no se completa ninguna fila hasta que las Fases 2-9 estén g
 - [ ] Comparación final función por función (recorrer esta matriz completa, todo en estado `completo`) — auditoría parcial de Fase 10 ya encontró 2 gaps reales: "eliminar alumno" (hard delete) no implementado, poda de agenda al archivar no conectada
 - [x] Eliminar `lib/fixtures.ts` y `lib/calendar-fixtures.ts` por completo — hecho en Fase 10: `lib/calendar-fixtures.ts` ya no existía (eliminado en Fase 3); `lib/fixtures.ts` se confirmó código muerto (cero imports reales) y se borró
 - [x] Quitar el banner "Vista previa con datos ficticios" de `app/(app)/layout.tsx` — hecho en Fase 10, sin reemplazarlo por otra afirmación general
-- [ ] Verificar que ninguna ruta privada exponga datos ajenos (repetir `supabase/tests/rls_isolation_test.sql` contra el esquema final completo) — sigue bloqueado por falta de Docker en este entorno; ver plan de cierre sin Docker más abajo
+- [x] Verificar que ninguna ruta privada exponga datos ajenos (`supabase/tests/rls_isolation_test.sql` + `calendar_rpc_ownership_test.sql` + `lesson_registration_rpc_ownership_test.sql`, 79/79 aserciones) — ejecutado de verdad contra el proyecto real en Fase 10, sin Docker, con el procedimiento transaccional descartable documentado en Fase 1 §"Ejecución real de pgTAP sin Docker"
 - [ ] Responsive 390/768/1440px sin overflow horizontal de página (el `overflow-x-auto` contenido del Calendario, ya correcto, se mantiene)
 - [ ] Accesibilidad por teclado
 - [ ] Estados de carga/vacío/error/éxito en cada pantalla

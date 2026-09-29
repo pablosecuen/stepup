@@ -175,7 +175,11 @@ select throws_ok(
 -- llame.
 -- ---------------------------------------------------------------------------
 set local role postgres;
-select is((select count(*)::int from public.calendar_lessons), 1, 'antes del registro ad-hoc sólo existe la clase de calendario ya creada arriba');
+select is(
+  (select count(*)::int from public.calendar_lessons where owner_id = 'f0000000-0000-0000-0000-000000000001'),
+  1,
+  'antes del registro ad-hoc sólo existe la clase de calendario ya creada arriba (filtrado por owner_id propio del fixture, nunca un count(*) global de la base compartida)'
+);
 
 set local role authenticated;
 set local "request.jwt.claims" to '{"sub": "f0000000-0000-0000-0000-000000000001", "role": "authenticated"}';
@@ -211,7 +215,11 @@ select lives_ok(
 );
 
 set local role postgres;
-select is((select count(*)::int from public.calendar_lessons), 1, 'un registro ad-hoc nunca crea ninguna fila nueva en calendar_lessons');
+select is(
+  (select count(*)::int from public.calendar_lessons where owner_id = 'f0000000-0000-0000-0000-000000000001'),
+  1,
+  'un registro ad-hoc nunca crea ninguna fila nueva en calendar_lessons (filtrado por owner_id propio del fixture)'
+);
 select is(
   (select counts_as_class from public.lesson_registrations where operation_id = 'a1000000-0000-0000-0000-000000000001'),
   true,
@@ -317,9 +325,9 @@ select lives_ok(
 
 set local role postgres;
 select is(
-  (select count(*)::int from public.lesson_registrations where calendar_lesson_id is null),
+  (select count(*)::int from public.lesson_registrations where calendar_lesson_id is null and owner_id = 'f0000000-0000-0000-0000-000000000001'),
   2,
-  'dos operation_id distintos SIEMPRE son dos filas — nunca se confunden entre sí'
+  'dos operation_id distintos SIEMPRE son dos filas — nunca se confunden entre sí (filtrado por owner_id propio del fixture, nunca un count(*) global de la base compartida)'
 );
 
 -- outcome que no implica que se dictó la clase: participante auto-completed.
