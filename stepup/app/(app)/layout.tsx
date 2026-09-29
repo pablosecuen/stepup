@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/nav/primary-nav";
 import { isSupabaseConfigured } from "@/lib/auth/config";
@@ -43,18 +42,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen md:pl-56">
-      <div className="border-b border-border bg-brandBlue/5 px-4 py-2 text-center text-xs font-medium text-brandBlueDark">
-        {configured ? (
-          <>Alumnos, Calendario, Cobros e Inicio ya muestran datos reales de tu cuenta — el resto de la app todavía se está conectando.</>
-        ) : (
-          <>
-            Vista previa con datos ficticios — todavía sin conexión a tu cuenta real.{" "}
-            <Link href="/" className="underline decoration-brandBlueDark/40 underline-offset-2 transition hover:decoration-brandBlueDark">
-              Volver al inicio
-            </Link>
-          </>
-        )}
-      </div>
       <PrimaryNav />
       <main className="pb-20 md:pb-0">{children}</main>
     </div>
