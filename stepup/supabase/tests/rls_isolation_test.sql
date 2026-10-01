@@ -128,17 +128,17 @@ select is(
   0,
   'usuario 1 no puede leer la serie de usuario 2 aunque conozca su id exacto'
 );
--- Un DELETE cruzado nunca lanza error (RLS filtra el USING antes de tocar
--- la fila — no es un permiso denegado explícito, simplemente no encuentra
--- ninguna fila que le pertenezca para borrar); se valida por conteo de
--- filas después, no por excepción.
-delete from public.recurrence_rules where id = 'c0000000-0000-0000-0000-000000000002';
+-- NOTA (Fase 10, 20261001100000): el DELETE cruzado cross-owner ya NO se
+-- prueba acá sobre recurrence_rules — desde esa migración, `authenticated`
+-- no tiene NINGÚN privilegio DELETE sobre esta tabla (ni propio ni ajeno;
+-- cero RPC `security invoker` lo necesita, ver esa migración), así que un
+-- DELETE directo ahora siempre falla con `42501 permission denied` antes
+-- de que RLS llegue a evaluarse — ya no hay forma de distinguir "RLS lo
+-- filtró" de "no tenía permiso" sobre esta tabla en particular, porque las
+-- dos cosas bloquean por igual. El mismo patrón de prueba (RLS filtra el
+-- USING de un DELETE cruzado, sin lanzar excepción, sobre una tabla que SÍ
+-- conserva DELETE) se cubre más abajo con `teacher_availability`.
 set local role postgres;
-select is(
-  (select count(*)::int from public.recurrence_rules where id = 'c0000000-0000-0000-0000-000000000002'),
-  1,
-  'un DELETE cruzado desde la sesión de usuario 1 nunca borra la serie de usuario 2 (RLS filtra el USING antes del DELETE)'
-);
 
 -- ---------------------------------------------------------------------------
 -- payment_charges / payments / payment_allocations
@@ -195,6 +195,21 @@ select is(
   (select count(*)::int from public.teacher_availability),
   1,
   'usuario 2 ve exactamente su propio documento de disponibilidad, nunca el de usuario 1'
+);
+
+-- Un DELETE cruzado nunca lanza error (RLS filtra el USING antes de tocar
+-- la fila — no es un permiso denegado explícito, simplemente no encuentra
+-- ninguna fila que le pertenezca para borrar); se valida por conteo de
+-- filas después, no por excepción. `teacher_availability` conserva DELETE
+-- para `authenticated` (no tocada por 20261001100000), por eso sirve para
+-- seguir probando este patrón real.
+set local "request.jwt.claims" to '{"sub": "a0000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+delete from public.teacher_availability where owner_id = 'a0000000-0000-0000-0000-000000000002';
+set local role postgres;
+select is(
+  (select count(*)::int from public.teacher_availability where owner_id = 'a0000000-0000-0000-0000-000000000002'),
+  1,
+  'un DELETE cruzado desde la sesión de usuario 1 nunca borra el documento de disponibilidad de usuario 2 (RLS filtra el USING antes del DELETE)'
 );
 
 -- ---------------------------------------------------------------------------
