@@ -19,6 +19,7 @@ export interface RecurrenceWeek {
 export interface RecurrenceRuleForEngine {
   recurrenceId: string;
   studentId: string | null;
+  /** Roster COMPLETO de la serie — studentId (primario) SIEMPRE incluido acá también, nunca sólo los secundarios (contrato confirmado 2026-09-30, ver recurrence_rule_participants en 20260916120200_calendar.sql). */
   participantIds: string[];
   cycleLengthWeeks: number;
   weeks: RecurrenceWeek[];

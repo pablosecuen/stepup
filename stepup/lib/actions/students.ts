@@ -7,6 +7,7 @@ import {
   createStudent,
   updateStudent,
   changeStudentStatus,
+  archiveStudentAndPruneFuture,
   StudentNotFoundError,
   type NewStudentInput,
   type UpdateStudentInput,
@@ -178,7 +179,31 @@ export async function changeStudentStatusAction(
 
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await changeStudentStatus(ctx, studentId, { status, occurredOn, reason, internalNote });
+
+    if (status === "archivado") {
+      // Elección obligatoria, nunca preseleccionada — el servidor nunca
+      // confía en que la UI la haya exigido: sin un valor explícito
+      // "true"/"false" acá, se rechaza en vez de asumir un default.
+      const removeFromFutureRaw = readString(formData, "removeFromFuture").trim();
+      if (removeFromFutureRaw !== "true" && removeFromFutureRaw !== "false") {
+        return { error: "Elegí si conservás o quitás al alumno de la agenda futura." };
+      }
+      const operationId = readString(formData, "operationId").trim();
+      if (!operationId) {
+        return { error: "Ocurrió un error inesperado. Recargá la página e intentá de nuevo." };
+      }
+      await archiveStudentAndPruneFuture(ctx, studentId, {
+        status,
+        occurredOn,
+        reason,
+        internalNote,
+        removeFromFuture: removeFromFutureRaw === "true",
+        now: new Date(),
+        operationId,
+      });
+    } else {
+      await changeStudentStatus(ctx, studentId, { status, occurredOn, reason, internalNote });
+    }
   } catch (error) {
     if (error instanceof StudentNotFoundError) return { error: "No encontramos ese alumno." };
     return { error: friendlyErrorMessage(error) };

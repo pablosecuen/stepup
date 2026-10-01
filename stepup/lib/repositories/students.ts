@@ -12,6 +12,17 @@ import {
   type UpdateStudentInput,
   type StudentDuplicateCandidate,
 } from "./students-mapping";
+import { listActiveRecurrenceRulesForStudent, listRuleParticipantsWithCreatedAt } from "./recurrence-rules";
+import { listCalendarLessonsForRecurrence, listLooseFutureScheduledLessonsForStudent, listLessonParticipantRows } from "./calendar-lessons";
+import {
+  planArchiveStudentPrune,
+  type RuleForPrune,
+  type RuleParticipantForPrune,
+  type LooseLessonForPrune,
+} from "@/lib/students/archive-prune-plan";
+import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+
+const ARGENTINA_TIMEZONE = "America/Argentina/Buenos_Aires";
 
 /**
  * Repositorio de Alumnos — única puerta de entrada real (I/O) a la tabla
@@ -193,4 +204,180 @@ export async function changeStudentStatus(
     throw error;
   }
   return toStudentRecord(data as StudentRow);
+}
+
+/**
+ * Archivar (o cualquier cambio de estado) con poda atómica opcional de
+ * agenda futura — decisión de producto confirmada (Fase 10): nunca hard
+ * delete, restaurar nunca reconstruye la agenda retirada, pagos/cargos/
+ * reportes/historial nunca se tocan. Reúne los datos reales (series,
+ * roster, clases sueltas futuras), calcula el plan puro
+ * (`planArchiveStudentPrune`) y lo ejecuta en una única transacción real
+ * (RPC `archive_student_and_prune_future`). `operationId` es obligatorio y
+ * viene del cliente (estable durante el ciclo de vida del formulario) —
+ * un doble clic/reintento con el mismo id nunca duplica historial ni
+ * reaplica la poda.
+ */
+export async function archiveStudentAndPruneFuture(
+  ctx: AuthenticatedDbContext,
+  id: string,
+  input: {
+    status: StudentStatus;
+    occurredOn: string;
+    reason?: string;
+    internalNote?: string;
+    removeFromFuture: boolean;
+    now: Date;
+    operationId: string;
+  }
+): Promise<StudentRecord> {
+  let payload: Record<string, unknown> = {
+    student_id: id,
+    status: input.status,
+    occurred_on: input.occurredOn,
+    reason: input.reason ?? null,
+    internal_note: input.internalNote ?? null,
+    remove_from_future: input.removeFromFuture,
+    operation_id: input.operationId,
+  };
+
+  if (input.removeFromFuture) {
+    // Medianoche real en civil Argentina — nunca UTC implícito. Debe ser el
+    // MISMO instante que calcula la RPC (v_effective_instant), para que la
+    // ventana de congelamiento en TypeScript y el corte real en SQL coincidan.
+    const effectiveInstantIso = localDateTimeToInstantIso({ date: input.occurredOn, hour: 0, minute: 0, timeZone: ARGENTINA_TIMEZONE });
+
+    const rules = await listActiveRecurrenceRulesForStudent(ctx, id);
+    const ruleIds = rules.map((r) => r.id);
+    const [ruleParticipantRows, lessonsPerRule, looseLessons, studentsList] = await Promise.all([
+      listRuleParticipantsWithCreatedAt(ctx, ruleIds),
+      Promise.all(ruleIds.map((ruleId) => listCalendarLessonsForRecurrence(ctx, ruleId))),
+      listLooseFutureScheduledLessonsForStudent(ctx, id, effectiveInstantIso),
+      listStudents(ctx),
+    ]);
+
+    const studentsById = new Map(studentsList.map((s) => [s.id, s]));
+    const lessonsByRule: Record<string, typeof lessonsPerRule[number]> = {};
+    ruleIds.forEach((ruleId, idx) => {
+      lessonsByRule[ruleId] = lessonsPerRule[idx];
+    });
+
+    const rulesForPrune: RuleForPrune[] = rules.map((rule) => ({
+      recurrenceId: rule.id,
+      studentId: rule.primaryStudentId,
+      primaryStudentId: rule.primaryStudentId,
+      participantIds: rule.participantIds,
+      cycleLengthWeeks: rule.cycleLengthWeeks,
+      weeks: rule.weeks,
+      modality: rule.modality,
+      timezone: rule.timezone,
+      startDate: rule.startDate,
+      endDate: rule.endDate,
+      status: rule.status,
+      classTitle: rule.classTitle,
+      activityKind: rule.activityKind,
+    }));
+
+    const ruleParticipantsForPrune: RuleParticipantForPrune[] = ruleParticipantRows.map((row) => {
+      const student = studentsById.get(row.student_id);
+      return {
+        ruleId: row.recurrence_rule_id,
+        studentId: row.student_id,
+        createdAt: row.created_at,
+        studentName: student?.name ?? "",
+        studentLevel: student?.levels[0] ?? "",
+      };
+    });
+
+    const looseLessonIds = looseLessons.map((l) => l.id);
+    const lessonParticipantRows = await listLessonParticipantRows(ctx, looseLessonIds);
+    const looseLessonsForPrune: LooseLessonForPrune[] = looseLessons.map((lesson) => ({
+      id: lesson.id,
+      primaryStudentId: lesson.primaryStudentId,
+      otherParticipants: lessonParticipantRows
+        .filter((p) => p.calendar_lesson_id === lesson.id && p.student_id !== id)
+        .map((p) => ({ studentId: p.student_id, studentName: p.student_name, level: p.level, createdAt: p.created_at })),
+    }));
+
+    const plan = planArchiveStudentPrune({
+      studentId: id,
+      now: input.now,
+      effectiveDateIso: effectiveInstantIso,
+      rules: rulesForPrune,
+      ruleParticipants: ruleParticipantsForPrune,
+      lessonsByRule,
+      looseLessons: looseLessonsForPrune,
+    });
+
+    payload = {
+      ...payload,
+      series_end: plan.seriesEnd.map((e) => ({ recurrence_id: e.ruleId })),
+      series_promote: plan.seriesPromote.map((e) => ({
+        rule_id: e.ruleId,
+        new_primary_student_id: e.newPrimaryStudentId,
+        new_primary_student_name: e.newPrimaryStudentName,
+        new_primary_level: e.newPrimaryLevel,
+        freeze_occurrences: buildFreezePayload(e.freezeOccurrences, rulesForPrune, ruleParticipantsForPrune, e.ruleId, studentsById),
+      })),
+      series_participant_removal: plan.seriesParticipantRemoval.map((e) => ({
+        rule_id: e.ruleId,
+        freeze_occurrences: buildFreezePayload(e.freezeOccurrences, rulesForPrune, ruleParticipantsForPrune, e.ruleId, studentsById),
+      })),
+      loose_cancel: plan.looseCancel,
+      loose_reassign: plan.looseReassign.map((e) => ({
+        lesson_id: e.lessonId,
+        new_primary_student_id: e.newPrimaryStudentId,
+        new_primary_student_name: e.newPrimaryStudentName,
+        new_primary_level: e.newPrimaryLevel,
+      })),
+      loose_remove_participant: plan.looseRemoveParticipant,
+    };
+  }
+
+  const { data, error } = await ctx.supabase.rpc("archive_student_and_prune_future", { p_payload: payload });
+  if (error) {
+    if (error.code === "P0002") throw new StudentNotFoundError("Alumno no encontrado.");
+    throw error;
+  }
+  return toStudentRecord(data as StudentRow);
+}
+
+/**
+ * Construye el payload real de `freeze_occurrences` para la RPC — mismo
+ * criterio que `changeRecurrenceParticipantsFromDate`: el roster VIEJO
+ * completo de la serie (todos sus participantes reales, primario incluido)
+ * es el que se congela en cada ocurrencia virtual, nunca sólo el alumno que
+ * se está archivando.
+ */
+function buildFreezePayload(
+  occurrences: { occurrenceKey: string; recurrenceIndex: number; start: string; end: string }[],
+  rules: RuleForPrune[],
+  ruleParticipants: RuleParticipantForPrune[],
+  ruleId: string,
+  studentsById: Map<string, StudentRecord>
+): Record<string, unknown>[] {
+  const rule = rules.find((r) => r.recurrenceId === ruleId);
+  if (!rule) return [];
+  const roster = ruleParticipants.filter((p) => p.ruleId === ruleId);
+  const primary = roster.find((p) => p.studentId === rule.primaryStudentId) ?? roster[0] ?? null;
+  const color = rule.modality === "online" ? "#DDEBFF" : rule.modality === "mixta" ? "#F2E8FF" : "#FFE4D2";
+
+  return occurrences.map((occurrence) => ({
+    occurrence_key: occurrence.occurrenceKey,
+    recurrence_index: occurrence.recurrenceIndex,
+    start_at: occurrence.start,
+    end_at: occurrence.end,
+    primary_student_id: primary?.studentId ?? null,
+    student_name: primary?.studentName ?? "",
+    level: primary?.studentLevel ?? "",
+    lesson_type: roster.length > 1 ? "group" : "individual",
+    modality: rule.modality,
+    class_title: rule.classTitle,
+    activity_kind: rule.activityKind,
+    color,
+    participants: roster.map((p) => {
+      const student = studentsById.get(p.studentId);
+      return { student_id: p.studentId, student_name: student?.name ?? p.studentName, level: student?.levels[0] ?? p.studentLevel };
+    }),
+  }));
 }

@@ -56,6 +56,64 @@ export async function listCalendarLessonsForRecurrence(ctx: AuthenticatedDbConte
   return attachParticipants(ctx, data as CalendarLessonRow[]);
 }
 
+/**
+ * Clases sueltas futuras `scheduled` (sin recurrencia) donde el alumno es
+ * primario o participante, desde `fromIso` en adelante — usado por la poda
+ * de agenda al archivar (Fase 10). Nunca incluye pasado/completadas/
+ * canceladas/reprogramadas ni ocurrencias de una serie (esas se podan por
+ * `recurrence_id`, no acá).
+ */
+export async function listLooseFutureScheduledLessonsForStudent(
+  ctx: AuthenticatedDbContext,
+  studentId: string,
+  fromIso: string
+): Promise<CalendarLessonRecord[]> {
+  const [asPrimary, participantRows] = await Promise.all([
+    ctx.supabase
+      .from("calendar_lessons")
+      .select("*")
+      .eq("owner_id", ctx.ownerId)
+      .eq("status", "scheduled")
+      .is("recurrence_id", null)
+      .eq("primary_student_id", studentId)
+      .gte("start_at", fromIso),
+    ctx.supabase.from("calendar_lesson_participants").select("calendar_lesson_id").eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  ]);
+  if (asPrimary.error) throw asPrimary.error;
+  if (participantRows.error) throw participantRows.error;
+
+  const participantLessonIds = (participantRows.data as { calendar_lesson_id: string }[]).map((r) => r.calendar_lesson_id);
+  let asParticipant: CalendarLessonRow[] = [];
+  if (participantLessonIds.length > 0) {
+    const { data, error } = await ctx.supabase
+      .from("calendar_lessons")
+      .select("*")
+      .eq("owner_id", ctx.ownerId)
+      .eq("status", "scheduled")
+      .is("recurrence_id", null)
+      .gte("start_at", fromIso)
+      .in("id", participantLessonIds);
+    if (error) throw error;
+    asParticipant = data as CalendarLessonRow[];
+  }
+
+  const byId = new Map<string, CalendarLessonRow>();
+  for (const row of [...(asPrimary.data as CalendarLessonRow[]), ...asParticipant]) byId.set(row.id, row);
+  return attachParticipants(ctx, [...byId.values()]);
+}
+
+/** Filas reales (`calendar_lesson_participants`, con nombre/nivel congelados y `created_at`) de un conjunto de clases — usado para elegir a quién promover de forma determinística en una clase suelta. */
+export async function listLessonParticipantRows(ctx: AuthenticatedDbContext, lessonIds: string[]): Promise<CalendarLessonParticipantRow[]> {
+  if (lessonIds.length === 0) return [];
+  const { data, error } = await ctx.supabase
+    .from("calendar_lesson_participants")
+    .select("*")
+    .eq("owner_id", ctx.ownerId)
+    .in("calendar_lesson_id", lessonIds);
+  if (error) throw error;
+  return data as CalendarLessonParticipantRow[];
+}
+
 export async function getCalendarLesson(ctx: AuthenticatedDbContext, id: string): Promise<CalendarLessonRecord | null> {
   const { data, error } = await ctx.supabase.from("calendar_lessons").select("*").eq("owner_id", ctx.ownerId).eq("id", id).maybeSingle();
   if (error) throw error;

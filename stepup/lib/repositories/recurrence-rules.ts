@@ -59,6 +59,44 @@ export async function getRecurrenceRule(ctx: AuthenticatedDbContext, id: string)
   return record;
 }
 
+/**
+ * Series activas/pausadas (nunca `ended`) donde el alumno es primario o
+ * participante — usado por la poda de agenda al archivar (Fase 10).
+ */
+export async function listActiveRecurrenceRulesForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<RecurrenceRuleRecord[]> {
+  const { data: participantRows, error: participantError } = await ctx.supabase
+    .from("recurrence_rule_participants")
+    .select("recurrence_rule_id")
+    .eq("owner_id", ctx.ownerId)
+    .eq("student_id", studentId);
+  if (participantError) throw participantError;
+  const ruleIds = new Set((participantRows as { recurrence_rule_id: string }[]).map((r) => r.recurrence_rule_id));
+
+  const { data, error } = await ctx.supabase
+    .from("recurrence_rules")
+    .select("*")
+    .eq("owner_id", ctx.ownerId)
+    .in("status", ["active", "paused"]);
+  if (error) throw error;
+  const rows = (data as RecurrenceRuleRow[]).filter((row) => row.primary_student_id === studentId || ruleIds.has(row.id));
+  return attachParticipants(ctx, rows);
+}
+
+/** Roster real (`recurrence_rule_participants`, con `created_at`) de un conjunto de series — usado para elegir a quién promover de forma determinística. */
+export async function listRuleParticipantsWithCreatedAt(
+  ctx: AuthenticatedDbContext,
+  ruleIds: string[]
+): Promise<RecurrenceRuleParticipantRow[]> {
+  if (ruleIds.length === 0) return [];
+  const { data, error } = await ctx.supabase
+    .from("recurrence_rule_participants")
+    .select("*")
+    .eq("owner_id", ctx.ownerId)
+    .in("recurrence_rule_id", ruleIds);
+  if (error) throw error;
+  return data as RecurrenceRuleParticipantRow[];
+}
+
 /** Crea una serie + sus participantes de forma atómica (RPC `create_recurrence_series`). */
 export async function createRecurrenceSeries(ctx: AuthenticatedDbContext, input: NewRecurrenceSeriesInput): Promise<RecurrenceRuleRecord> {
   const errors = validateNewRecurrenceSeriesInput(input);
