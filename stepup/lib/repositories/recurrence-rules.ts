@@ -137,7 +137,14 @@ export async function setRecurrenceRuleStatus(
  */
 export async function changeRecurrenceParticipantsFromDate(
   ctx: AuthenticatedDbContext,
-  input: { ruleId: string; effectiveDateIso: string; now: Date; newParticipantIds: string[] }
+  input: {
+    ruleId: string;
+    effectiveDateIso: string;
+    now: Date;
+    newParticipantIds: string[];
+    /** Elegido explícitamente por la profesora para el roster NUEVO — nunca inferido del orden de `newParticipantIds` (Fase 10, 20261001140000). Debe estar dentro de `newParticipantIds`, el RPC lo valida igual. */
+    newPrimaryStudentId: string;
+  }
 ): Promise<RecurrenceRuleRecord> {
   const rule = await getRecurrenceRule(ctx, input.ruleId);
   if (!rule) throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
@@ -173,7 +180,13 @@ export async function changeRecurrenceParticipantsFromDate(
   });
 
   const oldParticipants = rule.participantIds.map((id) => studentsById.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
-  const primary = oldParticipants[0] ?? null;
+  // El principal de las ocurrencias que se CONGELAN (roster viejo, antes de
+  // la fecha efectiva) es el que la regla ya tiene guardado de verdad en
+  // `primary_student_id` — nunca el primer elemento de `participantIds`
+  // (ese array no tiene ningún orden garantizado; usarlo como si lo tuviera
+  // era el mismo bug de selección implícita que esta ronda corrige en el
+  // resto de Calendario, ver 20261001140000).
+  const primary = studentsById.get(rule.primaryStudentId ?? "") ?? oldParticipants[0] ?? null;
   const color = rule.modality === "online" ? "#DDEBFF" : rule.modality === "mixta" ? "#F2E8FF" : "#FFE4D2";
 
   const freezeOccurrences = toFreeze.map((occurrence) => ({
@@ -193,7 +206,12 @@ export async function changeRecurrenceParticipantsFromDate(
   }));
 
   const { data, error } = await ctx.supabase.rpc("apply_recurrence_participants_from_date", {
-    p_payload: { rule_id: input.ruleId, new_participant_ids: input.newParticipantIds, freeze_occurrences: freezeOccurrences },
+    p_payload: {
+      rule_id: input.ruleId,
+      new_participant_ids: input.newParticipantIds,
+      primary_student_id: input.newPrimaryStudentId,
+      freeze_occurrences: freezeOccurrences,
+    },
   });
   if (error) {
     if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie no encontrada.");

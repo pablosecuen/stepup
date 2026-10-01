@@ -19,6 +19,8 @@ export interface SplitThisAndFutureInput {
   classTitle?: string | null;
   activityKind?: "class" | "training";
   participantIds: string[];
+  /** Elegido explícitamente por la profesora — nunca inferido del orden de `participantIds` (Fase 10, 20261001140000). Debe estar dentro de `participantIds`, el RPC lo valida igual. */
+  primaryStudentId: string;
 }
 
 /**
@@ -69,6 +71,7 @@ export async function splitRecurrenceThisAndFuture(ctx: AuthenticatedDbContext, 
       class_title: input.classTitle ?? null,
       activity_kind: input.activityKind ?? null,
       participant_ids: input.participantIds,
+      primary_student_id: input.primaryStudentId,
       excluded_occurrence_keys: excludedOccurrenceKeys,
     },
   });

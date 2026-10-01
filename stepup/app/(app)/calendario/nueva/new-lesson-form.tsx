@@ -9,6 +9,7 @@ import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
+import { nextPrimaryAfterToggle } from "@/lib/calendar/primary-selection";
 
 const INITIAL_STATE: FormState = {};
 
@@ -16,12 +17,12 @@ const inputClassName =
   "rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 const labelClassName = "text-sm font-medium text-textSecondary";
 
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className="flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
     >
@@ -44,6 +45,7 @@ export function NewLessonForm({
 }) {
   const [mode, setMode] = useState<"single" | "series">("single");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [primaryStudentId, setPrimaryStudentId] = useState<string>("");
   const isReplacement = !!presetFromReplacement?.freedByLessonId;
 
   const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(1);
@@ -86,6 +88,7 @@ export function NewLessonForm({
     const values = state.values;
     if (!values) return;
     setSelected(new Set(values.participantIds));
+    setPrimaryStudentId(values.primaryStudentId || "");
     setModality(values.modality || (presetFromReplacement?.modality ?? "presencial"));
     setActivityKind(values.activityKind || "class");
     setClassTitle(values.classTitle);
@@ -116,6 +119,7 @@ export function NewLessonForm({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      setPrimaryStudentId(nextPrimaryAfterToggle(prev.size, Array.from(next), primaryStudentId));
       return next;
     });
   }
@@ -162,6 +166,31 @@ export function NewLessonForm({
           ))}
         </div>
       </fieldset>
+
+      {selected.size >= 2 && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className={labelClassName}>Alumno principal *</legend>
+          <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
+            {activeStudents
+              .filter((student) => selected.has(student.id))
+              .map((student) => (
+                <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-background">
+                  <input
+                    type="radio"
+                    name="primaryStudentIdChoice"
+                    value={student.id}
+                    checked={primaryStudentId === student.id}
+                    onChange={() => setPrimaryStudentId(student.id)}
+                    className="h-4 w-4 border-border text-brandBlue focus:ring-brandBlue"
+                  />
+                  {student.name}
+                </label>
+              ))}
+          </div>
+          {!primaryStudentId && <p className="text-xs text-statusRojo">Elegí quién es el alumno principal.</p>}
+        </fieldset>
+      )}
+      <input type="hidden" name="primaryStudentId" value={primaryStudentId} />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
@@ -281,7 +310,7 @@ export function NewLessonForm({
       {isReplacement && <input type="hidden" name="freedByLessonId" value={presetFromReplacement?.freedByLessonId} />}
 
       {state.error && <FormErrorBox message={state.error} />}
-      <SubmitButton />
+      <SubmitButton disabled={selected.size === 0 || !primaryStudentId} />
     </form>
   );
 }

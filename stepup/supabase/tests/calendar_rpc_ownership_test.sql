@@ -61,14 +61,22 @@ select throws_ok(
   'create_calendar_lesson rechaza un primary_student_id ajeno'
 );
 
+-- NOTA (Fase 10, 20261001140000): `participants` ya no puede ir vacío acá
+-- — esa migración exige que `primary_student_id` esté DENTRO del roster
+-- recibido (contrato inclusivo real, nunca sólo una excepción de prueba).
+-- El payload real que manda la app SIEMPRE incluye al principal en
+-- `participants` (ver `createSingleLessonAction`); esta prueba ya lo
+-- hacía así para el camino grupal más abajo, sólo este caso mínimo
+-- quedaba con el atajo de un array vacío.
 select lives_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
        'primary_student_id', 'e1000000-0000-0000-0000-000000000001',
        'student_name', 'x', 'level', 'B1', 'lesson_type', 'individual',
        'start_at', '2026-09-21T21:00:00Z', 'end_at', '2026-09-21T22:00:00Z',
-       'modality', 'presencial', 'participants', '[]'::jsonb
+       'modality', 'presencial',
+       'participants', jsonb_build_array(jsonb_build_object('student_id', 'e1000000-0000-0000-0000-000000000001', 'student_name', 'x', 'level', 'B1'))
      )) $$,
-  'create_calendar_lesson con un alumno propio sigue funcionando (el chequeo nuevo nunca bloquea el caso real)'
+  'create_calendar_lesson con un alumno propio sigue funcionando (el chequeo nuevo nunca bloquea el caso real, roster inclusivo)'
 );
 
 -- ---------------------------------------------------------------------------

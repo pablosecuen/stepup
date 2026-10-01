@@ -53,7 +53,8 @@ export function toRecurrenceRuleRecord(row: RecurrenceRuleRow, participantIds: s
 }
 
 export interface NewRecurrenceSeriesInput {
-  primaryStudentId: string | null;
+  /** Elegido explícitamente por la profesora — nunca inferido del orden de `participantIds` (Fase 10, 20261001140000). Siempre obligatorio y siempre dentro de `participantIds`, validado acá y de nuevo en el RPC. */
+  primaryStudentId: string;
   ruleType: "weekly" | "custom";
   cycleLengthWeeks: 1 | 2 | 3 | 4;
   weeks: RecurrenceWeek[];
@@ -76,6 +77,11 @@ export function validateNewRecurrenceSeriesInput(input: NewRecurrenceSeriesInput
   const errors: RecurrenceSeriesValidationError[] = [];
   if (input.participantIds.length === 0) {
     errors.push({ field: "participantIds", message: "Elegí al menos un alumno." });
+  }
+  if (!input.primaryStudentId) {
+    errors.push({ field: "primaryStudentId", message: "Elegí quién es el alumno principal." });
+  } else if (!input.participantIds.includes(input.primaryStudentId)) {
+    errors.push({ field: "primaryStudentId", message: "El alumno principal debe estar entre los participantes seleccionados." });
   }
   if (input.cycleLengthWeeks < 1 || input.cycleLengthWeeks > 4) {
     errors.push({ field: "cycleLengthWeeks", message: "El ciclo debe tener entre 1 y 4 semanas." });

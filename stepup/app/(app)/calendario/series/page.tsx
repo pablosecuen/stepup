@@ -85,7 +85,14 @@ export default async function SeriesPage() {
                 <p className="mt-2 text-xs text-textSecondary">
                   {scheduleLabel} · {MODALITY_LABEL[rule.modality]} · {rule.status === "active" ? "Activa" : rule.status === "paused" ? "Pausada" : "Finalizada"}
                 </p>
-                <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} students={students} />
+                <SeriesStatusActions
+                  ruleId={rule.id}
+                  status={rule.status}
+                  weeks={rule.weeks}
+                  participantIds={rule.participantIds}
+                  primaryStudentId={rule.primaryStudentId}
+                  students={students}
+                />
                 {rule.activityKind === "training" && <TrainingBillingConfigButton recurrenceRuleId={rule.id} agreementId={rule.trainingBillingAgreementId} />}
               </li>
             );

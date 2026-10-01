@@ -8,18 +8,21 @@ import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesT
 import type { RecurrenceRuleStatus } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
+import { nextPrimaryAfterToggle } from "@/lib/calendar/primary-selection";
 
 export function SeriesStatusActions({
   ruleId,
   status,
   weeks,
   participantIds,
+  primaryStudentId,
   students,
 }: {
   ruleId: string;
   status: RecurrenceRuleStatus;
   weeks: RecurrenceWeek[];
   participantIds: string[];
+  primaryStudentId: string | null;
   students: StudentRecord[];
 }) {
   const router = useRouter();
@@ -31,6 +34,9 @@ export function SeriesStatusActions({
   const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(initialCycle);
   const [weekCycles, setWeekCycles] = useState<WeekRows[]>(() => defaultWeekCycles(initialCycle, weeks));
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<Set<string>>(() => new Set(participantIds));
+  // "al editar, debe mostrarse el principal realmente guardado" — se
+  // inicializa SIEMPRE desde el valor real de la regla, nunca recalculado.
+  const [selectedPrimaryId, setSelectedPrimaryId] = useState<string>(() => primaryStudentId ?? "");
 
   function handleCycleLengthChange(next: 1 | 2 | 3 | 4) {
     setCycleLengthWeeks(next);
@@ -42,6 +48,7 @@ export function SeriesStatusActions({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      setSelectedPrimaryId(nextPrimaryAfterToggle(prev.size, Array.from(next), selectedPrimaryId));
       return next;
     });
   }
@@ -78,7 +85,12 @@ export function SeriesStatusActions({
     setError(null);
     const effectiveDate = String(formData.get("participantsEffectiveDate") ?? "");
     startTransition(async () => {
-      const result = await changeParticipantsAction({ ruleId, effectiveDate, newParticipantIds: Array.from(selectedParticipantIds) });
+      const result = await changeParticipantsAction({
+        ruleId,
+        effectiveDate,
+        newParticipantIds: Array.from(selectedParticipantIds),
+        primaryStudentId: selectedPrimaryId || null,
+      });
       if (result.error) {
         setError(result.error);
         return;
@@ -182,11 +194,37 @@ export function SeriesStatusActions({
               ))}
             </div>
           </fieldset>
+          {selectedParticipantIds.size >= 2 && (
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className="text-xs font-medium text-textSecondary">Alumno principal *</legend>
+              <div className="flex flex-col gap-1 rounded-md border border-border p-2">
+                {eligibleStudents
+                  .filter((student) => selectedParticipantIds.has(student.id))
+                  .map((student) => (
+                    <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-background">
+                      <input
+                        type="radio"
+                        name={`primaryStudentIdChoice-${ruleId}`}
+                        checked={selectedPrimaryId === student.id}
+                        onChange={() => setSelectedPrimaryId(student.id)}
+                        className="h-4 w-4 border-border text-brandBlue focus:ring-brandBlue"
+                      />
+                      {student.name}
+                    </label>
+                  ))}
+              </div>
+              {!selectedPrimaryId && <p className="text-xs text-statusRojo">Elegí quién es el alumno principal.</p>}
+            </fieldset>
+          )}
           <FormInfoBox>
             Las clases ya pasadas o ya registradas conservan sus alumnos de siempre. Las clases entre hoy y esa fecha que todavía no se
             registraron se guardan primero con el grupo actual — nunca se reinterpreta el pasado.
           </FormInfoBox>
-          <button type="submit" disabled={pending} className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={pending || selectedParticipantIds.size === 0 || !selectedPrimaryId}
+            className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
             {pending ? "Guardando..." : "Confirmar desde esa fecha"}
           </button>
         </form>

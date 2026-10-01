@@ -14,6 +14,7 @@ import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
 import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
+import { resolveExplicitPrimaryStudentId } from "@/lib/calendar/primary-selection";
 import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 
@@ -41,6 +42,7 @@ export interface FormState {
  */
 export interface NewLessonFormValues {
   participantIds: string[];
+  primaryStudentId: string;
   modality: string;
   activityKind: string;
   classTitle: string;
@@ -109,6 +111,7 @@ async function checkConflictsAndAvailability(
 
 export async function createSingleLessonAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  const primaryStudentIdRaw = readString(formData, "primaryStudentId");
   const date = readString(formData, "date");
   const hourRaw = readString(formData, "hour");
   const minuteRaw = readString(formData, "minute");
@@ -125,6 +128,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
 
   const values: NewLessonFormValues = {
     participantIds: studentIds,
+    primaryStudentId: primaryStudentIdRaw,
     modality,
     activityKind,
     classTitle: classTitleRaw,
@@ -149,13 +153,19 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
     if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible.", values };
     if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado.", values };
 
+    const primaryResult = resolveExplicitPrimaryStudentId(
+      selected.map((s) => s.id),
+      primaryStudentIdRaw || null
+    );
+    if ("error" in primaryResult) return { error: primaryResult.error, values };
+
     const startAt = localDateTimeToInstantIso({ date, hour, minute, timeZone: TIMEZONE });
     const endAt = new Date(new Date(startAt).getTime() + durationMinutes * 60_000).toISOString();
 
     const conflictMessage = await checkConflictsAndAvailability(ctx, startAt, endAt);
     if (conflictMessage) return { error: conflictMessage, values };
 
-    const primary = selected[0];
+    const primary = selected.find((s) => s.id === primaryResult.primaryStudentId)!;
     await createSingleLesson(ctx, {
       primaryStudentId: primary.id,
       studentName: primary.name,
@@ -188,6 +198,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
 
 export async function createRecurrenceSeriesAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  const primaryStudentIdRaw = readString(formData, "primaryStudentId");
   const startDate = readString(formData, "startDate");
   const endDateRaw = readString(formData, "endDate");
   const endDate = endDateRaw.trim() || null;
@@ -199,6 +210,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
 
   const values: NewLessonFormValues = {
     participantIds: studentIds,
+    primaryStudentId: primaryStudentIdRaw,
     modality,
     activityKind,
     classTitle: classTitleRaw,
@@ -230,6 +242,12 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible.", values };
     if (selected.some((s) => s.status === "archivado")) return { error: "No se puede agendar un alumno archivado.", values };
 
+    const primaryResult = resolveExplicitPrimaryStudentId(
+      selected.map((s) => s.id),
+      primaryStudentIdRaw || null
+    );
+    if ("error" in primaryResult) return { error: primaryResult.error, values };
+
     // El lunes real de la semana de `startDate` — nunca otro día (regla del motor de recurrencia).
     // La primera ocurrencia REAL sigue cayendo en `startDate` (o después, según el patrón
     // elegido) — `mondayOfWeekContaining` sólo ancla el registro técnico de la regla, nunca
@@ -237,7 +255,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     const monday = mondayOfWeekContaining(startDate);
 
     const created = await createRecurrenceSeries(ctx, {
-      primaryStudentId: selected[0]?.id ?? null,
+      primaryStudentId: primaryResult.primaryStudentId,
       ruleType: weeks.length > 1 ? "custom" : "weekly",
       cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
       weeks,
@@ -432,6 +450,18 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
   try {
     const ctx = await requireAuthenticatedDbContext();
     const todayDate = getLocalDateKey(new Date().toISOString(), TIMEZONE);
+
+    // "Editar futuras" nunca deja cambiar el roster desde esta pantalla
+    // (eso es "Modificar participantes", acción separada) — el principal
+    // real de la serie se resuelve siempre del lado del servidor, contra
+    // la regla actual, nunca se recibe del cliente ni se infiere de
+    // `participantIds` (que acá siempre es el roster viejo sin cambios).
+    const currentRule = await getRecurrenceRule(ctx, originalRecurrenceId);
+    if (!currentRule) return { error: "Serie no encontrada." };
+    if (!currentRule.primaryStudentId || !participantIds.includes(currentRule.primaryStudentId)) {
+      return { error: "El alumno principal de la serie ya no forma parte del grupo — usá \"Modificar participantes\" primero." };
+    }
+
     await splitRecurrenceThisAndFuture(ctx, {
       originalRecurrenceId,
       effectiveDate,
@@ -440,6 +470,7 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
       weeks,
       participantIds,
+      primaryStudentId: currentRule.primaryStudentId,
     });
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
@@ -453,6 +484,8 @@ export interface ChangeParticipantsActionInput {
   ruleId: string;
   effectiveDate: string;
   newParticipantIds: string[];
+  /** Elegido explícitamente por la profesora para el roster NUEVO — nunca inferido del orden de `newParticipantIds` (Fase 10, 20261001140000). */
+  primaryStudentId: string | null;
 }
 
 /**
@@ -465,11 +498,21 @@ export interface ChangeParticipantsActionInput {
 export async function changeParticipantsAction(input: ChangeParticipantsActionInput): Promise<FormState> {
   if (input.newParticipantIds.length === 0) return { error: "Elegí al menos un alumno." };
   if (!input.effectiveDate) return { error: "Elegí la fecha efectiva." };
+
+  const primaryResult = resolveExplicitPrimaryStudentId(input.newParticipantIds, input.primaryStudentId);
+  if ("error" in primaryResult) return { error: primaryResult.error };
+
   try {
     const ctx = await requireAuthenticatedDbContext();
     const now = new Date();
     const effectiveDateIso = localDateTimeToInstantIso({ date: input.effectiveDate, hour: 0, minute: 0, timeZone: TIMEZONE });
-    await changeRecurrenceParticipantsFromDate(ctx, { ruleId: input.ruleId, effectiveDateIso, now, newParticipantIds: input.newParticipantIds });
+    await changeRecurrenceParticipantsFromDate(ctx, {
+      ruleId: input.ruleId,
+      effectiveDateIso,
+      now,
+      newParticipantIds: input.newParticipantIds,
+      newPrimaryStudentId: primaryResult.primaryStudentId,
+    });
   } catch (error) {
     if (error instanceof RecurrenceRuleNotFoundError) return { error: "Serie no encontrada." };
     return { error: friendlyErrorMessage(error) };
