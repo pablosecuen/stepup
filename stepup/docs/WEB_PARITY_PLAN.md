@@ -669,6 +669,18 @@ El E2E de red del bloque anterior destapó un bloqueo estructural y tres hallazg
 
 **Pendientes explícitos, no bloqueantes**: Calendario/Cobros de Remediación B+D siguen post-lanzamiento (sus RPC siguen `security invoker`). El E2E de red de alta de alumno, pago, reporte e importación ya pasó (error previo y respuesta perdida, sin duplicados).
 
+### Staging: push y despliegue Preview (ejecutado; E2E visual del Preview impedido por Vercel Authentication)
+
+**Hecho.** `.vercelignore` nuevo (commit `6404e37`: excluye `Claude outputs/`, `.claude/`, `.env*`, `.vercel/`, `supabase/.temp/`; con ese archivo la CLI deja de leer `.gitignore`, por eso se replicó). `git push origin teacherflow-web` sin force (`89c874d..6404e37`), `origin/teacherflow-web` = `HEAD`. Despliegue **Preview** (no Production): `https://teacherflow-ms2pkjvsj-teacherflow.vercel.app`, `dpl_6RqLWP8EBBfBRZCmhdufZKowgpmZ`, `target: preview`, estado `READY`, build de 25 s, TypeScript y las 28 rutas generadas. Preview y Production comparten el mismo Supabase.
+
+**Impedimento, y su causa.** El Preview tiene Vercel Authentication activo: toda ruta responde 302 a `vercel.com/sso-api` antes de llegar a la aplicación, y la cuenta con acceso al equipo `teacherflow` (único miembro, OWNER) es distinta de la cuenta con la que se intentó entrar. Por eso `/login`, `/recuperar-contrasena`, la redirección de `/inicio` y los assets **no se pudieron verificar contra el Preview**, y `vercel logs` no muestra ninguna petición (nada llegó a la app, así que tampoco se puede afirmar "sin 5xx" desde logs). No es un fallo de la aplicación. No se creó bypass, no se desactivó la protección y no se tocó Supabase ni datos. No se usó `vercel curl`: puede crear un secreto de bypass en el proyecto y se pidió no crear uno permanente.
+
+**Evidencia complementaria (no sustituye al E2E visual del Preview).** Build Preview exitoso; mismas rutas contra el build de producción local del mismo código: `/login`, `/recuperar-contrasena` y `/crear-cuenta` responden 200 con su formulario, las rutas privadas sin sesión responden 307 a `/login?next=…`, los 11 assets `/_next/static` responden 200; E2E local completo contra la base real con la cuenta QA; 511/511 pruebas; 428/428 pgTAP contra el esquema aplicado; ambas auditorías SQL limpias; 36/36 migraciones local=remote.
+
+**Producción hoy (sólo lectura).** Deployment `dpl_8k7sVXriTJg5tNLaZQoUAxMdabNa`, creado el 16/09/2026 (17 días), alias público `https://teacherflow-web.vercel.app` (el alias `teacherflow-web-teacherflow.vercel.app` y la URL del deployment sí están protegidos). Es un build **anterior**: `/registro`, `/resumen-financiero` y `/recordatorios` dan 404 ahí y existen en el Preview. Variables configuradas por entorno (sólo nombres): `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en Production y en Preview; no hay `NEXT_PUBLIC_SITE_URL`, así que los redirects de Auth se derivan del host de la petición. Backup real, sólo metadatos (nunca payload): `cloud_backups` 20 filas, 2 usuarios, 0 del QA.
+
+**Riesgo a decidir antes de Producción.** Las migraciones 20261001100000 a 20261001160000 ya están aplicadas en la base compartida; entre otras, `create_calendar_lesson`/`create_recurrence_series` exigen `operation_id` (`22023`) y se revocaron escrituras directas sobre tablas históricas. El build de Producción actual no conoce nada de eso, así que algunos flujos suyos pueden estar ya rotos contra el esquema actual (inferido de las migraciones; no se probó). Consecuencia: **volver al deployment anterior no es un rollback funcional completo**: sólo revierte el front, las migraciones son aditivas y no tienen down.
+
 ---
 
 ## Continuación exacta
