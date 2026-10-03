@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { createLevelAction, renameLevelAction, type FormState } from "@/lib/actions/students";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -25,7 +26,7 @@ function SmallSubmitButton({ label }: { label: string }) {
 function RenameLevelRow({ level }: { level: CustomLevelRecord }) {
   const [editing, setEditing] = useState(false);
   const boundAction = renameLevelAction.bind(null, level.id);
-  const [state, formAction] = useActionState(boundAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
 
   if (!editing) {
     return (
@@ -71,7 +72,7 @@ function RenameLevelRow({ level }: { level: CustomLevelRecord }) {
 }
 
 export function ManageLevelsSection({ customLevels }: { customLevels: CustomLevelRecord[] }) {
-  const [createState, createAction] = useActionState(createLevelAction, INITIAL_STATE);
+  const [createState, createAction] = useGuardedActionState(createLevelAction, INITIAL_STATE);
 
   return (
     <details className="rounded-lg border border-border bg-surface p-4 shadow-card">

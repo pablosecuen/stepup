@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, type FormState } from "@/lib/actions/calendar";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 import type { RecurrenceRuleStatus } from "@/lib/db/database.types";
@@ -56,7 +57,7 @@ export function SeriesStatusActions({
   function applyStatus(next: "active" | "paused" | "ended") {
     setError(null);
     startTransition(async () => {
-      const result: FormState = await setRecurrenceStatusAction(ruleId, next);
+      const result: FormState = await guardNetwork(() => setRecurrenceStatusAction(ruleId, next));
       if (result.error) {
         setError(result.error);
         return;
@@ -71,7 +72,7 @@ export function SeriesStatusActions({
     formData.set("weeksJson", weekCyclesToWeeksJson(weekCycles));
     participantIds.forEach((id) => formData.append("participantIds", id));
     startTransition(async () => {
-      const result = await editFutureRecurrenceAction({}, formData);
+      const result = await guardNetwork(() => editFutureRecurrenceAction({}, formData));
       if (result.error) {
         setError(result.error);
         return;
@@ -85,12 +86,12 @@ export function SeriesStatusActions({
     setError(null);
     const effectiveDate = String(formData.get("participantsEffectiveDate") ?? "");
     startTransition(async () => {
-      const result = await changeParticipantsAction({
+      const result = await guardNetwork(() => changeParticipantsAction({
         ruleId,
         effectiveDate,
         newParticipantIds: Array.from(selectedParticipantIds),
         primaryStudentId: selectedPrimaryId || null,
-      });
+      }));
       if (result.error) {
         setError(result.error);
         return;

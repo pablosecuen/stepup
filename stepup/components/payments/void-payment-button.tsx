@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { voidPaymentAction } from "@/lib/actions/payments";
+import { guardNetwork } from "@/lib/actions/network-guard";
 
 /** Puerto de `VoidPaymentDialog.tsx` (móvil) — anula un pago puntual, nunca lo borra. */
 export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
@@ -36,7 +37,7 @@ export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
           onClick={() =>
             startTransition(async () => {
               setError(null);
-              const result = await voidPaymentAction({ paymentId, voidReason: reason });
+              const result = await guardNetwork(() => voidPaymentAction({ paymentId, voidReason: reason }));
               if (result.error) {
                 setError(result.error);
                 return;

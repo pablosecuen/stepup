@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { analyzeLatestCloudBackupAction, applyImportPreviewAction, previewUndoImportAction, applyUndoImportAction, discardImportUndoAction } from "@/lib/actions/backup";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import type { FieldOverride, DuplicateDecision, ApplyRunSummary } from "@/lib/repositories/backup-import";
 import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import {
@@ -210,7 +211,7 @@ export function BackupImportWizard() {
     setError(null);
     setStage("analyzing");
     startTransition(async () => {
-      const result = await analyzeLatestCloudBackupAction();
+      const result = await guardNetwork(() => analyzeLatestCloudBackupAction());
       if (result.error || !result.data) {
         setError(result.error ?? "Ocurrió un error inesperado. Intentá de nuevo.");
         setStage("idle");
@@ -262,7 +263,7 @@ export function BackupImportWizard() {
     });
 
     startTransition(async () => {
-      const result = await applyImportPreviewAction(preview.previewId, fieldOverrides, duplicates);
+      const result = await guardNetwork(() => applyImportPreviewAction(preview.previewId, fieldOverrides, duplicates));
       if (result.error || !result.data) {
         setError(result.error ?? "Ocurrió un error inesperado. Intentá de nuevo.");
         setStage("preview");
@@ -277,7 +278,7 @@ export function BackupImportWizard() {
     if (!applyResult) return;
     setError(null);
     startTransition(async () => {
-      const result = await previewUndoImportAction(applyResult.importRunId);
+      const result = await guardNetwork(() => previewUndoImportAction(applyResult.importRunId));
       if (result.error || !result.data) {
         setError(result.error ?? "No pudimos revisar si se puede deshacer. Intentá de nuevo.");
         return;
@@ -290,7 +291,7 @@ export function BackupImportWizard() {
     if (!undoState) return;
     setError(null);
     startTransition(async () => {
-      const result = await applyUndoImportAction(undoState.undoPreviewId);
+      const result = await guardNetwork(() => applyUndoImportAction(undoState.undoPreviewId));
       // Sólo se marca deshecho después de una confirmación REAL del
       // servidor — nunca porque la promesa haya terminado sin error.
       if (result.error || !result.data) {
@@ -305,7 +306,7 @@ export function BackupImportWizard() {
     if (!applyResult) return;
     setError(null);
     startTransition(async () => {
-      const result = await discardImportUndoAction(applyResult.importRunId);
+      const result = await guardNetwork(() => discardImportUndoAction(applyResult.importRunId));
       // Corrección real (el descarte antes ignoraba el error y limpiaba el
       // estado igual): si falla, se muestra el error y el undo SIGUE
       // disponible — nunca se oculta la opción de deshacer por un error.

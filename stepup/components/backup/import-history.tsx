@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { listImportRunsAction, previewUndoImportAction, applyUndoImportAction, discardImportUndoAction } from "@/lib/actions/backup";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { computeUndoAvailability, type ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
@@ -32,7 +33,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
   function handlePreviewUndo() {
     setError(null);
     startTransition(async () => {
-      const result = await previewUndoImportAction(run.id);
+      const result = await guardNetwork(() => previewUndoImportAction(run.id));
       if (result.error || !result.data) {
         setError(result.error ?? "No pudimos revisar si se puede deshacer. Intentá de nuevo.");
         return;
@@ -45,7 +46,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
     if (!undoState) return;
     setError(null);
     startTransition(async () => {
-      const result = await applyUndoImportAction(undoState.undoPreviewId);
+      const result = await guardNetwork(() => applyUndoImportAction(undoState.undoPreviewId));
       if (result.error || !result.data) {
         setError(result.error ?? "No pudimos deshacer la importación. Nada se tocó — intentá de nuevo.");
         return;
@@ -58,7 +59,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
   function handleDiscardUndo() {
     setError(null);
     startTransition(async () => {
-      const result = await discardImportUndoAction(run.id);
+      const result = await guardNetwork(() => discardImportUndoAction(run.id));
       if (result.error || !result.data) {
         setError(result.error ?? "No pudimos descartar la posibilidad de deshacer. Seguís pudiendo deshacer esta importación.");
         return;
@@ -161,7 +162,7 @@ export function ImportHistory() {
   const [error, setError] = useState<string | null>(null);
 
   function load() {
-    listImportRunsAction().then((result) => {
+    guardNetwork(() => listImportRunsAction()).then((result) => {
       if (result.error || !result.data) {
         setError(result.error ?? "No pudimos cargar el historial de importaciones.");
         return;

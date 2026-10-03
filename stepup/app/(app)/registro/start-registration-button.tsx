@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { startRegistrationAction } from "@/lib/actions/lesson-registrations";
+import { guardNetwork } from "@/lib/actions/network-guard";
 
 export function StartRegistrationButton({
   calendarLessonId,
@@ -24,7 +25,7 @@ export function StartRegistrationButton({
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      const result = await startRegistrationAction({ calendarLessonId, recurrenceId, occurrenceKey, recurrenceIndex });
+      const result = await guardNetwork(() => startRegistrationAction({ calendarLessonId, recurrenceId, occurrenceKey, recurrenceIndex }));
       if (result.error || !result.data) {
         setError(result.error ?? "No se pudo empezar el registro.");
         return;

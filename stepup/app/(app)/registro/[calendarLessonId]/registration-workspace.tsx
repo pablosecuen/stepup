@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveParticipantAction, finalizeRegistrationAction, editCompletedRegistrationAction } from "@/lib/actions/lesson-registrations";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import type { LessonRegistrationAttendanceRecord, LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import type { ParticipantRegistrationStatus } from "@/lib/lessons/group-progress";
@@ -164,7 +165,7 @@ function ParticipantCard({
       }
     }
     startTransition(async () => {
-      const result = await saveParticipantAction(buildSaveParticipantInput(registrationId, studentId, form, nextStatus));
+      const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registrationId, studentId, form, nextStatus)));
       if (result.error) {
         setError(result.error);
         return;
@@ -428,12 +429,12 @@ export function RegistrationWorkspace({
         // del servidor). Nunca dos operaciones separadas del lado del
         // cliente: "Guardar cambios" espera exactamente lo que dice —
         // todo lo que la profesora ve en pantalla, atómico o nada.
-        const result = await editCompletedRegistrationAction({
+        const result = await guardNetwork(() => editCompletedRegistrationAction({
           lessonRegistrationId: registration.id,
           editOperationId,
           ...headerFields,
           participants: participants.map((p) => buildEditParticipantInput(p.studentId, formByStudentId[p.studentId])),
-        });
+        }));
         if (result.error) {
           setError(result.error);
           return;
@@ -457,14 +458,14 @@ export function RegistrationWorkspace({
       // en un primer finalizado).
       for (const p of participants) {
         const form = formByStudentId[p.studentId];
-        const result = await saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, form, null));
+        const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, form, null)));
         if (result.error) {
           setError(result.error);
           return;
         }
       }
 
-      const result = await finalizeRegistrationAction({ lessonRegistrationId: registration.id, ...headerFields });
+      const result = await guardNetwork(() => finalizeRegistrationAction({ lessonRegistrationId: registration.id, ...headerFields }));
       if (result.error) {
         setError(result.error);
         return;

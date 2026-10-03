@@ -11,6 +11,7 @@ import {
   retryPendingReportCleanupAction,
   type StudentReportPreview,
 } from "@/lib/actions/reports";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 
 const inputClassName =
@@ -89,7 +90,7 @@ export function ReportesTabContent({
       return;
     }
     setIsPreviewing(true);
-    const result = await previewStudentReportAction({ studentId, selectedMonths: [...selectedMonths] });
+    const result = await guardNetwork(() => previewStudentReportAction({ studentId, selectedMonths: [...selectedMonths] }));
     setIsPreviewing(false);
     if (result.error) {
       setError(result.error);
@@ -106,14 +107,14 @@ export function ReportesTabContent({
     setWarning(null);
     setNotice(null);
     setIsGenerating(true);
-    const result = await generateStudentReportAction({
+    const result = await guardNetwork(() => generateStudentReportAction({
       studentId,
       selectedMonths: [...selectedMonths],
       narrativeText,
       teacherNotes: { generalComment, behaviorAndParticipation, nextObjectives, recommendations },
       includeClassDetail,
       includePunctualitySummary,
-    });
+    }));
     setIsGenerating(false);
     if (result.error) {
       setError(result.error);
@@ -154,7 +155,7 @@ export function ReportesTabContent({
     setError(null);
     setNotice(null);
     setIsStartingNew(true);
-    const result = await startNewReportDraftAction(studentId);
+    const result = await guardNetwork(() => startNewReportDraftAction(studentId));
     setIsStartingNew(false);
     if (result.error) {
       setError(result.error);
@@ -170,7 +171,7 @@ export function ReportesTabContent({
 
   async function handleView(reportId: string) {
     setActionState({ id: reportId, kind: "view" });
-    const result = await getReportSignedUrlAction(reportId);
+    const result = await guardNetwork(() => getReportSignedUrlAction(reportId));
     setActionState(null);
     if (result.error) {
       setError(result.error);
@@ -181,14 +182,14 @@ export function ReportesTabContent({
 
   async function handleRegenerate(reportId: string) {
     setActionState({ id: reportId, kind: "regenerate" });
-    const result = await regenerateReportPdfAction(reportId);
+    const result = await guardNetwork(() => regenerateReportPdfAction(reportId));
     setActionState(null);
     if (result.error) setError(result.error);
   }
 
   async function handleDelete(reportId: string) {
     setActionState({ id: reportId, kind: "delete" });
-    const result = await deleteReportAction(reportId);
+    const result = await guardNetwork(() => deleteReportAction(reportId));
     setActionState(null);
     setConfirmingDeleteId(null);
     if (result.error) {
@@ -202,7 +203,7 @@ export function ReportesTabContent({
   async function handleRetryCleanup() {
     setError(null);
     setIsRetryingCleanup(true);
-    const result = await retryPendingReportCleanupAction();
+    const result = await guardNetwork(() => retryPendingReportCleanupAction());
     setIsRetryingCleanup(false);
     if (result.error) {
       setError(result.error);

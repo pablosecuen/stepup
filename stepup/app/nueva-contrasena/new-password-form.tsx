@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { updatePasswordAction, type AuthFormState } from "@/lib/auth/actions";
 import { MIN_PASSWORD_LENGTH, passwordsMatch, canSubmitNewPassword } from "@/lib/auth/validation";
@@ -26,7 +27,7 @@ function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
 }
 
 export function NewPasswordForm() {
-  const [state, formAction] = useActionState(updatePasswordAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(updatePasswordAction, INITIAL_STATE);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const showMismatchError = confirmPassword.length > 0 && !passwordsMatch(password, confirmPassword);

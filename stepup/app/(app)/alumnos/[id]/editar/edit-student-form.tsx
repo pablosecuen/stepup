@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { updateStudentAction, type FormState } from "@/lib/actions/students";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -27,7 +27,7 @@ function SubmitButton() {
 
 export function EditStudentForm({ student, customLevels }: { student: StudentRecord; customLevels: CustomLevelRecord[] }) {
   const boundAction = updateStudentAction.bind(null, student.id);
-  const [state, formAction] = useActionState(boundAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label={`Editar a ${student.name}`}>

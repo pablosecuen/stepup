@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signInAction, type AuthFormState } from "@/lib/auth/actions";
@@ -30,7 +30,7 @@ function SubmitButton() {
 }
 
 export function LoginForm({ next }: { next: string }) {
-  const [state, formAction] = useActionState(signInAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(signInAction, INITIAL_STATE);
   const showCreateAccountHint = state.error === AUTH_ERROR_MESSAGES.invalid_credentials;
 
   return (

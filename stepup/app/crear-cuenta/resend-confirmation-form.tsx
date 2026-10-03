@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { resendConfirmationAction, type AuthFormState } from "@/lib/auth/actions";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
@@ -25,7 +26,7 @@ function ResendButton({ cooldown }: { cooldown: number }) {
 }
 
 export function ResendConfirmationForm({ email }: { email: string }) {
-  const [state, formAction] = useActionState<AuthFormState & { sent?: boolean }, FormData>(resendConfirmationAction, {});
+  const [state, formAction] = useGuardedActionState<AuthFormState & { sent?: boolean }>(resendConfirmationAction, {});
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {

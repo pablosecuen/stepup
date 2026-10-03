@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { createSingleLessonAction, createRecurrenceSeriesAction, type FormState } from "@/lib/actions/calendar";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -74,7 +75,7 @@ export function NewLessonForm({
   }
 
   const boundAction = (prevState: FormState, formData: FormData) => dispatchAction(mode, prevState, formData);
-  const [state, formAction] = useActionState(boundAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
 
   // Re-sincroniza los campos controlados desde `state.values` cuando el
   // servidor rechaza el envío. Tiene que ser un efecto (nunca un ajuste

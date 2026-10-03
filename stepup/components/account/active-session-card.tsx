@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { endActiveSessionAction } from "@/lib/actions/account";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 
 export interface ActiveSessionInfo {
@@ -69,7 +70,7 @@ export function ActiveSessionCard({ session }: { session: ActiveSessionInfo | nu
               onClick={() =>
                 startTransition(async () => {
                   setError(null);
-                  const result = await endActiveSessionAction(session.deviceId, session.generation);
+                  const result = await guardNetwork(() => endActiveSessionAction(session.deviceId, session.generation));
                   if (result.error) {
                     setError(result.error);
                     return;

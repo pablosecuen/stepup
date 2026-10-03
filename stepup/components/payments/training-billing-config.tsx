@@ -8,6 +8,7 @@ import {
   editTrainingBillingFeeAction,
   type TrainingBillingConfigurationPlan,
 } from "@/lib/actions/payments";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 
 function formatCurrency(amount: number): string {
@@ -39,7 +40,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
       return;
     }
     startTransition(async () => {
-      const result = await previewTrainingBillingConfigurationAction({ recurrenceRuleId, monthlyFee: fee });
+      const result = await guardNetwork(() => previewTrainingBillingConfigurationAction({ recurrenceRuleId, monthlyFee: fee }));
       if (result.error) {
         setError(result.error);
         return;
@@ -52,7 +53,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
     setError(null);
     if (!plan || !operationId) return;
     startTransition(async () => {
-      const result = await confirmTrainingBillingConfigurationAction({ operationId, recurrenceRuleId, monthlyFee: plan.monthlyFee });
+      const result = await guardNetwork(() => confirmTrainingBillingConfigurationAction({ operationId, recurrenceRuleId, monthlyFee: plan.monthlyFee }));
       if (result.error) {
         setError(result.error);
         return;
@@ -75,7 +76,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const effectiveFrom = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
     startTransition(async () => {
-      const result = await editTrainingBillingFeeAction({ agreementId, pendingMonthlyFee: fee, pendingMonthlyFeeEffectiveFrom: effectiveFrom });
+      const result = await guardNetwork(() => editTrainingBillingFeeAction({ agreementId, pendingMonthlyFee: fee, pendingMonthlyFeeEffectiveFrom: effectiveFrom }));
       if (result.error) {
         setError(result.error);
         return;

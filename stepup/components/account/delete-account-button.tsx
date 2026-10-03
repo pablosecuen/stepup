@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteOwnAccountAction } from "@/lib/actions/account";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 
 const CONFIRM_WORD = "ELIMINAR";
@@ -64,7 +65,7 @@ export function DeleteAccountButton() {
           onClick={() =>
             startTransition(async () => {
               setError(null);
-              const result = await deleteOwnAccountAction();
+              const result = await guardNetwork(() => deleteOwnAccountAction());
               if (result?.error) setError(result.error);
             })
           }

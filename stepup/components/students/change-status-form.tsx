@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { changeStudentStatusAction, type ChangeStatusFormState } from "@/lib/actions/students";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
@@ -42,7 +43,7 @@ function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }
  */
 export function ChangeStatusForm({ studentId, currentStatus }: { studentId: string; currentStatus: StudentStatus }) {
   const boundAction = changeStudentStatusAction.bind(null, studentId);
-  const [state, formAction] = useActionState(boundAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
   const today = new Date().toISOString().slice(0, 10);
   // Estable durante toda la vida de este formulario — un reintento o doble
   // clic reenvía el MISMO id, nunca uno nuevo (idempotencia real del lado servidor).

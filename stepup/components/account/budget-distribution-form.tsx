@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { saveBudgetDistributionAction, type FormState } from "@/lib/actions/account";
 import { adjustNeeds, adjustSavings, adjustWants, type BudgetDistribution } from "@/lib/payments/budget-distribution";
@@ -61,7 +62,7 @@ function Slider({
  */
 export function BudgetDistributionForm({ initial }: { initial: BudgetDistribution }) {
   const [distribution, setDistribution] = useState<BudgetDistribution>(initial);
-  const [state, formAction] = useActionState(saveBudgetDistributionAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(saveBudgetDistributionAction, INITIAL_STATE);
 
   return (
     <form action={formAction} className="mt-3 flex flex-col gap-4">

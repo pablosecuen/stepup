@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { requestOwnPasswordChangeAction } from "@/lib/actions/account";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 
 export function ChangePasswordButton() {
@@ -21,7 +22,7 @@ export function ChangePasswordButton() {
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const result = await requestOwnPasswordChangeAction();
+            const result = await guardNetwork(() => requestOwnPasswordChangeAction());
             if (result.error) {
               setError(result.error);
               return;

@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { startAdhocRegistrationAction } from "@/lib/actions/lesson-registrations";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { ADHOC_OUTCOME_LABEL, LATE_CANCELLATION_POLICY_LABEL, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -62,7 +63,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
     if (!operationId) return; // todavía no se recuperó/generó el id — nunca enviar sin él.
     setError(null);
     startTransition(async () => {
-      const result = await startAdhocRegistrationAction({
+      const result = await guardNetwork(() => startAdhocRegistrationAction({
         studentIds: selectedIds,
         date,
         time,
@@ -74,7 +75,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
         operationId,
         lateCancellationPolicy: outcome === "cancelada_tarde" ? lateCancellationPolicy : null,
         lateCancellationPercentage: outcome === "cancelada_tarde" && lateCancellationPolicy === "cobrar_porcentaje" ? Number(lateCancellationPercentage) || 0 : null,
-      });
+      }));
       if (result.error) {
         setError(result.error);
         return;

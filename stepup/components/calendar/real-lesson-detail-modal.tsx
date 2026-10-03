@@ -7,6 +7,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
 import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
@@ -45,7 +46,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   function handleCancel() {
     setError(null);
     startTransition(async () => {
-      const result = await cancelOccurrenceAction({
+      const result = await guardNetwork(() => cancelOccurrenceAction({
         lessonId: item.materializedLessonId,
         recurrenceId: item.recurrenceId,
         occurrenceKey: item.occurrenceKey,
@@ -59,7 +60,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         modality: item.modality,
         classTitle: item.title,
         activityKind: item.activityKind,
-      });
+      }));
       if (result.error) {
         setError(result.error);
         return;
@@ -86,7 +87,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
     if (!reschedulePreview) return;
     setError(null);
     startTransition(async () => {
-      const result = await rescheduleOccurrenceAction({
+      const result = await guardNetwork(() => rescheduleOccurrenceAction({
         recurrenceId: item.recurrenceId,
         occurrenceKey: item.occurrenceKey,
         originalLessonId: item.materializedLessonId,
@@ -101,7 +102,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         newHour: reschedulePreview.hour,
         newMinute: reschedulePreview.minute,
         durationMinutes,
-      });
+      }));
       if (result.error) {
         // Vuelve al paso de elegir fecha/hora (nunca deja la vista previa
         // abierta con un resultado que en realidad falló) — el mensaje real

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveAvailabilityAction } from "@/lib/actions/calendar";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import type { AvailabilityBlockReason, AvailabilityException, AvailabilityExceptionReason, TeacherAvailability, WeeklyAvailabilityBlock } from "@/lib/calendar/availability";
 
@@ -26,7 +27,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const result = await saveAvailabilityAction(next);
+      const result = await guardNetwork(() => saveAvailabilityAction(next));
       if (result.error) {
         setError(result.error);
         return;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signUpAction, type SignUpFormState } from "@/lib/auth/actions";
@@ -29,7 +30,7 @@ function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
 }
 
 export function SignUpForm() {
-  const [state, formAction] = useActionState(signUpAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(signUpAction, INITIAL_STATE);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

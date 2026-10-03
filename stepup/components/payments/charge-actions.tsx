@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 
 const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferencia: "Transferencia", otro: "Otro" };
@@ -34,7 +35,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
     }
     if (!operationId) return;
     startTransition(async () => {
-      const result = await registerPaymentAction({
+      const result = await guardNetwork(() => registerPaymentAction({
         operationId,
         studentId,
         amount: parsedAmount,
@@ -42,7 +43,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
         paidAt,
         notes: notes || null,
         chargeId,
-      });
+      }));
       if (result.error) {
         setError(result.error);
         return;
@@ -60,7 +61,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
       return;
     }
     startTransition(async () => {
-      const result = await voidChargeAction({ chargeId, voidReason });
+      const result = await guardNetwork(() => voidChargeAction({ chargeId, voidReason }));
       if (result.error) {
         setError(result.error);
         return;

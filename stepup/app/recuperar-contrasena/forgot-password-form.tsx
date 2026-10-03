@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { requestPasswordResetAction, type AuthFormState } from "@/lib/auth/actions";
@@ -29,7 +29,7 @@ function SubmitButton() {
 // enviado). El texto del estado "enviado" es deliberadamente ambiguo sobre
 // si la cuenta existe (anti-enumeración) — se copia tal cual.
 export function ForgotPasswordForm() {
-  const [state, formAction] = useActionState(requestPasswordResetAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(requestPasswordResetAction, INITIAL_STATE);
 
   if (state.sent) {
     return (

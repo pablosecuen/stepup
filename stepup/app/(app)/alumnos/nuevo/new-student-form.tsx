@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { createStudentAction, type FormState } from "@/lib/actions/students";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -78,7 +78,7 @@ function SubmitButton() {
 }
 
 export function NewStudentForm({ customLevels, claimId }: { customLevels: CustomLevelRecord[]; claimId: string }) {
-  const [state, formAction] = useActionState(createStudentAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(createStudentAction, INITIAL_STATE);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de alta de alumno">

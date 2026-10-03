@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { saveTeacherProfileAction, type FormState } from "@/lib/actions/account";
 import { FormErrorBox } from "@/components/auth/form-boxes";
@@ -22,7 +22,7 @@ function SaveButton() {
 }
 
 export function TeacherProfileForm({ displayName }: { displayName: string }) {
-  const [state, formAction] = useActionState(saveTeacherProfileAction, INITIAL_STATE);
+  const [state, formAction] = useGuardedActionState(saveTeacherProfileAction, INITIAL_STATE);
 
   return (
     <form action={formAction} className="mt-3 flex flex-col gap-2.5">
