@@ -19,6 +19,7 @@ import {
   type ApplyRunSummary,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
+import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 
 // Server Actions — Fase 9 (Backup e importación). Nunca reciben `ownerId`
 // del navegador; `requireAuthenticatedDbContext()` siempre resuelve la
@@ -36,8 +37,7 @@ export interface ActionResult<T> {
 }
 
 function friendlyError(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado. Intentá de nuevo.";
+  return domainErrorMessage(error);
 }
 
 export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ found: boolean; createdAt?: string; appVersion?: string | null }>> {

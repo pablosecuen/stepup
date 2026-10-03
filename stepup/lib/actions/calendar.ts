@@ -16,6 +16,7 @@ import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timez
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
 import { resolveExplicitPrimaryStudentId } from "@/lib/calendar/primary-selection";
 import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
+import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 
@@ -69,8 +70,7 @@ function readString(formData: FormData, key: string): string {
 }
 
 function friendlyErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado. Intentá de nuevo.";
+  return domainErrorMessage(error);
 }
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
