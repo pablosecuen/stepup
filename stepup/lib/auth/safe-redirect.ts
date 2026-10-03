@@ -7,6 +7,15 @@ const ALLOWED_NEXT_PREFIXES = ["/inicio", "/alumnos", "/calendario", "/cobros", 
 
 export const DEFAULT_AUTH_REDIRECT = "/inicio";
 
+/**
+ * Destino de la recuperación de contraseña. NO es un área privada (no está en
+ * `ALLOWED_NEXT_PREFIXES`, así que `isPrivatePath` sigue siendo falso), pero sí
+ * un `next` válido de `/auth/callback`: antes quedaba fuera de la lista y el
+ * callback reemplazaba `/nueva-contrasena` por `/inicio`, dejando a la persona
+ * dentro de la app sin pasar nunca por "Nueva contraseña". Sólo la ruta exacta.
+ */
+export const RECOVERY_PASSWORD_PATH = "/nueva-contrasena";
+
 function isSingleInternalPath(candidate: string): boolean {
   // Debe empezar con exactamente una barra (no "//", que el navegador
   // interpreta como protocol-relative hacia otro host) y no contener un
@@ -39,6 +48,8 @@ export function sanitizeNextPath(rawNext: string | null | undefined, fallback: s
   const isAllowed = ALLOWED_NEXT_PREFIXES.some(
     (prefix) => candidate === prefix || candidate.startsWith(`${prefix}/`) || candidate.startsWith(`${prefix}?`)
   );
+
+  if (candidate === RECOVERY_PASSWORD_PATH) return candidate;
 
   return isAllowed ? candidate : fallback;
 }

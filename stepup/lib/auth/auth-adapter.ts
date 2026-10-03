@@ -20,6 +20,11 @@ export interface AuthActionError {
 
 export type AuthActionResult<T = void> = { ok: true; data: T } | { ok: false; error: AuthActionError };
 
+/** Usuario devuelto por el canje PKCE; `isRecovery` lo informa supabase-js (`redirectType`) cuando el código viene de un pedido de recuperación. */
+export interface AuthExchangeUser extends AuthUser {
+  isRecovery?: boolean;
+}
+
 export interface SignUpOutcome {
   needsEmailConfirmation: boolean;
 }
@@ -31,6 +36,13 @@ export interface AuthAdapter {
   requestPasswordReset(email: string): Promise<AuthActionResult>;
   updatePassword(newPassword: string): Promise<AuthActionResult>;
   signOut(): Promise<AuthActionResult>;
-  exchangeCodeForSession(code: string): Promise<AuthActionResult<AuthUser>>;
+  exchangeCodeForSession(code: string): Promise<AuthActionResult<AuthExchangeUser>>;
+  /**
+   * Verifica el `token_hash` de un enlace de correo con `verifyOtp` (un solo uso, sin `code_verifier`: sirve desde otro
+   * dispositivo). Sólo los tipos oficiales de las plantillas "Reset Password" y "Confirm signup".
+   */
+  verifyLinkToken(tokenHash: string, type: "recovery" | "signup" | "email"): Promise<AuthActionResult<AuthUser>>;
+  /** Verifica el código de 6 dígitos del mismo correo (alternativa a prueba de escáneres). */
+  verifyEmailCode(email: string, code: string, flow: "recovery" | "signup"): Promise<AuthActionResult<AuthUser>>;
   getUser(): Promise<AuthUser | null>;
 }

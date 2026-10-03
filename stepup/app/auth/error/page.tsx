@@ -38,7 +38,11 @@ export default async function AuthErrorPage({ searchParams }: { searchParams: Pr
           </Link>
         </div>
 
-        <Link href="/" className="mt-4 block text-center text-sm font-medium text-brandBlue hover:underline">
+        <Link href="/recuperar-contrasena" className="mt-4 block text-center text-sm font-medium text-brandBlue hover:underline">
+          Pedir un enlace nuevo
+        </Link>
+
+        <Link href="/" className="mt-2 block text-center text-sm font-medium text-brandBlue hover:underline">
           Volver al inicio
         </Link>
       </div>

@@ -28,6 +28,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCategory, string> = {
 
 export type CallbackErrorCategory =
   | "link_expired"
+  | "link_other_device"
   | "link_already_used"
   | "link_invalid"
   | "no_connection"
@@ -35,7 +36,10 @@ export type CallbackErrorCategory =
   | "unknown";
 
 export const CALLBACK_ERROR_MESSAGES: Record<CallbackErrorCategory, string> = {
-  link_expired: "Este enlace venció. Volvé a pedirlo.",
+  // Supabase devuelve `otp_expired` tanto si el enlace venció como si ya se usó (o si un
+  // escáner del correo lo abrió antes): no se puede distinguir, así que el texto no promete una causa.
+  link_expired: "Este enlace venció o ya fue usado. Volvé a pedirlo.",
+  link_other_device: "Abriste el enlace en un dispositivo o navegador distinto del que lo pidió. Volvé a pedirlo desde este dispositivo, o usá el código de 6 dígitos del correo.",
   link_already_used: "Este enlace ya fue usado. Si ya confirmaste tu cuenta, iniciá sesión normalmente.",
   link_invalid: "Este enlace no es válido.",
   no_connection: "No hay conexión a internet. Conectate y volvé a tocar el enlace.",
@@ -47,6 +51,7 @@ interface RawAuthError {
   code?: string | null;
   status?: number | null;
   name?: string;
+  message?: string;
 }
 
 /**
@@ -96,9 +101,25 @@ export function classifyCallbackError(error: RawAuthError | null | undefined): C
 
   if (error.code === "otp_expired") return "link_expired";
 
+  // PKCE guarda el `code_verifier` en el navegador que pidió el enlace: abrirlo en otro
+  // dispositivo (o con un escáner) no puede canjear el código, y eso NO es "ya usado".
+  if (error.name === "AuthPKCECodeVerifierMissingError" || /code verifier/i.test(error.message ?? "")) return "link_other_device";
+
   // PKCE es de un solo uso: la causa real más común de una excepción acá
   // es que el enlace ya se abrió antes, no que haya un error de servidor.
   return "link_already_used";
+}
+
+/**
+ * Clasifica el resultado de `verifyOtp` (enlace con `token_hash` o código de 6
+ * dígitos). `otp_expired` es lo que devuelve Supabase tanto para un token vencido
+ * como para uno ya consumido; cualquier otro rechazo es un enlace/código inválido.
+ */
+export function classifyVerifyOtpError(error: RawAuthError | null | undefined): CallbackErrorCategory {
+  if (!error) return "unknown";
+  if (error.name === "AuthRetryableFetchError") return error.status === 0 ? "no_connection" : "server_error";
+  if (error.code === "otp_expired") return "link_expired";
+  return "link_invalid";
 }
 
 export function translateCallbackError(error: RawAuthError | null | undefined): string {

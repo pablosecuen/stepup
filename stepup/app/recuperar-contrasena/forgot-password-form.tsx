@@ -5,9 +5,9 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { requestPasswordResetAction, type AuthFormState } from "@/lib/auth/actions";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { EmailCodeForm } from "@/components/auth/email-code-form";
 
 const INITIAL_STATE: AuthFormState & { sent?: boolean; email?: string } = {};
-
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -38,6 +38,7 @@ export function ForgotPasswordForm() {
           Si <strong className="text-textPrimary">{state.email}</strong> tiene una cuenta, te enviamos un enlace
           para elegir una contraseña nueva.
         </p>
+        {state.email && <EmailCodeForm flow="recovery" email={state.email} />}
         <Link href="/login" className="text-sm font-semibold text-brandBlue hover:underline">
           Volver a iniciar sesión
         </Link>

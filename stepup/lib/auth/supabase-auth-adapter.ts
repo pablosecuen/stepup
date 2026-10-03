@@ -2,8 +2,8 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/auth/site-url";
 import { normalizeEmail } from "@/lib/auth/normalize-email";
-import { translateAuthError, translateCallbackError, classifyCallbackError } from "@/lib/auth/error-messages";
-import type { AuthAdapter, AuthActionResult, AuthUser, SignUpOutcome } from "@/lib/auth/auth-adapter";
+import { translateAuthError, translateCallbackError, classifyCallbackError, classifyVerifyOtpError, CALLBACK_ERROR_MESSAGES } from "@/lib/auth/error-messages";
+import type { AuthAdapter, AuthActionResult, AuthExchangeUser, AuthUser, SignUpOutcome } from "@/lib/auth/auth-adapter";
 
 // Mismo texto que móvil cuando `getSupabaseClient()` devuelve null
 // (`useAuthSession.ts`): "La sincronización con la nube todavía no está
@@ -16,6 +16,22 @@ const NOT_CONFIGURED: AuthActionResult<never> = {
 function toUser(user: { id: string; email?: string | null } | null | undefined): AuthUser | null {
   if (!user) return null;
   return { id: user.id, email: user.email ?? null };
+}
+
+function toVerifyResult(
+  user: { id: string; email?: string | null } | null | undefined,
+  error: { code?: string; status?: number; name?: string; message?: string } | null
+): AuthActionResult<AuthUser> {
+  if (error) {
+    const category = classifyVerifyOtpError(error);
+    return { ok: false, error: { message: CALLBACK_ERROR_MESSAGES[category], code: category } };
+  }
+  const mapped = toUser(user);
+  if (!mapped) {
+    const category = classifyVerifyOtpError(undefined);
+    return { ok: false, error: { message: CALLBACK_ERROR_MESSAGES[category], code: category } };
+  }
+  return { ok: true, data: mapped };
 }
 
 /**
@@ -51,7 +67,8 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const { data, error } = await supabase.auth.signUp({
         email: normalizeEmail(email),
         password,
-        options: { emailRedirectTo: `${origin}/auth/callback` },
+        // /auth/confirm acepta el enlace nuevo (`?token_hash=&type=email`, sin PKCE) y el antiguo (`?code=`).
+        options: { emailRedirectTo: `${origin}/auth/confirm` },
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
 
@@ -68,7 +85,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: normalizeEmail(email),
-        options: { emailRedirectTo: `${origin}/auth/callback` },
+        options: { emailRedirectTo: `${origin}/auth/confirm` },
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
       return { ok: true, data: undefined };
@@ -80,7 +97,8 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
 
       const origin = await getSiteOrigin();
       const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
-        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/nueva-contrasena")}`,
+        // /auth/confirm acepta el enlace nuevo (`?token_hash=`, sin PKCE) y el antiguo (`?code=`).
+        redirectTo: `${origin}/auth/confirm`,
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
       return { ok: true, data: undefined };
@@ -105,7 +123,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       return { ok: true, data: undefined };
     },
 
-    async exchangeCodeForSession(code) {
+    async exchangeCodeForSession(code): Promise<AuthActionResult<AuthExchangeUser>> {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
@@ -121,7 +139,27 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
           error: { message: translateCallbackError(undefined), code: classifyCallbackError(undefined) },
         };
       }
-      return { ok: true, data: user };
+      // supabase-js recuerda en el verificador PKCE (sufijo "/recovery") que el código vino de resetPasswordForEmail y lo
+      // devuelve como `redirectType`, un campo que existe en runtime pero no figura en sus tipos.
+      const redirectType = (data as { redirectType?: string | null }).redirectType;
+      const exchanged: AuthExchangeUser = { ...user, isRecovery: redirectType === "recovery" };
+      return { ok: true, data: exchanged };
+    },
+
+    async verifyLinkToken(tokenHash, type) {
+      const supabase = await createSupabaseServerClient();
+      if (!supabase) return NOT_CONFIGURED;
+
+      const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+      return toVerifyResult(data?.user, error);
+    },
+
+    async verifyEmailCode(email, code, flow) {
+      const supabase = await createSupabaseServerClient();
+      if (!supabase) return NOT_CONFIGURED;
+
+      const { data, error } = await supabase.auth.verifyOtp({ type: flow, email: normalizeEmail(email), token: code.trim() });
+      return toVerifyResult(data?.user, error);
     },
 
     async getUser() {

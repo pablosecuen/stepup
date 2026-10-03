@@ -9,6 +9,7 @@ import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { MIN_PASSWORD_LENGTH, passwordsMatch, canSubmitSignUp } from "@/lib/auth/validation";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { ResendConfirmationForm } from "./resend-confirmation-form";
+import { EmailCodeForm } from "@/components/auth/email-code-form";
 
 const INITIAL_STATE: SignUpFormState = {};
 
@@ -42,6 +43,7 @@ export function SignUpForm() {
           Enviamos un enlace de confirmación a: <strong className="text-textPrimary">{email}</strong>
         </p>
         <FormInfoBox>Tocá el enlace del correo para activar tu cuenta.</FormInfoBox>
+        <EmailCodeForm flow="signup" email={email} />
         <ResendConfirmationForm email={email} />
         <Link href="/login" className="text-sm font-semibold text-brandBlue hover:underline">
           Volver a iniciar sesión

@@ -1,10 +1,7 @@
-import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { ForgotPasswordForm } from "./forgot-password-form";
 import { isSupabaseConfigured } from "@/lib/auth/config";
-import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
-import { DEFAULT_AUTH_REDIRECT } from "@/lib/auth/safe-redirect";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Recuperar contraseña · TeacherFlow" };
@@ -15,9 +12,8 @@ export default async function RecuperarContrasenaPage() {
     return <AuthNotConfigured />;
   }
 
-  const user = await createSupabaseAuthAdapter().getUser();
-  if (user) redirect(DEFAULT_AUTH_REDIRECT);
-
+  // Ya no se redirige a Inicio si hay una sesión: en un dispositivo con una sesión vieja (otra cuenta)
+  // la persona igual tiene que poder pedir/usar un enlace de recuperación.
   return (
     <AuthShell
       title="Recuperar contraseña"

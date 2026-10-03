@@ -3,6 +3,7 @@ import { BellIcon } from "@heroicons/react/24/outline";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
+import { logLoadFailure } from "@/lib/errors/load-failure";
 import { loadHomeData } from "@/lib/dashboard/load-home-data";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -32,10 +33,12 @@ export default async function InicioPage() {
   try {
     const ctx = await requireAuthenticatedDbContext();
     data = await loadHomeData(ctx);
-  } catch {
+  } catch (error) {
+    // Ya no se oculta la causa: queda registrada (tipo/código, nunca datos) y la sesión vencida se distingue.
+    const failure = logLoadFailure("inicio", error);
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar Inicio." />
+        <ErrorState message={failure.kind === "unauthenticated" ? "Tu sesión expiró. Volvé a iniciar sesión." : "No pudimos cargar Inicio."} />
         <Link href="/inicio" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
