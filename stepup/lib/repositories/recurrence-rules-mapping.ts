@@ -1,5 +1,6 @@
 import type { ActivityKind, CalendarModality, RecurrenceRuleRow, RecurrenceRuleStatus } from "../db/database.types.ts";
 import type { RecurrenceWeek } from "../calendar/types.ts";
+import { parseOperationId } from "../calendar/operation-id.ts";
 
 /**
  * Lógica PURA del repositorio de series — separada para poder probarla
@@ -53,6 +54,8 @@ export function toRecurrenceRuleRecord(row: RecurrenceRuleRow, participantIds: s
 }
 
 export interface NewRecurrenceSeriesInput {
+  /** UUID estable del borrador, generado una sola vez en el cliente — idempotencia real de la creación (20261001150000). Nunca se genera acá ni en la Server Action. */
+  operationId: string;
   /** Elegido explícitamente por la profesora — nunca inferido del orden de `participantIds` (Fase 10, 20261001140000). Siempre obligatorio y siempre dentro de `participantIds`, validado acá y de nuevo en el RPC. */
   primaryStudentId: string;
   ruleType: "weekly" | "custom";
@@ -75,6 +78,9 @@ export interface RecurrenceSeriesValidationError {
 /** Validación mínima temprana — la última palabra sigue siendo la base (constraints + assertRecurrenceRule al generar). */
 export function validateNewRecurrenceSeriesInput(input: NewRecurrenceSeriesInput): RecurrenceSeriesValidationError[] {
   const errors: RecurrenceSeriesValidationError[] = [];
+  if (!parseOperationId(input.operationId)) {
+    errors.push({ field: "operationId", message: "Falta la clave de idempotencia de la operación." });
+  }
   if (input.participantIds.length === 0) {
     errors.push({ field: "participantIds", message: "Elegí al menos un alumno." });
   }
@@ -98,6 +104,7 @@ export function validateNewRecurrenceSeriesInput(input: NewRecurrenceSeriesInput
 
 export function recurrenceSeriesInputToPayload(input: NewRecurrenceSeriesInput): Record<string, unknown> {
   return {
+    operation_id: input.operationId,
     primary_student_id: input.primaryStudentId,
     rule_type: input.ruleType,
     cycle_length_weeks: input.cycleLengthWeeks,

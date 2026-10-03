@@ -122,7 +122,19 @@ export async function getCalendarLesson(ctx: AuthenticatedDbContext, id: string)
   return record;
 }
 
-/** Crea una clase única (sin recurrencia) + participantes, atómico (RPC). */
+/**
+ * ¿Ya existe la clase creada con esta clave de idempotencia? Sólo un atajo de
+ * UX para la Server Action (un reintento tras respuesta perdida no debe chocar
+ * con el solapamiento de la clase que ella misma creó) — NUNCA la garantía de
+ * unicidad: esa la decide el índice UNIQUE parcial dentro de la RPC.
+ */
+export async function findCalendarLessonIdByOperationId(ctx: AuthenticatedDbContext, operationId: string): Promise<string | null> {
+  const { data, error } = await ctx.supabase.from("calendar_lessons").select("id").eq("owner_id", ctx.ownerId).eq("operation_id", operationId).maybeSingle();
+  if (error) throw error;
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+/** Crea una clase única (sin recurrencia) + participantes, atómico e idempotente por `operationId` (RPC). */
 export async function createSingleLesson(ctx: AuthenticatedDbContext, input: NewSingleLessonInput): Promise<CalendarLessonRecord> {
   const errors = validateNewSingleLessonInput(input);
   if (errors.length > 0) throw new Error(`Clase inválida: ${errors.map((e) => e.message).join(" ")}`);

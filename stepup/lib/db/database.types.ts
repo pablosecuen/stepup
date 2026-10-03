@@ -137,6 +137,8 @@ export interface RecurrenceRuleRow {
   class_title: string | null;
   activity_kind: ActivityKind;
   training_billing_agreement_id: UUID | null;
+  /** Idempotencia de la creación (20261001150000); null en filas históricas y en las que nacen por otros caminos. */
+  operation_id: UUID | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }
@@ -177,6 +179,8 @@ export interface CalendarLessonRow {
   class_title: string | null;
   freed_by_lesson_id: UUID | null;
   activity_kind: ActivityKind;
+  /** Idempotencia de la creación (20261001150000); null en filas históricas y en las que nacen por otros caminos. */
+  operation_id: UUID | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }

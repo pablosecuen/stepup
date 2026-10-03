@@ -51,6 +51,7 @@ set local "request.jwt.claims" to '{"sub": "e0000000-0000-0000-0000-000000000001
 
 select throws_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'e1000000-0000-0000-0000-000000000002',
        'student_name', 'x', 'level', 'B1', 'lesson_type', 'individual',
        'start_at', '2026-09-21T21:00:00Z', 'end_at', '2026-09-21T22:00:00Z',
@@ -70,6 +71,7 @@ select throws_ok(
 -- quedaba con el atajo de un array vacío.
 select lives_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'e1000000-0000-0000-0000-000000000001',
        'student_name', 'x', 'level', 'B1', 'lesson_type', 'individual',
        'start_at', '2026-09-21T21:00:00Z', 'end_at', '2026-09-21T22:00:00Z',
@@ -84,6 +86,7 @@ select lives_ok(
 -- ---------------------------------------------------------------------------
 select throws_ok(
   $$ select public.create_recurrence_series(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'e1000000-0000-0000-0000-000000000001',
        'rule_type', 'weekly', 'cycle_length_weeks', 1,
        'weeks', '[{"weekIndex":0,"sessions":[{"weekday":1,"hour":18,"minute":0,"durationMinutes":60}]}]'::jsonb,
@@ -202,6 +205,7 @@ reset "request.jwt.claims";
 
 select throws_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'e1000000-0000-0000-0000-000000000001',
        'student_name', 'x', 'level', 'B1', 'lesson_type', 'individual',
        'start_at', '2026-09-21T21:00:00Z', 'end_at', '2026-09-21T22:00:00Z',

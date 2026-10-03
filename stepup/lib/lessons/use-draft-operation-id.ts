@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
  * ante un error (ahí es exactamente donde hay que CONSERVAR el mismo id
  * para el reintento).
  */
-export function useDraftOperationId(storageKey: string): { operationId: string | null; clear: () => void } {
+export function useDraftOperationId(storageKey: string): { operationId: string | null; clear: () => void; rotate: () => void } {
   const [operationId, setOperationId] = useState<string | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -54,5 +54,20 @@ export function useDraftOperationId(storageKey: string): { operationId: string |
     }
   }
 
-  return { operationId, clear };
+  /**
+   * Reemplaza la clave por una nueva (sessionStorage + estado) — para formularios que se
+   * quedan en pantalla después de una operación confirmada y deben poder crear otra. Mismo
+   * criterio que `clear()`: sólo después de una respuesta EXITOSA confirmada por el servidor.
+   */
+  function rotate() {
+    const fresh = crypto.randomUUID();
+    try {
+      sessionStorage.setItem(storageKey, fresh);
+    } catch {
+      // sessionStorage inaccesible — la clave nueva igual vive en memoria.
+    }
+    setOperationId(fresh);
+  }
+
+  return { operationId, clear, rotate };
 }

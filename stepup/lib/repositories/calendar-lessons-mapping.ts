@@ -1,3 +1,4 @@
+import { parseOperationId } from "../calendar/operation-id.ts";
 import type { ActivityKind, CalendarLessonRow, CalendarLessonStatus, CalendarLessonType, CalendarModality } from "../db/database.types.ts";
 
 /**
@@ -61,6 +62,8 @@ export interface LessonParticipantInput {
 }
 
 export interface NewSingleLessonInput {
+  /** UUID estable del borrador, generado una sola vez en el cliente — idempotencia real de la creación (20261001150000). Nunca se genera acá ni en la Server Action. */
+  operationId: string;
   primaryStudentId: string;
   studentName: string;
   level: string;
@@ -84,6 +87,7 @@ export interface LessonValidationError {
 
 export function validateNewSingleLessonInput(input: NewSingleLessonInput): LessonValidationError[] {
   const errors: LessonValidationError[] = [];
+  if (!parseOperationId(input.operationId)) errors.push({ field: "operationId", message: "Falta la clave de idempotencia de la operación." });
   if (input.participants.length === 0) errors.push({ field: "participants", message: "Elegí al menos un alumno." });
   if (new Date(input.endAt).getTime() <= new Date(input.startAt).getTime()) {
     errors.push({ field: "endAt", message: "El horario de fin debe ser posterior al de inicio." });
@@ -93,6 +97,7 @@ export function validateNewSingleLessonInput(input: NewSingleLessonInput): Lesso
 
 export function singleLessonInputToPayload(input: NewSingleLessonInput): Record<string, unknown> {
   return {
+    operation_id: input.operationId,
     primary_student_id: input.primaryStudentId,
     student_name: input.studentName,
     level: input.level,

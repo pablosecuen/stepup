@@ -23,6 +23,7 @@ set local "request.jwt.claims" to '{"sub": "f3000000-0000-0000-0000-000000000001
 -- 1) Clase individual — un solo participante, principal automático.
 select lives_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000001',
        'student_name', 'F3 Alumno A1', 'level', 'B1', 'lesson_type', 'individual',
        'start_at', '2026-10-05T21:00:00Z', 'end_at', '2026-10-05T22:00:00Z', 'modality', 'presencial',
@@ -34,6 +35,7 @@ select lives_ok(
 -- 2) Clase grupal con principal explícito (A2, no el primero del array).
 select lives_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000002',
        'student_name', 'F3 Alumno A2', 'level', 'B1', 'lesson_type', 'group',
        'start_at', '2026-10-06T21:00:00Z', 'end_at', '2026-10-06T22:00:00Z', 'modality', 'presencial',
@@ -52,6 +54,7 @@ set local role authenticated;
 set local "request.jwt.claims" to '{"sub": "f3000000-0000-0000-0000-000000000001", "role": "authenticated"}';
 select throws_ok(
   $$ select public.create_calendar_lesson(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000003',
        'student_name', 'x', 'level', 'B1', 'lesson_type', 'group',
        'start_at', '2026-10-07T21:00:00Z', 'end_at', '2026-10-07T22:00:00Z', 'modality', 'presencial',
@@ -64,6 +67,7 @@ select throws_ok(
 -- 4) Serie grupal — principal explícito.
 select lives_ok(
   $$ select public.create_recurrence_series(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000002',
        'rule_type', 'weekly', 'cycle_length_weeks', 1,
        'weeks', '[{"weekIndex":0,"sessions":[{"weekday":1,"hour":18,"minute":0,"durationMinutes":60}]}]'::jsonb,
@@ -80,6 +84,7 @@ set local role authenticated;
 set local "request.jwt.claims" to '{"sub": "f3000000-0000-0000-0000-000000000001", "role": "authenticated"}';
 select throws_ok(
   $$ select public.create_recurrence_series(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'rule_type', 'weekly', 'cycle_length_weeks', 1,
        'weeks', '[{"weekIndex":0,"sessions":[{"weekday":2,"hour":18,"minute":0,"durationMinutes":60}]}]'::jsonb,
        'modality', 'presencial', 'timezone', 'America/Argentina/Buenos_Aires', 'start_date', '2026-08-04',
@@ -92,6 +97,7 @@ select throws_ok(
 -- 6) create_recurrence_series: principal fuera del roster -> rechazo.
 select throws_ok(
   $$ select public.create_recurrence_series(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000003',
        'rule_type', 'weekly', 'cycle_length_weeks', 1,
        'weeks', '[{"weekIndex":0,"sessions":[{"weekday":3,"hour":18,"minute":0,"durationMinutes":60}]}]'::jsonb,
@@ -105,6 +111,7 @@ select throws_ok(
 -- 7) create_recurrence_series: principal de OTRO owner -> rechazo (aislamiento).
 select throws_ok(
   $$ select public.create_recurrence_series(jsonb_build_object(
+       'operation_id', gen_random_uuid(),
        'primary_student_id', 'f3100000-0000-0000-0000-000000000009',
        'rule_type', 'weekly', 'cycle_length_weeks', 1,
        'weeks', '[{"weekIndex":0,"sessions":[{"weekday":4,"hour":18,"minute":0,"durationMinutes":60}]}]'::jsonb,

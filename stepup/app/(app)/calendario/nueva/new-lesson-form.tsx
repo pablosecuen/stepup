@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { createSingleLessonAction, createRecurrenceSeriesAction, type FormState } from "@/lib/actions/calendar";
@@ -11,6 +12,8 @@ import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 import { nextPrimaryAfterToggle } from "@/lib/calendar/primary-selection";
+import { shouldRotateOperationId } from "@/lib/calendar/operation-id";
+import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 
 const INITIAL_STATE: FormState = {};
 
@@ -44,7 +47,12 @@ export function NewLessonForm({
   activeStudents: StudentRecord[];
   presetFromReplacement?: { freedByLessonId?: string; date?: string; hour?: string; minute?: string; duration?: string; modality?: string };
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<"single" | "series">("single");
+  // Idempotencia real (20261001150000): un UUID estable por borrador, generado UNA vez acá en el
+  // cliente (sessionStorage — sobrevive recarga, falla de red y respuesta perdida; una pestaña
+  // duplicada hereda la copia). Se rota recién cuando el servidor confirma la operación.
+  const { operationId, rotate: rotateOperationId } = useDraftOperationId("teacherflow:calendario:nueva:operacion");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [primaryStudentId, setPrimaryStudentId] = useState<string>("");
   const isReplacement = !!presetFromReplacement?.freedByLessonId;
@@ -115,6 +123,17 @@ export function NewLessonForm({
   }, [state]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Confirmación canónica del servidor (clase o serie ya existe con ESTA clave): rota la clave
+  // para el próximo borrador y, si no quedó ningún aviso, vuelve al calendario. El servidor ya
+  // no usa redirect() acá: navegar antes de rotar dejaría la clave vieja en sessionStorage y el
+  // próximo borrador "recrearía" la clase anterior en vez de crear una nueva.
+  useEffect(() => {
+    if (!shouldRotateOperationId(state.createdOperationId, operationId)) return;
+    rotateOperationId();
+    if (!state.error) router.push("/calendario");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, operationId]);
+
   function toggleStudent(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -129,6 +148,7 @@ export function NewLessonForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de nueva clase">
+      <input type="hidden" name="operationId" value={operationId ?? ""} />
       {!isReplacement && (
         <div className="flex rounded-pill border border-border bg-background p-1">
           <button
@@ -311,7 +331,7 @@ export function NewLessonForm({
       {isReplacement && <input type="hidden" name="freedByLessonId" value={presetFromReplacement?.freedByLessonId} />}
 
       {state.error && <FormErrorBox message={state.error} />}
-      <SubmitButton disabled={selected.size === 0 || !primaryStudentId} />
+      <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
     </form>
   );
 }
