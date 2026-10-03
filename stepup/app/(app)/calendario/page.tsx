@@ -6,39 +6,15 @@ import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { ErrorState } from "@/components/ui/states";
 import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
 import { RealCalendarGrid } from "@/components/calendar/real-calendar-grid";
+import { resolveCalendarWindow } from "@/lib/calendar/civil-calendar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Calendario · TeacherFlow" };
-
-const TIMEZONE = "America/Argentina/Buenos_Aires";
 
 interface CalendarioSearchParams {
   view?: string;
   week?: string;
   day?: string;
-}
-
-function todayInArgentina(): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const year = Number(parts.find((p) => p.type === "year")?.value);
-  const month = Number(parts.find((p) => p.type === "month")?.value);
-  const day = Number(parts.find((p) => p.type === "day")?.value);
-  return new Date(year, month - 1, day);
-}
-
-function parseDateKeyLocal(key: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
-  if (!match) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-}
-
-function startOfWeek(date: Date): Date {
-  const d = new Date(date);
-  const jsDay = d.getDay();
-  const diff = jsDay === 0 ? -6 : 1 - jsDay;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
 }
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<CalendarioSearchParams> }) {
@@ -47,19 +23,13 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
   }
 
   const params = await searchParams;
-  const view: "week" | "day" = params.view === "day" ? "day" : "week";
-  const today = todayInArgentina();
-  const weekStart = params.week ? (parseDateKeyLocal(params.week) ?? startOfWeek(today)) : startOfWeek(today);
-  const day = params.day ? (parseDateKeyLocal(params.day) ?? today) : today;
-
-  const days = view === "week" ? Array.from({ length: 7 }, (_, i) => new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i)) : [day];
-  const rangeStart = new Date(days[0].getFullYear(), days[0].getMonth(), days[0].getDate(), 0, 0, 0);
-  const rangeEnd = new Date(days[days.length - 1].getFullYear(), days[days.length - 1].getMonth(), days[days.length - 1].getDate(), 23, 59, 59);
+  // Días como claves civiles YYYY-MM-DD (nunca Date): ver lib/calendar/civil-calendar.ts.
+  const { view, weekStartKey, dayKey, dayKeys, rangeStartIso, rangeEndIso } = resolveCalendarWindow(params, new Date());
 
   let items;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
+    items = await loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso));
   } catch (error) {
     if (error instanceof DbUnauthenticatedError) {
       return <ErrorState message="Tu sesión expiró. Volvé a iniciar sesión." />;
@@ -116,8 +86,8 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         </Link>
       </div>
 
-      <RealCalendarToolbar view={view} weekStart={weekStart} day={day} buildHref={buildHref} />
-      <RealCalendarGrid days={days} items={items} />
+      <RealCalendarToolbar view={view} weekStartKey={weekStartKey} dayKey={dayKey} buildHref={buildHref} />
+      <RealCalendarGrid dayKeys={dayKeys} items={items} />
     </div>
   );
 }

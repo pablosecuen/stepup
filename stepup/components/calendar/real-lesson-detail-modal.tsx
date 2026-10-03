@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
+import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
 import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
@@ -36,8 +37,10 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const start = new Date(item.start);
-  const dateLabel = start.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-  const timeLabel = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const startDateKey = instantDateKey(item.start);
+  const startMinutesOfDay = instantMinutesOfDay(item.start);
+  const dateLabel = formatCivilDayLabelShort(startDateKey);
+  const timeLabel = instantTimeLabel(item.start);
   const durationMinutes = Math.round((new Date(item.end).getTime() - start.getTime()) / 60_000);
   const isCancelled = item.status === "cancelled";
   const isPast = now !== null && start.getTime() <= now;
@@ -181,7 +184,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
           <div className="mt-5 flex flex-col gap-3 rounded-md border border-brandBlue/30 bg-brandBlue/5 p-3">
             <p className="text-sm font-semibold text-textPrimary">Confirmar nuevo horario</p>
             <p className="text-sm text-textSecondary">
-              {new Date(`${reschedulePreview.date}T00:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })} de{" "}
+              {formatCivilDayLabelShort(reschedulePreview.date)} de{" "}
               {String(reschedulePreview.hour).padStart(2, "0")}:{String(reschedulePreview.minute).padStart(2, "0")} a {previewNewEndLabel} ({durationMinutes} min)
             </p>
             <p className="text-xs text-textMuted">El horario original queda liberado y marcado como reprogramado — el historial se conserva.</p>
@@ -251,7 +254,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
               )}
               {canReuseSlot && (
                 <Link
-                  href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${item.start.slice(0, 10)}&hour=${start.getHours()}&minute=${start.getMinutes()}&duration=${durationMinutes}&modality=${item.modality}`}
+                  href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
                   className="flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
                 >
                   Reemplazar con otro alumno

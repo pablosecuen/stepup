@@ -11,19 +11,20 @@ import {
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
   currentTimeTop,
-  isSameDay,
+  groupItemsByDayKey,
   layoutDayItems,
 } from "@/lib/calendar/layout";
+import { dayOfMonth, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
 import { RealLessonCard } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 
 interface RealCalendarGridProps {
-  days: Date[]; // 7 días (semana) o 1 día (día)
+  dayKeys: string[]; // 7 claves civiles YYYY-MM-DD (semana) o 1 (día) — nunca Date
   items: CalendarViewItem[];
 }
 
-export function RealCalendarGrid({ days, items }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
 
@@ -36,12 +37,15 @@ export function RealCalendarGrid({ days, items }: RealCalendarGridProps) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const visible = visibleCalendarItems(items);
-  const isWeek = days.length > 1;
-  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${days.length}, minmax(${DAY_COLUMN_MIN_WIDTH_PX}px, 1fr))`;
-  const gridMinWidth = TIME_COLUMN_WIDTH_PX + days.length * DAY_COLUMN_MIN_WIDTH_PX;
+  const isWeek = dayKeys.length > 1;
+  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${dayKeys.length}, minmax(${DAY_COLUMN_MIN_WIDTH_PX}px, 1fr))`;
+  const gridMinWidth = TIME_COLUMN_WIDTH_PX + dayKeys.length * DAY_COLUMN_MIN_WIDTH_PX;
   const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E3E5E8 1px, transparent 1px)", backgroundSize: `100% ${HOUR_HEIGHT_PX}px` };
 
   const nowLineTop = now ? currentTimeTop(now) : null;
+  // "Hoy" y el día de cada tarjeta se resuelven como claves civiles en la zona del calendario: igual en servidor (UTC) y navegador.
+  const todayKey = now ? todayDateKey(now) : null;
+  const itemsByDayKey = groupItemsByDayKey(visible);
 
   return (
     <div>
@@ -49,17 +53,17 @@ export function RealCalendarGrid({ days, items }: RealCalendarGridProps) {
         <div className="rounded-lg border border-border bg-surface shadow-card" style={{ minWidth: gridMinWidth }}>
           <div className="grid rounded-t-lg border-b border-border" style={{ gridTemplateColumns }}>
             <div />
-            {days.map((day, index) => {
-              const today = now ? isSameDay(day, now) : false;
+            {dayKeys.map((dayKey) => {
+              const today = todayKey === dayKey;
               return (
-                <div key={index} className={`flex flex-col items-center gap-1 py-2.5 text-center ${today ? "rounded-t-lg bg-brandBlue/5" : ""}`}>
+                <div key={dayKey} className={`flex flex-col items-center gap-1 py-2.5 text-center ${today ? "rounded-t-lg bg-brandBlue/5" : ""}`}>
                   {isWeek && (
-                    <span className={`text-[11px] font-semibold tracking-wide ${today ? "text-brandBlue" : "text-textMuted"}`}>{WEEKDAY_SHORT[day.getDay() === 0 ? 6 : day.getDay() - 1]}</span>
+                    <span className={`text-[11px] font-semibold tracking-wide ${today ? "text-brandBlue" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>
                   )}
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${today ? "bg-brandBlue text-white" : "text-textPrimary"}`}
                   >
-                    {day.getDate()}
+                    {dayOfMonth(dayKey)}
                   </span>
                 </div>
               );
@@ -75,13 +79,12 @@ export function RealCalendarGrid({ days, items }: RealCalendarGridProps) {
               ))}
             </div>
 
-            {days.map((day, dayIndex) => {
-              const today = now ? isSameDay(day, now) : false;
-              const dayItems = visible.filter((item) => isSameDay(new Date(item.start), day));
-              const positioned = layoutDayItems(dayItems);
+            {dayKeys.map((dayKey) => {
+              const today = todayKey === dayKey;
+              const positioned = layoutDayItems(itemsByDayKey.get(dayKey) ?? []);
 
               return (
-                <div key={dayIndex} className={`relative border-l border-border ${today ? "bg-brandBlue/[0.03]" : ""}`} style={hourGridlinesStyle}>
+                <div key={dayKey} className={`relative border-l border-border ${today ? "bg-brandBlue/[0.03]" : ""}`} style={hourGridlinesStyle}>
                   {today && nowLineTop !== null && (
                     <div className="pointer-events-none absolute left-0 right-0 z-10" style={{ top: nowLineTop }}>
                       <div className="relative h-0.5" style={{ backgroundColor: CURRENT_TIME_COLOR }}>

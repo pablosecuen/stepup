@@ -1,6 +1,7 @@
 "use client";
 
 import type { PositionedItem } from "@/lib/calendar/layout";
+import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
 import { BarbellIcon } from "./barbell-icon";
 
@@ -17,7 +18,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, onS
   const isCancelled = item.status === "cancelled";
   const isTraining = item.activityKind === "training";
   const start = new Date(item.start);
-  const timeLabel = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const timeLabel = instantTimeLabel(item.start);
   const durationMinutes = Math.round((new Date(item.end).getTime() - start.getTime()) / 60_000);
   const title = item.title?.trim() || item.studentName || "Serie sin alumnos";
 

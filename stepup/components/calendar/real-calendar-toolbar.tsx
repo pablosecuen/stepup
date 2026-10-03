@@ -1,26 +1,21 @@
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { formatDayLabel, formatWeekRange } from "@/lib/calendar/layout";
+import { formatCivilDayLabel, formatWeekRangeLabel } from "@/lib/calendar/civil-calendar";
+import { addDaysToDateKey } from "@/lib/calendar/timezone";
 
 interface RealCalendarToolbarProps {
   view: "week" | "day";
-  weekStart: Date;
-  day: Date;
+  /** Lunes de la semana visible, clave civil YYYY-MM-DD. */
+  weekStartKey: string;
+  /** Día visible en la vista de día, clave civil YYYY-MM-DD. */
+  dayKey: string;
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
 }
 
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-export function RealCalendarToolbar({ view, weekStart, day, buildHref }: RealCalendarToolbarProps) {
+export function RealCalendarToolbar({ view, weekStartKey, dayKey, buildHref }: RealCalendarToolbarProps) {
   const isWeek = view === "week";
-  const previousHref = isWeek
-    ? buildHref({ week: toDateKey(new Date(weekStart.getTime() - 7 * 86_400_000)) })
-    : buildHref({ day: toDateKey(new Date(day.getTime() - 86_400_000)) });
-  const nextHref = isWeek
-    ? buildHref({ week: toDateKey(new Date(weekStart.getTime() + 7 * 86_400_000)) })
-    : buildHref({ day: toDateKey(new Date(day.getTime() + 86_400_000)) });
+  const previousHref = isWeek ? buildHref({ week: addDaysToDateKey(weekStartKey, -7) }) : buildHref({ day: addDaysToDateKey(dayKey, -1) });
+  const nextHref = isWeek ? buildHref({ week: addDaysToDateKey(weekStartKey, 7) }) : buildHref({ day: addDaysToDateKey(dayKey, 1) });
   const todayHref = isWeek ? buildHref({ week: undefined }) : buildHref({ day: undefined });
 
   return (
@@ -49,17 +44,17 @@ export function RealCalendarToolbar({ view, weekStart, day, buildHref }: RealCal
         </Link>
       </div>
       <h2 className="text-sm font-semibold capitalize tracking-tight text-textPrimary sm:text-base">
-        {isWeek ? formatWeekRange(weekStart) : formatDayLabel(day)}
+        {isWeek ? formatWeekRangeLabel(weekStartKey) : formatCivilDayLabel(dayKey)}
       </h2>
       <div className="flex items-center gap-1 rounded-pill border border-border bg-background p-1">
         <Link
-          href={buildHref({ view: "week", week: toDateKey(weekStart) })}
+          href={buildHref({ view: "week", week: weekStartKey })}
           className={`rounded-pill px-3 py-1 text-xs font-semibold transition-colors ${isWeek ? "bg-brandBlue text-white" : "text-textSecondary"}`}
         >
           Semana
         </Link>
         <Link
-          href={buildHref({ view: "day", day: toDateKey(day) })}
+          href={buildHref({ view: "day", day: dayKey })}
           className={`rounded-pill px-3 py-1 text-xs font-semibold transition-colors ${!isWeek ? "bg-brandBlue text-white" : "text-textSecondary"}`}
         >
           Día
