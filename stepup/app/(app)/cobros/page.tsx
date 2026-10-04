@@ -9,6 +9,7 @@ import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/d
 import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
+import { formatCivilDate } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cobros · TeacherFlow" };
@@ -91,7 +92,7 @@ export default async function CobrosPage() {
                       {entry.studentName}
                     </Link>
                     <p className="mt-0.5 text-xs text-textMuted">
-                      {CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType} · vence {entry.dueDate}
+                      {CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType} · vence {formatCivilDate(entry.dueDate)}
                     </p>
                   </div>
                   <span className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-semibold tracking-tight ${status.className}`}>{status.text}</span>

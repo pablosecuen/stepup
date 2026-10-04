@@ -1,6 +1,7 @@
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { StatusHistoryRecord, LevelHistoryRecord, PriceHistoryRecord } from "@/lib/repositories/student-history-mapping";
 import { CATEGORY_LABEL, BILLING_LABEL, STUDENT_STATUS_LABEL } from "@/lib/students/constants";
+import { formatCivilDate } from "@/lib/format/date-format";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -12,9 +13,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function formatDate(dateKey: string | null): string {
-  if (!dateKey) return "—";
-  const [year, month, day] = dateKey.split("-");
-  return `${day}/${month}/${year}`;
+  return formatCivilDate(dateKey);
 }
 
 function formatCurrencyARS(amount: number): string {

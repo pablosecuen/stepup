@@ -7,6 +7,7 @@ import { computeUndoAvailability, type ImportRunHistoryRow } from "@/lib/backup/
 import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { LoadingState } from "@/components/ui/states";
+import { formatInstantDateTime } from "@/lib/format/date-format";
 
 // Fase 9 — historial real de importaciones. Sobrevive a recarga, cierre
 // del navegador y otra sesión web porque lee `import_runs` real (nunca
@@ -17,11 +18,6 @@ const STATUS_LABEL: Record<ImportRunHistoryRow["status"], string> = {
   applied: "Aplicada",
   undone: "Deshecha",
 };
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-}
 
 function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +68,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
     <li className="rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-textPrimary">{formatDate(run.createdAt)}</p>
+          <p className="text-sm font-medium text-textPrimary">{formatInstantDateTime(run.createdAt)}</p>
           <p className="text-xs text-textMuted">
             {STATUS_LABEL[run.status]} · versión de esquema {run.schemaVersion ?? "—"}
             {run.appVersion ? ` · app ${run.appVersion}` : ""} · checksum {run.checksum ? `${run.checksum.slice(0, 12)}…` : "—"}
@@ -91,8 +87,8 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
 
       <p className="mt-1 text-xs text-textMuted">
         {run.status === "undone"
-          ? `Deshecha el ${run.undoneAt ? formatDate(run.undoneAt) : "—"}.`
-          : `Se puede deshacer hasta el ${formatDate(run.undoExpiresAt)}.`}
+          ? `Deshecha el ${run.undoneAt ? formatInstantDateTime(run.undoneAt) : "—"}.`
+          : `Se puede deshacer hasta el ${formatInstantDateTime(run.undoExpiresAt)}.`}
         {run.payloadPurged ? " El contenido del respaldo ya se purgó (dato técnico, sólo queda el resumen)." : ""}
       </p>
 

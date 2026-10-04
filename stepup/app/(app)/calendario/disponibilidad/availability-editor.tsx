@@ -6,6 +6,7 @@ import { saveAvailabilityAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import type { AvailabilityBlockReason, AvailabilityException, AvailabilityExceptionReason, TeacherAvailability, WeeklyAvailabilityBlock } from "@/lib/calendar/availability";
+import { formatCivilDate } from "@/lib/format/date-format";
 
 const WEEKDAY_LABELS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const BLOCK_REASON_LABEL: Record<AvailabilityBlockReason, string> = { work: "Trabajo", study: "Estudio", personal: "Personal", other: "Otro" };
@@ -132,8 +133,8 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
           {availability.exceptions.map((exception) => (
             <li key={exception.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <span>
-                {exception.date}
-                {exception.endDate ? ` – ${exception.endDate}` : ""} · {EXCEPTION_REASON_LABEL[exception.reason]}
+                {formatCivilDate(exception.date)}
+                {exception.endDate ? ` – ${formatCivilDate(exception.endDate)}` : ""} · {EXCEPTION_REASON_LABEL[exception.reason]}
               </span>
               <button type="button" onClick={() => removeException(exception.id)} disabled={pending} className="text-xs font-semibold text-statusRojo hover:underline disabled:opacity-50">
                 Quitar

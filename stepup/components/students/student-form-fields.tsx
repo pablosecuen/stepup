@@ -9,6 +9,7 @@ import {
   MODALITY_OPTIONS,
   STANDARD_LEVELS,
 } from "@/lib/students/constants";
+import { todayInArgentina } from "@/lib/format/date-format";
 
 const inputClassName =
   "rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
@@ -163,7 +164,7 @@ export function StudentFormFields({
           name="dateJoined"
           type="date"
           required
-          defaultValue={defaultValues?.dateJoined ?? new Date().toISOString().slice(0, 10)}
+          defaultValue={defaultValues?.dateJoined ?? todayInArgentina()}
           className={inputClassName}
         />
       </div>

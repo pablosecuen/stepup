@@ -9,6 +9,7 @@ import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { StartRegistrationButton } from "./start-registration-button";
+import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Clases por registrar · TeacherFlow" };
@@ -69,9 +70,8 @@ export default async function RegistroPendientesPage() {
       ) : (
         <ul className="mt-6 flex flex-col gap-3">
           {pending.map(({ item, registrationState, completedParticipants, totalParticipants }) => {
-            const start = new Date(item.start);
-            const dateLabel = start.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
-            const timeLabel = start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+            const dateLabel = formatInstantDayShort(item.start);
+            const timeLabel = formatInstantTime(item.start);
             const isGroup = item.participantIds.length > 1;
             return (
               <li key={item.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">

@@ -11,6 +11,8 @@
  * deja pasar un UUID ni un nombre de tabla en ningún string final.
  */
 
+import { formatInstantDate } from "../format/date-format.ts";
+
 const HUMAN_TABLE_LABEL: Record<string, string> = {
   students: "un alumno",
   training_billing_agreements: "un acuerdo de entrenamiento",
@@ -84,10 +86,8 @@ export const UNDO_BLOCKED_EXPLANATION =
   "No se puede deshacer esta importación de forma automática: hay información nueva creada después que depende de estos datos. No se va a modificar ni borrar nada, para proteger esa información.";
 
 function formatDate(iso?: string | null): string | undefined {
-  if (!iso) return undefined;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Argentina/Buenos_Aires" });
+  const label = formatInstantDate(iso, "");
+  return label === "" ? undefined : label;
 }
 
 function describeChild(child: ResolvedBlockerChild): string {

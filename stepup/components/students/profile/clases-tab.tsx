@@ -3,6 +3,7 @@ import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registr
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { EmptyState } from "@/components/ui/states";
+import { formatInstantDayLong } from "@/lib/format/date-format";
 
 function statusLabel(registration: LessonRegistrationRecord): string {
   if (!registration.countsAsClass) return ADHOC_OUTCOME_LABEL[registration.outcome];
@@ -21,7 +22,7 @@ export function ClasesTabContent({ registrations }: { registrations: LessonRegis
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-textPrimary">
               {registration.scheduledStartAt
-                ? new Date(registration.scheduledStartAt).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+                ? formatInstantDayLong(registration.scheduledStartAt)
                 : "Sin fecha"}
             </p>
             <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[registration.activityKind]}</span>

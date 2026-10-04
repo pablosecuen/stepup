@@ -7,6 +7,7 @@ import { changeStudentStatusAction, type ChangeStatusFormState } from "@/lib/act
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { STUDENT_STATUS_LABEL, STUDENT_STATUS_OPTIONS } from "@/lib/students/constants";
 import type { StudentStatus } from "@/lib/db/database.types";
+import { todayInArgentina } from "@/lib/format/date-format";
 
 const INITIAL_STATE: ChangeStatusFormState = {};
 
@@ -44,7 +45,7 @@ function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }
 export function ChangeStatusForm({ studentId, currentStatus }: { studentId: string; currentStatus: StudentStatus }) {
   const boundAction = changeStudentStatusAction.bind(null, studentId);
   const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInArgentina();
   // Estable durante toda la vida de este formulario — un reintento o doble
   // clic reenvía el MISMO id, nunca uno nuevo (idempotencia real del lado servidor).
   const operationId = useMemo(() => crypto.randomUUID(), []);

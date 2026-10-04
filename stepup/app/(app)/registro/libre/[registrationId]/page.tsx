@@ -9,6 +9,7 @@ import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calenda
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ErrorState } from "@/components/ui/states";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
+import { formatInstantDayLongTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -83,7 +84,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
         <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[registration.activityKind]}</span>
       </div>
       <p className="mt-1.5 text-sm text-textMuted">
-        {new Date(scheduledStartAt).toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} ·{" "}
+        {formatInstantDayLongTime(scheduledStartAt)} ·{" "}
         {ADHOC_OUTCOME_LABEL[registration.outcome]}
         {registration.modality ? ` · ${registration.modality === "presencial" ? "Presencial" : registration.modality === "online" ? "Online" : "Mixta"}` : ""}
       </p>

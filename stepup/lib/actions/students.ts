@@ -23,6 +23,7 @@ import {
   LevelNotFoundError,
 } from "@/lib/repositories/custom-levels";
 import type { BillingType, StudentCategory, StudentModality, StudentStatus } from "@/lib/db/database.types";
+import { todayInArgentina } from "@/lib/format/date-format";
 
 // Server Actions — Alumnos. Nunca reciben `ownerId`/`owner_id` del
 // navegador: `requireAuthenticatedDbContext()` siempre resuelve la sesión
@@ -173,7 +174,7 @@ export async function changeStudentStatusAction(
   formData: FormData
 ): Promise<ChangeStatusFormState> {
   const status = readString(formData, "status") as StudentStatus;
-  const occurredOn = readString(formData, "occurredOn").trim() || new Date().toISOString().slice(0, 10);
+  const occurredOn = readString(formData, "occurredOn").trim() || todayInArgentina();
   const reason = readOptionalString(formData, "reason") ?? undefined;
   const internalNote = readOptionalString(formData, "internalNote") ?? undefined;
 

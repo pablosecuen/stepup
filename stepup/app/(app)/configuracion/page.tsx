@@ -13,30 +13,18 @@ import { ChangePasswordButton } from "@/components/account/change-password-butto
 import { DeleteAccountButton } from "@/components/account/delete-account-button";
 import { DEFAULT_BUDGET_DISTRIBUTION } from "@/lib/payments/budget-distribution";
 import type { ActiveSessionRow } from "@/lib/db/database.types";
+import { formatInstantDateTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Configuración · TeacherFlow" };
-
-const TIMEZONE = "America/Argentina/Buenos_Aires";
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("es-AR", {
-    timeZone: TIMEZONE,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function toSessionInfo(row: ActiveSessionRow): ActiveSessionInfo {
   return {
     deviceId: row.device_id,
     generation: row.generation,
-    authorizedAtLabel: formatDateTime(row.authorized_at),
-    lastSeenAtLabel: formatDateTime(row.last_seen_at),
-    expiresAtLabel: formatDateTime(row.expires_at),
+    authorizedAtLabel: formatInstantDateTime(row.authorized_at),
+    lastSeenAtLabel: formatInstantDateTime(row.last_seen_at),
+    expiresAtLabel: formatInstantDateTime(row.expires_at),
   };
 }
 

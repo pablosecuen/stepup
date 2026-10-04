@@ -3,6 +3,7 @@ import { SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import type { LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import { EmptyState } from "@/components/ui/states";
+import { formatInstantDate } from "@/lib/format/date-format";
 
 /**
  * Progreso real — promedio calculado con `calculateAverageGrade` (0 nunca
@@ -31,7 +32,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
               <li key={entry.registration.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-textPrimary">
-                    {entry.registration.scheduledStartAt ? new Date(entry.registration.scheduledStartAt).toLocaleDateString("es-AR") : "Sin fecha"}
+                    {formatInstantDate(entry.registration.scheduledStartAt, "Sin fecha")}
                   </p>
                   <p className="text-sm font-bold text-brandBlueDark">{entry.evaluation.generalGrade ?? "—"}</p>
                 </div>

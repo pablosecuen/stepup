@@ -2,6 +2,7 @@ import type { EmptyClassItem } from "../calendar/empty-classes.ts";
 import type { PendingLessonItem } from "../lessons/pending.ts";
 import type { CollectionsCenterEntry } from "../payments/collections-center.ts";
 import { CHARGE_TYPE_LABEL } from "../payments/labels.ts";
+import { formatCivilDate, formatInstantDayShort } from "../format/date-format.ts";
 
 /**
  * Puerto de `buildRemindersCenterSummary` (móvil, `remindersCenter.ts`) —
@@ -39,7 +40,7 @@ function pendingLessonTitle(pending: PendingLessonItem): string {
 }
 
 function chargeConcept(entry: CollectionsCenterEntry): string {
-  return `${CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType} · vence ${entry.dueDate}`;
+  return `${CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType} · vence ${formatCivilDate(entry.dueDate)}`;
 }
 
 /**
@@ -64,14 +65,14 @@ export function buildRemindersCenterSummary(input: {
     kind: "clases_sin_alumnos",
     id: `empty_${item.key}`,
     title: item.title,
-    subtitle: new Date(item.startIso).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }),
+    subtitle: formatInstantDayShort(item.startIso),
   }));
 
   const clasesSinRegistrar: ReminderCenterItem[] = input.pendingLessons.map((pending) => ({
     kind: "clases_sin_registrar",
     id: `pending_${pending.item.id}`,
     title: pendingLessonTitle(pending),
-    subtitle: new Date(pending.item.start).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }),
+    subtitle: formatInstantDayShort(pending.item.start),
   }));
 
   const urgentEntries = input.collectionEntries.filter((entry) => needsAttention(entry, input.todayDateKey));

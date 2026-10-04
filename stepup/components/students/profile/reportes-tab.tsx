@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
+import { formatCivilDateRange, formatInstantDate } from "@/lib/format/date-format";
 
 const inputClassName =
   "w-full rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
@@ -272,7 +273,7 @@ export function ReportesTabContent({
         <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <h2 className="text-sm font-semibold text-textPrimary">{preview.monthsSummaryLabel}</h2>
           <p className="text-xs text-textMuted">
-            {preview.periodStart} a {preview.periodEnd}
+            {formatCivilDateRange(preview.periodStart, preview.periodEnd)}
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
@@ -390,7 +391,7 @@ export function ReportesTabContent({
               <li key={record.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-sm font-semibold text-textPrimary">{record.title}</p>
                 <p className="mt-0.5 text-xs text-textMuted">
-                  {record.periodStart} a {record.periodEnd} · Generado el {new Date(record.generatedAt).toLocaleDateString("es-AR")}
+                  {formatCivilDateRange(record.periodStart, record.periodEnd)} · Generado el {formatInstantDate(record.generatedAt)}
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   <button

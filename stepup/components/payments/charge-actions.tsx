@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { todayInArgentina } from "@/lib/format/date-format";
 
 const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferencia: "Transferencia", otro: "Otro" };
 
@@ -21,7 +22,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState(String(balance));
   const [method, setMethod] = useState("efectivo");
-  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState(() => todayInArgentina());
   const [notes, setNotes] = useState("");
   const [voidReason, setVoidReason] = useState("");
   const { operationId, clear: clearOperationId } = useDraftOperationId(`teacherflow:cobros:pago:${chargeId}`);
@@ -123,7 +124,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
             <input
               type="date"
               value={paidAt}
-              max={new Date().toISOString().slice(0, 10)}
+              max={todayInArgentina()}
               onChange={(e) => setPaidAt(e.target.value)}
               className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm"
             />

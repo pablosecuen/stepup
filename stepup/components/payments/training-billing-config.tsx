@@ -10,6 +10,8 @@ import {
 } from "@/lib/actions/payments";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { billingPeriodOfDateKey, nextBillingPeriod } from "@/lib/payments/dates";
+import { formatCivilDate, todayInArgentina } from "@/lib/format/date-format";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
@@ -72,9 +74,8 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
       setError("La cuota tiene que ser mayor a 0.");
       return;
     }
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const effectiveFrom = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
+    // Mes siguiente de Argentina (no el del navegador ni el del servidor en UTC).
+    const effectiveFrom = nextBillingPeriod(billingPeriodOfDateKey(todayInArgentina()));
     startTransition(async () => {
       const result = await guardNetwork(() => editTrainingBillingFeeAction({ agreementId, pendingMonthlyFee: fee, pendingMonthlyFeeEffectiveFrom: effectiveFrom }));
       if (result.error) {
@@ -128,7 +129,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
           <ul className="mt-1.5 flex flex-col gap-1">
             {plan.charges.map((c) => (
               <li key={c.studentId} className="text-xs text-textSecondary">
-                {c.studentName}: <span className="font-semibold text-textPrimary">{formatCurrency(c.amount)}</span> · vence {c.dueDate}
+                {c.studentName}: <span className="font-semibold text-textPrimary">{formatCurrency(c.amount)}</span> · vence {formatCivilDate(c.dueDate)}
                 {c.classesRemaining < 3 && <span className="text-textMuted"> (primer período proporcional — {c.classesRemaining} clase{c.classesRemaining === 1 ? "" : "s"} real{c.classesRemaining === 1 ? "" : "es"})</span>}
               </li>
             ))}

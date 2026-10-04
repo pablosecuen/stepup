@@ -8,15 +8,12 @@ import { loadHomeData } from "@/lib/dashboard/load-home-data";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
+import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Inicio · TeacherFlow" };
 
 const MAX_VISIBLE_PENDING = 3;
-
-function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(iso));
-}
 
 function lessonLabel(item: HomeData["todayLessons"][number]): string {
   if (item.title?.trim()) return item.title.trim();
@@ -75,7 +72,7 @@ export default async function InicioPage() {
           </p>
           <p className="mt-1 text-base font-semibold text-textPrimary">{lessonLabel(data.nextClass.item)}</p>
           <p className="mt-0.5 text-sm text-textMuted">
-            {formatTime(data.nextClass.item.start)} · {MODALITY_LABEL[data.nextClass.item.modality]}
+            {formatInstantTime(data.nextClass.item.start)} · {MODALITY_LABEL[data.nextClass.item.modality]}
           </p>
         </section>
       )}
@@ -98,7 +95,7 @@ export default async function InicioPage() {
                   <p className="text-sm font-semibold text-textPrimary">{lessonLabel(item)}</p>
                   <p className="mt-0.5 text-xs text-textMuted">{MODALITY_LABEL[item.modality]}</p>
                 </div>
-                <span className="text-sm font-semibold text-brandBlue">{formatTime(item.start)}</span>
+                <span className="text-sm font-semibold text-brandBlue">{formatInstantTime(item.start)}</span>
               </li>
             ))}
           </ul>
@@ -114,7 +111,7 @@ export default async function InicioPage() {
           <ul className="mt-2 flex flex-col gap-1.5">
             {data.emptyClasses.items.slice(0, 3).map((item) => (
               <li key={item.key} className="text-xs text-textSecondary">
-                {item.title} · {new Date(item.startIso).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}
+                {item.title} · {formatInstantDayShort(item.startIso)}
               </li>
             ))}
           </ul>
@@ -136,7 +133,7 @@ export default async function InicioPage() {
               <li key={item.id} className="rounded-lg border border-border bg-surface px-4 py-3 shadow-card">
                 <p className="text-sm font-semibold text-textPrimary">{lessonLabel(item)}</p>
                 <p className="mt-0.5 text-xs text-textMuted">
-                  {new Date(item.start).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })} · {formatTime(item.start)}
+                  {formatInstantDayShort(item.start)} · {formatInstantTime(item.start)}
                   {item.participantIds.length > 1 && registrationState === "in_progress" ? ` · ${completedParticipants} de ${totalParticipants} completados` : ""}
                 </p>
               </li>

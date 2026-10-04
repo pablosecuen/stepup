@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
 import { VoidPaymentButton } from "@/components/payments/void-payment-button";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from "@/lib/repositories/payments";
+import { formatCivilDate, formatDateValue } from "@/lib/format/date-format";
 
 const CHARGE_TYPE_LABEL: Record<string, string> = {
   mensual: "Mensualidad",
@@ -69,7 +70,7 @@ export function CobrosTabContent({
                         {CHARGE_TYPE_LABEL[charge.chargeType] ?? charge.chargeType}
                         {charge.trainingSeriesName ? ` · ${charge.trainingSeriesName}` : ""}
                       </p>
-                      <p className="mt-0.5 text-xs text-textMuted">Vence {charge.dueDate}</p>
+                      <p className="mt-0.5 text-xs text-textMuted">Vence {formatCivilDate(charge.dueDate)}</p>
                     </div>
                     {charge.voidedAt ? (
                       <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textMuted">Anulado</span>
@@ -112,7 +113,7 @@ export function CobrosTabContent({
               <li key={payment.id} className={`rounded-lg border border-border p-3 ${payment.voidedAt ? "bg-background opacity-60" : "bg-surface shadow-card"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm text-textPrimary">
-                    <span className="font-semibold">{formatCurrency(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {payment.paidAt}
+                    <span className="font-semibold">{formatCurrency(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
                   </p>
                   {payment.voidedAt ? (
                     <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textMuted">Anulado</span>

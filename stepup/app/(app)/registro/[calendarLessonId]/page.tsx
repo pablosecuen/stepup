@@ -9,6 +9,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ErrorState } from "@/components/ui/states";
 import { RegistrationWorkspace } from "./registration-workspace";
+import { formatInstantDayLongTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -73,7 +74,7 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
         <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[detail.registration.activityKind]}</span>
       </div>
       <p className="mt-1.5 text-sm text-textMuted">
-        {new Date(calendarLesson.startAt).toLocaleString("es-AR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+        {formatInstantDayLongTime(calendarLesson.startAt)}
       </p>
 
       <div className="mt-6">
