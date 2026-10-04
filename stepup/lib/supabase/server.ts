@@ -2,7 +2,6 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseRuntimeConfig } from "@/lib/auth/config";
-import { createJwtRejectionRetryFetch, formatJwtRejectionRetryLog } from "@/lib/supabase/jwt-retry-fetch";
 
 /**
  * Cliente de Supabase para Server Components/Actions/Route Handlers.
@@ -24,11 +23,6 @@ export async function createSupabaseServerClient() {
   return createServerClient(config.url, config.publishableKey, {
     auth: {
       flowType: "pkce",
-    },
-    // Un rechazo transitorio del JWT (401 PGRST303) en UNA de varias consultas simultáneas ya no tumba la pantalla
-    // entera: ver lib/supabase/jwt-retry-fetch.ts. Un segundo rechazo sigue llegando como error.
-    global: {
-      fetch: createJwtRejectionRetryFetch(fetch, { onRetry: (event) => console.warn(formatJwtRejectionRetryLog(event)) }),
     },
     cookies: {
       getAll() {
