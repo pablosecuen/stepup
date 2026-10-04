@@ -722,6 +722,16 @@ El E2E de red del bloque anterior destapó un bloqueo estructural y tres hallazg
 
 ---
 
+### B0 — Inicio fallaba tras iniciar sesión (PostgREST: "JWT issued at future") — mitigación desplegada, NO cerrado
+
+**Estado:** Mitigación desplegada; efectividad aún no observada. La causa confirmada es que PostgREST rechazó tokens recién emitidos por Auth con "JWT issued at future", debido a una inconsistencia externa de reloj. Se desplegó un único reintento con espera calculada. Dos logins posteriores cargaron Inicio correctamente, pero no hubo rechazos y el reintento no llegó a ejercitarse. Queda pendiente observar un [jwt-retry] con recovered:true o elevar el informe a soporte de Supabase.
+
+No es una corrección definitiva ni B0 completamente cerrado. Detalles de respaldo:
+- Código: `lib/supabase/jwt-retry-fetch.ts` (un solo reintento, sólo 401 PGRST303 de `/rest/v1/`; espera calculada únicamente para el motivo exacto "JWT issued at future"; un segundo rechazo llega a la UI) y `lib/errors/load-failure.ts` (motivo genérico en el log). Commits `b8ff869` y `d044254`.
+- Instrumentación que se conserva: líneas `[jwt-retry]` (tabla/RPC, código, motivo, `recovered`, `waitedMs`) y `[load-failure]`; sin tokens, `iat`, UID, correo ni consultas. Se revisan en los logins reales futuros.
+- Descartado de nuestro lado: cliente/token distinto entre consultas paralelas, cookies/sesiones antiguas (12 escenarios simulados), datos faltantes. Prueba de regresión local: `lib/supabase/__tests__/login-stale-cookies.test.ts` (sin commit todavía).
+- Informe para soporte de Supabase (borrador, sin enviar, con identificadores por completar): `docs/SUPABASE_SUPPORT_JWT_ISSUED_AT_FUTURE.md`.
+
 ## Continuación exacta
 
 **Estado al cerrar esta sesión:** Fase 1 a Fase 9 completas y **verificadas con datos reales** (ver detalle de cada fase más arriba). Fase 10 en curso: archivado seguro + poda atómica de agenda futura + corrección de `start_lesson_registration` para ocurrencias virtuales de serie + auditoría de permisos directos con Remediación A (revoca escrituras históricas/financieras sin escritor legítimo), Remediación C (triggers de integridad referencial cross-owner), el **dominio Registro completo de Remediación B+D** (RPC convertidas a `SECURITY DEFINER` + grants de tabla revocados) y el **selector explícito de alumno principal** (migración aplicada y reverificada E2E post-aplicación), **todas implementadas, aplicadas y verificadas con datos reales** (ver subsecciones "Archivado seguro, poda atómica y registro de series virtuales", "Auditoría de permisos directos y Remediación A+C", "Cierre del dominio Registro" y "Selector explícito de alumno principal" más arriba) — Fase 10 **todavía no se marca completa**, queda pendiente el resto del checklist de staging (responsive/accesibilidad general, estados vacíos/error, despliegue, rutas públicas, dos cuentas reales), y Calendario/Cobros de Remediación B+D (hardening posterior, misma ruta corta por dominio). Árbol de la rama `teacherflow-web` limpio salvo `Claude outputs/` (preexistente, ajeno) al momento de cerrar esta ronda; commit local de A+C+Registro cubre ese alcance, commit del selector de principal es separado (ver hashes al pie de esta sección), sin push.
