@@ -26,6 +26,25 @@ test("error de PostgREST/Postgres: se identifica por código, sin copiar mensaje
   assert.equal(describeLoadFailure({ code: "57014", message: "canceling statement due to statement timeout" }).code, "57014");
 });
 
+test("rechazo del JWT por PostgREST (PGRST300-303): registra el motivo genérico, que es lo que distingue la causa", () => {
+  const failure = describeLoadFailure({ code: "PGRST303", message: "JWT expired" });
+  assert.deepEqual(failure, { kind: "database", code: "PGRST303", name: undefined, detail: "JWT expired" });
+  assert.equal(formatLoadFailureLog("inicio", failure), '[load-failure] {"scope":"inicio","kind":"database","code":"PGRST303","name":null,"detail":"JWT expired"}');
+  assert.equal(describeLoadFailure({ code: "PGRST303", message: "JWT issued at future" }).detail, "JWT issued at future");
+});
+
+test("el motivo sólo se copia para el JWT: ni otros códigos, ni textos que no parezcan un motivo genérico, ni tokens", () => {
+  // Otro código de PostgREST/Postgres: nunca se copia el mensaje.
+  assert.equal(describeLoadFailure({ code: "42501", message: "JWT expired" }).detail, undefined);
+  assert.equal(describeLoadFailure({ code: "PGRST116", message: "JWT expired" }).detail, undefined);
+  // Mismo código, pero un mensaje que no es un motivo corto (podría traer datos).
+  assert.equal(describeLoadFailure({ code: "PGRST303", message: "permission denied for table payment_charges" }).detail, undefined);
+  assert.equal(describeLoadFailure({ code: "PGRST303", message: "JWT " + "x".repeat(200) }).detail, undefined);
+  assert.equal(describeLoadFailure({ code: "PGRST303", message: "JWT eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIxIn0.firma" }).detail, undefined, "un token tiene puntos y es largo: no pasa");
+  assert.equal(describeLoadFailure({ code: "PGRST303", message: 42 }).detail, undefined);
+  assert.doesNotMatch(formatLoadFailureLog("inicio", describeLoadFailure({ code: "PGRST303", message: "JWT expired", details: "sub=03e8e8f0" })), /03e8e8f0/);
+});
+
 test("red y rechazos de fetch no se confunden con errores de datos", () => {
   assert.equal(describeLoadFailure(new TypeError("fetch failed")).kind, "network");
   assert.equal(describeLoadFailure(new TypeError("Failed to fetch")).kind, "network");

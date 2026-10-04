@@ -15,6 +15,21 @@ export interface LoadFailure {
   code?: string;
   /** Nombre de la clase del error (p. ej. TypeError), si lo hay. */
   name?: string;
+  /**
+   * Sólo para el rechazo del JWT por PostgREST (PGRST300–303): el texto genérico del motivo ("JWT expired", etc.).
+   * `PGRST303` por sí solo no distingue "venció" de "emitido en el futuro" u otro reclamo, y esa diferencia es la
+   * que decide la causa. Nunca se copia el mensaje de ningún otro error.
+   */
+  detail?: string;
+}
+
+// Mensajes de PostgREST sobre el JWT: texto corto y genérico, sin datos. Cualquier otra cosa se descarta.
+const JWT_REJECTION_CODE = /^PGRST30[0-3]$/;
+const JWT_REJECTION_DETAIL = /^JWT( [A-Za-z]{1,16}){0,8}$/;
+
+/** El motivo genérico de un rechazo de JWT ("JWT expired"), o `undefined` si el texto no es exactamente eso. */
+export function safeJwtRejectionDetail(message: unknown): string | undefined {
+  return typeof message === "string" && JWT_REJECTION_DETAIL.test(message) ? message : undefined;
 }
 
 const NETWORK_NAMES = new Set(["AuthRetryableFetchError"]);
@@ -35,13 +50,19 @@ export function describeLoadFailure(error: unknown): LoadFailure {
     return { kind: "network", name };
   }
   // Un error de PostgREST es un objeto plano con `code`; se identifica por el código, no por el texto.
-  if (code && /^([0-9A-Z]{5}|PGRST\d+)$/.test(code)) return { kind: "database", code, name };
+  if (code && /^([0-9A-Z]{5}|PGRST\d+)$/.test(code)) {
+    const message = typeof error === "object" && error !== null ? (error as Record<string, unknown>).message : undefined;
+    const detail = JWT_REJECTION_CODE.test(code) ? safeJwtRejectionDetail(message) : undefined;
+    return detail ? { kind: "database", code, name, detail } : { kind: "database", code, name };
+  }
   return { kind: "unknown", name, code };
 }
 
 /** Línea de log segura (sin mensajes ni datos) para `console.error`. */
 export function formatLoadFailureLog(scope: string, failure: LoadFailure): string {
-  return `[load-failure] ${JSON.stringify({ scope, kind: failure.kind, code: failure.code ?? null, name: failure.name ?? null })}`;
+  const fields: Record<string, string | null> = { scope, kind: failure.kind, code: failure.code ?? null, name: failure.name ?? null };
+  if (failure.detail) fields.detail = failure.detail;
+  return `[load-failure] ${JSON.stringify(fields)}`;
 }
 
 export function logLoadFailure(scope: string, error: unknown): LoadFailure {
