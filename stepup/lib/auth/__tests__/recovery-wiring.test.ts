@@ -148,3 +148,32 @@ test("la alta ofrece el código de 6 dígitos igual que la recuperación (compon
   assert.match(read("app/crear-cuenta/signup-form.tsx"), /<EmailCodeForm flow="signup" email=\{email\} \/>/);
   assert.match(read("app/recuperar-contrasena/forgot-password-form.tsx"), /<EmailCodeForm flow="recovery" email=\{state\.email\} \/>/);
 });
+
+test("la alta confirmada termina en una pantalla pública \"Cuenta confirmada\" con Iniciar sesión (ya no cae en Inicio sin aviso)", () => {
+  const page = read("app/auth/confirmado/page.tsx");
+  assert.match(page, /title="Cuenta confirmada"/);
+  assert.match(page, /subtitle="Tu correo fue verificado correctamente\."/);
+  assert.match(page, /href="\/login"[\s\S]*Iniciar sesión/);
+  assert.doesNotMatch(page, /verifyOtp|verifyLinkToken|createSupabase|loadHomeData|requireAuthenticatedDbContext/, "no confirma nada ni consulta datos: es sólo el aviso final");
+  assert.equal(isPrivatePath("/auth/confirmado"), false, "es pública: no depende de la sesión ni de que Inicio cargue");
+});
+
+test("el botón de /auth/confirm queda deshabilitado mientras corre la verificación (un segundo toque ya no consume el token otra vez)", () => {
+  const button = read("components/auth/confirm-submit-button.tsx");
+  assert.match(button, /^"use client";/);
+  assert.match(button, /useFormStatus\(\)/);
+  assert.match(button, /disabled=\{pending\}/);
+  assert.match(button, /Confirmando…/);
+
+  const page = read("app/auth/confirm/page.tsx");
+  assert.match(page, /<ConfirmSubmitButton label=\{copy\.button\} \/>/);
+  assert.match(page, /<form action=\{confirmAuthLinkAction\}/, "el formulario sigue en la página de servidor");
+  assert.doesNotMatch(page, /<button/, "no queda un botón sin estado de espera");
+});
+
+test("/auth/error se arma con describeAuthErrorScreen (aviso con Iniciar sesión para un enlace ya usado)", () => {
+  const page = read("app/auth/error/page.tsx");
+  assert.match(page, /describeAuthErrorScreen\(type\)/);
+  assert.match(page, /screen\.primary\.href/);
+  assert.match(page, /screen\.secondary\.href/);
+});

@@ -4,7 +4,7 @@ import { FakeAuthAdapter, FakeRecoveryServer } from "../testing/fake-auth-adapte
 import { RECOVERY_MARKER_MAX_AGE_SECONDS, createRecoveryMarker, isValidRecoveryMarker } from "../recovery-marker.ts";
 import { abandonRecovery, authCallback, confirmAuthLink, newPasswordGate, savePassword, verifyEmailCode, type RecoveryDeps } from "../recovery-session.ts";
 import { authLinkSuccessDestination, planAuthLinkConfirmation } from "../recovery-flow.ts";
-import { CALLBACK_ERROR_MESSAGES } from "../error-messages.ts";
+import { CALLBACK_ERROR_MESSAGES, describeAuthErrorScreen } from "../error-messages.ts";
 import { resolvePrivateAreaAccess } from "../route-protection.ts";
 
 /**
@@ -106,7 +106,7 @@ test("sólo se aceptan los tipos oficiales: recovery, signup y email (alta); cua
 
 test("destino final: recuperación → Nueva contraseña, alta → Inicio (nunca al revés)", () => {
   assert.equal(authLinkSuccessDestination("recovery"), "/nueva-contrasena");
-  assert.equal(authLinkSuccessDestination("signup"), "/inicio");
+  assert.equal(authLinkSuccessDestination("signup"), "/auth/confirmado");
 });
 
 // ======================================================================
@@ -301,14 +301,14 @@ test("abandonar: 'Cancelar' borra el marcador y cierra la sesión que dejó el e
 // Confirmación de alta
 // ======================================================================
 
-test("alta, mismo navegador: confirmar (type=email) → Inicio, con sesión de la cuenta nueva y SIN acceso a Nueva contraseña", async () => {
+test("alta, mismo navegador: confirmar (type=email) → pantalla de cuenta confirmada, con sesión de la cuenta nueva y SIN acceso a Nueva contraseña", async () => {
   const { clock, server } = setup();
   const device = new Device("desktop", server, clock);
 
   assert.equal(planAuthLinkConfirmation({ tokenHash: HASH_ALTA, type: "email" }).kind, "show-confirmation");
   assert.equal(server.tokens.get(HASH_ALTA)?.usedAtMs, null, "abrir el enlace (GET) no consume el token");
 
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps), { redirectTo: "/auth/confirmado" });
   assert.equal((await device.adapter.getUser())?.id, NUEVA.id);
   assert.equal((await device.adapter.signInWithPassword(NUEVA.email, NUEVA.password)).ok, true, "la cuenta quedó confirmada");
   assert.equal(device.marker, null, "una alta no deja marcador de recuperación");
@@ -319,19 +319,19 @@ test("alta, mismo navegador: confirmar (type=email) → Inicio, con sesión de l
 test("alta: también se acepta type=signup (misma verificación, mismo destino)", async () => {
   const { clock, server } = setup();
   const device = new Device("desktop", server, clock);
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "signup" }, device.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "signup" }, device.deps), { redirectTo: "/auth/confirmado" });
 });
 
 test("alta, dispositivo distinto: se creó la cuenta en el escritorio y se confirma en el iPhone — funciona", async () => {
   const { clock, server } = setup();
   const desktop = new Device("desktop", server, clock, { enforceCodeVerifier: true, ownCodeVerifiers: ["pkce-code-signup"] });
   const iphone = new Device("iphone", server, clock, { enforceCodeVerifier: true });
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, iphone.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, iphone.deps), { redirectTo: "/auth/confirmado" });
   assert.equal((await iphone.adapter.getUser())?.id, NUEVA.id);
   assert.equal(await desktop.adapter.getUser(), null);
 });
 
-test("alta con enlace PKCE antiguo: mismo navegador → Inicio (sin marcador); otro dispositivo → 'otro dispositivo'", async () => {
+test("alta con enlace PKCE antiguo: mismo navegador → destino del callback (sin marcador); otro dispositivo → 'otro dispositivo'", async () => {
   const { clock, server } = setup();
   const mismo = new Device("desktop", server, clock, { enforceCodeVerifier: true, ownCodeVerifiers: ["pkce-code-signup"], recoveryCodes: [], marker: createRecoveryMarker(QA.id, T0) });
   assert.deepEqual(await authCallback({ code: "pkce-code-signup", next: null }, mismo.deps), { redirectTo: "/inicio" });
@@ -346,7 +346,7 @@ test("alta: escáner del correo — sólo GET, el token sigue vivo", async () =>
   for (let i = 0; i < 5; i += 1) assert.equal(planAuthLinkConfirmation({ tokenHash: HASH_ALTA, type: "email" }).kind, "show-confirmation");
   assert.equal(server.tokens.get(HASH_ALTA)?.usedAtMs, null);
   const device = new Device("iphone", server, clock);
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps), { redirectTo: "/auth/confirmado" });
 });
 
 test("alta: vencida, reutilizada y manipulada se rechazan sin dejar sesión y NUNCA terminan en Inicio", async () => {
@@ -359,7 +359,7 @@ test("alta: vencida, reutilizada y manipulada se rechazan sin dejar sesión y NU
   const { clock, server } = setup();
   const primero = new Device("desktop", server, clock);
   const segundo = new Device("iphone", server, clock);
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, primero.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, primero.deps), { redirectTo: "/auth/confirmado" });
   assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, segundo.deps), { redirectTo: "/auth/error?type=link_expired" });
   assert.equal(await segundo.adapter.getUser(), null);
 
@@ -390,7 +390,7 @@ test("alta con una sesión previa de OTRA cuenta: se reemplaza por la nueva, la 
 
   const fresh = setup();
   const device2 = new Device("iphone2", fresh.server, fresh.clock, { signedInUser: { id: OTRA.id, email: OTRA.email }, marker: createRecoveryMarker(OTRA.id, T0) });
-  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device2.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device2.deps), { redirectTo: "/auth/confirmado" });
   assert.equal((await device2.adapter.getUser())?.id, NUEVA.id, "la sesión previa NO se reutiliza: ahora es la cuenta confirmada");
   assert.equal(device2.marker, null, "y el marcador viejo de la otra cuenta se borró");
   assert.equal((await device2.adapter.signInWithPassword(OTRA.email, OTRA.password)).ok, true, "la otra cuenta conserva su contraseña");
@@ -399,7 +399,7 @@ test("alta con una sesión previa de OTRA cuenta: se reemplaza por la nueva, la 
 test("alta: código de 6 dígitos — funciona en otro dispositivo, es de un solo uso y no se mezcla con el de recuperación", async () => {
   const { clock, server } = setup();
   const iphone = new Device("iphone", server, clock, { enforceCodeVerifier: true });
-  assert.deepEqual(await verifyEmailCode({ flow: "signup", email: NUEVA.email, code: CODE_ALTA }, iphone.deps), { redirectTo: "/inicio" });
+  assert.deepEqual(await verifyEmailCode({ flow: "signup", email: NUEVA.email, code: CODE_ALTA }, iphone.deps), { redirectTo: "/auth/confirmado" });
   assert.equal((await iphone.adapter.getUser())?.id, NUEVA.id);
   assert.equal(iphone.marker, null);
 
@@ -449,5 +449,53 @@ test("destino final por flujo: la recuperación termina en Nueva contraseña y e
   const code = new Device("c", fresh.server, fresh.clock);
   assert.deepEqual(await verifyEmailCode({ flow: "recovery", email: QA.email, code: CODE }, code.deps), { redirectTo: "/nueva-contrasena" });
   const a1 = new Device("a1", fresh.server, fresh.clock);
-  assert.equal((await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, a1.deps)).redirectTo, "/inicio");
+  assert.equal((await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, a1.deps)).redirectTo, "/auth/confirmado");
+});
+
+// ======================================================================
+// Primer toque vs. segundo toque (UX de la confirmación de alta)
+// ======================================================================
+
+test("alta, doble toque en el MISMO navegador: el primero confirma y termina en \"Cuenta confirmada\"; el segundo cae en el aviso de enlace usado SIN cerrar la sesión", async () => {
+  const { clock, server } = setup();
+  const device = new Device("iphone", server, clock);
+
+  const primero = await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps);
+  assert.deepEqual(primero, { redirectTo: "/auth/confirmado" });
+  assert.equal((await device.adapter.getUser())?.id, NUEVA.id);
+
+  const segundo = await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps);
+  assert.deepEqual(segundo, { redirectTo: "/auth/error?type=link_expired" });
+  assert.equal((await device.adapter.getUser())?.id, NUEVA.id, "un segundo toque no cierra ni reemplaza la sesión que dejó el primero");
+  assert.equal((await device.adapter.signInWithPassword(NUEVA.email, NUEVA.password)).ok, true, "la cuenta sigue confirmada y puede iniciar sesión");
+
+  const screen = describeAuthErrorScreen(new URL(segundo.redirectTo, "https://x.example").searchParams.get("type"));
+  assert.equal(screen.tone, "notice", "se muestra como aviso, no como fallo absoluto");
+  assert.deepEqual(screen.primary, { label: "Iniciar sesión", href: "/login" });
+});
+
+test("pantalla de error: enlace usado/vencido → aviso con Iniciar sesión primero y Pedir un enlace nuevo; el resto conserva su texto y su Reintentar", () => {
+  for (const type of ["link_expired", "link_already_used"]) {
+    assert.deepEqual(describeAuthErrorScreen(type), {
+      title: "Este enlace ya fue utilizado o venció.",
+      message: "Si ya confirmaste tu cuenta, podés iniciar sesión.",
+      tone: "notice",
+      primary: { label: "Iniciar sesión", href: "/login" },
+      secondary: { label: "Pedir un enlace nuevo", href: "/recuperar-contrasena" },
+    }, type);
+  }
+
+  for (const type of ["link_other_device", "link_invalid", "no_connection", "server_error", "unknown"] as const) {
+    const screen = describeAuthErrorScreen(type);
+    assert.equal(screen.title, "No pudimos verificar tu cuenta", type);
+    assert.equal(screen.message, CALLBACK_ERROR_MESSAGES[type], type);
+    assert.equal(screen.tone, "error", type);
+    assert.deepEqual(screen.primary, { label: "Reintentar", href: "/login" }, type);
+    assert.deepEqual(screen.secondary, { label: "Pedir un enlace nuevo", href: "/recuperar-contrasena" }, type);
+  }
+
+  for (const raw of [undefined, null, "", "__proto__", "constructor", "LINK_EXPIRED", "<script>"]) {
+    assert.equal(describeAuthErrorScreen(raw).title, "No pudimos verificar tu cuenta", String(raw));
+    assert.equal(describeAuthErrorScreen(raw).message, CALLBACK_ERROR_MESSAGES.unknown, String(raw));
+  }
 });

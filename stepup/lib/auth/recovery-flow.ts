@@ -1,5 +1,8 @@
 import { classifyCallbackUrlError, type CallbackErrorCategory } from "./error-messages.ts";
-import { DEFAULT_AUTH_REDIRECT, RECOVERY_PASSWORD_PATH } from "./safe-redirect.ts";
+import { RECOVERY_PASSWORD_PATH } from "./safe-redirect.ts";
+
+/** Pantalla pública con la que termina una alta confirmada (no depende de que la sesión ya exista ni de que Inicio cargue). */
+export const ACCOUNT_CONFIRMED_PATH = "/auth/confirmado";
 
 /**
  * Plan de `/auth/confirm` (enlaces de correo: recuperación de contraseña y
@@ -76,9 +79,9 @@ export function isValidEmailCode(code: string | null | undefined): boolean {
   return typeof code === "string" && /^\d{6}$/.test(code.trim());
 }
 
-/** Destino tras verificar bien un enlace/código: recuperación → SIEMPRE "Nueva contraseña"; alta → Inicio. Nunca al revés. */
+/** Destino tras verificar bien un enlace/código: recuperación → SIEMPRE "Nueva contraseña"; alta → "Cuenta confirmada". Nunca al revés. */
 export function authLinkSuccessDestination(flow: AuthLinkFlow): string {
-  return flow === "recovery" ? RECOVERY_PASSWORD_PATH : DEFAULT_AUTH_REDIRECT;
+  return flow === "recovery" ? RECOVERY_PASSWORD_PATH : ACCOUNT_CONFIRMED_PATH;
 }
 
 /**

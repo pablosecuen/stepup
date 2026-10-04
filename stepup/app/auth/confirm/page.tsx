@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
+import { ConfirmSubmitButton } from "@/components/auth/confirm-submit-button";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { planAuthLinkConfirmation } from "@/lib/auth/recovery-flow";
 import { confirmAuthLinkAction } from "@/lib/auth/actions";
@@ -65,12 +66,7 @@ export default async function AuthConfirmPage({ searchParams }: { searchParams: 
       <form action={confirmAuthLinkAction} className="flex flex-col gap-4" aria-label="Confirmar el enlace del correo">
         <input type="hidden" name="tokenHash" value={plan.tokenHash} />
         <input type="hidden" name="type" value={plan.type} />
-        <button
-          type="submit"
-          className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-        >
-          {copy.button}
-        </button>
+        <ConfirmSubmitButton label={copy.button} />
       </form>
     </AuthShell>
   );

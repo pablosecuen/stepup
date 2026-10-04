@@ -126,6 +126,50 @@ export function translateCallbackError(error: RawAuthError | null | undefined): 
   return CALLBACK_ERROR_MESSAGES[classifyCallbackError(error)];
 }
 
+export interface AuthErrorScreenAction {
+  label: string;
+  href: string;
+}
+
+export interface AuthErrorScreen {
+  title: string;
+  message: string;
+  /** Un enlace ya usado/vencido es lo esperable tras un segundo toque o un doble toque: se muestra como aviso, no como fallo. */
+  tone: "notice" | "error";
+  primary: AuthErrorScreenAction;
+  secondary: AuthErrorScreenAction;
+}
+
+const NEW_LINK_ACTION: AuthErrorScreenAction = { label: "Pedir un enlace nuevo", href: "/recuperar-contrasena" };
+
+/**
+ * Pantalla de `/auth/error`. Supabase usa el MISMO código para "venció" y "ya se usó", y un segundo toque (o un doble
+ * toque en el botón de confirmar) es el caso más común: por eso ese par se presenta como aviso con "Iniciar sesión" como
+ * acción principal, sin dar la cuenta por perdida. El resto de las categorías conserva su texto y su "Reintentar".
+ */
+export function describeAuthErrorScreen(type: string | null | undefined): AuthErrorScreen {
+  const categories = Object.keys(CALLBACK_ERROR_MESSAGES) as CallbackErrorCategory[];
+  const category = categories.find((candidate) => candidate === type) ?? "unknown";
+
+  if (category === "link_expired" || category === "link_already_used") {
+    return {
+      title: "Este enlace ya fue utilizado o venció.",
+      message: "Si ya confirmaste tu cuenta, podés iniciar sesión.",
+      tone: "notice",
+      primary: { label: "Iniciar sesión", href: "/login" },
+      secondary: NEW_LINK_ACTION,
+    };
+  }
+
+  return {
+    title: "No pudimos verificar tu cuenta",
+    message: CALLBACK_ERROR_MESSAGES[category],
+    tone: "error",
+    primary: { label: "Reintentar", href: "/login" },
+    secondary: NEW_LINK_ACTION,
+  };
+}
+
 /** Clasifica el propio parámetro `?error=&error_code=` que Supabase agrega a la URL de retorno cuando el enlace ya falló antes de llegar a nuestro código. */
 export function classifyCallbackUrlError(errorCode: string | null | undefined): CallbackErrorCategory {
   if (!errorCode) return "unknown";
