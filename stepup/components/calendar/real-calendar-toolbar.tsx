@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { formatCivilDayLabel, formatWeekRangeLabel } from "@/lib/calendar/civil-calendar";
+import { formatCivilDayLabel } from "@/lib/calendar/civil-calendar";
+import { formatCivilWeek } from "@/lib/format/date-format";
 import { addDaysToDateKey } from "@/lib/calendar/timezone";
 
 interface RealCalendarToolbarProps {
@@ -43,8 +44,8 @@ export function RealCalendarToolbar({ view, weekStartKey, dayKey, buildHref }: R
           Hoy
         </Link>
       </div>
-      <h2 className="text-sm font-semibold capitalize tracking-tight text-textPrimary sm:text-base">
-        {isWeek ? formatWeekRangeLabel(weekStartKey) : formatCivilDayLabel(dayKey)}
+      <h2 className="text-sm font-semibold tracking-tight text-textPrimary first-letter:uppercase sm:text-base">
+        {isWeek ? formatCivilWeek(weekStartKey) : formatCivilDayLabel(dayKey)}
       </h2>
       <div className="flex items-center gap-1 rounded-pill border border-border bg-background p-1">
         <Link

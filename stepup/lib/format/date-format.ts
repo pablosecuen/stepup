@@ -1,5 +1,5 @@
 import { CALENDAR_TIMEZONE, instantDateKey, instantTimeLabel, parseCivilDateKey, todayDateKey } from "../calendar/civil-calendar.ts";
-import { getDateKeyJsDay } from "../calendar/timezone.ts";
+import { addDaysToDateKey, getDateKeyJsDay } from "../calendar/timezone.ts";
 
 /**
  * Formateador ÚNICO de fechas y horas de la web. Todo se muestra en la hora de pared de Argentina
@@ -19,6 +19,8 @@ export const DISPLAY_TIME_ZONE = CALENDAR_TIMEZONE;
 
 const DEFAULT_FALLBACK = "—";
 const DATE_KEY_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
+// Mes civil "YYYY-MM": mes 01-12 exacto (nunca "2026-9", "2026-13" ni una fecha completa).
+const MONTH_KEY = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 const WEEKDAY_SHORT = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"] as const;
 const WEEKDAY_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"] as const;
@@ -63,6 +65,36 @@ export function formatCivilDateRange(start: string | null | undefined, end: stri
   const to = parseCivilDateKey(end);
   if (!from || !to) return fallback;
   return `${formatCivilDate(from)} a ${formatCivilDate(to)}`;
+}
+
+/** "septiembre de 2026" a partir de un mes civil `YYYY-MM` (sin `Date`, sin zona). Cualquier otra cosa → `fallback`. */
+export function formatCivilMonth(value: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const match = value ? MONTH_KEY.exec(value) : null;
+  if (!match) return fallback;
+  return `${MONTH_LONG[Number(match[2]) - 1]} de ${match[1]}`;
+}
+
+/**
+ * Rango de días civiles, sin repetir lo que no cambia: "5 – 11 oct 2026", "28 sept – 4 oct 2026" y, si cruza de año,
+ * "28 dic 2026 – 3 ene 2027". Extremos `YYYY-MM-DD`; si alguno es inválido o el fin es anterior al inicio → `fallback`.
+ */
+export function formatCivilDayRange(start: string | null | undefined, end: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const from = parseCivilDateKey(start);
+  const to = parseCivilDateKey(end);
+  if (!from || !to || to < from) return fallback;
+  const a = parts(from);
+  const b = parts(to);
+  if (from === to) return `${a.day} ${MONTH_SHORT[a.month - 1]} ${a.year}`;
+  if (a.year !== b.year) return `${a.day} ${MONTH_SHORT[a.month - 1]} ${a.year} – ${b.day} ${MONTH_SHORT[b.month - 1]} ${b.year}`;
+  if (a.month !== b.month) return `${a.day} ${MONTH_SHORT[a.month - 1]} – ${b.day} ${MONTH_SHORT[b.month - 1]} ${b.year}`;
+  return `${a.day} – ${b.day} ${MONTH_SHORT[b.month - 1]} ${b.year}`;
+}
+
+/** Encabezado semanal del Calendario: la semana de siete días que empieza en `weekStartKey` (ver `formatCivilDayRange`). */
+export function formatCivilWeek(weekStartKey: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const start = parseCivilDateKey(weekStartKey);
+  if (!start) return fallback;
+  return formatCivilDayRange(start, addDaysToDateKey(start, 6), fallback);
 }
 
 /**

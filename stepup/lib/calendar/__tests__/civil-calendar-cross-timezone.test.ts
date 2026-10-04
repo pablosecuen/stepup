@@ -39,7 +39,7 @@ test("servidor UTC vs cliente Argentina: salida idéntica (claves, rótulos, hoy
   assert.equal(client, server);
   const parsed = JSON.parse(server);
   assert.deepEqual(parsed.window.dayKeys, ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"]);
-  assert.equal(parsed.weekLabel, "28 - 04-oct de octubre de 2026");
+  assert.equal(parsed.weekLabel, "28 sept – 4 oct 2026");
   assert.deepEqual(
     parsed.header.map((h: { weekday: string; dom: number }) => `${h.weekday} ${h.dom}`),
     ["LUN 28", "MAR 29", "MIÉ 30", "JUE 1", "VIE 2", "SÁB 3", "DOM 4"]

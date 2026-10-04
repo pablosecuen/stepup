@@ -5,7 +5,6 @@ import {
   dayRangeInstants,
   formatCivilDayLabel,
   formatCivilDayLabelShort,
-  formatWeekRangeLabel,
   instantDateKey,
   instantMinutesOfDay,
   instantTimeLabel,
@@ -17,6 +16,7 @@ import {
   weekdayIndexMondayFirst,
 } from "../civil-calendar.ts";
 import { getLocalDateKey, getLocalTimeKey } from "../timezone.ts";
+import { formatCivilWeek } from "../../format/date-format.ts";
 import { groupItemsByDayKey, layoutDayItems, currentTimeTop } from "../layout.ts";
 import type { CalendarViewItem } from "../occurrences.ts";
 
@@ -46,15 +46,15 @@ test("lunes y domingo: el domingo pertenece a la semana que termina en él; el l
 
 test("límites de mes y año: 28-dic-2026 → 3-ene-2027 y fin de febrero", () => {
   assert.deepEqual(weekDateKeys("2026-12-28"), ["2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02", "2027-01-03"]);
-  assert.equal(formatWeekRangeLabel("2026-12-28"), "28 - 03-ene de enero de 2027");
+  assert.equal(formatCivilWeek("2026-12-28"), "28 dic 2026 – 3 ene 2027");
   assert.deepEqual(weekDateKeys("2028-02-28"), ["2028-02-28", "2028-02-29", "2028-03-01", "2028-03-02", "2028-03-03", "2028-03-04", "2028-03-05"], "2028 es bisiesto");
   assert.deepEqual(weekDateKeys("2026-02-23").slice(-2), ["2026-02-28", "2026-03-01"], "2026 no es bisiesto");
 });
 
-test("rótulos: mismo formato que antes (sin Intl, idénticos en cualquier locale/zona)", () => {
-  assert.equal(formatWeekRangeLabel("2026-09-28"), "28 - 04-oct de octubre de 2026");
-  assert.equal(formatWeekRangeLabel("2026-10-05"), "05 - 11 de octubre de 2026");
-  assert.equal(formatWeekRangeLabel("2026-08-31"), "31 - 06-sept de septiembre de 2026");
+test("rótulos del encabezado (sin Intl, idénticos en cualquier locale/zona)", () => {
+  assert.equal(formatCivilWeek("2026-09-28"), "28 sept – 4 oct 2026");
+  assert.equal(formatCivilWeek("2026-10-05"), "5 – 11 oct 2026");
+  assert.equal(formatCivilWeek("2026-08-31"), "31 ago – 6 sept 2026");
   assert.equal(formatCivilDayLabel("2026-10-03"), "sábado, 3 de octubre de 2026");
   assert.equal(formatCivilDayLabel("2026-10-04"), "domingo, 4 de octubre de 2026");
   assert.equal(formatCivilDayLabelShort("2026-10-04"), "domingo, 4 de octubre");

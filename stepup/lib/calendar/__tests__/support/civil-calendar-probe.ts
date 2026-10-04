@@ -11,8 +11,9 @@
  * la frontera como instante ISO, y releído con getters locales en el cliente)
  * para demostrar que la prueba SÍ detecta el defecto original.
  */
-import { formatCivilDayLabel, formatCivilDayLabelShort, formatWeekRangeLabel, instantTimeLabel, resolveCalendarWindow, dayOfMonth, weekdayIndexMondayFirst, todayDateKey } from "../../civil-calendar.ts";
+import { formatCivilDayLabel, formatCivilDayLabelShort, instantTimeLabel, resolveCalendarWindow, dayOfMonth, weekdayIndexMondayFirst, todayDateKey } from "../../civil-calendar.ts";
 import { addDaysToDateKey } from "../../timezone.ts";
+import { formatCivilWeek } from "../../../format/date-format.ts";
 import { groupItemsByDayKey, layoutDayItems, currentTimeTop, WEEKDAY_SHORT } from "../../layout.ts";
 import type { CalendarViewItem } from "../../occurrences.ts";
 
@@ -76,7 +77,7 @@ if (mode === "legacy-client") {
   const byDay = groupItemsByDayKey(ITEMS);
   const out = {
     window: win,
-    weekLabel: formatWeekRangeLabel(win.weekStartKey),
+    weekLabel: formatCivilWeek(win.weekStartKey),
     dayLabel: formatCivilDayLabel(win.todayKey),
     dayLabelShort: formatCivilDayLabelShort(win.todayKey),
     header: win.dayKeys.map((key) => ({ key, weekday: WEEKDAY_SHORT[weekdayIndexMondayFirst(key)], dom: dayOfMonth(key), today: todayDateKey(now) === key })),

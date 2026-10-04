@@ -22,8 +22,6 @@ export const WEEKDAY_SHORT_MONDAY_FIRST = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "
 
 const WEEKDAY_NAMES_BY_JS_DAY = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"] as const;
 const MONTH_NAMES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"] as const;
-// Mismas abreviaturas que producía `toLocaleDateString("es-AR", { month: "short" })`.
-const MONTH_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"] as const;
 
 const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -133,21 +131,11 @@ export function resolveCalendarWindow(params: { view?: string; week?: string; da
   };
 }
 
-function twoDigits(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
 function keyParts(dateKey: string): { year: number; month: number; day: number; jsDay: number } {
   return { year: Number(dateKey.slice(0, 4)), month: Number(dateKey.slice(5, 7)), day: Number(dateKey.slice(8, 10)), jsDay: getDateKeyJsDay(dateKey) };
 }
 
-/** Rótulo del encabezado semanal: "28 - 04-oct de octubre de 2026" (mismo formato que antes, sin Intl). */
-export function formatWeekRangeLabel(weekStartKey: string): string {
-  const start = keyParts(weekStartKey);
-  const end = keyParts(addDaysToDateKey(weekStartKey, 6));
-  const endLabel = start.month === end.month ? twoDigits(end.day) : `${twoDigits(end.day)}-${MONTH_SHORT[end.month - 1]}`;
-  return `${twoDigits(start.day)} - ${endLabel} de ${MONTH_NAMES[end.month - 1]} de ${end.year}`;
-}
+// El encabezado semanal ("28 sept – 4 oct 2026") vive en el formateador único: `formatCivilWeek` (lib/format/date-format.ts).
 
 /** "sábado, 3 de octubre de 2026". */
 export function formatCivilDayLabel(dateKey: string): string {

@@ -5,6 +5,7 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { loadFinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
 import { ErrorState } from "@/components/ui/states";
+import { formatCivilMonth } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Resumen financiero · TeacherFlow" };
@@ -180,7 +181,7 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
         </div>
         {data.newStudentsPerMonth.peakMonths.length > 0 && (
           <p className="mt-3 text-xs text-textMuted">
-            Mes con más altas: {data.newStudentsPerMonth.peakMonths.join(", ")}
+            Mes con más altas: {data.newStudentsPerMonth.peakMonths.map((month) => formatCivilMonth(month)).join(", ")}
             {data.newStudentsPerMonth.previousYearTotal !== null ? ` · año anterior: ${data.newStudentsPerMonth.previousYearTotal} altas totales` : ""}
           </p>
         )}
