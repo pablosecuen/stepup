@@ -135,7 +135,7 @@ test("con el reintento acotado: login con contraseña + carga inmediata de Inici
   assert.equal(fake.restCalls.length, 5, "4 consultas + 1 reintento de la rechazada");
   assert.ok(fake.restCalls.every((call) => call.token === fake.token()), "todas llevan el token del usuario recién creado (nunca la clave anónima)");
   assert.notEqual(fake.token(), "", "se emitió un token real");
-  assert.deepEqual(events, [{ table: "recurrence_rules", code: "PGRST303", detail: "JWT expired", recovered: true }]);
+  assert.deepEqual(events, [{ table: "recurrence_rules", code: "PGRST303", detail: "JWT expired", recovered: true, waitedMs: 0 }]);
 });
 
 test("cuenta sin reglas de recurrencia: la consulta autenticada devuelve una lista vacía (200), no un error ni un estado inventado", async () => {
@@ -243,8 +243,8 @@ test("un Request (cuerpo de un solo uso) o una URL ajena a /rest/v1/ nunca se re
 });
 
 test("el log del reintento no contiene token, correo ni datos", () => {
-  const line = formatJwtRejectionRetryLog({ table: "recurrence_rules", code: "PGRST303", detail: "JWT expired", recovered: true });
-  assert.equal(line, '[jwt-retry] {"table":"recurrence_rules","code":"PGRST303","detail":"JWT expired","recovered":true}');
+  const line = formatJwtRejectionRetryLog({ table: "recurrence_rules", code: "PGRST303", detail: "JWT expired", recovered: true, waitedMs: 350 });
+  assert.equal(line, '[jwt-retry] {"table":"recurrence_rules","code":"PGRST303","detail":"JWT expired","recovered":true,"waitedMs":350}');
   assert.doesNotMatch(line, /eyJ|Bearer|@|sb_publishable/);
 });
 
@@ -277,4 +277,45 @@ test("cableado: el cliente del servidor usa el reintento, y Inicio sigue pidiend
 
   const proxy = readFileSync(root + "proxy.ts", "utf8");
   assert.doesNotMatch(proxy, /\.from\(/, "el proxy no consulta datos: sólo refresca la sesión");
+});
+
+test("\"JWT issued at future\" (el motivo real hallado en Production): espera hasta que el token cumpla ~3 s de vida, con tope, y sigue siendo UN solo reintento", async () => {
+  const waits: number[] = [];
+  const events: JwtRejectionRetryEvent[] = [];
+  let attempts = 0;
+  const base = (async () => {
+    attempts += 1;
+    return rejection("JWT issued at future");
+  }) as typeof fetch;
+
+  const NOW = 1_790_000_000_000;
+  const run = async (tokenAgeMs: number | null) => {
+    waits.length = 0;
+    attempts = 0;
+    const token = tokenAgeMs === null ? "no-es-un-jwt" : makeJwt(Math.floor((NOW - tokenAgeMs) / 1000));
+    const retry = createJwtRejectionRetryFetch(base, { now: () => NOW, sleep: async (ms) => void waits.push(ms), onRetry: (event) => events.push(event) });
+    const response = await retry(`${URL_BASE}/rest/v1/students?select=*`, { headers: { Authorization: `Bearer ${token}` } });
+    return { status: response.status, attempts, waits: [...waits] };
+  };
+
+  assert.deepEqual(await run(1000), { status: 401, attempts: 2, waits: [2000] }, "token de 1 s → espera 2 s para llegar a 3 s");
+  assert.deepEqual(await run(0), { status: 401, attempts: 2, waits: [2500] }, "recién emitido → tope de 2,5 s");
+  assert.deepEqual(await run(2900), { status: 401, attempts: 2, waits: [350] }, "casi maduro → la espera mínima");
+  assert.deepEqual(await run(10_000), { status: 401, attempts: 2, waits: [350] }, "token viejo → la espera mínima");
+  assert.deepEqual(await run(null), { status: 401, attempts: 2, waits: [2500] }, "sin iat legible → el tope");
+  assert.ok(events.every((event) => event.recovered === false && event.detail === "JWT issued at future"));
+  assert.deepEqual(events.map((event) => event.waitedMs), [2000, 2500, 350, 350, 2500]);
+});
+
+test("otros motivos (p. ej. \"JWT expired\") conservan la espera corta: sólo \"issued at future\" justifica esperar más", async () => {
+  const waits: number[] = [];
+  const base = (async () => rejection("JWT expired")) as typeof fetch;
+  const retry = createJwtRejectionRetryFetch(base, { now: () => 1_790_000_000_000, sleep: async (ms) => void waits.push(ms) });
+  await retry(`${URL_BASE}/rest/v1/students`, { headers: { Authorization: `Bearer ${makeJwt(1_790_000_000)}` } });
+  assert.deepEqual(waits, [350]);
+});
+
+test("el log de la espera lleva waitedMs y nada del token", () => {
+  const line = formatJwtRejectionRetryLog({ table: "students", code: "PGRST303", detail: "JWT issued at future", recovered: true, waitedMs: 2000 });
+  assert.equal(line, '[jwt-retry] {"table":"students","code":"PGRST303","detail":"JWT issued at future","recovered":true,"waitedMs":2000}');
 });

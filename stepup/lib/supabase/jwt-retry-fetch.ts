@@ -21,16 +21,30 @@ import { safeJwtRejectionDetail } from "../errors/load-failure.ts";
  */
 export const JWT_REJECTION_RETRY_DELAY_MS = 350;
 
+/**
+ * Motivo que PostgREST informó en Production (4/oct) cuando falló Inicio tras un login: "JWT issued at future", es decir,
+ * el `iat` del token es POSTERIOR al reloj de PostgREST. El token es válido; sólo hay que esperar a que "envejezca" más
+ * que el desfasaje entre los dos servicios. Con 350 ms no alcanzó (2 de 3 consultas siguieron rechazadas, con el token
+ * de ~1,3 s de vida), así que para este motivo la espera se calcula con el `iat` del propio token: se aguarda hasta
+ * que tenga `JWT_ISSUED_AT_SETTLE_MS` de vida, sin pasar de `JWT_ISSUED_AT_MAX_WAIT_MS`. Sigue siendo UN solo reintento.
+ */
+export const JWT_ISSUED_AT_FUTURE_DETAIL = "JWT issued at future";
+export const JWT_ISSUED_AT_SETTLE_MS = 3000;
+export const JWT_ISSUED_AT_MAX_WAIT_MS = 2500;
+
 export interface JwtRejectionRetryEvent {
   table: string;
   code: string;
   detail: string | null;
   recovered: boolean;
+  /** Cuánto se esperó antes del único reintento (sirve para calibrar la espera con datos reales). */
+  waitedMs: number;
 }
 
 export interface JwtRejectionRetryOptions {
   delayMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
   onRetry?: (event: JwtRejectionRetryEvent) => void;
 }
 
@@ -68,9 +82,27 @@ async function readRejection(response: Response): Promise<{ code: string; detail
   }
 }
 
+/** `iat` (en ms) del Bearer de la petición, o `null` si no se puede leer. El token jamás se guarda ni se registra. */
+function tokenIssuedAtMs(init: RequestInit | undefined): number | null {
+  try {
+    const authorization = new Headers(init?.headers).get("authorization") ?? "";
+    const payload = authorization.replace(/^Bearer /i, "").split(".")[1];
+    if (!payload) return null;
+    const iat = (JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { iat?: unknown }).iat;
+    return typeof iat === "number" && Number.isFinite(iat) ? iat * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export function createJwtRejectionRetryFetch(baseFetch: FetchLike = fetch, options: JwtRejectionRetryOptions = {}): FetchLike {
   const delayMs = options.delayMs ?? JWT_REJECTION_RETRY_DELAY_MS;
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const now = options.now ?? Date.now;
 
   return async (input, init) => {
     const response = await baseFetch(input, init);
@@ -82,14 +114,20 @@ export function createJwtRejectionRetryFetch(baseFetch: FetchLike = fetch, optio
     const rejection = await readRejection(response);
     if (!rejection) return response;
 
-    await sleep(delayMs);
+    let waitedMs = delayMs;
+    if (rejection.detail === JWT_ISSUED_AT_FUTURE_DETAIL) {
+      const issuedAtMs = tokenIssuedAtMs(init);
+      // Sin `iat` legible no se puede calcular: se espera el máximo.
+      waitedMs = issuedAtMs === null ? JWT_ISSUED_AT_MAX_WAIT_MS : clamp(issuedAtMs + JWT_ISSUED_AT_SETTLE_MS - now(), delayMs, JWT_ISSUED_AT_MAX_WAIT_MS);
+    }
+    await sleep(waitedMs);
     const retried = await baseFetch(input, init);
-    options.onRetry?.({ table, code: rejection.code, detail: rejection.detail, recovered: retried.status !== 401 });
+    options.onRetry?.({ table, code: rejection.code, detail: rejection.detail, recovered: retried.status !== 401, waitedMs: Math.round(waitedMs) });
     return retried;
   };
 }
 
 /** Línea de log segura del reintento (sin token, correo ni datos). */
 export function formatJwtRejectionRetryLog(event: JwtRejectionRetryEvent): string {
-  return `[jwt-retry] ${JSON.stringify({ table: event.table, code: event.code, detail: event.detail, recovered: event.recovered })}`;
+  return `[jwt-retry] ${JSON.stringify({ table: event.table, code: event.code, detail: event.detail, recovered: event.recovered, waitedMs: event.waitedMs })}`;
 }
