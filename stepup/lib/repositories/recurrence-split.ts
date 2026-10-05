@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type { RecurrenceRuleRow } from "@/lib/db/database.types";
 import { planRecurrenceSplit, buildExcludedOccurrenceKeys } from "@/lib/calendar/split";
+import { buildSplitRpcPayload } from "@/lib/calendar/split-rpc-payload";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 import { toRecurrenceRuleRecord, type RecurrenceRuleRecord } from "./recurrence-rules-mapping";
 import { RecurrenceRuleNotFoundError } from "./recurrence-rules";
@@ -56,25 +57,24 @@ export async function splitRecurrenceThisAndFuture(ctx: AuthenticatedDbContext, 
     activityKind: input.activityKind ?? original.activityKind,
   });
 
-  const { data, error } = await ctx.supabase.rpc("split_recurrence_this_and_future", {
-    p_payload: {
-      original_recurrence_id: input.originalRecurrenceId,
-      effective_date: input.effectiveDate,
-      original_patch: plan.originalPatch,
-      successor_id: successorId,
-      successor_start_date: plan.successorStartDate,
-      successor_end_date: plan.successorEndDate,
-      rule_type: input.ruleType,
-      cycle_length_weeks: input.cycleLengthWeeks,
-      weeks: input.weeks,
-      modality: input.modality ?? null,
-      class_title: input.classTitle ?? null,
-      activity_kind: input.activityKind ?? null,
-      participant_ids: input.participantIds,
-      primary_student_id: input.primaryStudentId,
-      excluded_occurrence_keys: excludedOccurrenceKeys,
-    },
+  // Frontera TypeScript → SQL: el payload se arma SIEMPRE con `buildSplitRpcPayload` (todo snake_case, incluido
+  // `original_patch.end_date`) — nunca se pasa el plan de dominio (camelCase) tal cual. Ver lib/calendar/split-rpc-payload.ts.
+  const payload = buildSplitRpcPayload({
+    originalRecurrenceId: input.originalRecurrenceId,
+    effectiveDate: input.effectiveDate,
+    plan,
+    successorId,
+    excludedOccurrenceKeys,
+    ruleType: input.ruleType,
+    cycleLengthWeeks: input.cycleLengthWeeks,
+    weeks: input.weeks,
+    modality: input.modality ?? null,
+    classTitle: input.classTitle ?? null,
+    activityKind: input.activityKind ?? null,
+    participantIds: input.participantIds,
+    primaryStudentId: input.primaryStudentId,
   });
+  const { data, error } = await ctx.supabase.rpc("split_recurrence_this_and_future", { p_payload: payload });
   if (error) {
     if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie original no encontrada.");
     throw error;
