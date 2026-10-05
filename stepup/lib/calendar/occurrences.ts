@@ -1,4 +1,5 @@
 import { generateOccurrences, applyExceptionsToOccurrences } from "./recurrence-engine.ts";
+import { resolveOccurrenceStudentLabel, type StudentForLabel } from "./occurrence-student-label.ts";
 import type { ActivityKind, CalendarLessonStatus, CalendarLessonType, CalendarModality, RecurrenceRuleForEngine } from "./types.ts";
 
 /**
@@ -80,7 +81,13 @@ export function buildCalendarViewForRange(input: {
   rules: RecurrenceRuleForEngine[];
   exceptions: RecurrenceExceptionForMerge[];
   lessons: MaterializedLessonForMerge[];
+  /**
+   * Alumnos conocidos (por id) para ponerle nombre y nivel a las ocurrencias VIRTUALES con la MISMA regla que las clases
+   * materializadas (`resolveOccurrenceStudentLabel`). Opcional: sin mapa, las virtuales quedan sin nombre como antes.
+   */
+  students?: ReadonlyMap<string, StudentForLabel>;
 }): CalendarViewItem[] {
+  const students = input.students ?? new Map<string, StudentForLabel>();
   const lessonById = new Map(input.lessons.map((lesson) => [lesson.id, lesson]));
   const items: CalendarViewItem[] = [];
   const consumedLessonIds = new Set<string>();
@@ -123,6 +130,7 @@ export function buildCalendarViewForRange(input: {
         return;
       }
 
+      const label = resolveOccurrenceStudentLabel({ primaryStudentId: occurrence.studentId, participantIds: occurrence.participantIds, students });
       items.push({
         id: `virtual:${occurrence.occurrenceKey}`,
         recurrenceId: rule.recurrenceId,
@@ -131,8 +139,8 @@ export function buildCalendarViewForRange(input: {
         isMaterialized: false,
         studentId: occurrence.studentId,
         participantIds: occurrence.participantIds,
-        studentName: "",
-        level: "",
+        studentName: label.studentName,
+        level: label.level,
         lessonType: occurrence.participantIds.length > 1 ? "group" : "individual",
         title: occurrence.classTitle,
         start: occurrence.start,

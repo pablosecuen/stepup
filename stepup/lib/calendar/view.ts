@@ -3,6 +3,7 @@ import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { listRecurrenceRules } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
+import { listStudents } from "@/lib/repositories/students";
 import { buildCalendarViewForRange, type CalendarViewItem } from "./occurrences";
 import type { RecurrenceRuleForEngine } from "./types";
 
@@ -14,12 +15,13 @@ import type { RecurrenceRuleForEngine } from "./types";
  */
 export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date): Promise<CalendarViewItem[]> {
   const rules = await listRecurrenceRules(ctx);
-  const [lessons, exceptions] = await Promise.all([
+  const [lessons, exceptions, students] = await Promise.all([
     listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString()),
     listRecurrenceExceptionsForRules(
       ctx,
       rules.map((rule) => rule.id)
     ),
+    listStudents(ctx),
   ]);
 
   const engineRules: RecurrenceRuleForEngine[] = rules.map((rule) => ({
@@ -41,6 +43,7 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     rangeStart,
     rangeEnd,
     rules: engineRules,
+    students: new Map(students.map((student) => [student.id, { name: student.name, levels: student.levels }])),
     exceptions: exceptions.map((exception) => ({
       recurrenceId: exception.recurrenceId,
       occurrenceKey: exception.occurrenceKey,

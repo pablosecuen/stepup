@@ -9,6 +9,7 @@ import {
   type NewRecurrenceSeriesInput,
 } from "./recurrence-rules-mapping";
 import { planParticipantFreeze } from "@/lib/calendar/participants-split";
+import { buildParticipantFreezePayload } from "@/lib/calendar/participants-freeze-payload";
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
 import { listStudents } from "./students";
@@ -179,31 +180,11 @@ export async function changeRecurrenceParticipantsFromDate(
     })),
   });
 
-  const oldParticipants = rule.participantIds.map((id) => studentsById.get(id)).filter((s): s is NonNullable<typeof s> => !!s);
-  // El principal de las ocurrencias que se CONGELAN (roster viejo, antes de
-  // la fecha efectiva) es el que la regla ya tiene guardado de verdad en
-  // `primary_student_id` — nunca el primer elemento de `participantIds`
-  // (ese array no tiene ningún orden garantizado; usarlo como si lo tuviera
-  // era el mismo bug de selección implícita que esta ronda corrige en el
-  // resto de Calendario, ver 20261001140000).
-  const primary = studentsById.get(rule.primaryStudentId ?? "") ?? oldParticipants[0] ?? null;
-  const color = rule.modality === "online" ? "#DDEBFF" : rule.modality === "mixta" ? "#F2E8FF" : "#FFE4D2";
-
-  const freezeOccurrences = toFreeze.map((occurrence) => ({
-    occurrence_key: occurrence.occurrenceKey,
-    recurrence_index: occurrence.recurrenceIndex,
-    start_at: occurrence.start,
-    end_at: occurrence.end,
-    primary_student_id: primary?.id ?? null,
-    student_name: primary?.name ?? "",
-    level: primary?.levels[0] ?? "",
-    lesson_type: oldParticipants.length > 1 ? "group" : "individual",
-    modality: rule.modality,
-    class_title: rule.classTitle,
-    activity_kind: rule.activityKind,
-    color,
-    participants: oldParticipants.map((s) => ({ student_id: s.id, student_name: s.name, level: s.levels[0] ?? "" })),
-  }));
+  // El principal de las ocurrencias que se CONGELAN (roster viejo, antes de la fecha efectiva) es el que la regla ya tiene
+  // guardado de verdad en `primary_student_id` — nunca el primer elemento de `participantIds` (sin orden garantizado).
+  // Corrección 2026-10-04: armado extraído a `buildParticipantFreezePayload` (contrato probado contra el SQL) y con la MISMA
+  // regla de nombre/nivel que las ocurrencias virtuales del Calendario (lib/calendar/occurrence-student-label.ts).
+  const freezeOccurrences = buildParticipantFreezePayload({ occurrences: toFreeze, rule, students: studentsById });
 
   const { data, error } = await ctx.supabase.rpc("apply_recurrence_participants_from_date", {
     p_payload: {
