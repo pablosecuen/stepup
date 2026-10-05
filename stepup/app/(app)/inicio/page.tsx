@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 import { redirect } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import { isSupabaseConfigured } from "@/lib/auth/config";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { signOutAction } from "@/lib/auth/actions";

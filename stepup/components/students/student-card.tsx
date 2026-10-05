@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { StudentStatusBadge } from "./student-status-badge";

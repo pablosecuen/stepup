@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 import { STUDENT_STATUS_LABEL, STUDENT_STATUS_OPTIONS, MODALITY_LABEL, MODALITY_OPTIONS, STANDARD_LEVELS } from "@/lib/students/constants";
 
 const selectClassName =

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { formatCivilDayLabel } from "@/lib/calendar/civil-calendar";
 import { formatCivilWeek } from "@/lib/format/date-format";

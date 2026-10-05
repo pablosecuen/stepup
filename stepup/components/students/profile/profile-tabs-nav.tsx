@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/nav/private-link";
 
 export type ProfileTabKey = "resumen" | "clases" | "progreso" | "tareas" | "cobros" | "reportes" | "informacion";
 
