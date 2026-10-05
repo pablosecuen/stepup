@@ -69,13 +69,12 @@ export async function getStudent(ctx: AuthenticatedDbContext, id: string): Promi
 
 export interface CreateStudentOptions {
   /**
-   * Id del borrador ("claim") reclamado server-side por
-   * `claimStudentCreation()` (ver `lib/repositories/student-drafts.ts`) —
-   * NUNCA un id generado en el navegador. La identidad real de la
-   * operación de alta vive enteramente en el servidor; este repositorio
-   * sólo la reenvía tal cual la recibió de la página.
+   * Clave de la operación de alta (UUID) que genera el navegador UNA vez por borrador (`useDraftOperationId`,
+   * sessionStorage) y que la RPC `create_student_with_operation` usa como idempotencia por profesora: el claim nace ahí,
+   * al enviar — cargar la página nunca escribe. La clave sólo identifica la operación dentro de la profesora; la
+   * autorización y el `owner_id` siguen siendo del servidor.
    */
-  claimId: string;
+  operationId: string;
   /** true sólo en el reenvío explícito "Es otra persona, crear igualmente". */
   confirmDuplicate?: boolean;
 }
@@ -92,9 +91,9 @@ interface CreateStudentViaWebRow {
 }
 
 /**
- * Crea un alumno nuevo sobre un borrador ya reclamado — coordinada (Fase
+ * Crea un alumno nuevo — idempotente por clave de operación y coordinada (Fase
  * 2, corrección de carrera real): pasa siempre por la RPC
- * `create_student_via_web`, NUNCA un `.insert()` directo (esa RPC
+ * `create_student_with_operation`, NUNCA un `.insert()` directo (esa RPC
  * comparte el mismo advisory lock por owner que `apply_backup_import`,
  * así una alta manual nunca puede entrelazarse con una importación de
  * respaldo en curso). Nunca genera el `id`/`owner_id` fuera del servidor;
@@ -110,8 +109,8 @@ export async function createStudent(
   if (errors.length > 0) {
     throw new Error(`Alumno inválido: ${errors.map((e) => e.message).join(" ")}`);
   }
-  const { data, error } = await ctx.supabase.rpc("create_student_via_web", {
-    p_claim_id: options.claimId,
+  const { data, error } = await ctx.supabase.rpc("create_student_with_operation", {
+    p_operation_id: options.operationId,
     p_payload: studentInputToRpcPayload(input),
     p_confirm_duplicate: options.confirmDuplicate ?? false,
   });

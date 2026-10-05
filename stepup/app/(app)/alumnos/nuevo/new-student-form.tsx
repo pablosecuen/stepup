@@ -1,13 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
+import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { shouldRotateOperationId } from "@/lib/calendar/operation-id";
 import { createStudentAction, type FormState } from "@/lib/actions/students";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { StudentFormFields } from "@/components/students/student-form-fields";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 
 const INITIAL_STATE: FormState = {};
+
+/** Clave de sessionStorage de la operación de alta en curso (una por pestaña; ver `useDraftOperationId`). */
+const NEW_STUDENT_OPERATION_STORAGE_KEY = "teacherflow:alumnos:nuevo:operacion";
 
 /**
  * Panel de posible duplicado — nunca inserta nada por sí mismo. Ofrece
@@ -62,12 +69,12 @@ function DuplicateReviewPanel({ candidates, changed }: { candidates: NonNullable
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className="flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
     >
@@ -77,17 +84,29 @@ function SubmitButton() {
   );
 }
 
-export function NewStudentForm({ customLevels, claimId }: { customLevels: CustomLevelRecord[]; claimId: string }) {
+export function NewStudentForm({ customLevels }: { customLevels: CustomLevelRecord[] }) {
+  const router = useRouter();
   const [state, formAction] = useGuardedActionState(createStudentAction, INITIAL_STATE);
+  // La clave de operación nace ACÁ (navegador, una vez por borrador) y sobrevive recarga, doble envío y respuesta perdida;
+  // el claim del servidor recién se crea al enviar. Hasta tenerla el envío queda bloqueado.
+  const { operationId, rotate: rotateOperationId } = useDraftOperationId(NEW_STUDENT_OPERATION_STORAGE_KEY);
+
+  // Confirmación canónica del servidor con ESTA clave (alta nueva o ya existente): rota la clave y recién ahí navega a la
+  // ficha. Nunca antes: navegar con la clave vieja en sessionStorage haría que el próximo "Nuevo alumno" reencuentre al anterior.
+  useEffect(() => {
+    if (!shouldRotateOperationId(state.createdOperationId, operationId) || !state.createdStudentId) return;
+    rotateOperationId();
+    router.push(`/alumnos/${state.createdStudentId}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, operationId]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de alta de alumno">
-      {/* Borrador reclamado server-side por la página (nunca generado acá) — ver `claim_student_creation()`. */}
-      <input type="hidden" name="claimId" value={claimId} />
+      <input type="hidden" name="operationId" value={operationId ?? ""} />
       <StudentFormFields customLevels={customLevels} />
       {state.error && <FormErrorBox message={state.error} />}
       {state.duplicate && <DuplicateReviewPanel candidates={state.duplicate.candidates} changed={state.duplicate.changed} />}
-      <SubmitButton />
+      <SubmitButton disabled={!operationId} />
     </form>
   );
 }

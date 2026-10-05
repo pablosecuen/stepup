@@ -24,6 +24,7 @@ import {
 } from "@/lib/repositories/custom-levels";
 import type { BillingType, StudentCategory, StudentModality, StudentStatus } from "@/lib/db/database.types";
 import { todayInArgentina } from "@/lib/format/date-format";
+import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
 
 // Server Actions — Alumnos. Nunca reciben `ownerId`/`owner_id` del
 // navegador: `requireAuthenticatedDbContext()` siempre resuelve la sesión
@@ -41,6 +42,13 @@ export interface FormState {
    * revisión nueva antes de permitir insertar.
    */
   duplicate?: { candidates: StudentDuplicateCandidate[]; changed: boolean };
+  /**
+   * Alta confirmada por el servidor con ESTA clave de operación (creada ahora o ya existente: respuesta perdida/reintento).
+   * El cliente rota la clave y navega a la ficha: la acción NO usa `redirect()` porque navegar antes de rotar dejaría la
+   * clave vieja en sessionStorage y el próximo "Nuevo alumno" reencontraría al alumno anterior en vez de crear otro.
+   */
+  createdOperationId?: string;
+  createdStudentId?: string;
 }
 
 function readString(formData: FormData, key: string): string {
@@ -93,16 +101,17 @@ export async function createStudentAction(_prevState: FormState, formData: FormD
     notes: readOptionalString(formData, "notes"),
   };
 
-  const claimId = readString(formData, "claimId").trim();
-  if (!claimId) {
-    return { error: "Ocurrió un error inesperado. Recargá la página e intentá de nuevo." };
+  // La clave de operación la genera el NAVEGADOR (una vez por borrador) y la acción nunca la inventa ni la repone.
+  const operationId = parseOperationId(readString(formData, "operationId"));
+  if (!operationId) {
+    return { error: MISSING_OPERATION_ID_MESSAGE };
   }
   const confirmDuplicate = readString(formData, "confirmDuplicate").trim() === "true";
 
   let result;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    result = await createStudent(ctx, input, { claimId, confirmDuplicate });
+    result = await createStudent(ctx, input, { operationId, confirmDuplicate });
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
@@ -117,7 +126,7 @@ export async function createStudentAction(_prevState: FormState, formData: FormD
   }
 
   revalidatePath("/alumnos");
-  redirect(`/alumnos/${result.student.id}`);
+  return { createdOperationId: operationId, createdStudentId: result.student.id };
 }
 
 // ---------------------------------------------------------------------------

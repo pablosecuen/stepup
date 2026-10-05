@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { clearDraftOperationId, resolveDraftOperationId, rotateDraftOperationId } from "./draft-operation-id-storage.ts";
+
+const browserStorage = () => window.sessionStorage;
+const newId = () => crypto.randomUUID();
 
 /**
  * Idempotencia real de una operación en curso, persistida en
@@ -12,7 +16,8 @@ import { useEffect, useState } from "react";
  * origen y por pestaña — una pestaña genuinamente nueva (navegación fresca,
  * no una recarga ni una duplicación) arranca sin la clave y genera un id
  * nuevo, que es exactamente el comportamiento correcto para una acción
- * nueva y legítima.
+ * nueva y legítima. La lógica vive en `draft-operation-id-storage.ts`
+ * (pura y probada); acá sólo se conecta con React.
  *
  * Devuelve `null` mientras todavía no se recuperó ni generó ningún id — el
  * llamador DEBE bloquear el envío en ese estado (el `useEffect` corre
@@ -27,31 +32,12 @@ export function useDraftOperationId(storageKey: string): { operationId: string |
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    try {
-      const existing = sessionStorage.getItem(storageKey);
-      if (existing) {
-        setOperationId(existing);
-        return;
-      }
-      const fresh = crypto.randomUUID();
-      sessionStorage.setItem(storageKey, fresh);
-      setOperationId(fresh);
-    } catch {
-      // sessionStorage inaccesible (navegación privada, storage bloqueado)
-      // — igual generamos un id en memoria: se pierde la protección ante
-      // una recarga real en ese caso puntual, pero el formulario nunca
-      // queda bloqueado por esto (mejor una idempotencia parcial que
-      // ninguna).
-      setOperationId(crypto.randomUUID());
-    }
+    setOperationId(resolveDraftOperationId(browserStorage, storageKey, newId));
   }, [storageKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function clear() {
-    try {
-      sessionStorage.removeItem(storageKey);
-    } catch {
-      // no-op — si no se pudo guardar tampoco hay nada real que limpiar.
-    }
+    clearDraftOperationId(browserStorage, storageKey);
   }
 
   /**
@@ -60,13 +46,7 @@ export function useDraftOperationId(storageKey: string): { operationId: string |
    * criterio que `clear()`: sólo después de una respuesta EXITOSA confirmada por el servidor.
    */
   function rotate() {
-    const fresh = crypto.randomUUID();
-    try {
-      sessionStorage.setItem(storageKey, fresh);
-    } catch {
-      // sessionStorage inaccesible — la clave nueva igual vive en memoria.
-    }
-    setOperationId(fresh);
+    setOperationId(rotateDraftOperationId(browserStorage, storageKey, newId));
   }
 
   return { operationId, clear, rotate };

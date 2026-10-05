@@ -577,6 +577,8 @@ export interface StudentCreationClaimRow {
   owner_id: UUID;
   status: "pending" | "created";
   student_id: UUID | null;
+  /** Clave de operación generada por el navegador por borrador (alta con `create_student_with_operation`); NULL en claims viejos. */
+  operation_id: UUID | null;
   candidate_ids: UUID[] | null;
   candidates_snapshot: unknown;
   candidates_fingerprint: string | null;
