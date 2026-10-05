@@ -67,6 +67,13 @@ export function formatCivilDateRange(start: string | null | undefined, end: stri
   return `${formatCivilDate(from)} a ${formatCivilDate(to)}`;
 }
 
+/** "12/10" (día/mes, sin año) a partir de una clave civil `YYYY-MM-DD` — para rótulos cortos como "desde 12/10". Sin `Date`, sin zona. */
+export function formatCivilDayMonth(dateKey: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const key = parseCivilDateKey(dateKey);
+  if (!key) return fallback;
+  return `${key.slice(8, 10)}/${key.slice(5, 7)}`;
+}
+
 /** "septiembre de 2026" a partir de un mes civil `YYYY-MM` (sin `Date`, sin zona). Cualquier otra cosa → `fallback`. */
 export function formatCivilMonth(value: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
   const match = value ? MONTH_KEY.exec(value) : null;

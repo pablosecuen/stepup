@@ -11,6 +11,26 @@ export interface RuleForLineage {
 }
 
 /**
+ * Tramos ANTERIORES todavía relevantes de un linaje (de la sucesora vigente hacia atrás, el más cercano primero): los que
+ * no están finalizados y todavía tienen clases por delante (`endDate` vacía o de hoy en adelante). La pantalla Series los
+ * muestra junto a la sucesora ("desde 12/10" / "hasta 11/10") — antes quedaban ocultos, y nada explicaba por qué el
+ * Calendario seguía mostrando el patrón viejo hasta la fecha efectiva. Un tramo ya terminado es historia: no se lista.
+ */
+export function listLineagePredecessors<T extends RuleForLineage>(rules: T[], head: T, nowIso: string): T[] {
+  const byId = new Map(rules.map((rule) => [rule.recurrenceId, rule]));
+  const result: T[] = [];
+  const visited = new Set<string>([head.recurrenceId]);
+  let current: T | undefined = head.supersedesRecurrenceId ? byId.get(head.supersedesRecurrenceId) : undefined;
+  while (current && !visited.has(current.recurrenceId)) {
+    visited.add(current.recurrenceId);
+    const today = getLocalDateKey(nowIso, current.timezone);
+    if (current.status !== "ended" && (!current.endDate || current.endDate >= today)) result.push(current);
+    current = current.supersedesRecurrenceId ? byId.get(current.supersedesRecurrenceId) : undefined;
+  }
+  return result;
+}
+
+/**
  * Puerto de `selectManageableRecurrenceSeries` (móvil,
  * `calendarRecurrenceSplit.ts`) — agrupa por LINAJE real de recurrencia
  * (`supersedesRecurrenceId`, escrito exclusivamente por el split "esta y

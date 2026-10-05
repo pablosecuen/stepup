@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { formatCivilDayRange, formatCivilMonth, formatCivilWeek } from "../date-format.ts";
+import { formatCivilDayMonth, formatCivilDayRange, formatCivilMonth, formatCivilWeek } from "../date-format.ts";
 
 /**
  * Seguimiento de B1: encabezado semanal del Calendario ("28 sept – 4 oct 2026") y mes civil del Resumen financiero
@@ -138,4 +138,24 @@ test("cableado: el Calendario y el Resumen financiero usan el formateador único
   const monthFn = /export function formatCivilMonth[\s\S]*?\n}\n/.exec(formatter)?.[0] ?? "";
   assert.ok(monthFn.length > 0);
   assert.doesNotMatch(monthFn, /new Date|Intl|toLocale/, "el mes civil no pasa por Date ni por la zona");
+});
+
+test("formatCivilDayMonth: 12/10 para los rótulos 'desde 12/10' / 'hasta 11/10' de Series; inválido → '—'; sin Date ni zona", () => {
+  assert.equal(formatCivilDayMonth("2026-10-12"), "12/10");
+  assert.equal(formatCivilDayMonth("2026-10-11"), "11/10");
+  assert.equal(formatCivilDayMonth("2028-02-29"), "29/02", "bisiesto");
+  assert.equal(formatCivilDayMonth("2026-12-31"), "31/12");
+  for (const bad of [null, undefined, "", "2026-02-29", "2026-13-01", "2026-10-5", "12/10/2026", "2026-10-12T00:00:00Z"]) assert.equal(formatCivilDayMonth(bad), "—", String(bad));
+  assert.equal(formatCivilDayMonth(null, "sin fecha"), "sin fecha");
+});
+
+test("Series: la sucesora dice \"Desde dd/mm\" y cada tramo anterior vigente \"hasta dd/mm\" (o \"sin fecha de fin\" si los datos están incompletos) — ninguno se oculta", () => {
+  const page = source("app/(app)/calendario/series/page.tsx");
+  assert.match(page, /listLineagePredecessors\(rulesForLineage/, "se listan los tramos anteriores del linaje");
+  assert.match(page, /Desde \$\{formatCivilDayMonth\(rule\.effectiveFromDate\)\}/, "la sucesora rige desde su fecha efectiva");
+  assert.match(page, /earlierSegments\.map\(\(segment\)/, "cada tramo anterior se dibuja");
+  assert.match(page, /Tramo anterior:/);
+  assert.match(page, /hasta \$\{formatCivilDayMonth\(segment\.endDate\)\}/, "el tramo anterior termina en su end_date");
+  assert.match(page, /sin fecha de fin/, "si la original quedó sin fin (datos del defecto) se dice, no se inventa");
+  assert.match(page, /selectManageableRecurrenceSeries\(rulesForLineage, nowIso\)/, "la selección de la sucesora vigente no cambia");
 });
