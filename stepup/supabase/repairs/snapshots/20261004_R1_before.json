@@ -1,0 +1,36 @@
+{
+  "descripcion": "Snapshot de SOLO LECTURA tomado el 2026-10-04 (antes de cualquier reparación) de la serie original R1 del split del 21/09/2026. Sirve para auditar y para revertir la reparación (volver end_date a null). owner_id omitido a propósito (las huellas sí lo incluyen).",
+  "tabla": "public.recurrence_rules",
+  "fila": {
+    "id": "ea060182-6ea0-4ecf-8362-6c2ddf526efd",
+    "activity_kind": "class",
+    "class_title": null,
+    "created_at": "2026-09-21T02:02:19.593502+00:00",
+    "cycle_length_weeks": 1,
+    "effective_from_date": null,
+    "end_date": null,
+    "legacy_mobile_id": null,
+    "modality": "presencial",
+    "operation_id": null,
+    "primary_student_id": "900fa18b-deba-437a-a521-d5d34526847f",
+    "rule_type": "weekly",
+    "start_date": "2026-09-28",
+    "status": "active",
+    "superseded_by_recurrence_id": "0d18b670-ab2c-4637-825d-b39c82ef5d11",
+    "supersedes_recurrence_id": null,
+    "timezone": "America/Argentina/Buenos_Aires",
+    "training_billing_agreement_id": null,
+    "updated_at": "2026-09-21T02:04:21.325665+00:00",
+    "weeks": [{ "weekIndex": 0, "sessions": [{ "weekday": 0, "hour": 18, "minute": 0, "durationMinutes": 60 }] }]
+  },
+  "sucesora": { "id": "0d18b670-ab2c-4637-825d-b39c82ef5d11", "effective_from_date": "2026-10-12" },
+  "participantes": { "n": 1, "student_ids": ["900fa18b-deba-437a-a521-d5d34526847f"], "md5": "2e8e50ff20c2f978cfd728f4c08480c8" },
+  "clases_materializadas": 0,
+  "excepciones": 0,
+  "huellas": {
+    "fila_completa_antes": "81c38948329ed3b788a120fff737759c",
+    "fila_sin_end_date": "4e9ba00933c46804040ab356ea051171",
+    "fila_esperada_despues": "e0943dfc99a046dd396689404a5a7a72"
+  },
+  "reparacion_esperada": { "campo": "end_date", "de": null, "a": "2026-10-11", "no_cambia": ["status", "updated_at", "participantes", "ocurrencias (clases materializadas y excepciones)"] }
+}
