@@ -170,6 +170,7 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
       "app/(app)/alumnos/page.tsx → /alumnos",
       "app/(app)/alumnos/page.tsx → /alumnos/nuevo",
       "app/(app)/calendario/series/page.tsx → /calendario/nueva",
+      "app/(app)/configuracion/page.tsx → /configuracion",
       "components/students/profile/clases-tab.tsx → /registro",
       "components/students/profile/progreso-tab.tsx → /registro",
       "components/students/profile/resumen-tab.tsx → /registro",

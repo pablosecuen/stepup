@@ -6,8 +6,9 @@ import { listImportRunsAction, previewUndoImportAction, applyUndoImportAction, d
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { computeUndoAvailability, type ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import type { UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
-import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
-import { LoadingState } from "@/components/ui/states";
+import { FormErrorBox } from "@/components/auth/form-boxes";
+import { EmptyState, LoadingState } from "@/components/ui/states";
+import { BUTTON_DANGER, BUTTON_DANGER_OUTLINE, BUTTON_SECONDARY } from "@/components/account/settings-ui";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 
 // Fase 9 — historial real de importaciones. Sobrevive a recarga, cierre
@@ -66,7 +67,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
   }
 
   return (
-    <li className="rounded-md border border-border p-3">
+    <li className="rounded-md border border-border bg-surface p-3.5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-textPrimary">{formatInstantDateTime(run.createdAt)}</p>
@@ -102,7 +103,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
       {availability.kind === "expired" && <p className="mt-2 text-xs text-textMuted">El plazo para deshacerla venció.</p>}
 
       {availability.kind === "available" && !undoState && (
-        <button type="button" disabled={pending} onClick={handlePreviewUndo} className="mt-2 text-xs font-semibold text-statusRojo hover:underline">
+        <button type="button" disabled={pending} aria-busy={pending} onClick={handlePreviewUndo} className={`mt-3 ${BUTTON_DANGER_OUTLINE}`}>
           Previsualizar deshacer
         </button>
       )}
@@ -112,11 +113,11 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
           {undoState.isSafe ? (
             <>
               <p className="text-xs text-textSecondary">Se puede deshacer de forma segura — nada se editó desde la importación.</p>
-              <div className="mt-2 flex gap-2">
-                <button type="button" disabled={pending} onClick={handleApplyUndo} className="rounded-md bg-statusRojo px-3 py-1.5 text-xs font-semibold text-white">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" disabled={pending} aria-busy={pending} onClick={handleApplyUndo} className={BUTTON_DANGER}>
                   Confirmar deshacer
                 </button>
-                <button type="button" onClick={() => setUndoState(null)} className="rounded-md border border-border px-3 py-1.5 text-xs text-textSecondary">
+                <button type="button" onClick={() => setUndoState(null)} className={BUTTON_SECONDARY}>
                   Cancelar
                 </button>
               </div>
@@ -142,7 +143,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
       )}
 
       {availability.kind === "available" && (
-        <button type="button" disabled={pending} onClick={handleDiscardUndo} className="mt-2 block text-xs font-medium text-textMuted hover:underline">
+        <button type="button" disabled={pending} onClick={handleDiscardUndo} className="mt-2 block min-h-11 text-left text-xs font-medium text-textSecondary underline-offset-2 hover:underline">
           Ya revisé los resultados, no necesito poder deshacer esto
         </button>
       )}
@@ -171,7 +172,7 @@ export function ImportHistory() {
 
   if (error) return <FormErrorBox message={error} />;
   if (runs === null) return <LoadingState label="Cargando historial de importaciones…" />;
-  if (runs.length === 0) return <FormInfoBox>Todavía no importaste ningún respaldo.</FormInfoBox>;
+  if (runs.length === 0) return <EmptyState message="Todavía no importaste ningún respaldo." />;
 
   return (
     <ul className="flex flex-col gap-2">

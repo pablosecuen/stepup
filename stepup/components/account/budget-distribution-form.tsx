@@ -5,19 +5,15 @@ import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { saveBudgetDistributionAction, type FormState } from "@/lib/actions/account";
 import { adjustNeeds, adjustSavings, adjustWants, type BudgetDistribution } from "@/lib/payments/budget-distribution";
-import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { FormErrorBox } from "@/components/auth/form-boxes";
+import { BUTTON_PRIMARY, LiveMessage } from "@/components/account/settings-ui";
 
 const INITIAL_STATE: FormState = {};
 
 function SaveButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      className="mt-3 rounded-md bg-brandBlue px-3.5 py-2 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-    >
+    <button type="submit" disabled={pending} aria-busy={pending} className={`self-start ${BUTTON_PRIMARY}`}>
       {pending ? "Guardando..." : "Guardar distribución"}
     </button>
   );
@@ -36,9 +32,9 @@ function Slider({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="flex items-center justify-between text-xs font-medium text-textSecondary">
+      <span className="flex items-center justify-between text-sm font-medium text-textSecondary">
         <span>{label}</span>
-        <span className={`font-semibold ${colorClass}`}>{value}%</span>
+        <span className={`font-semibold tabular-nums ${colorClass}`}>{value}%</span>
       </span>
       <input
         type="range"
@@ -58,38 +54,43 @@ function Slider({
  * `adjustWants`/`adjustSavings`) — nunca lógica reescrita acá — y sólo al
  * guardar se envía el valor final al servidor, que lo vuelve a normalizar
  * antes de persistir. Lenguaje siempre orientativo: "presupuesto sugerido",
- * nunca una afirmación de gasto/ahorro real.
+ * nunca una afirmación de gasto/ahorro real (el aviso vive en la fila que
+ * contiene este formulario, en la página de Configuración).
  */
 export function BudgetDistributionForm({ initial }: { initial: BudgetDistribution }) {
   const [distribution, setDistribution] = useState<BudgetDistribution>(initial);
   const [state, formAction] = useGuardedActionState(saveBudgetDistributionAction, INITIAL_STATE);
+  // El «guardado» se anuncia hasta que la persona vuelve a mover una barra.
+  const [editedAfter, setEditedAfter] = useState<FormState | null>(null);
+  const showSaved = state.saved === true && !state.error && editedAfter !== state;
+
+  function change(next: BudgetDistribution) {
+    setDistribution(next);
+    setEditedAfter(state);
+  }
 
   return (
-    <form action={formAction} className="mt-3 flex flex-col gap-4">
-      <FormInfoBox>
-        Presupuesto sugerido sobre lo que ya cobraste — nunca conoce tus gastos ni tu ahorro bancario real.
-      </FormInfoBox>
-
+    <form action={formAction} className="flex flex-col gap-4">
       <Slider
         label="Necesidades"
         value={distribution.needs}
-        onChange={(v) => setDistribution(adjustNeeds(distribution, v))}
+        onChange={(v) => change(adjustNeeds(distribution, v))}
         colorClass="text-brandBlue"
       />
       <Slider
         label="Gustos"
         value={distribution.wants}
-        onChange={(v) => setDistribution(adjustWants(distribution, v))}
+        onChange={(v) => change(adjustWants(distribution, v))}
         colorClass="text-pastelLavenderText"
       />
       <Slider
         label="Ahorro"
         value={distribution.savings}
-        onChange={(v) => setDistribution(adjustSavings(distribution, v))}
+        onChange={(v) => change(adjustSavings(distribution, v))}
         colorClass="text-pastelSageText"
       />
 
-      <p className="text-xs text-textMuted">Suma: {distribution.needs + distribution.wants + distribution.savings}%</p>
+      <p className="text-sm text-textMuted">Suma: {distribution.needs + distribution.wants + distribution.savings}%</p>
 
       <input type="hidden" name="needs" value={distribution.needs} />
       <input type="hidden" name="wants" value={distribution.wants} />
@@ -97,6 +98,7 @@ export function BudgetDistributionForm({ initial }: { initial: BudgetDistributio
 
       {state.error && <FormErrorBox message={state.error} />}
       <SaveButton />
+      <LiveMessage>{showSaved ? "Distribución guardada." : null}</LiveMessage>
     </form>
   );
 }

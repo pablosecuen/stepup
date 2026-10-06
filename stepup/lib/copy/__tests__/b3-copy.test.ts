@@ -68,7 +68,7 @@ test("la landing no promete recargos automáticos (están desactivados) y no dic
 });
 
 test("Configuración dice la verdad sobre los recargos en lenguaje simple", () => {
-  const page = code("app/(app)/configuracion/page.tsx");
+  const page = code("components/account/configuration-view.tsx");
   assert.match(page, /Los recargos por atraso están desactivados\. El semáforo de mora usa plazos fijos\./);
 });
 

@@ -17,6 +17,8 @@ import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution"
 
 export interface FormState {
   error?: string;
+  /** Un guardado terminó bien (la pantalla lo anuncia hasta que la persona vuelva a editar). */
+  saved?: boolean;
 }
 
 function readString(formData: FormData, key: string): string {
@@ -43,7 +45,7 @@ export async function saveTeacherProfileAction(_prevState: FormState, formData: 
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/configuracion");
-  return {};
+  return { saved: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +75,7 @@ export async function saveBudgetDistributionAction(_prevState: FormState, formDa
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/configuracion");
-  return {};
+  return { saved: true };
 }
 
 // ---------------------------------------------------------------------------
