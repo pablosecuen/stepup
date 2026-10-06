@@ -14,3 +14,13 @@ PGlite NO es dependencia del proyecto: se instala fuera del repo, por ejemplo
 doble envío, respuesta perdida, pestaña duplicada/independiente, rollback sin claims huérfanos, aislamiento entre profesoras.
 Limitación: PGlite tiene una única conexión, así que el "doble envío simultáneo" se serializa; la garantía real de
 concurrencia es el advisory lock por profesora + el índice único (owner_id, operation_id).
+
+## R2 — lecturas completas, saldos abiertos e índices
+
+`r2_open_charge_balances.cjs` (`--mutations` rompe la función a propósito y exige que cada rotura sea detectada): dos propietarias
+con más de 1.700 cargos cada una; `list_open_charge_balances()` frente a un cálculo independiente en centavos, aislamiento A/B (también
+sin RLS: la función filtra por `auth.uid()` por sí misma), sólo lectura (huellas), atributos de seguridad (INVOKER, `search_path` vacío,
+sin parámetros, EXECUTE sólo `authenticated`) y equivalencia con `buildCollectionsCenterEntries` (tarjetas y orden).
+
+`r2_migration_rehearsal.cjs`: ensayo único BEGIN … ROLLBACK de las dos migraciones R2 sobre el esquema real con datos; huellas de todas
+las tablas antes/después, nada eliminado, reaplicación idempotente, consultas del web anterior intactas.
