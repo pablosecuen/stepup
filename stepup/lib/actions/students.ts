@@ -17,14 +17,11 @@ import {
   createCustomLevel,
   renameCustomLevel,
   deleteCustomLevel,
-  DuplicateLevelNameError,
-  InvalidLevelNameError,
-  LevelInUseError,
-  LevelNotFoundError,
 } from "@/lib/repositories/custom-levels";
 import type { BillingType, StudentCategory, StudentModality, StudentStatus } from "@/lib/db/database.types";
 import { todayInArgentina } from "@/lib/format/date-format";
 import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Alumnos. Nunca reciben `ownerId`/`owner_id` del
 // navegador: `requireAuthenticatedDbContext()` siempre resuelve la sesión
@@ -73,8 +70,7 @@ function readLevels(formData: FormData): string[] {
 }
 
 function friendlyErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado. Intentá de nuevo.";
+  return actionErrorMessage("students", error);
 }
 
 // ---------------------------------------------------------------------------
@@ -234,9 +230,6 @@ export async function createLevelAction(_prevState: FormState, formData: FormDat
     const ctx = await requireAuthenticatedDbContext();
     await createCustomLevel(ctx, name);
   } catch (error) {
-    if (error instanceof InvalidLevelNameError || error instanceof DuplicateLevelNameError) {
-      return { error: error.message };
-    }
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/alumnos");
@@ -254,13 +247,6 @@ export async function renameLevelAction(
     const ctx = await requireAuthenticatedDbContext();
     await renameCustomLevel(ctx, levelId, name);
   } catch (error) {
-    if (
-      error instanceof InvalidLevelNameError ||
-      error instanceof DuplicateLevelNameError ||
-      error instanceof LevelNotFoundError
-    ) {
-      return { error: error.message };
-    }
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/alumnos");
@@ -272,7 +258,6 @@ export async function deleteLevelAction(levelId: string, levelName: string): Pro
     const ctx = await requireAuthenticatedDbContext();
     await deleteCustomLevel(ctx, levelId, levelName);
   } catch (error) {
-    if (error instanceof LevelInUseError) return { error: error.message };
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/alumnos");

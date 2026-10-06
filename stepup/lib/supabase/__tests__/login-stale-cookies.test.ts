@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { createServerClient } from "@supabase/ssr";
 import * as edgeCookies from "next/dist/compiled/@edge-runtime/cookies/index.js";
+import { getSupabaseCookieOptions, withSessionCookieAttributes } from "../cookie-options.ts";
 
 /**
  * Regresión: un navegador con una sesión VIEJA (vencida, vigente, revocada, de una sola cookie o fragmentada en
@@ -138,9 +139,10 @@ async function runLoginAction(browser: Browser, server: FakeServer) {
 
   // Mismo cliente y mismo getAll/setAll que lib/supabase/server.ts
   const supabase = createServerClient(URL_BASE, "sb_publishable_clave_de_prueba", {
+    cookieOptions: getSupabaseCookieOptions(), // R1: las mismas cookieOptions y atributos que server.ts/proxy.ts
     cookies: {
       getAll: () => cookieStore.getAll(),
-      setAll: (list) => list.forEach(({ name, value, options }) => cookieStore.set(name, value, options as Record<string, unknown>)),
+      setAll: (list) => withSessionCookieAttributes(list).forEach(({ name, value, options }) => cookieStore.set(name, value, options as Record<string, unknown>)),
     },
     auth: { flowType: "pkce" },
     global: { fetch: server.fetch, headers: { "x-test-client": "login" } },

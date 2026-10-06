@@ -16,9 +16,9 @@ import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timez
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
 import { resolveExplicitPrimaryStudentId } from "@/lib/calendar/primary-selection";
 import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
-import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Calendario. Nunca reciben `ownerId` del navegador;
 // siempre resuelven la sesión real en el servidor. Toda validación de
@@ -70,7 +70,7 @@ function readString(formData: FormData, key: string): string {
 }
 
 function friendlyErrorMessage(error: unknown): string {
-  return domainErrorMessage(error);
+  return actionErrorMessage("calendar", error);
 }
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";

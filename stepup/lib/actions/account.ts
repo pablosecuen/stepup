@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
-import { saveTeacherDisplayName, InvalidTeacherNameError } from "@/lib/repositories/teacher-profile";
+import { saveTeacherDisplayName } from "@/lib/repositories/teacher-profile";
 import { saveBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
-import { endActiveSession, ActiveSessionMismatchError } from "@/lib/repositories/active-sessions";
+import { endActiveSession } from "@/lib/repositories/active-sessions";
 import { deleteOwnAccount } from "@/lib/repositories/account-deletion";
 import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Cuenta/Configuración (Fase 8). Mismo patrón que
 // `lib/actions/students.ts`: nunca reciben `ownerId` del navegador,
@@ -27,8 +28,7 @@ function readString(formData: FormData, key: string): string {
 }
 
 function friendlyErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado. Intentá de nuevo.";
+  return actionErrorMessage("account", error);
 }
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,6 @@ export async function saveTeacherProfileAction(_prevState: FormState, formData: 
     const ctx = await requireAuthenticatedDbContext();
     await saveTeacherDisplayName(ctx, displayName);
   } catch (error) {
-    if (error instanceof InvalidTeacherNameError) return { error: error.message };
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/configuracion");
@@ -91,7 +90,6 @@ export async function endActiveSessionAction(deviceId: string, generation: numbe
     const ctx = await requireAuthenticatedDbContext();
     await endActiveSession(ctx, deviceId, generation);
   } catch (error) {
-    if (error instanceof ActiveSessionMismatchError) return { error: error.message };
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/configuracion");

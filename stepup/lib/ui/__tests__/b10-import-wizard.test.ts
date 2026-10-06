@@ -196,7 +196,7 @@ test("historial: términos nuevos, estado, vencimiento y botones compartidos", (
 test("errores: cada acción devuelve una frase útil y un código de soporte; ningún mensaje interno llega al navegador", () => {
   const actions = code(ACTIONS);
   assert.doesNotMatch(actions, /friendlyError/, "ya no se devuelve el mensaje interno tal cual");
-  assert.match(actions, /translateImportError\(domainErrorMessage\(error\), context\)/);
+  assert.match(actions, /translateImportError\(actionErrorMessage\("backup", error\), context\)/);
   assert.match(actions, /errorCode\?: string;/);
   assert.equal((actions.match(/return failure\(error, "/g) ?? []).length, 7);
   for (const context of ["analyze", "apply", "undoPreview", "undo", "discard", "history"]) assert.match(actions, new RegExp(`failure\\(error, "${context}"\\)`));

@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseRuntimeConfig } from "@/lib/auth/config";
+import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/supabase/cookie-options";
 
 /**
  * Cliente de Supabase para Server Components/Actions/Route Handlers.
@@ -24,13 +25,15 @@ export async function createSupabaseServerClient() {
     auth: {
       flowType: "pkce",
     },
+    // Mismos atributos que proxy.ts (HttpOnly, Secure en Production, SameSite=Lax, 30 días): ver cookie-options.ts.
+    cookieOptions: getSupabaseCookieOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          withSessionCookieAttributes(cookiesToSet).forEach(({ name, value, options }) => cookieStore.set(name, value, options));
         } catch {
           // Ver comentario de arriba: seguro de ignorar.
         }

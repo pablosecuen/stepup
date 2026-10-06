@@ -18,6 +18,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { computeTrainingFirstPeriodCharge } from "@/lib/payments/training-charge-plan";
 import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/dates";
 import type { ActionResult } from "./lesson-registrations";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Cobros. Mismo patrón que Fase 4: nunca reciben ownerId
 // del navegador, siempre ActionResult<T> uniforme, nunca lanzan al cliente.
@@ -77,12 +78,7 @@ export async function voidChargeAction(input: { chargeId: string; voidReason: st
 }
 
 function friendlyPaymentError(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String((error as { message: unknown }).message);
-    if (message.includes("saldo pendiente") || message.includes("obligaciones pendientes")) return message;
-    if (message.includes("pagos asignados")) return message;
-  }
-  return error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo.";
+  return actionErrorMessage("payments", error);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +191,7 @@ export async function previewTrainingBillingConfigurationAction(input: {
     const plan = await buildTrainingBillingConfigurationPlan(ctx, input);
     return { data: plan };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("payments", error) };
   }
 }
 
@@ -222,7 +218,7 @@ export async function confirmTrainingBillingConfigurationAction(input: {
     revalidatePath("/cobros");
     return { data: { agreementId: result.agreementId } };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("payments", error) };
   }
 }
 
@@ -236,7 +232,7 @@ export async function editTrainingBillingFeeAction(input: {
     const ctx = await requireAuthenticatedDbContext();
     await editTrainingBillingFee(ctx, input);
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("payments", error) };
   }
   revalidatePath("/calendario/series");
   return {};

@@ -44,9 +44,14 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
 const LEAK_PATTERN =
   /relation "|column "|constraint "|violates|duplicate key|syntax error|\bpg_|\bpublic\.|sqlstate|\bat \S+ \(|https?:\/\/|eyJ[A-Za-z0-9_-]{10,}|\bnull value in\b/i;
 
+// Ids (uuid) y mensajes de errores del propio JavaScript/Node (un `Error` sin código que no es nuestro): nunca se muestran.
+// Algunas RPC incluyen el id de la fila en el texto («La serie <uuid> es primario…»): se descarta y cae en el mensaje genérico.
+const INTERNAL_DETAIL_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|cannot read propert|is not a function|is not defined|is not iterable|undefined|\bTypeError\b|\bReferenceError\b|\bECONN\w*|\bENOTFOUND\b|\bETIMEDOUT\b|\.(?:ts|tsx|js|mjs)\b|node_modules|\bat Object\./i;
+
 function isSafeDomainMessage(message: string): boolean {
   const trimmed = message.trim();
-  return trimmed.length > 0 && trimmed.length <= MAX_DOMAIN_MESSAGE_LENGTH && !LEAK_PATTERN.test(trimmed) && !trimmed.includes("\n");
+  return trimmed.length > 0 && trimmed.length <= MAX_DOMAIN_MESSAGE_LENGTH && !LEAK_PATTERN.test(trimmed) && !INTERNAL_DETAIL_PATTERN.test(trimmed) && !trimmed.includes("\n");
 }
 
 function readStringField(value: unknown, key: string): string | null {

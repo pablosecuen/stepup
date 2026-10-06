@@ -1,8 +1,8 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getSiteOrigin } from "@/lib/auth/site-url";
+import { getSiteOrigin, SiteOriginUnavailableError } from "@/lib/auth/site-url";
 import { normalizeEmail } from "@/lib/auth/normalize-email";
-import { translateAuthError, translateCallbackError, classifyCallbackError, classifyVerifyOtpError, CALLBACK_ERROR_MESSAGES } from "@/lib/auth/error-messages";
+import { AUTH_ERROR_MESSAGES, translateAuthError, translateCallbackError, classifyCallbackError, classifyVerifyOtpError, CALLBACK_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import type { AuthAdapter, AuthActionResult, AuthExchangeUser, AuthUser, SignUpOutcome } from "@/lib/auth/auth-adapter";
 
 // Mismo texto que móvil cuando `getSupabaseClient()` devuelve null
@@ -12,6 +12,19 @@ const NOT_CONFIGURED: AuthActionResult<never> = {
   ok: false,
   error: { message: "La sincronización con la nube todavía no está configurada." },
 };
+
+// El origen canónico del enlace del correo no está disponible (R1): el correo NO se envía y la persona ve un mensaje
+// controlado (sin variables ni valores). Ver lib/auth/site-origin.ts.
+const ORIGIN_UNAVAILABLE: AuthActionResult<never> = { ok: false, error: { message: AUTH_ERROR_MESSAGES.server_unavailable } };
+
+async function siteOriginOrNull(): Promise<string | null> {
+  try {
+    return await getSiteOrigin();
+  } catch (error) {
+    if (error instanceof SiteOriginUnavailableError) return null;
+    throw error;
+  }
+}
 
 function toUser(user: { id: string; email?: string | null } | null | undefined): AuthUser | null {
   if (!user) return null;
@@ -63,7 +76,8 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
-      const origin = await getSiteOrigin();
+      const origin = await siteOriginOrNull();
+      if (origin === null) return ORIGIN_UNAVAILABLE;
       const { data, error } = await supabase.auth.signUp({
         email: normalizeEmail(email),
         password,
@@ -81,7 +95,8 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
-      const origin = await getSiteOrigin();
+      const origin = await siteOriginOrNull();
+      if (origin === null) return ORIGIN_UNAVAILABLE;
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: normalizeEmail(email),
@@ -95,7 +110,8 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
-      const origin = await getSiteOrigin();
+      const origin = await siteOriginOrNull();
+      if (origin === null) return ORIGIN_UNAVAILABLE;
       const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
         // /auth/confirm acepta el enlace nuevo (`?token_hash=`, sin PKCE) y el antiguo (`?code=`).
         redirectTo: `${origin}/auth/confirm`,

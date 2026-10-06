@@ -19,9 +19,9 @@ import {
   type ApplyRunSummary,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import { translateImportError, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
 import { formatInstantDateTime } from "@/lib/format/date-format";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Fase 9 (Backup e importación). Nunca reciben `ownerId`
 // del navegador; `requireAuthenticatedDbContext()` siempre resuelve la
@@ -43,7 +43,7 @@ export interface ActionResult<T> {
 // Todo error del asistente se traduce a una frase útil + un código de soporte (`lib/backup/import-copy.ts`): el mensaje
 // interno de la RPC (ids, palabras como «preview» o «invariante») nunca llega al navegador.
 function failure(error: unknown, context: ImportErrorContext): { error: string; errorCode: string } {
-  const translated = translateImportError(domainErrorMessage(error), context);
+  const translated = translateImportError(actionErrorMessage("backup", error), context);
   return { error: translated.message, errorCode: translated.code };
 }
 

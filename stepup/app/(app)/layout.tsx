@@ -1,7 +1,8 @@
 import type { Viewport } from "next";
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/nav/primary-nav";
-import { isSupabaseConfigured } from "@/lib/auth/config";
+import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
+import { isSupabaseConfigured, shouldFailClosed } from "@/lib/auth/config";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { loadAccountIdentity } from "@/lib/nav/load-account-identity";
@@ -27,6 +28,8 @@ export const viewport: Viewport = { viewportFit: "cover" };
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const configured = isSupabaseConfigured();
+  // Production sin configuración válida: pantalla controlada, nunca el área privada en «modo vista previa».
+  if (!configured && shouldFailClosed()) return <AuthNotConfigured />;
   let hasSession = false;
   let user: AuthUser | null = null;
 

@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getSupabaseRuntimeConfig } from "@/lib/auth/config";
+import { getSupabaseConfigState, getSupabaseRuntimeConfig, shouldFailClosed } from "@/lib/auth/config";
+import { reportConfigUnavailable, serviceUnavailableResponse } from "@/lib/auth/service-unavailable";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { isPrivatePath } from "@/lib/auth/safe-redirect";
+import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/supabase/cookie-options";
 
 // Next.js 16: `proxy.ts` reemplaza a `middleware.ts`. Su único trabajo acá
 // — igual que documenta el patrón oficial de Supabase SSR — es refrescar
@@ -18,8 +20,13 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (!config) {
-    // Igual que móvil (AuthGate): sin Supabase configurado, nunca se
-    // bloquea nada acá — el área privada sigue en modo vista previa.
+    // Production sin configuración válida: FALLA CERRADO. Nunca se abre el área privada en «modo vista previa»; se responde
+    // con un 503 controlado (sin variables, valores ni detalles internos).
+    if (shouldFailClosed() && isPrivatePath(pathname)) {
+      reportConfigUnavailable(getSupabaseConfigState());
+      return serviceUnavailableResponse();
+    }
+    // Desarrollo local (igual que móvil, AuthGate): sin Supabase configurado no se bloquea nada — modo vista previa.
     return response;
   }
 
@@ -28,6 +35,8 @@ export async function proxy(request: NextRequest) {
   }
 
   const supabase = createServerClient(config.url, config.publishableKey, {
+    // Mismos atributos que lib/supabase/server.ts: la sesión se escribe igual desde acá y desde las Server Actions.
+    cookieOptions: getSupabaseCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -35,7 +44,7 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        withSessionCookieAttributes(cookiesToSet).forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
   });

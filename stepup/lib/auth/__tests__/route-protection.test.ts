@@ -54,3 +54,15 @@ test("isPrivatePath coincide exactamente con las rutas usadas acá", () => {
   assert.equal(isPrivatePath("/login"), false);
   assert.equal(isPrivatePath("/"), false);
 });
+
+test("R1: Production sin configuración válida → el área privada NO está disponible (nunca «modo local»)", () => {
+  for (const hasSession of [true, false]) {
+    for (const pathname of PRIVATE_PATHS) {
+      assert.deepEqual(resolvePrivateAreaAccess({ configured: false, failClosed: true, hasSession, pathname }), { kind: "unavailable" });
+    }
+  }
+  // Sin failClosed (desarrollo local) sigue el comportamiento de siempre; con configuración válida failClosed no cambia nada.
+  assert.deepEqual(resolvePrivateAreaAccess({ configured: false, failClosed: false, hasSession: false, pathname: "/inicio" }), { kind: "local-only" });
+  assert.deepEqual(resolvePrivateAreaAccess({ configured: true, failClosed: true, hasSession: true, pathname: "/inicio" }), { kind: "allow" });
+  assert.equal(resolvePrivateAreaAccess({ configured: true, failClosed: true, hasSession: false, pathname: "/inicio" }).kind, "redirect");
+});

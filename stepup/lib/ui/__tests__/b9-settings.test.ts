@@ -143,7 +143,9 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
 test("los guardados devuelven `saved: true` y los errores siguen igual; la pantalla lo anuncia sin depender del color", () => {
   const actions = code("lib/actions/account.ts");
   assert.equal((actions.match(/return \{ saved: true \};/g) ?? []).length, 2, "perfil y distribución");
-  assert.match(actions, /if \(error instanceof InvalidTeacherNameError\) return \{ error: error\.message \};/);
+  // R1: los errores pasan por el normalizador seguro (antes se devolvía `error.message` tal cual).
+  assert.match(actions, /return actionErrorMessage\("account", error\);/);
+  assert.doesNotMatch(actions.replace(/result\.error\.message/g, ""), /error\.message/, "salvo el texto ya traducido por el adaptador de autenticación");
   const ui = code("components/account/settings-ui.tsx");
   assert.match(ui, /<div role="status" aria-live="polite"/, "región viva siempre montada");
   assert.match(ui, /<CheckIcon[^>]*aria-hidden/, "el éxito lleva ícono, no sólo color verde");

@@ -20,6 +20,7 @@ import { isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, ty
 import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
 import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
 import { syncPerClassCharge } from "@/lib/repositories/payments";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -86,7 +87,7 @@ export async function startRegistrationAction(input: StartRegistrationActionInpu
     });
     return { data: { registration, calendarLessonId: registration.calendarLessonId as string } };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
   }
 }
 
@@ -185,7 +186,7 @@ export async function startAdhocRegistrationAction(input: StartAdhocRegistration
 
     return { data: { registrationId: registration.id } };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
   }
 }
 
@@ -227,7 +228,7 @@ export async function saveParticipantAction(input: SaveParticipantActionInput): 
     });
   } catch (error) {
     if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
   }
   revalidatePath("/registro");
   return {};
@@ -256,7 +257,7 @@ export async function finalizeRegistrationAction(input: FinalizeRegistrationActi
     await syncPerClassChargesForRegistration(ctx, input.lessonRegistrationId);
   } catch (error) {
     if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
   }
   revalidatePath("/registro");
   revalidatePath("/calendario");
@@ -371,7 +372,7 @@ export async function editCompletedRegistrationAction(input: EditCompletedRegist
     await syncPerClassChargesForRegistration(ctx, input.lessonRegistrationId);
   } catch (error) {
     if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
-    return { error: error instanceof Error ? error.message : "Ocurrió un error inesperado. Intentá de nuevo." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
   }
   revalidatePath("/registro");
   revalidatePath("/cobros");

@@ -23,6 +23,7 @@ import { buildDeterministicReportNarrative, type StudentReportTeacherNotes } fro
 import { renderReportPdf } from "@/lib/reports/pdf";
 import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
 import type { ActionResult } from "./lesson-registrations";
+import { actionErrorMessage } from "@/lib/errors/action-error";
 
 // Server Actions — Reportes por alumno (Fase 7). Nunca confían en
 // studentId/reportId/fechas/texto/operationId enviados por el cliente sin
@@ -37,8 +38,7 @@ import type { ActionResult } from "./lesson-registrations";
 
 function friendlyErrorMessage(error: unknown): string {
   if (error instanceof ReportRecordNotFoundError) return "El reporte no existe o no te pertenece.";
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado. Intentá de nuevo.";
+  return actionErrorMessage("reports", error);
 }
 
 export interface StudentReportMonthsInfo {
