@@ -316,3 +316,9 @@ test("alcance: B8 no toca autenticación, B0, Inicio ni la lógica de datos", ()
     assert.doesNotMatch(code(file), /supabase|fetch\(|\.rpc\(|signOut|redirect\(/i, file);
   }
 });
+
+test("los enlaces cortos de la cabecera del Calendario también miden 44 px de ancho (Series, medido en Production: 37 px)", () => {
+  const page = code("app/(app)/calendario/page.tsx");
+  assert.equal((page.match(/inline-flex min-h-11 min-w-11 items-center justify-center px-2/g) ?? []).length, 3);
+  assert.match(page, /<nav aria-label="Secciones del calendario"/);
+});

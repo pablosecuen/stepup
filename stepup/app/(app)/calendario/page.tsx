@@ -64,14 +64,14 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-8 sm:px-8">
         <div>
           <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Calendario</h1>
-          <nav aria-label="Secciones del calendario" className="mt-1 flex flex-wrap items-center gap-x-4">
-            <Link href="/calendario/series" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+          <nav aria-label="Secciones del calendario" className="mt-1 flex flex-wrap items-center gap-x-2">
+            <Link href="/calendario/series" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
               Series
             </Link>
-            <Link href="/calendario/disponibilidad" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+            <Link href="/calendario/disponibilidad" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
               Disponibilidad
             </Link>
-            <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+            <Link href="/registro" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
               Clases por registrar
             </Link>
           </nav>
