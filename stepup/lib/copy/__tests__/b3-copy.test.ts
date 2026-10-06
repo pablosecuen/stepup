@@ -88,7 +88,8 @@ test("el id del dispositivo nunca se muestra, pero la acción de cerrar esa sesi
 
 test("el perfil del alumno quita los campos provisorios pero conserva todo dato real y las 7 pestañas", () => {
   const resumen = code("components/students/profile/resumen-tab.tsx");
-  assert.doesNotMatch(resumen, /InfoCard|Próxima clase|Última clase/);
+  // B6 trajo los datos reales de próxima/última clase: lo que sigue prohibido es el texto provisorio de fases.
+  assert.doesNotMatch(resumen, /Depende de|Fase d|todavía no disponible/i);
   for (const kept of ["Tarea pendiente", "Alertas importantes", "Objetivos actuales", "Fortalezas", "Aspectos a mejorar"]) assert.match(resumen, new RegExp(kept));
 
   const info = code("components/students/profile/informacion-tab.tsx");

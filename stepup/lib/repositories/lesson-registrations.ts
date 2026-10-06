@@ -517,6 +517,8 @@ export async function listRosterForRegistrationIds(ctx: AuthenticatedDbContext, 
 /** Forma mínima real que necesita `buildStudentReportData` (Fase 7) — un registro dictado + la asistencia/evaluación de ESE alumno, nunca de otros participantes de una clase compartida. */
 export interface RegistrationForStudentReportRow {
   registrationId: string;
+  /** Instante real de la clase (programada → real → alta del registro): para mostrar su día en hora de Argentina. */
+  anchorAt: string;
   dateKey: string;
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
@@ -567,6 +569,7 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
       const evaluation = evaluationByRegistrationId.get(registration.id);
       return {
         registrationId: registration.id,
+        anchorAt: anchor,
         dateKey: anchor.slice(0, 10),
         scheduledStartAt: registration.scheduledStartAt,
         scheduledEndAt: registration.scheduledEndAt,

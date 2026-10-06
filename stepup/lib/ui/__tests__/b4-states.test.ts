@@ -172,6 +172,7 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
       "app/(app)/calendario/series/page.tsx → /calendario/nueva",
       "components/students/profile/clases-tab.tsx → /registro",
       "components/students/profile/progreso-tab.tsx → /registro",
+      "components/students/profile/resumen-tab.tsx → /registro",
     ],
   );
   for (const [file, href] of used) assert.ok(routeExists(href), `${file}: ${href} existe`);

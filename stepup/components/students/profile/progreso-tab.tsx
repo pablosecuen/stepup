@@ -4,6 +4,7 @@ import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registr
 import type { LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import { EmptyState } from "@/components/ui/states";
 import { formatInstantDate } from "@/lib/format/date-format";
+import { skillAveragesFromEvaluations } from "@/lib/students/profile-overview";
 
 /**
  * Progreso real — promedio calculado con `calculateAverageGrade` (0 nunca
@@ -14,6 +15,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
     return <EmptyState message="Todavía no hay evaluaciones registradas." action={{ label: "Ir a Registro", href: "/registro" }} />;
   }
   const average = calculateAverageGrade(entries.map((e) => e.evaluation.generalGrade));
+  const skillAverages = skillAveragesFromEvaluations(entries.map((e) => e.evaluation));
 
   return (
     <div className="flex flex-col gap-4">
@@ -21,6 +23,19 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
         <p className="text-xs font-medium uppercase tracking-wide text-textMuted">Promedio general</p>
         <p className="mt-1 text-2xl font-bold text-textPrimary">{average != null ? average.toFixed(1) : "Sin calificar"}</p>
       </div>
+      {skillAverages.length > 0 && (
+        <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
+          <h2 className="text-sm font-semibold text-textPrimary">Promedio por habilidad</h2>
+          <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+            {skillAverages.map((skill) => (
+              <li key={skill.skill} className="flex items-center justify-between text-sm">
+                <span className="text-textSecondary">{skill.label}</span>
+                <span className="font-semibold text-textPrimary">{skill.averageGrade.toFixed(1)}/10</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <ul className="flex flex-col gap-2">
         {entries
           .filter((e) => e.evaluation.generalGrade != null || e.evaluation.individualObservation || Object.keys(e.evaluation.skillGrades).length > 0)
@@ -32,7 +47,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
               <li key={entry.registration.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-textPrimary">
-                    {formatInstantDate(entry.registration.scheduledStartAt, "Sin fecha")}
+                    {formatInstantDate(entry.registration.scheduledStartAt ?? entry.registration.actualStartedAt ?? entry.registration.createdAt, "Sin fecha")}
                   </p>
                   <p className="text-sm font-bold text-brandBlueDark">{entry.evaluation.generalGrade ?? "—"}</p>
                 </div>

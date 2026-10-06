@@ -22,6 +22,11 @@ import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/l
 import { listReportRecordsForStudent, sweepPendingReportPdfCleanupJobs } from "@/lib/repositories/reports";
 import { getStudentMonthsWithClasses } from "@/lib/reports/months";
 import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
+import { loadProfileClassStats, loadStudentNextClass, loadStudentTotalCollected } from "@/lib/students/load-profile-overview";
+import { buildProfileClassStats, type ProfileClassStats, type StudentNextClass } from "@/lib/students/profile-overview";
+import { MODALITY_LABEL } from "@/lib/students/constants";
+import { formatCivilDate } from "@/lib/format/date-format";
+import type { AttendanceStatus } from "@/lib/lessons/attendance";
 
 export const dynamic = "force-dynamic";
 
@@ -54,18 +59,36 @@ export default async function AlumnoProfilePage({
   let allocations: Awaited<ReturnType<typeof listAllocationsForStudent>> = [];
   let monthsWithClasses: string[] = [];
   let reportHistory: Awaited<ReturnType<typeof listReportRecordsForStudent>> = [];
+  let stats: ProfileClassStats = buildProfileClassStats([]);
+  let nextClass: StudentNextClass = { kind: "none" };
+  let totalCollected = 0;
+  let attendanceByRegistrationId: Record<string, AttendanceStatus> = {};
   const todayDateKey = localDateKeyInTimeZone(new Date());
   try {
     const ctx = await requireAuthenticatedDbContext();
     student = await getStudent(ctx, id);
+    if (student && tab === "resumen") {
+      // Sólo lecturas: cifras de clases dictadas, próxima clase del calendario y tareas pendientes (la misma fuente que la pestaña Tareas).
+      [stats, nextClass, pendingTasks] = await Promise.all([
+        loadProfileClassStats(ctx, id),
+        loadStudentNextClass(ctx, student),
+        listPendingHomeworkTasksForStudent(ctx, id),
+      ]);
+    }
     if (student && tab === "informacion") {
-      [statusHistory, levelHistory, priceHistory] = await Promise.all([
+      [statusHistory, levelHistory, priceHistory, stats, totalCollected] = await Promise.all([
         listStatusHistory(ctx, id),
         listLevelHistory(ctx, id),
         listPriceHistory(ctx, id),
+        loadProfileClassStats(ctx, id),
+        loadStudentTotalCollected(ctx, id),
       ]);
     }
-    if (student && tab === "clases") registrations = await listLessonRegistrationsForStudent(ctx, id);
+    if (student && tab === "clases") {
+      const [all, held] = await Promise.all([listLessonRegistrationsForStudent(ctx, id), listCompletedRegistrationsForStudentReport(ctx, id)]);
+      registrations = all;
+      attendanceByRegistrationId = Object.fromEntries(held.flatMap((r) => (r.attendance ? [[r.registrationId, r.attendance.status] as const] : [])));
+    }
     if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
     if (student && tab === "progreso") evaluationEntries = await listEvaluationsForStudent(ctx, id);
     if (student && tab === "cobros") {
@@ -122,6 +145,9 @@ export default async function AlumnoProfilePage({
             <StudentStatusBadge status={student.status} />
             <span className="text-sm text-textMuted">{student.levels.length > 0 ? student.levels.join(", ") : "Sin nivel"}</span>
           </div>
+          <p className="mt-1 text-sm text-textMuted">
+            {MODALITY_LABEL[student.modality]} · Alumno desde {formatCivilDate(student.dateJoined)}
+          </p>
         </div>
         <Link
           href={`/alumnos/${id}/editar`}
@@ -138,11 +164,11 @@ export default async function AlumnoProfilePage({
       <div className="mt-5">
         {tab === "resumen" && (
           <div className="flex flex-col gap-5">
-            <ResumenTabContent student={student} />
+            <ResumenTabContent student={student} stats={stats} nextClass={nextClass} pendingTasks={pendingTasks} />
             <ChangeStatusForm studentId={id} currentStatus={student.status} />
           </div>
         )}
-        {tab === "clases" && <ClasesTabContent registrations={registrations} />}
+        {tab === "clases" && <ClasesTabContent registrations={registrations} attendanceByRegistrationId={attendanceByRegistrationId} />}
         {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
         {tab === "cobros" && <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />}
@@ -150,7 +176,14 @@ export default async function AlumnoProfilePage({
           <ReportesTabContent studentId={id} studentName={student.name} monthsWithClasses={monthsWithClasses} initialHistory={reportHistory} />
         )}
         {tab === "informacion" && (
-          <InformacionTabContent student={student} statusHistory={statusHistory} levelHistory={levelHistory} priceHistory={priceHistory} />
+          <InformacionTabContent
+            student={student}
+            statusHistory={statusHistory}
+            levelHistory={levelHistory}
+            priceHistory={priceHistory}
+            stats={stats}
+            totalCollected={totalCollected}
+          />
         )}
       </div>
     </div>

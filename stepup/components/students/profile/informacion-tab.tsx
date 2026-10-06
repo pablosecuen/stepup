@@ -1,6 +1,7 @@
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { StatusHistoryRecord, LevelHistoryRecord, PriceHistoryRecord } from "@/lib/repositories/student-history-mapping";
 import { CATEGORY_LABEL, BILLING_LABEL, STUDENT_STATUS_LABEL } from "@/lib/students/constants";
+import { formatHours, monthlyDueDayOf, type ProfileClassStats } from "@/lib/students/profile-overview";
 import { formatCivilDate } from "@/lib/format/date-format";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -20,17 +21,29 @@ function formatCurrencyARS(amount: number): string {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(amount);
 }
 
+const STATUS_CHANGE_LABEL: Partial<Record<StudentRecord["status"], string>> = {
+  pausado: "Pausado desde",
+  inactivo: "Inactivo desde",
+  archivado: "Archivado el",
+};
+
 export function InformacionTabContent({
   student,
   statusHistory,
   levelHistory,
   priceHistory,
+  stats,
+  totalCollected,
 }: {
   student: StudentRecord;
   statusHistory: StatusHistoryRecord[];
   levelHistory: LevelHistoryRecord[];
   priceHistory: PriceHistoryRecord[];
+  stats: ProfileClassStats;
+  totalCollected: number;
 }) {
+  const monthlyDueDay = monthlyDueDayOf(student.billingPlan);
+  const statusChangeLabel = STATUS_CHANGE_LABEL[student.status];
   return (
     <div className="flex flex-col gap-5">
       <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -40,13 +53,26 @@ export function InformacionTabContent({
           <Row label="Niveles actuales" value={student.levels.length > 0 ? student.levels.join(", ") : "—"} />
           <Row label="Fecha de alta" value={formatDate(student.dateJoined)} />
           {student.lastReactivatedAt && <Row label="Última reactivación" value={formatDate(student.lastReactivatedAt)} />}
-          {student.statusChangeDate && <Row label="Fecha de pausa/archivo" value={formatDate(student.statusChangeDate)} />}
+          {statusChangeLabel && student.statusChangeDate && <Row label={statusChangeLabel} value={formatDate(student.statusChangeDate)} />}
           <Row label="Duración habitual" value={`${student.usualDurationMinutes} min`} />
           <Row label="Frecuencia semanal" value={`${student.weeklyFrequency}x por semana`} />
           <Row label="Categoría" value={CATEGORY_LABEL[student.category]} />
           <Row label="Tipo de facturación" value={BILLING_LABEL[student.billingType]} />
           <Row label="Precio de referencia" value={formatCurrencyARS(student.price)} />
+          {monthlyDueDay !== null && <Row label="Vencimiento mensual" value={`Día ${monthlyDueDay} de cada mes`} />}
         </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
+        <h2 className="text-sm font-semibold text-textPrimary">Actividad</h2>
+        <div className="mt-2 divide-y divide-border">
+          <Row label="Clases dictadas" value={String(stats.classesHeld)} />
+          {stats.hours !== null && <Row label="Horas de clase" value={formatHours(stats.hours)} />}
+          <Row label="Total cobrado" value={formatCurrencyARS(totalCollected)} />
+        </div>
+        <p className="mt-2 text-xs text-textMuted">
+          Cuenta sólo clases finalizadas a las que el alumno asistió (las horas, además, con horario conocido) y pagos vigentes.
+        </p>
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-4 shadow-card">

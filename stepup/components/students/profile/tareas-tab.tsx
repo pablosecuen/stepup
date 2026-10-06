@@ -1,6 +1,6 @@
 import type { PendingHomeworkTask } from "@/lib/lessons/homework";
 import { EmptyState } from "@/components/ui/states";
-import { formatCivilDate } from "@/lib/format/date-format";
+import { formatCivilDate, formatInstantDate } from "@/lib/format/date-format";
 
 /** Tareas pendientes reales — puerto de `computePendingHomeworkTasks` (móvil), nunca fixtures. */
 export function TareasTabContent({ tasks }: { tasks: PendingHomeworkTask[] }) {
@@ -12,7 +12,10 @@ export function TareasTabContent({ tasks }: { tasks: PendingHomeworkTask[] }) {
       {tasks.map((task) => (
         <li key={task.taskId} className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-sm text-textPrimary">{task.description}</p>
-          {task.dueDate && <p className="mt-1 text-xs text-textMuted">Entrega: {formatCivilDate(task.dueDate)}</p>}
+          <p className="mt-1 text-xs text-textMuted">
+            Asignada el {formatInstantDate(task.assignedAt)}
+            {task.dueDate && <> · Entrega: {formatCivilDate(task.dueDate)}</>}
+          </p>
         </li>
       ))}
     </ul>
