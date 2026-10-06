@@ -69,7 +69,7 @@ export default async function SeriesPage() {
 
       {manageable.length === 0 ? (
         <div className="mt-6">
-          <EmptyState message="Todavía no hay series recurrentes." />
+          <EmptyState message="Todavía no hay series recurrentes." action={{ label: "Crear una clase", href: "/calendario/nueva" }} />
         </div>
       ) : (
         <ul className="mt-6 flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">

@@ -11,7 +11,7 @@ import { formatInstantDate } from "@/lib/format/date-format";
  */
 export function ProgresoTabContent({ entries }: { entries: { registration: LessonRegistrationRecord; evaluation: LessonRegistrationEvaluationRecord }[] }) {
   if (entries.length === 0) {
-    return <EmptyState message="Todavía no hay evaluaciones registradas." />;
+    return <EmptyState message="Todavía no hay evaluaciones registradas." action={{ label: "Ir a Registro", href: "/registro" }} />;
   }
   const average = calculateAverageGrade(entries.map((e) => e.evaluation.generalGrade));
 

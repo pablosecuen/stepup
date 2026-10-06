@@ -13,7 +13,7 @@ function statusLabel(registration: LessonRegistrationRecord): string {
 /** Historial real de clases/entrenamientos dictados — nunca fixtures. Un alumno archivado conserva todo su historial acá. */
 export function ClasesTabContent({ registrations }: { registrations: LessonRegistrationRecord[] }) {
   if (registrations.length === 0) {
-    return <EmptyState message="Todavía no hay clases registradas para este alumno." />;
+    return <EmptyState message="Todavía no hay clases registradas para este alumno." action={{ label: "Ir a Registro", href: "/registro" }} />;
   }
   return (
     <ul className="flex flex-col gap-2">

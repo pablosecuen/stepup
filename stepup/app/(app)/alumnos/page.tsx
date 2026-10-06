@@ -132,6 +132,7 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
                 ? "Ningún alumno coincide con los filtros elegidos."
                 : "Todavía no hay alumnos cargados."
             }
+            action={hasAnyStudentEver ? { label: "Limpiar filtros", href: "/alumnos" } : { label: "Agregar alumno", href: "/alumnos/nuevo" }}
           />
         </div>
       )}

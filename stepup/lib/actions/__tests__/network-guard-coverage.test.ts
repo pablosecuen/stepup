@@ -81,8 +81,13 @@ test("todo componente cliente invoca los Server Actions a través de guardNetwor
 });
 
 test("existe una última defensa de App Router (app/error.tsx) con mensaje humano y reintento", () => {
-  const source = readFileSync("app/error.tsx", "utf8");
-  assert.match(source, /["']use client["']/);
+  // Desde B4 el mensaje y el reintento viven en la vista compartida `RouteErrorView` (la usan app/error.tsx y app/(app)/error.tsx).
+  const boundary = readFileSync("app/error.tsx", "utf8");
+  assert.match(boundary, /["']use client["']/);
+  assert.match(boundary, /RouteErrorView/);
+  assert.match(boundary, /reset=\{reset\}/);
+  const source = readFileSync("components/ui/route-error.tsx", "utf8");
   assert.match(source, /reset\(\)/);
   assert.match(source, /Reintentar/);
+  assert.match(source, /Algo salió mal/);
 });
