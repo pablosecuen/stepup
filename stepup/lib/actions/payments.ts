@@ -8,6 +8,8 @@ import {
   voidCharge,
   configureTrainingBilling,
   editTrainingBillingFee,
+  ensureCurrentMonthlyCharges,
+  ensureTrainingCharges,
   PaymentNotFoundError,
   ChargeNotFoundError,
 } from "@/lib/repositories/payments";
@@ -46,6 +48,23 @@ export async function registerPaymentAction(input: RegisterPaymentActionInput): 
   } finally {
     revalidatePath("/cobros");
     revalidatePath("/alumnos");
+  }
+}
+
+/**
+ * Genera las mensualidades y cuotas de entrenamiento faltantes del período vigente (R2). Antes esto corría DENTRO del render
+ * de `/inicio`, `/cobros`, `/recordatorios` y la pestaña Cobros del alumno (un GET que escribía); ahora es una acción (POST)
+ * que dispara `ChargeGenerationTrigger` después de mostrar la pantalla. Idempotente por clave natural; el período lo calcula
+ * el servidor (nunca viene del navegador) y devuelve cuántos cargos se crearon realmente.
+ */
+export async function ensureCurrentChargesAction(): Promise<ActionResult<{ created: number }>> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const currentPeriod = billingPeriodOfDateKey(localDateKeyInTimeZone(new Date()));
+    const [monthly, training] = await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
+    return { data: { created: monthly + training } };
+  } catch (error) {
+    return { error: actionErrorMessage("payments.ensure", error) };
   }
 }
 

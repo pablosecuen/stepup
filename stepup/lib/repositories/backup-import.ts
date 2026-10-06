@@ -1,5 +1,6 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
+import { readTable, readTableByIds } from "@/lib/db/read";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import type { RawClassification, RawExcludedCollections, RawDuplicatePersonSource } from "@/lib/backup/import-preview-mapping";
 import type { ResolvedBlockerRow, ResolvedBlockerChild } from "@/lib/backup/undo-blocked-mapping";
@@ -46,10 +47,15 @@ export async function fetchOwnLatestCloudBackup(ctx: AuthenticatedDbContext): Pr
  */
 export async function fetchStudentsSummaryByIds(ctx: AuthenticatedDbContext, ids: string[]): Promise<Record<string, RawDuplicatePersonSource>> {
   if (ids.length === 0) return {};
-  const { data, error } = await ctx.supabase.from("students").select("id, name, levels, status, phone, email").eq("owner_id", ctx.ownerId).in("id", ids);
-  if (error) throw error;
+  // R2: ids en lotes de 100 (nunca una lista ilimitada en la URL).
+  const data = await readTableByIds<Record<string, unknown>>(ctx.supabase, "students", {
+    columns: "id, name, levels, status, phone, email",
+    matchColumn: "id",
+    ids,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
   const out: Record<string, RawDuplicatePersonSource> = {};
-  for (const row of data ?? []) {
+  for (const row of data) {
     out[row.id as string] = { name: row.name as string, levels: (row.levels as string[]) ?? [], status: row.status as string, phone: row.phone as string | null, email: row.email as string | null };
   }
   return out;
@@ -259,15 +265,17 @@ export async function discardImportUndo(ctx: AuthenticatedDbContext, importRunId
  * para decidir/mostrar.
  */
 export async function listImportRuns(ctx: AuthenticatedDbContext): Promise<ImportRunHistoryRow[]> {
-  const { data, error } = await ctx.supabase
-    .from("import_runs")
-    .select(
-      "id, status, backup_checksum, schema_version, app_version, summary, created_at, undo_expires_at, undone_at, payload_purged_at, snapshots_purged_at"
-    )
-    .eq("owner_id", ctx.ownerId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r) => {
+  const data = await readTable<Record<string, any>>(ctx.supabase, "import_runs", {
+    columns:
+      "id, status, backup_checksum, schema_version, app_version, summary, created_at, undo_expires_at, undone_at, payload_purged_at, snapshots_purged_at",
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+    order: [
+      { column: "created_at", ascending: false },
+      { column: "id", ascending: false },
+    ],
+    pageSize: 100,
+  });
+  return data.map((r) => {
     const summary = (r.summary ?? {}) as { counts_by_table?: Record<string, number>; total_rows_written?: number };
     return {
       id: r.id,

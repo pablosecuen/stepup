@@ -1,5 +1,6 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "../db/server-context.ts";
+import { readTable } from "../db/read.ts";
 import type { ReportRecordRow } from "../db/database.types.ts";
 import { toReportRecord, toReportRecordSummary, REPORT_RECORD_SCHEMA_VERSION, type ReportRecord, type ReportRecordSummary, type ReportRecordSnapshot } from "./reports-mapping.ts";
 
@@ -14,14 +15,16 @@ function pdfObjectPath(ownerId: string, studentId: string, reportId: string): st
 
 /** Historial real de un alumno — más reciente primero. DTO mínimo, nunca el snapshot completo. */
 export async function listReportRecordsForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<ReportRecordSummary[]> {
-  const { data, error } = await ctx.supabase
-    .from("report_records")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("generated_at", { ascending: false });
-  if (error) throw error;
-  return (data as ReportRecordRow[]).map(toReportRecordSummary);
+  // Páginas chicas: cada fila trae el snapshot del reporte (jsonb), así que se limita el peso de cada respuesta.
+  const data = await readTable<ReportRecordRow>(ctx.supabase, "report_records", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: [
+      { column: "generated_at", ascending: false },
+      { column: "id", ascending: false },
+    ],
+    pageSize: 50,
+  });
+  return data.map(toReportRecordSummary);
 }
 
 /** Detalle completo (con snapshot) — sólo cuando hace falta regenerar/ver, nunca para listar. */

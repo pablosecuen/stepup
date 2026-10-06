@@ -13,6 +13,7 @@ import { buildParticipantFreezePayload } from "@/lib/calendar/participants-freez
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
 import { listStudents } from "./students";
+import { readTable, readTableByIds } from "@/lib/db/read";
 
 /**
  * Repositorio de series de recurrencia — única puerta de entrada real a
@@ -25,19 +26,22 @@ export type { RecurrenceRuleRecord, NewRecurrenceSeriesInput } from "./recurrenc
 
 export class RecurrenceRuleNotFoundError extends Error {}
 
+
 async function attachParticipants(ctx: AuthenticatedDbContext, rows: RecurrenceRuleRow[]): Promise<RecurrenceRuleRecord[]> {
   if (rows.length === 0) return [];
-  const { data, error } = await ctx.supabase
-    .from("recurrence_rule_participants")
-    .select("recurrence_rule_id, student_id")
-    .eq("owner_id", ctx.ownerId)
-    .in(
-      "recurrence_rule_id",
-      rows.map((row) => row.id)
-    );
-  if (error) throw error;
+  // R2: ids en lotes de 100 + lectura paginada por lote (ver `lib/db/read.ts`).
+  const data = await readTableByIds<Pick<RecurrenceRuleParticipantRow, "recurrence_rule_id" | "student_id"> & { id: string; created_at: string }>(
+    ctx.supabase,
+    "recurrence_rule_participants",
+    {
+      columns: "id, recurrence_rule_id, student_id, created_at",
+      matchColumn: "recurrence_rule_id",
+      ids: rows.map((row) => row.id),
+      filter: (query) => query.eq("owner_id", ctx.ownerId),
+    }
+  );
   const byRule = new Map<string, string[]>();
-  (data as Pick<RecurrenceRuleParticipantRow, "recurrence_rule_id" | "student_id">[]).forEach((participant) => {
+  data.forEach((participant) => {
     const list = byRule.get(participant.recurrence_rule_id) ?? [];
     list.push(participant.student_id);
     byRule.set(participant.recurrence_rule_id, list);
@@ -47,9 +51,10 @@ async function attachParticipants(ctx: AuthenticatedDbContext, rows: RecurrenceR
 
 /** Todas las reglas del profesor autenticado — sin filtrar por estado (la vista decide qué mostrar). */
 export async function listRecurrenceRules(ctx: AuthenticatedDbContext): Promise<RecurrenceRuleRecord[]> {
-  const { data, error } = await ctx.supabase.from("recurrence_rules").select("*").eq("owner_id", ctx.ownerId);
-  if (error) throw error;
-  return attachParticipants(ctx, data as RecurrenceRuleRow[]);
+  const data = await readTable<RecurrenceRuleRow>(ctx.supabase, "recurrence_rules", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
+  return attachParticipants(ctx, data);
 }
 
 export async function getRecurrenceRule(ctx: AuthenticatedDbContext, id: string): Promise<RecurrenceRuleRecord | null> {
@@ -65,21 +70,16 @@ export async function getRecurrenceRule(ctx: AuthenticatedDbContext, id: string)
  * participante — usado por la poda de agenda al archivar (Fase 10).
  */
 export async function listActiveRecurrenceRulesForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<RecurrenceRuleRecord[]> {
-  const { data: participantRows, error: participantError } = await ctx.supabase
-    .from("recurrence_rule_participants")
-    .select("recurrence_rule_id")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId);
-  if (participantError) throw participantError;
-  const ruleIds = new Set((participantRows as { recurrence_rule_id: string }[]).map((r) => r.recurrence_rule_id));
+  const participantRows = await readTable<{ id: string; recurrence_rule_id: string }>(ctx.supabase, "recurrence_rule_participants", {
+    columns: "id, recurrence_rule_id",
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  const ruleIds = new Set(participantRows.map((r) => r.recurrence_rule_id));
 
-  const { data, error } = await ctx.supabase
-    .from("recurrence_rules")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .in("status", ["active", "paused"]);
-  if (error) throw error;
-  const rows = (data as RecurrenceRuleRow[]).filter((row) => row.primary_student_id === studentId || ruleIds.has(row.id));
+  const data = await readTable<RecurrenceRuleRow>(ctx.supabase, "recurrence_rules", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).in("status", ["active", "paused"]),
+  });
+  const rows = data.filter((row) => row.primary_student_id === studentId || ruleIds.has(row.id));
   return attachParticipants(ctx, rows);
 }
 
@@ -89,13 +89,11 @@ export async function listRuleParticipantsWithCreatedAt(
   ruleIds: string[]
 ): Promise<RecurrenceRuleParticipantRow[]> {
   if (ruleIds.length === 0) return [];
-  const { data, error } = await ctx.supabase
-    .from("recurrence_rule_participants")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .in("recurrence_rule_id", ruleIds);
-  if (error) throw error;
-  return data as RecurrenceRuleParticipantRow[];
+  return readTableByIds<RecurrenceRuleParticipantRow>(ctx.supabase, "recurrence_rule_participants", {
+    matchColumn: "recurrence_rule_id",
+    ids: ruleIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
 }
 
 /** Crea una serie + sus participantes de forma atómica (RPC `create_recurrence_series`). */

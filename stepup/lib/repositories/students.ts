@@ -21,6 +21,7 @@ import {
   type LooseLessonForPrune,
 } from "@/lib/students/archive-prune-plan";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { readTable } from "@/lib/db/read";
 
 const ARGENTINA_TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -47,13 +48,15 @@ export type { StudentRecord, NewStudentInput, UpdateStudentInput, StudentDuplica
  * defensa en profundidad, nunca la única barrera.
  */
 export async function listStudents(ctx: AuthenticatedDbContext): Promise<StudentRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("students")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .order("name", { ascending: true });
-  if (error) throw error;
-  return (data as StudentRow[]).map(toStudentRecord);
+  // R2: lectura COMPLETA por páginas (nunca truncada en `max_rows`), mismo orden de antes (nombre) + `id` como desempate estable.
+  const rows = await readTable<StudentRow>(ctx.supabase, "students", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+    order: [
+      { column: "name", ascending: true },
+      { column: "id", ascending: true },
+    ],
+  });
+  return rows.map(toStudentRecord);
 }
 
 export async function getStudent(ctx: AuthenticatedDbContext, id: string): Promise<StudentRecord | null> {

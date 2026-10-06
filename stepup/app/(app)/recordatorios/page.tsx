@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { loadHomeData } from "@/lib/dashboard/load-home-data";
+import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import type { RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
 
@@ -32,6 +33,7 @@ export default async function RecordatoriosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
+      <ChargeGenerationTrigger />
       <Link href="/inicio" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
         ← Volver a Inicio
       </Link>

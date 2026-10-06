@@ -93,7 +93,8 @@ test("Inicio: la recuperación B0 y su redirect HTTP real siguen intactos y no h
   assert.equal(existsSync(join(ROOT, "app/(app)/loading.tsx")), false);
   // La bienvenida se carga DENTRO del mismo try: un fallo de sesión sigue yendo a la recuperación, nunca a una pantalla rota.
   assert.match(page, /data = await loadHomeData\(ctx\);\s*welcome = await loadHomeWelcome\(ctx, data\);/);
-  assert.match(page, /return <HomeView data=\{data\} welcome=\{welcome\} \/>;/);
+  // R2: la página sólo lee; el disparador de generación de cobros (Server Action) va al lado de la vista, nunca dentro del render de datos.
+  assert.match(page, /<ChargeGenerationTrigger \/>\s*<HomeView data=\{data\} welcome=\{welcome\} \/>/);
   assert.doesNotMatch(code("components/dashboard/home-view.tsx"), /redirect\(|supabase|fetch\(|\.rpc\(/, "la vista sólo presenta");
 });
 

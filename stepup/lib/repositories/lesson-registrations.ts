@@ -17,6 +17,7 @@ import {
   type LessonRegistrationRecord,
   type LessonRegistrationDetail,
 } from "./lesson-registrations-mapping";
+import { readTable, readTableByIds } from "@/lib/db/read";
 import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
 import { instantDateKey } from "@/lib/calendar/civil-calendar";
 import { commonHomeworkTaskId, individualHomeworkTaskId, isHomeworkTaskResolved, type PendingHomeworkTask } from "@/lib/lessons/homework";
@@ -30,6 +31,18 @@ import { commonHomeworkTaskId, individualHomeworkTaskId, isHomeworkTaskResolved,
 export type { LessonRegistrationRecord, LessonRegistrationDetail } from "./lesson-registrations-mapping";
 
 export class LessonRegistrationNotFoundError extends Error {}
+
+/** `scheduled_start_at desc nulls last`, `id` como desempate determinista. */
+function compareByScheduledStartDescNullsLast(a: LessonRegistrationRow, b: LessonRegistrationRow): number {
+  const aTime = a.scheduled_start_at === null ? null : Date.parse(a.scheduled_start_at);
+  const bTime = b.scheduled_start_at === null ? null : Date.parse(b.scheduled_start_at);
+  if (aTime !== bTime) {
+    if (aTime === null) return 1;
+    if (bTime === null) return -1;
+    return bTime - aTime;
+  }
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
 
 /** Progreso real (para la lista de pendientes) de cada registro ligado a una de estas clases materializadas. */
 export interface RegistrationProgressRow {
@@ -52,28 +65,34 @@ export async function listRegistrationProgressForCalendarLessonIds(
   calendarLessonIds: string[]
 ): Promise<RegistrationProgressRow[]> {
   if (calendarLessonIds.length === 0) return [];
-  const { data: registrations, error } = await ctx.supabase
-    .from("lesson_registrations")
-    .select("id, calendar_lesson_id, status")
-    .eq("owner_id", ctx.ownerId)
-    .in("calendar_lesson_id", calendarLessonIds);
-  if (error) throw error;
-  const rows = registrations as Pick<LessonRegistrationRow, "id" | "calendar_lesson_id" | "status">[];
+  // R2: ids de clases en lotes de 100 (con 90 días de clases la lista superaba el límite de la URL) + lectura paginada por lote.
+  const rows = await readTableByIds<Pick<LessonRegistrationRow, "id" | "calendar_lesson_id" | "status">>(ctx.supabase, "lesson_registrations", {
+    columns: "id, calendar_lesson_id, status",
+    matchColumn: "calendar_lesson_id",
+    ids: calendarLessonIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
   if (rows.length === 0) return [];
 
-  const { data: participants, error: participantsError } = await ctx.supabase
-    .from("lesson_registration_students")
-    .select("lesson_registration_id, participant_status")
-    .eq("owner_id", ctx.ownerId)
-    .in(
-      "lesson_registration_id",
-      rows.map((r) => r.id)
-    );
-  if (participantsError) throw participantsError;
-  const participantRows = participants as Pick<LessonRegistrationStudentRow, "lesson_registration_id" | "participant_status">[];
+  const participantRows = await readTableByIds<Pick<LessonRegistrationStudentRow, "lesson_registration_id" | "participant_status"> & { id: string }>(
+    ctx.supabase,
+    "lesson_registration_students",
+    {
+      columns: "id, lesson_registration_id, participant_status",
+      matchColumn: "lesson_registration_id",
+      ids: rows.map((r) => r.id),
+      filter: (query) => query.eq("owner_id", ctx.ownerId),
+    }
+  );
+  const participantsByRegistration = new Map<string, typeof participantRows>();
+  for (const participant of participantRows) {
+    const list = participantsByRegistration.get(participant.lesson_registration_id) ?? [];
+    list.push(participant);
+    participantsByRegistration.set(participant.lesson_registration_id, list);
+  }
 
   return rows.map((row) => {
-    const own = participantRows.filter((p) => p.lesson_registration_id === row.id);
+    const own = participantsByRegistration.get(row.id) ?? [];
     return {
       registrationId: row.id,
       calendarLessonId: row.calendar_lesson_id as string,
@@ -144,23 +163,21 @@ export async function listEditHistoryTimestamps(ctx: AuthenticatedDbContext, reg
 
 /** Historial real de registros de un alumno (ficha del alumno) — más reciente primero, conserva el historial aunque el alumno esté archivado. */
 export async function listLessonRegistrationsForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<LessonRegistrationRecord[]> {
-  const { data: rosterRows, error: rosterError } = await ctx.supabase
-    .from("lesson_registration_students")
-    .select("lesson_registration_id")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId);
-  if (rosterError) throw rosterError;
-  const registrationIds = (rosterRows as Pick<LessonRegistrationStudentRow, "lesson_registration_id">[]).map((r) => r.lesson_registration_id);
+  const rosterRows = await readTable<Pick<LessonRegistrationStudentRow, "lesson_registration_id"> & { id: string }>(ctx.supabase, "lesson_registration_students", {
+    columns: "id, lesson_registration_id",
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  const registrationIds = rosterRows.map((r) => r.lesson_registration_id);
   if (registrationIds.length === 0) return [];
 
-  const { data, error } = await ctx.supabase
-    .from("lesson_registrations")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .in("id", registrationIds)
-    .order("scheduled_start_at", { ascending: false, nullsFirst: false });
-  if (error) throw error;
-  return (data as LessonRegistrationRow[]).map(toLessonRegistrationRecord);
+  // R2: ids en lotes de 100; como cada lote sale ordenado por separado, el orden global se aplica acá (más reciente primero,
+  // sin horario programado al final — igual que el `order(... nullsFirst: false)` de antes — y `id` como desempate).
+  const data = await readTableByIds<LessonRegistrationRow>(ctx.supabase, "lesson_registrations", {
+    matchColumn: "id",
+    ids: registrationIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
+  return data.sort(compareByScheduledStartDescNullsLast).map(toLessonRegistrationRecord);
 }
 
 /**
@@ -184,19 +201,12 @@ export async function listPendingHomeworkTasksForStudent(
   );
   if (eligible.length === 0) return [];
 
-  const { data: evaluationRows, error: evaluationError } = await ctx.supabase
-    .from("lesson_registration_evaluations")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .in(
-      "lesson_registration_id",
-      eligible.map((r) => r.id)
-    );
-  if (evaluationError) throw evaluationError;
-  const evaluationByRegistrationId = new Map(
-    (evaluationRows as LessonRegistrationEvaluationRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)])
-  );
+  const evaluationRows = await readTableByIds<LessonRegistrationEvaluationRow>(ctx.supabase, "lesson_registration_evaluations", {
+    matchColumn: "lesson_registration_id",
+    ids: eligible.map((r) => r.id),
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  const evaluationByRegistrationId = new Map(evaluationRows.map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)]));
 
   const tasks: PendingHomeworkTask[] = [];
   eligible.forEach((registration) => {
@@ -224,19 +234,12 @@ export async function listPendingHomeworkTasksForStudent(
   });
   if (tasks.length === 0) return [];
 
-  const { data: reviewRows, error: reviewError } = await ctx.supabase
-    .from("lesson_registration_homework_reviews")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .in(
-      "task_id",
-      tasks.map((t) => t.taskId)
-    );
-  if (reviewError) throw reviewError;
-  const resolvedTaskIds = new Set(
-    (reviewRows as LessonRegistrationHomeworkReviewRow[]).filter((row) => isHomeworkTaskResolved(row.outcome)).map((row) => row.task_id)
-  );
+  const reviewRows = await readTableByIds<LessonRegistrationHomeworkReviewRow>(ctx.supabase, "lesson_registration_homework_reviews", {
+    matchColumn: "task_id",
+    ids: tasks.map((t) => t.taskId),
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  const resolvedTaskIds = new Set(reviewRows.filter((row) => isHomeworkTaskResolved(row.outcome)).map((row) => row.task_id));
 
   return tasks
     .filter((task) => !resolvedTaskIds.has(task.taskId))
@@ -249,17 +252,12 @@ export async function listEvaluationsForStudent(ctx: AuthenticatedDbContext, stu
   const completed = registrations.filter((r) => r.status === "completed" && r.countsAsClass);
   if (completed.length === 0) return [];
 
-  const { data, error } = await ctx.supabase
-    .from("lesson_registration_evaluations")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .in(
-      "lesson_registration_id",
-      completed.map((r) => r.id)
-    );
-  if (error) throw error;
-  const evaluationByRegistrationId = new Map((data as LessonRegistrationEvaluationRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)]));
+  const data = await readTableByIds<LessonRegistrationEvaluationRow>(ctx.supabase, "lesson_registration_evaluations", {
+    matchColumn: "lesson_registration_id",
+    ids: completed.map((r) => r.id),
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  const evaluationByRegistrationId = new Map(data.map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)]));
 
   return completed
     .map((registration) => ({ registration, evaluation: evaluationByRegistrationId.get(registration.id) }))
@@ -489,30 +487,43 @@ export async function finalizeLessonRegistration(ctx: AuthenticatedDbContext, in
  * mismo criterio ya usado en `listCompletedRegistrationsForStudentReport`).
  */
 export async function listLessonRegistrationsInRange(ctx: AuthenticatedDbContext, rangeStartIso: string, rangeEndIso: string): Promise<LessonRegistrationRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("lesson_registrations")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .or(`scheduled_start_at.gte.${rangeStartIso},scheduled_start_at.is.null`)
-    .order("scheduled_start_at", { ascending: true, nullsFirst: false });
-  if (error) throw error;
-  const all = (data as LessonRegistrationRow[]).map(toLessonRegistrationRecord);
-  return all.filter((r) => {
-    const anchor = r.scheduledStartAt ?? r.createdAt;
-    return anchor >= rangeStartIso && anchor <= rangeEndIso;
+  // R2: la ventana se aplica en la base (antes se bajaban TODOS los registros desde `rangeStart`, hasta el futuro, y se filtraba acá).
+  // Ancla real = horario programado si existe; si no, el alta del registro (ad-hoc). Comparación por INSTANTE (nunca por texto).
+  const data = await readTable<LessonRegistrationRow>(ctx.supabase, "lesson_registrations", {
+    filter: (query) =>
+      query
+        .eq("owner_id", ctx.ownerId)
+        .or(
+          `and(scheduled_start_at.gte."${rangeStartIso}",scheduled_start_at.lte."${rangeEndIso}"),` +
+            `and(scheduled_start_at.is.null,created_at.gte."${rangeStartIso}",created_at.lte."${rangeEndIso}")`
+        ),
   });
+  const startMs = Date.parse(rangeStartIso);
+  const endMs = Date.parse(rangeEndIso);
+  return data
+    .sort((a, b) => {
+      const aTime = a.scheduled_start_at === null ? null : Date.parse(a.scheduled_start_at);
+      const bTime = b.scheduled_start_at === null ? null : Date.parse(b.scheduled_start_at);
+      if (aTime !== bTime) return aTime === null ? 1 : bTime === null ? -1 : aTime - bTime;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    })
+    .map(toLessonRegistrationRecord)
+    .filter((r) => {
+      const anchor = Date.parse(r.scheduledStartAt ?? r.createdAt);
+      return anchor >= startMs && anchor <= endMs;
+    });
 }
 
 /** Roster real (uno por alumno participante) de un conjunto de registros — necesario para "alumnos únicos atendidos" (Fase 7), donde una clase grupal debe expandirse a cada participante real. */
 export async function listRosterForRegistrationIds(ctx: AuthenticatedDbContext, registrationIds: string[]): Promise<{ registrationId: string; studentId: string }[]> {
   if (registrationIds.length === 0) return [];
-  const { data, error } = await ctx.supabase
-    .from("lesson_registration_students")
-    .select("lesson_registration_id, student_id")
-    .eq("owner_id", ctx.ownerId)
-    .in("lesson_registration_id", registrationIds);
-  if (error) throw error;
-  return (data as Pick<LessonRegistrationStudentRow, "lesson_registration_id" | "student_id">[]).map((row) => ({ registrationId: row.lesson_registration_id, studentId: row.student_id }));
+  const data = await readTableByIds<Pick<LessonRegistrationStudentRow, "lesson_registration_id" | "student_id"> & { id: string }>(ctx.supabase, "lesson_registration_students", {
+    columns: "id, lesson_registration_id, student_id",
+    matchColumn: "lesson_registration_id",
+    ids: registrationIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
+  return data.map((row) => ({ registrationId: row.lesson_registration_id, studentId: row.student_id }));
 }
 
 /** Forma mínima real que necesita `buildStudentReportData` (Fase 7) — un registro dictado + la asistencia/evaluación de ESE alumno, nunca de otros participantes de una clase compartida. */
@@ -549,19 +560,21 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
   if (held.length === 0) return [];
 
   const registrationIds = held.map((r) => r.id);
-  const [attendanceResult, evaluationResult] = await Promise.all([
-    ctx.supabase.from("lesson_registration_attendance").select("*").eq("owner_id", ctx.ownerId).eq("student_id", studentId).in("lesson_registration_id", registrationIds),
-    ctx.supabase.from("lesson_registration_evaluations").select("*").eq("owner_id", ctx.ownerId).eq("student_id", studentId).in("lesson_registration_id", registrationIds),
+  const [attendanceRows, evaluationRows] = await Promise.all([
+    readTableByIds<LessonRegistrationAttendanceRow>(ctx.supabase, "lesson_registration_attendance", {
+      matchColumn: "lesson_registration_id",
+      ids: registrationIds,
+      filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    }),
+    readTableByIds<LessonRegistrationEvaluationRow>(ctx.supabase, "lesson_registration_evaluations", {
+      matchColumn: "lesson_registration_id",
+      ids: registrationIds,
+      filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    }),
   ]);
-  if (attendanceResult.error) throw attendanceResult.error;
-  if (evaluationResult.error) throw evaluationResult.error;
 
-  const attendanceByRegistrationId = new Map(
-    (attendanceResult.data as LessonRegistrationAttendanceRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationAttendanceRecord(row)])
-  );
-  const evaluationByRegistrationId = new Map(
-    (evaluationResult.data as LessonRegistrationEvaluationRow[]).map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)])
-  );
+  const attendanceByRegistrationId = new Map(attendanceRows.map((row) => [row.lesson_registration_id, toLessonRegistrationAttendanceRecord(row)]));
+  const evaluationByRegistrationId = new Map(evaluationRows.map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)]));
 
   return held
     .map((registration) => {

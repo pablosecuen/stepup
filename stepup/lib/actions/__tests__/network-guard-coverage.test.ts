@@ -14,6 +14,11 @@ const ROOTS = ["app", "components"];
 const ACTION_IMPORT = /import\s*\{([^}]*)\}\s*from\s*"@\/lib\/(?:actions\/[\w-]+|auth\/actions)";/g;
 const ALLOWED_BEFORE = [/guardNetwork\(\(\) => $/, /useGuardedActionState(<[^>]*>)?\($/];
 
+// R2: disparadores de FONDO (sin formulario ni texto escrito que conservar). Invocan una acción idempotente una sola vez al
+// montarse y se protegen con su propio try/catch: una falla de red nunca rompe la pantalla ni deja nada bloqueado. Usar
+// `guardNetwork` ahí sería incorrecto: reclama el "envío fresco" del formulario y restauraría valores ajenos.
+const BACKGROUND_TRIGGERS = ["components/payments/charge-generation-trigger.tsx", "components/students/profile/report-cleanup-trigger.tsx"];
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name === ".next" || entry.name === "__tests__") continue;
@@ -66,6 +71,12 @@ test("todo componente cliente invoca los Server Actions a través de guardNetwor
           // `accion.bind(null, id)` se pasa después a useGuardedActionState (se verifica abajo).
           const after = body.slice(match.index + name.length, match.index + name.length + 6);
           if (after === ".bind(" && /\buseGuardedActionState\(/.test(body)) continue;
+          // Disparador de fondo declarado: la invocación debe estar DENTRO de un try con catch (nunca un rechazo sin manejar).
+          const normalized = file.replace(/\\/g, "/");
+          if (BACKGROUND_TRIGGERS.some((trigger) => normalized.endsWith(trigger)) && /\btry\s*\{[\s\S]*\bawait\s+\w+\([\s\S]*\}\s*catch\b/.test(body)) {
+            guardedSites++;
+            continue;
+          }
           // `dispatchAction` de new-lesson-form elige entre dos acciones y es lo que
           // recibe `useGuardedActionState` (vía `boundAction`): ya protegidas ahí.
           if (file.endsWith("new-lesson-form.tsx") && /\buseGuardedActionState\(boundAction/.test(body)) continue;

@@ -7,6 +7,7 @@ import { logLoadFailure } from "@/lib/errors/load-failure";
 import { loadHomeData } from "@/lib/dashboard/load-home-data";
 import { loadHomeWelcome } from "@/lib/dashboard/load-home-welcome";
 import { HomeView } from "@/components/dashboard/home-view";
+import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { ErrorState } from "@/components/ui/states";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 import type { HomeWelcome } from "@/lib/dashboard/home-welcome";
@@ -52,5 +53,10 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  return <HomeView data={data} welcome={welcome} />;
+  return (
+    <>
+      <ChargeGenerationTrigger />
+      <HomeView data={data} welcome={welcome} />
+    </>
+  );
 }

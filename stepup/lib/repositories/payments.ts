@@ -12,6 +12,8 @@ import {
   type TrainingBillingAgreementRecord,
 } from "./payments-mapping";
 import { listStudents } from "./students";
+import { readTable, readRpc } from "@/lib/db/read";
+import type { ChargeWithPaidAmount } from "@/lib/payments/collections-center";
 import { listRecurrenceRules, type RecurrenceRuleRecord } from "./recurrence-rules";
 import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
@@ -38,50 +40,97 @@ export class PaymentNotFoundError extends Error {}
 export class ChargeNotFoundError extends Error {}
 
 /** Todos los cargos vigentes o anulados del profesor — base de Centro de cobros. Filtro de "vigentes" lo decide el llamador (charge-balance.ts). */
+// R2: todas las listas de Cobros se leen COMPLETAS por páginas (ver `lib/db/read.ts`): saldos, vencidos e ingresos nunca se
+// calculan sobre una respuesta truncada en `max_rows`. Mismo orden de antes + `id` como desempate estable.
+const CHARGE_ORDER = [
+  { column: "due_date", ascending: true },
+  { column: "id", ascending: true },
+] as const;
+const PAYMENT_ORDER = [
+  { column: "paid_at", ascending: false },
+  { column: "id", ascending: false },
+] as const;
+
 export async function listAllCharges(ctx: AuthenticatedDbContext): Promise<PaymentChargeRecord[]> {
-  const { data, error } = await ctx.supabase.from("payment_charges").select("*").eq("owner_id", ctx.ownerId).order("due_date", { ascending: true });
-  if (error) throw error;
-  return (data as PaymentChargeRow[]).map(toPaymentChargeRecord);
+  const data = await readTable<PaymentChargeRow>(ctx.supabase, "payment_charges", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+    order: CHARGE_ORDER,
+  });
+  return data.map(toPaymentChargeRecord);
+}
+
+/** Cargos de entrenamiento ligados a un acuerdo — lo único que necesita la generación periódica (no toda la historia de cargos). */
+async function listTrainingAgreementCharges(ctx: AuthenticatedDbContext): Promise<PaymentChargeRecord[]> {
+  const data = await readTable<PaymentChargeRow>(ctx.supabase, "payment_charges", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("charge_type", "entrenamiento").not("training_billing_agreement_id", "is", null),
+    order: CHARGE_ORDER,
+  });
+  return data.map(toPaymentChargeRecord);
 }
 
 export async function listChargesForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<PaymentChargeRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("payment_charges")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("due_date", { ascending: true });
-  if (error) throw error;
-  return (data as PaymentChargeRow[]).map(toPaymentChargeRecord);
+  const data = await readTable<PaymentChargeRow>(ctx.supabase, "payment_charges", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: CHARGE_ORDER,
+  });
+  return data.map(toPaymentChargeRecord);
 }
 
 export async function listAllPayments(ctx: AuthenticatedDbContext): Promise<PaymentRecord[]> {
-  const { data, error } = await ctx.supabase.from("payments").select("*").eq("owner_id", ctx.ownerId).order("paid_at", { ascending: false });
-  if (error) throw error;
-  return (data as PaymentRow[]).map(toPaymentRecord);
+  const data = await readTable<PaymentRow>(ctx.supabase, "payments", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+    order: PAYMENT_ORDER,
+  });
+  return data.map(toPaymentRecord);
 }
 
 export async function listPaymentsForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<PaymentRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("payments")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("paid_at", { ascending: false });
-  if (error) throw error;
-  return (data as PaymentRow[]).map(toPaymentRecord);
+  const data = await readTable<PaymentRow>(ctx.supabase, "payments", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: PAYMENT_ORDER,
+  });
+  return data.map(toPaymentRecord);
 }
 
 export async function listAllAllocations(ctx: AuthenticatedDbContext): Promise<PaymentAllocationRecord[]> {
-  const { data, error } = await ctx.supabase.from("payment_allocations").select("*").eq("owner_id", ctx.ownerId);
-  if (error) throw error;
-  return (data as PaymentAllocationRow[]).map(toPaymentAllocationRecord);
+  const data = await readTable<PaymentAllocationRow>(ctx.supabase, "payment_allocations", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
+  return data.map(toPaymentAllocationRecord);
+}
+
+/**
+ * Cargos vigentes con saldo pendiente + lo ya pagado (R2) — base de Inicio, Cobros y Recordatorios. Los calcula la RPC
+ * `list_open_charge_balances` (propietario = `auth.uid()`, RLS aplica) en vez de descargar toda la historia de cargos,
+ * asignaciones y pagos. Las reglas de vencimiento siguen en TypeScript. Se lee COMPLETA por páginas (clave `charge_id`).
+ */
+export async function listOpenChargeBalances(ctx: AuthenticatedDbContext): Promise<ChargeWithPaidAmount[]> {
+  const rows = await readRpc<{
+    charge_id: string;
+    student_id: string;
+    charge_type: PaymentChargeRow["charge_type"];
+    due_date: string;
+    original_amount: number | string;
+    paid_amount: number | string;
+  }>(ctx.supabase, "list_open_charge_balances", {}, { order: [{ column: "charge_id", ascending: true }], idColumn: "charge_id" });
+  return rows.map((row) => ({
+    charge: {
+      id: row.charge_id,
+      studentId: row.student_id,
+      chargeType: row.charge_type,
+      originalAmount: Number(row.original_amount),
+      dueDate: row.due_date,
+      voidedAt: null,
+    },
+    paidAmount: Number(row.paid_amount),
+  }));
 }
 
 export async function listAllocationsForStudent(ctx: AuthenticatedDbContext, studentId: string): Promise<PaymentAllocationRecord[]> {
-  const { data, error } = await ctx.supabase.from("payment_allocations").select("*").eq("owner_id", ctx.ownerId).eq("student_id", studentId);
-  if (error) throw error;
-  return (data as PaymentAllocationRow[]).map(toPaymentAllocationRecord);
+  const data = await readTable<PaymentAllocationRow>(ctx.supabase, "payment_allocations", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+  });
+  return data.map(toPaymentAllocationRecord);
 }
 
 export interface RegisterPaymentInput {
@@ -217,9 +266,10 @@ export async function editTrainingBillingFee(
 }
 
 export async function listTrainingBillingAgreements(ctx: AuthenticatedDbContext): Promise<TrainingBillingAgreementRecord[]> {
-  const { data, error } = await ctx.supabase.from("training_billing_agreements").select("*").eq("owner_id", ctx.ownerId);
-  if (error) throw error;
-  return (data as TrainingBillingAgreementRow[]).map(toTrainingBillingAgreementRecord);
+  const data = await readTable<TrainingBillingAgreementRow>(ctx.supabase, "training_billing_agreements", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
+  return data.map(toTrainingBillingAgreementRecord);
 }
 
 /**
@@ -345,7 +395,7 @@ export async function ensureTrainingCharges(ctx: AuthenticatedDbContext, current
     listTrainingBillingAgreements(ctx),
     listRecurrenceRules(ctx),
     listStudents(ctx),
-    listAllCharges(ctx),
+    listTrainingAgreementCharges(ctx),
   ]);
   if (agreements.length === 0) return 0;
 

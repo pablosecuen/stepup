@@ -1,5 +1,6 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
+import { readTable } from "@/lib/db/read";
 import type { StudentLevelHistoryRow, StudentPriceHistoryRow, StudentStatusHistoryRow } from "@/lib/db/database.types";
 import {
   toStatusHistoryRecord,
@@ -16,35 +17,35 @@ import {
  * `student_status_history`/`student_level_history`/`student_price_history`.
  */
 export async function listStatusHistory(ctx: AuthenticatedDbContext, studentId: string): Promise<StatusHistoryRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("student_status_history")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data as StudentStatusHistoryRow[]).map(toStatusHistoryRecord);
+  const data = await readTable<StudentStatusHistoryRow>(ctx.supabase, "student_status_history", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: [
+      { column: "occurred_on", ascending: false },
+      { column: "created_at", ascending: false },
+      { column: "id", ascending: false },
+    ],
+  });
+  return data.map(toStatusHistoryRecord);
 }
 
 export async function listLevelHistory(ctx: AuthenticatedDbContext, studentId: string): Promise<LevelHistoryRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("student_level_history")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("achieved_on", { ascending: false });
-  if (error) throw error;
-  return (data as StudentLevelHistoryRow[]).map(toLevelHistoryRecord);
+  const data = await readTable<StudentLevelHistoryRow>(ctx.supabase, "student_level_history", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: [
+      { column: "achieved_on", ascending: false },
+      { column: "id", ascending: false },
+    ],
+  });
+  return data.map(toLevelHistoryRecord);
 }
 
 export async function listPriceHistory(ctx: AuthenticatedDbContext, studentId: string): Promise<PriceHistoryRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("student_price_history")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .eq("student_id", studentId)
-    .order("effective_on", { ascending: false });
-  if (error) throw error;
+  const data = await readTable<StudentPriceHistoryRow>(ctx.supabase, "student_price_history", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    order: [
+      { column: "effective_on", ascending: false },
+      { column: "id", ascending: false },
+    ],
+  });
   return (data as StudentPriceHistoryRow[]).map(toPriceHistoryRecord);
 }

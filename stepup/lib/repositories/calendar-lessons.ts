@@ -1,6 +1,7 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type { CalendarLessonParticipantRow, CalendarLessonRow } from "@/lib/db/database.types";
+import { readTable, readTableByIds } from "@/lib/db/read";
 import {
   toCalendarLessonRecord,
   validateNewSingleLessonInput,
@@ -17,19 +18,23 @@ export type { CalendarLessonRecord, NewSingleLessonInput } from "./calendar-less
 
 export class CalendarLessonNotFoundError extends Error {}
 
+
+
 async function attachParticipants(ctx: AuthenticatedDbContext, rows: CalendarLessonRow[]): Promise<CalendarLessonRecord[]> {
   if (rows.length === 0) return [];
-  const { data, error } = await ctx.supabase
-    .from("calendar_lesson_participants")
-    .select("calendar_lesson_id, student_id")
-    .eq("owner_id", ctx.ownerId)
-    .in(
-      "calendar_lesson_id",
-      rows.map((row) => row.id)
-    );
-  if (error) throw error;
+  // R2: ids en lotes de 100 (nunca una lista ilimitada en la URL) y cada lote paginado; un fallo en cualquier lote falla todo.
+  const data = await readTableByIds<Pick<CalendarLessonParticipantRow, "calendar_lesson_id" | "student_id"> & { id: string; created_at: string }>(
+    ctx.supabase,
+    "calendar_lesson_participants",
+    {
+      columns: "id, calendar_lesson_id, student_id, created_at",
+      matchColumn: "calendar_lesson_id",
+      ids: rows.map((row) => row.id),
+      filter: (query) => query.eq("owner_id", ctx.ownerId),
+    }
+  );
   const byLesson = new Map<string, string[]>();
-  (data as Pick<CalendarLessonParticipantRow, "calendar_lesson_id" | "student_id">[]).forEach((participant) => {
+  data.forEach((participant) => {
     const list = byLesson.get(participant.calendar_lesson_id) ?? [];
     list.push(participant.student_id);
     byLesson.set(participant.calendar_lesson_id, list);
@@ -46,21 +51,18 @@ export async function hasAnyCalendarLesson(ctx: AuthenticatedDbContext): Promise
 
 /** Clases materializadas cuyo `start_at` cae dentro de `[rangeStartIso, rangeEndIso]` — suficiente para pintar semana/día. */
 export async function listCalendarLessonsInRange(ctx: AuthenticatedDbContext, rangeStartIso: string, rangeEndIso: string): Promise<CalendarLessonRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("calendar_lessons")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .gte("start_at", rangeStartIso)
-    .lte("start_at", rangeEndIso);
-  if (error) throw error;
-  return attachParticipants(ctx, data as CalendarLessonRow[]);
+  const data = await readTable<CalendarLessonRow>(ctx.supabase, "calendar_lessons", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).gte("start_at", rangeStartIso).lte("start_at", rangeEndIso),
+  });
+  return attachParticipants(ctx, data);
 }
 
 /** Todas las clases materializadas de una regla (cualquier fecha) — usado para saber qué ocurrencias ya NO son vírgenes antes de congelar participantes. */
 export async function listCalendarLessonsForRecurrence(ctx: AuthenticatedDbContext, recurrenceId: string): Promise<CalendarLessonRecord[]> {
-  const { data, error } = await ctx.supabase.from("calendar_lessons").select("*").eq("owner_id", ctx.ownerId).eq("recurrence_id", recurrenceId);
-  if (error) throw error;
-  return attachParticipants(ctx, data as CalendarLessonRow[]);
+  const data = await readTable<CalendarLessonRow>(ctx.supabase, "calendar_lessons", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("recurrence_id", recurrenceId),
+  });
+  return attachParticipants(ctx, data);
 }
 
 /**
@@ -76,49 +78,36 @@ export async function listLooseFutureScheduledLessonsForStudent(
   fromIso: string
 ): Promise<CalendarLessonRecord[]> {
   const [asPrimary, participantRows] = await Promise.all([
-    ctx.supabase
-      .from("calendar_lessons")
-      .select("*")
-      .eq("owner_id", ctx.ownerId)
-      .eq("status", "scheduled")
-      .is("recurrence_id", null)
-      .eq("primary_student_id", studentId)
-      .gte("start_at", fromIso),
-    ctx.supabase.from("calendar_lesson_participants").select("calendar_lesson_id").eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    readTable<CalendarLessonRow>(ctx.supabase, "calendar_lessons", {
+      filter: (query) =>
+        query.eq("owner_id", ctx.ownerId).eq("status", "scheduled").is("recurrence_id", null).eq("primary_student_id", studentId).gte("start_at", fromIso),
+    }),
+    readTable<{ id: string; calendar_lesson_id: string }>(ctx.supabase, "calendar_lesson_participants", {
+      columns: "id, calendar_lesson_id",
+      filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
+    }),
   ]);
-  if (asPrimary.error) throw asPrimary.error;
-  if (participantRows.error) throw participantRows.error;
 
-  const participantLessonIds = (participantRows.data as { calendar_lesson_id: string }[]).map((r) => r.calendar_lesson_id);
-  let asParticipant: CalendarLessonRow[] = [];
-  if (participantLessonIds.length > 0) {
-    const { data, error } = await ctx.supabase
-      .from("calendar_lessons")
-      .select("*")
-      .eq("owner_id", ctx.ownerId)
-      .eq("status", "scheduled")
-      .is("recurrence_id", null)
-      .gte("start_at", fromIso)
-      .in("id", participantLessonIds);
-    if (error) throw error;
-    asParticipant = data as CalendarLessonRow[];
-  }
+  const participantLessonIds = participantRows.map((r) => r.calendar_lesson_id);
+  const asParticipant = await readTableByIds<CalendarLessonRow>(ctx.supabase, "calendar_lessons", {
+    matchColumn: "id",
+    ids: participantLessonIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("status", "scheduled").is("recurrence_id", null).gte("start_at", fromIso),
+  });
 
   const byId = new Map<string, CalendarLessonRow>();
-  for (const row of [...(asPrimary.data as CalendarLessonRow[]), ...asParticipant]) byId.set(row.id, row);
+  for (const row of [...asPrimary, ...asParticipant]) byId.set(row.id, row);
   return attachParticipants(ctx, [...byId.values()]);
 }
 
 /** Filas reales (`calendar_lesson_participants`, con nombre/nivel congelados y `created_at`) de un conjunto de clases — usado para elegir a quién promover de forma determinística en una clase suelta. */
 export async function listLessonParticipantRows(ctx: AuthenticatedDbContext, lessonIds: string[]): Promise<CalendarLessonParticipantRow[]> {
   if (lessonIds.length === 0) return [];
-  const { data, error } = await ctx.supabase
-    .from("calendar_lesson_participants")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .in("calendar_lesson_id", lessonIds);
-  if (error) throw error;
-  return data as CalendarLessonParticipantRow[];
+  return readTableByIds<CalendarLessonParticipantRow>(ctx.supabase, "calendar_lesson_participants", {
+    matchColumn: "calendar_lesson_id",
+    ids: lessonIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+  });
 }
 
 export async function getCalendarLesson(ctx: AuthenticatedDbContext, id: string): Promise<CalendarLessonRecord | null> {

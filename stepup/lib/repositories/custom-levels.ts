@@ -1,5 +1,6 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
+import { readTable } from "@/lib/db/read";
 import type { CustomLevelRow } from "@/lib/db/database.types";
 import {
   toCustomLevelRecord,
@@ -15,13 +16,14 @@ import {
 export type { CustomLevelRecord } from "./custom-levels-mapping";
 
 export async function listCustomLevels(ctx: AuthenticatedDbContext): Promise<CustomLevelRecord[]> {
-  const { data, error } = await ctx.supabase
-    .from("custom_levels")
-    .select("*")
-    .eq("owner_id", ctx.ownerId)
-    .order("name", { ascending: true });
-  if (error) throw error;
-  return (data as CustomLevelRow[]).map(toCustomLevelRecord);
+  const data = await readTable<CustomLevelRow>(ctx.supabase, "custom_levels", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId),
+    order: [
+      { column: "name", ascending: true },
+      { column: "id", ascending: true },
+    ],
+  });
+  return data.map(toCustomLevelRecord);
 }
 
 export class DuplicateLevelNameError extends Error {}

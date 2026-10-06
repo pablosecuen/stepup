@@ -2,9 +2,10 @@ import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
-import { listAllCharges, listAllAllocations, listAllPayments, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
+import { listOpenChargeBalances } from "@/lib/repositories/payments";
+import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { listStudents } from "@/lib/repositories/students";
-import { buildCollectionsCenterEntries, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
+import { buildCollectionsCenterEntriesFromBalances, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
 import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/dates";
 import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -34,21 +35,11 @@ export default async function CobrosPage() {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const todayDateKey = localDateKeyInTimeZone(new Date());
-    const currentPeriod = billingPeriodOfDateKey(todayDateKey);
-    // Genera las mensualidades y cuotas de entrenamiento faltantes del
-    // período ANTES de leer — mismo criterio automático que el móvil,
-    // idempotente (nunca duplica), cierra huecos de cualquier tamaño.
-    await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
-
-    const [charges, allocations, payments, students] = await Promise.all([
-      listAllCharges(ctx),
-      listAllAllocations(ctx),
-      listAllPayments(ctx),
-      listStudents(ctx),
-    ]);
-    const voidedAtByPaymentId = new Map(payments.map((p) => [p.id, p.voidedAt]));
-    const allocationsWithPaymentVoidedAt = allocations.map((a) => ({ ...a, paymentVoidedAt: voidedAtByPaymentId.get(a.paymentId) ?? null }));
-    entries = buildCollectionsCenterEntries({ charges, allocations: allocationsWithPaymentVoidedAt, students, todayDateKey });
+    // R2: esta página SÓLO LEE. La generación de mensualidades/cuotas del período (idempotente) la dispara
+    // `ChargeGenerationTrigger` con una Server Action (POST) después de mostrar la pantalla — un GET nunca escribe.
+    // Sólo los cargos con saldo pendiente (calculados en la base), no toda la historia de cargos/asignaciones/pagos.
+    const [balances, students] = await Promise.all([listOpenChargeBalances(ctx), listStudents(ctx)]);
+    entries = buildCollectionsCenterEntriesFromBalances({ balances, students, todayDateKey });
   } catch {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
@@ -62,6 +53,7 @@ export default async function CobrosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
+      <ChargeGenerationTrigger />
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Cobros</h1>

@@ -16,10 +16,12 @@ import { ClasesTabContent } from "@/components/students/profile/clases-tab";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
-import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
+import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent } from "@/lib/repositories/payments";
+import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
+import { ReportCleanupTrigger } from "@/components/students/profile/report-cleanup-trigger";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/dates";
 import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/lesson-registrations";
-import { listReportRecordsForStudent, sweepPendingReportPdfCleanupJobs } from "@/lib/repositories/reports";
+import { listReportRecordsForStudent } from "@/lib/repositories/reports";
 import { getStudentMonthsWithClasses } from "@/lib/reports/months";
 import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 import { loadProfileClassStats, loadStudentNextClass, loadStudentTotalCollected } from "@/lib/students/load-profile-overview";
@@ -93,11 +95,8 @@ export default async function AlumnoProfilePage({
     if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
     if (student && tab === "progreso") evaluationEntries = await listEvaluationsForStudent(ctx, id);
     if (student && tab === "cobros") {
-      // Esta pestaña puede abrirse directamente (sin pasar antes por
-      // Centro de cobros) — genera acá también las mensualidades/cuotas de
-      // entrenamiento faltantes, mismo criterio idempotente.
-      const currentPeriod = billingPeriodOfDateKey(todayDateKey);
-      await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
+      // R2: sólo lectura. Esta pestaña puede abrirse directamente (sin pasar antes por Centro de cobros): la generación de
+      // mensualidades/cuotas del período la dispara `ChargeGenerationTrigger` (Server Action) al mostrarse.
       [charges, payments, allocations] = await Promise.all([
         listChargesForStudent(ctx, id),
         listPaymentsForStudent(ctx, id),
@@ -105,14 +104,11 @@ export default async function AlumnoProfilePage({
       ]);
     }
     if (student && tab === "reportes") {
-      // Reintento oportunista de la cola de limpieza de PDFs huérfanos —
-      // esta carga real de la página es uno de los puntos donde debe
-      // reintentarse (además de tras cada eliminación), sin cron. Nunca
-      // bloquea ni rompe la carga del historial si falla.
+      // R2: sólo lectura. El reintento oportunista de la cola de limpieza de PDFs huérfanos (que borra objetos de Storage)
+      // ya no corre en este GET: lo dispara `ReportCleanupTrigger` (Server Action) al abrir la pestaña.
       const [registrationsForReport, history] = await Promise.all([
         listCompletedRegistrationsForStudentReport(ctx, id),
         listReportRecordsForStudent(ctx, id),
-        sweepPendingReportPdfCleanupJobs(ctx).catch(() => 0),
       ]);
       monthsWithClasses = getStudentMonthsWithClasses(
         registrationsForReport.map((r) => ({ countsAsClass: true, dateKey: r.dateKey })),
@@ -172,9 +168,17 @@ export default async function AlumnoProfilePage({
         {tab === "clases" && <ClasesTabContent registrations={registrations} attendanceByRegistrationId={attendanceByRegistrationId} />}
         {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
-        {tab === "cobros" && <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />}
+        {tab === "cobros" && (
+          <>
+            <ChargeGenerationTrigger />
+            <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />
+          </>
+        )}
         {tab === "reportes" && (
-          <ReportesTabContent studentId={id} studentName={student.name} monthsWithClasses={monthsWithClasses} initialHistory={reportHistory} />
+          <>
+            <ReportCleanupTrigger />
+            <ReportesTabContent studentId={id} studentName={student.name} monthsWithClasses={monthsWithClasses} initialHistory={reportHistory} />
+          </>
         )}
         {tab === "informacion" && (
           <InformacionTabContent

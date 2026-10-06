@@ -213,10 +213,12 @@ test("cableado: cada pestaña carga sólo lo suyo y el Resumen/Información NUNC
   assert.match(page, /tab === "informacion"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentTotalCollected\(ctx, id\)/);
   assert.match(page, /tab === "clases"\) \{[\s\S]*?listCompletedRegistrationsForStudentReport\(ctx, id\)/);
   assert.match(page, /<ResumenTabContent student=\{student\} stats=\{stats\} nextClass=\{nextClass\} pendingTasks=\{pendingTasks\} \/>/);
-  // La generación idempotente de cobros sigue sólo en la pestaña Cobros.
-  const ensureCalls = [...page.matchAll(/ensureCurrentMonthlyCharges\(/g)].length;
-  assert.equal(ensureCalls, 1);
-  assert.match(page, /tab === "cobros"\) \{[\s\S]*?ensureCurrentMonthlyCharges/);
+  // R2: la página NUNCA escribe durante el GET (ni genera cobros ni barre PDFs). La generación idempotente de cobros la dispara
+  // un Server Action (POST) desde `ChargeGenerationTrigger`, sólo en la pestaña Cobros; el barrido de PDFs, desde `ReportCleanupTrigger`.
+  assert.doesNotMatch(page, /ensureCurrentMonthlyCharges|ensureTrainingCharges|sweepPendingReportPdfCleanupJobs/);
+  assert.match(page, /tab === "cobros" && \(\s*<>\s*<ChargeGenerationTrigger \/>/);
+  assert.match(page, /tab === "reportes" && \(\s*<>\s*<ReportCleanupTrigger \/>/);
+  assert.equal([...page.matchAll(/<ChargeGenerationTrigger \/>/g)].length, 1);
 
   const loader = code("lib/students/load-profile-overview.ts");
   assert.doesNotMatch(loader, /ensureCurrentMonthlyCharges|ensureTrainingCharges|registerPayment|\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);

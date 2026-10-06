@@ -5,14 +5,14 @@ import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons"
 import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
 import { listStudents } from "@/lib/repositories/students";
-import { listAllCharges, listAllAllocations, listAllPayments, ensureCurrentMonthlyCharges, ensureTrainingCharges } from "@/lib/repositories/payments";
+import { listOpenChargeBalances } from "@/lib/repositories/payments";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { selectCurrentOrNextOccurrence, type LessonTimingStatus } from "@/lib/calendar/next-class";
 import { buildEmptyClassesSummary, type EmptyClassesSummary } from "@/lib/calendar/empty-classes";
 import { buildPendingLessons, type PendingLessonItem } from "@/lib/lessons/pending";
-import { buildCollectionsCenterEntries, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
+import { buildCollectionsCenterEntriesFromBalances, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
 import { summarizeCollectionsUrgency, type CollectionsUrgencySummary } from "@/lib/payments/collections-urgency";
 import { buildRemindersCenterSummary, type RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
 import { instantMinutesOfDay } from "@/lib/calendar/civil-calendar";
@@ -117,14 +117,12 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds);
   const pendingLessons = buildPendingLessons({ calendarItems: pendingItems, now, registrations });
 
-  const currentBillingPeriod = billingPeriodOfDateKey(todayDateKey);
-  await Promise.all([ensureCurrentMonthlyCharges(ctx, currentBillingPeriod), ensureTrainingCharges(ctx, currentBillingPeriod)]);
-  const [charges, allocations, payments] = await Promise.all([listAllCharges(ctx), listAllAllocations(ctx), listAllPayments(ctx)]);
-  const voidedAtByPaymentId = new Map(payments.map((p) => [p.id, p.voidedAt]));
-  const allocationsWithPaymentVoidedAt = allocations.map((a) => ({ ...a, paymentVoidedAt: voidedAtByPaymentId.get(a.paymentId) ?? null }));
-  const collectionEntries = buildCollectionsCenterEntries({
-    charges,
-    allocations: allocationsWithPaymentVoidedAt,
+  // R2: esta lectura NO genera cargos (un GET nunca escribe): la generación del período la dispara `ChargeGenerationTrigger`
+  // (Server Action) y la pantalla se refresca si se creó algo.
+  // R2: sólo los cargos con saldo pendiente (calculados en la base), no toda la historia de cargos/asignaciones/pagos.
+  const balances = await listOpenChargeBalances(ctx);
+  const collectionEntries = buildCollectionsCenterEntriesFromBalances({
+    balances,
     students: students.map((s) => ({ id: s.id, name: s.name, status: s.status })),
     todayDateKey,
   });
