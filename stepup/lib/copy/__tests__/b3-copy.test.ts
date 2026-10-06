@@ -106,7 +106,7 @@ test("el historial de importaciones no expone checksum ni versión de esquema ni
   assert.doesNotMatch(history, /checksum|schemaVersion|versión de esquema/);
   assert.match(history, /formatImportCounts\(run\.countsByTable\)/);
   assert.doesNotMatch(history, /Object\.entries\(run\.countsByTable\)/, "ya no imprime los nombres internos de las tablas");
-  assert.match(history, /registro\(s\) importado\(s\)/);
+  assert.match(history, /elemento importado/);
   assert.match(code("app/(app)/configuracion/respaldo/page.tsx"), /Tus importaciones anteriores\./);
 });
 

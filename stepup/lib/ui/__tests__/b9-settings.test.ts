@@ -210,7 +210,8 @@ test("historial de importaciones: estado vacío de la app y botones compartidos;
   assert.match(history, /previewUndoImportAction\(run\.id\)/);
   assert.match(history, /applyUndoImportAction\(undoState\.undoPreviewId\)/);
   assert.match(history, /discardImportUndoAction\(run\.id\)/);
-  assert.match(history, /BUTTON_DANGER_OUTLINE/);
+  assert.match(history, /BUTTON_SECONDARY/);
+  assert.match(history, /DiscardUndoControl/, "quitar la opción de deshacer pide confirmación (B10)");
   assert.doesNotMatch(history, /text-xs font-semibold text-statusRojo hover:underline/, "sin enlaces peligrosos de texto suelto");
 });
 
@@ -223,7 +224,7 @@ test("sin conexión con la cuenta: un aviso con salida (Reintentar), no tres tar
 
 test("alcance: el asistente de importación, la autenticación, las sesiones y las migraciones no cambian", () => {
   const wizard = read("components/backup/import-wizard.tsx");
-  assert.match(wizard, /Analiza el último respaldo de la nube \(subido automáticamente por la app móvil\) y te muestra qué se podría\s+recuperar/);
+  assert.match(wizard, /Primero solo se analiza\./, "el asistente se simplificó en B10; su lógica no cambia");
   assert.match(code("app/(app)/inicio/page.tsx"), /redirect\(SESSION_RECOVERY_PATH\)/);
   const actions = code("lib/actions/account.ts");
   assert.match(actions, /await deleteOwnAccount\(ctx\);[\s\S]*?await createSupabaseAuthAdapter\(\)\.signOut\(\);/, "primero borra y sólo después cierra sesión");

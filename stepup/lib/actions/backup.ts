@@ -20,6 +20,8 @@ import {
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import { domainErrorMessage } from "@/lib/errors/domain-error-message";
+import { translateImportError, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
+import { formatInstantDateTime } from "@/lib/format/date-format";
 
 // Server Actions — Fase 9 (Backup e importación). Nunca reciben `ownerId`
 // del navegador; `requireAuthenticatedDbContext()` siempre resuelve la
@@ -33,11 +35,16 @@ import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 
 export interface ActionResult<T> {
   error?: string;
+  /** Código corto y estable para soporte (nunca datos personales, ids ni nombres de tablas). */
+  errorCode?: string;
   data?: T;
 }
 
-function friendlyError(error: unknown): string {
-  return domainErrorMessage(error);
+// Todo error del asistente se traduce a una frase útil + un código de soporte (`lib/backup/import-copy.ts`): el mensaje
+// interno de la RPC (ids, palabras como «preview» o «invariante») nunca llega al navegador.
+function failure(error: unknown, context: ImportErrorContext): { error: string; errorCode: string } {
+  const translated = translateImportError(domainErrorMessage(error), context);
+  return { error: translated.message, errorCode: translated.code };
 }
 
 export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ found: boolean; createdAt?: string; appVersion?: string | null }>> {
@@ -47,7 +54,7 @@ export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ fou
     if (!backup) return { data: { found: false } };
     return { data: { found: true, createdAt: backup.createdAt, appVersion: backup.appVersion } };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "analyze");
   }
 }
 
@@ -59,15 +66,19 @@ export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ fou
  * separada de los archivos de prueba `PRUEBA WEB F9` usados en las pruebas
  * automatizadas.
  */
-export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ preview: ImportPreviewDto }>> {
+export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ preview: ImportPreviewDto; backup: { createdAtLabel: string; appVersion: string | null } }>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const backup = await fetchOwnLatestCloudBackup(ctx);
-    if (!backup) return { error: "No encontramos ningún respaldo en la nube para tu cuenta." };
+    if (!backup) {
+      const translated = translateImportError("No encontramos ningún respaldo en la nube para tu cuenta.", "analyze");
+      return { error: translated.message, errorCode: translated.code };
+    }
 
     const validation = validateBackupPayload(backup.payload);
     if (!validation.ok) {
-      return { error: validation.errors.map((e) => e.message).join(" ") };
+      const translated = translateValidationErrors(validation.errors);
+      return { error: translated.message, errorCode: translated.code };
     }
 
     const result = await previewBackupImport(
@@ -88,10 +99,12 @@ export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ p
         backupStudents[legacyId] = { name: raw.name, levels: raw.levels, initialLevel: raw.initialLevel, status: raw.status, phone: raw.phone, email: raw.email } satisfies RawDuplicatePersonSource;
       }
     }
-    const candidateStudents = await fetchStudentsSummaryByIds(
-      ctx,
-      duplicates.map((d) => d.candidate_student_id)
-    );
+    // También se resuelve el nombre de cada alumno en conflicto (mismo helper, solo lectura): sin él, la pantalla pedía
+    // elegir campos sin decir de qué alumno se trataba.
+    const candidateStudents = await fetchStudentsSummaryByIds(ctx, [
+      ...duplicates.map((d) => d.candidate_student_id),
+      ...result.classification.maestros.students.conflicts.map((c) => c.row_id),
+    ]);
 
     const preview = toImportPreviewDto(
       {
@@ -102,9 +115,9 @@ export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ p
       },
       { backupStudents, candidateStudents }
     );
-    return { data: { preview } };
+    return { data: { preview, backup: { createdAtLabel: formatInstantDateTime(backup.createdAt), appVersion: backup.appVersion ?? null } } };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "analyze");
   }
 }
 
@@ -118,7 +131,7 @@ export async function applyImportPreviewAction(
     const result = await applyBackupImport(ctx, previewId, fieldOverrides, duplicateDecisions);
     return { data: { importRunId: result.importRunId, summary: result.summary } };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "apply");
   }
 }
 
@@ -142,7 +155,7 @@ export async function previewUndoImportAction(importRunId: string): Promise<Acti
       },
     };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "undoPreview");
   }
 }
 
@@ -152,7 +165,7 @@ export async function applyUndoImportAction(undoPreviewId: string): Promise<Acti
     const summary = await applyUndoBackupImport(ctx, undoPreviewId);
     return { data: { summary } };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "undo");
   }
 }
 
@@ -162,7 +175,7 @@ export async function discardImportUndoAction(importRunId: string): Promise<Acti
     await discardImportUndo(ctx, importRunId);
     return { data: { discarded: true } };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "discard");
   }
 }
 
@@ -172,6 +185,6 @@ export async function listImportRunsAction(): Promise<ActionResult<ImportRunHist
     const runs = await listImportRuns(ctx);
     return { data: runs };
   } catch (error) {
-    return { error: friendlyError(error) };
+    return failure(error, "history");
   }
 }

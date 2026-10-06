@@ -17,8 +17,8 @@ export default async function RespaldoPage() {
       <SettingsBreadcrumb current="Respaldo" />
       <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Respaldo</h1>
       <p className="mt-1.5 text-sm text-textMuted">
-        Recuperá datos del respaldo automático de la app móvil hacia la web — manual, opcional, nunca reemplaza lo que
-        ya cargaste acá.
+        Traé a la web los datos de la copia de seguridad que hace tu app móvil. Es opcional y manual: primero ves qué se
+        importaría y recién después confirmás. Por defecto no se reemplaza nada de lo que ya cargaste acá.
       </p>
 
       <section aria-labelledby="respaldo-recuperar" className="mt-7">

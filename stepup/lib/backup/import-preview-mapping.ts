@@ -207,6 +207,8 @@ export interface MasterConflict {
   legacyMobileId: string;
   rowId: string;
   fields: FieldDiffMap;
+  /** Sólo en alumnos: el nombre real del alumno ya existente en la web, para decir de quién son las diferencias. */
+  studentName?: string;
 }
 export interface StudentDuplicate {
   backupLegacyMobileId: string;
@@ -350,6 +352,10 @@ export function toImportPreviewDto(
     expiresAt: raw.expiresAt,
     students: {
       ...toMasterBucket(raw.classification.maestros.students),
+      conflicts: toMasterBucket(raw.classification.maestros.students).conflicts.map((c) => {
+        const name = duplicateContext.candidateStudents[c.rowId]?.name;
+        return name && name.trim() !== "" ? { ...c, studentName: name } : c;
+      }),
       duplicates: raw.classification.maestros.students.duplicates.map((d) => ({
         backupLegacyMobileId: d.backup_legacy_mobile_id,
         candidateStudentId: d.candidate_student_id,
