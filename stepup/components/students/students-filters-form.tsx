@@ -85,10 +85,6 @@ export function StudentsFiltersForm({
         </div>
       </div>
 
-      <p className="text-xs text-textMuted">
-        Orden por próxima clase o último pago todavía no está disponible — depende de Calendario y Cobros (fases 3 y 5).
-      </p>
-
       <div className="flex items-center gap-3">
         <button
           type="submit"

@@ -1,14 +1,5 @@
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <p className="text-xs font-medium uppercase tracking-wide text-textMuted">{label}</p>
-      <p className="mt-1 text-sm text-textPrimary">{value}</p>
-    </div>
-  );
-}
-
 function BulletSection({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
@@ -24,19 +15,13 @@ function BulletSection({ title, items }: { title: string; items: string[] }) {
 }
 
 /**
- * Resumen — mismo contenido que ResumenTab.tsx (móvil), con los campos que
- * dependen de Calendario/Cobros marcados como pendientes en vez de
- * inventados. `pendingHomework`/`alerts` SÍ son columnas reales de
- * `students` (existen desde Fase 1), aunque hoy nada las escriba todavía.
+ * Resumen — mismo contenido que ResumenTab.tsx (móvil), sólo con datos reales: los campos que todavía no tienen dato
+ * (próxima y última clase) no se muestran en vez de aparecer como "pendientes" (su dato real es el bloque B6).
+ * `pendingHomework`/`alerts` SÍ son columnas reales de `students`.
  */
 export function ResumenTabContent({ student }: { student: StudentRecord }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <InfoCard label="Próxima clase" value="Depende de Calendario (Fase 3) — todavía no disponible." />
-        <InfoCard label="Última clase" value="Depende de Calendario (Fase 3) — todavía no disponible." />
-      </div>
-
       {student.pendingHomework && (
         <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-sm font-semibold text-textPrimary">Tarea pendiente</p>

@@ -56,7 +56,7 @@ export default async function ConfiguracionPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
       <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Configuración</h1>
       <p className="mt-1.5 text-sm text-textMuted">
-        {user ? "Tu cuenta, preferencias y datos." : "Vista previa — sin conexión a tu cuenta real todavía."}
+        {user ? "Tu cuenta, preferencias y datos." : "No pudimos conectar con tu cuenta en este momento."}
       </p>
 
       {user ? <ConfiguredSections email={user.email} /> : <UnauthenticatedSections />}
@@ -118,7 +118,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
 
       <SectionCard
         title="Políticas de cobro"
-        description="Los recargos automáticos están desactivados — decisión de negocio confirmada. El semáforo de mora usa umbrales fijos, no configurables todavía."
+        description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos."
       />
 
       <SectionCard title="Sesiones" description="Dispositivo autorizado actualmente para tu cuenta.">

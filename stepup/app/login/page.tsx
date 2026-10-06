@@ -26,7 +26,7 @@ export default async function LoginPage({
   if (user) redirect(next);
 
   return (
-    <AuthShell title="Iniciar sesión" subtitle="Usá tu cuenta de TeacherFlow para sincronizar en el futuro.">
+    <AuthShell title="Iniciar sesión" subtitle="Ingresá con tu cuenta de TeacherFlow.">
       <LoginForm next={next} />
     </AuthShell>
   );

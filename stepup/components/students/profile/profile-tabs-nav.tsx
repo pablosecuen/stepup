@@ -12,9 +12,7 @@ const TABS: { key: ProfileTabKey; label: string }[] = [
   { key: "informacion", label: "Información" },
 ];
 
-// Mismas 7 pestañas que StudentProfileScreen.tsx en móvil (SegmentedTabs) —
-// nunca se elimina ninguna aunque su contenido dependa de una fase futura
-// (ver PendingTabContent).
+// Mismas 7 pestañas que StudentProfileScreen.tsx en móvil (SegmentedTabs).
 export function ProfileTabsNav({ studentId, active }: { studentId: string; active: ProfileTabKey }) {
   return (
     <nav aria-label="Secciones del perfil" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">

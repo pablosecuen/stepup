@@ -12,7 +12,7 @@ const FEATURES = [
   },
   {
     title: "Cobros",
-    description: "Mensualidades, recargos y vencimientos resueltos automáticamente.",
+    description: "Mensualidades, pagos y vencimientos siempre a la vista.",
   },
 ];
 
@@ -61,7 +61,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-border px-6 py-6 text-center text-xs text-textMuted sm:px-10">
-        TeacherFlow — versión web en construcción.
+        TeacherFlow — para profesoras y profesores independientes.
       </footer>
     </main>
   );

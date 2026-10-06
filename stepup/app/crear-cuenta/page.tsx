@@ -19,7 +19,7 @@ export default async function CrearCuentaPage() {
   if (user) redirect(DEFAULT_AUTH_REDIRECT);
 
   return (
-    <AuthShell title="Crear cuenta" subtitle="Esta cuenta todavía no sincroniza datos — sólo prepara el acceso.">
+    <AuthShell title="Crear cuenta" subtitle="Creá tu cuenta con tu correo y una contraseña.">
       <SignUpForm />
     </AuthShell>
   );

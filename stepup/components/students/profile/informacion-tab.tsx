@@ -38,9 +38,6 @@ export function InformacionTabContent({
         <div className="mt-2 divide-y divide-border">
           <Row label="Nivel inicial" value={student.initialLevel || "—"} />
           <Row label="Niveles actuales" value={student.levels.length > 0 ? student.levels.join(", ") : "—"} />
-          <Row label="Horas totales tomadas" value="Depende de Registro de clases (Fase 4)." />
-          <Row label="Total invertido" value="Depende de Cobros (Fase 5)." />
-          <Row label="Cantidad total de clases" value="Depende de Registro de clases (Fase 4)." />
           <Row label="Fecha de alta" value={formatDate(student.dateJoined)} />
           {student.lastReactivatedAt && <Row label="Última reactivación" value={formatDate(student.lastReactivatedAt)} />}
           {student.statusChangeDate && <Row label="Fecha de pausa/archivo" value={formatDate(student.statusChangeDate)} />}

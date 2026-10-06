@@ -34,8 +34,6 @@ export function ActiveSessionCard({ session }: { session: ActiveSessionInfo | nu
   return (
     <div className="mt-3 flex flex-col gap-2.5">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-        <dt className="text-textMuted">Dispositivo</dt>
-        <dd className="text-textSecondary">{session.deviceId.slice(0, 8)}…</dd>
         <dt className="text-textMuted">Autorizado</dt>
         <dd className="text-textSecondary">{session.authorizedAtLabel}</dd>
         <dt className="text-textMuted">Última actividad</dt>
@@ -55,8 +53,8 @@ export function ActiveSessionCard({ session }: { session: ActiveSessionInfo | nu
       ) : (
         <div className="rounded-md border border-statusRojo/30 bg-statusRojo/5 p-2.5">
           <p className="text-xs text-textSecondary">
-            Esto cierra la sesión del dispositivo autorizado ({session.deviceId.slice(0, 8)}…) de inmediato. Usalo si
-            perdiste ese dispositivo o ya no lo controlás.
+            Esto cierra la sesión del dispositivo autorizado de inmediato. Usalo si perdiste ese dispositivo o ya no lo
+            controlás.
           </p>
           {error && (
             <div className="mt-2">

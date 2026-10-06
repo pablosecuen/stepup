@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { formatImportCounts } from "@/lib/backup/import-count-labels";
 import { listImportRunsAction, previewUndoImportAction, applyUndoImportAction, discardImportUndoAction } from "@/lib/actions/backup";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { computeUndoAvailability, type ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
@@ -70,26 +71,22 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
         <div>
           <p className="text-sm font-medium text-textPrimary">{formatInstantDateTime(run.createdAt)}</p>
           <p className="text-xs text-textMuted">
-            {STATUS_LABEL[run.status]} · versión de esquema {run.schemaVersion ?? "—"}
-            {run.appVersion ? ` · app ${run.appVersion}` : ""} · checksum {run.checksum ? `${run.checksum.slice(0, 12)}…` : "—"}
+            {STATUS_LABEL[run.status]}
+            {run.appVersion ? ` · app ${run.appVersion}` : ""}
           </p>
         </div>
-        <p className="text-xs text-textSecondary">{run.totalRowsWritten} fila(s) escrita(s)</p>
+        <p className="text-xs text-textSecondary">{run.totalRowsWritten} registro(s) importado(s)</p>
       </div>
 
-      {run.countsByTable && (
-        <p className="mt-1 text-xs text-textMuted">
-          {Object.entries(run.countsByTable)
-            .map(([table, count]) => `${table}: ${count}`)
-            .join(", ")}
-        </p>
+      {run.countsByTable && formatImportCounts(run.countsByTable) && (
+        <p className="mt-1 text-xs text-textMuted">{formatImportCounts(run.countsByTable)}</p>
       )}
 
       <p className="mt-1 text-xs text-textMuted">
         {run.status === "undone"
           ? `Deshecha el ${run.undoneAt ? formatInstantDateTime(run.undoneAt) : "—"}.`
           : `Se puede deshacer hasta el ${formatInstantDateTime(run.undoExpiresAt)}.`}
-        {run.payloadPurged ? " El contenido del respaldo ya se purgó (dato técnico, sólo queda el resumen)." : ""}
+        {run.payloadPurged ? " El contenido del respaldo ya no se conserva; sólo queda el resumen." : ""}
       </p>
 
       {error && (
@@ -100,7 +97,7 @@ function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: (
 
       {availability.kind === "already_undone" && <p className="mt-2 text-xs text-textMuted">Ya fue deshecha.</p>}
       {availability.kind === "snapshots_purged" && (
-        <p className="mt-2 text-xs text-textMuted">El respaldo necesario para deshacerla ya se purgó — no se puede deshacer.</p>
+        <p className="mt-2 text-xs text-textMuted">El respaldo necesario para deshacerla ya no se conserva — no se puede deshacer.</p>
       )}
       {availability.kind === "expired" && <p className="mt-2 text-xs text-textMuted">El plazo para deshacerla venció.</p>}
 

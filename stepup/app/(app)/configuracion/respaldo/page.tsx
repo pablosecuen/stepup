@@ -29,7 +29,7 @@ export default async function RespaldoPage() {
 
       <div className="mt-10">
         <h2 className="text-lg font-semibold text-textPrimary">Historial de importaciones</h2>
-        <p className="mt-1 text-xs text-textMuted">Sobrevive a recargas y a cerrar el navegador — se lee siempre de la base, nunca de memoria.</p>
+        <p className="mt-1 text-xs text-textMuted">Tus importaciones anteriores.</p>
         <div className="mt-3">
           <ImportHistory />
         </div>
