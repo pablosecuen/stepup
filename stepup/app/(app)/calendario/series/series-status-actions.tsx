@@ -155,7 +155,7 @@ export function SeriesStatusActions({
             <label htmlFor={`effectiveDate-${ruleId}`} className="text-xs font-medium text-textSecondary">
               Desde qué fecha rige el nuevo patrón
             </label>
-            <input id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required className="rounded-md border border-border px-3 py-2 text-sm" />
+            <input id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required className="rounded-md border border-borderStrong px-3 py-2 text-sm" />
           </div>
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
           <p className="text-xs text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
@@ -176,7 +176,7 @@ export function SeriesStatusActions({
               name="participantsEffectiveDate"
               type="date"
               required
-              className="rounded-md border border-border px-3 py-2 text-sm"
+              className="rounded-md border border-borderStrong px-3 py-2 text-sm"
             />
           </div>
           <fieldset className="flex flex-col gap-1.5">

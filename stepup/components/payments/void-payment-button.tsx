@@ -28,7 +28,7 @@ export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder="Motivo de la anulación"
-        className="w-full rounded-md border border-border px-2 py-1 text-xs"
+        className="w-full rounded-md border border-borderStrong px-2 py-1 text-xs"
       />
       <div className="mt-1.5 flex gap-1.5">
         <button

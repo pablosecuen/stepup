@@ -108,7 +108,8 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar alumno activo"
-          className="mt-1.5 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+          aria-label="Buscar alumno activo"
+          className="mt-1.5 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
         />
         <div className="mt-1.5 max-h-48 overflow-y-auto rounded-md border border-border">
           {filtered.length === 0 ? (
@@ -121,10 +122,11 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
                   key={s.id}
                   type="button"
                   onClick={() => toggle(s.id)}
+                  aria-pressed={isSelected}
                   className="flex w-full items-center justify-between gap-2 border-b border-border px-2.5 py-2 text-left text-sm last:border-b-0 hover:bg-background"
                 >
                   <span className="flex items-center gap-2">
-                    <span className={`h-4 w-4 rounded border ${isSelected ? "border-brandBlue bg-brandBlue" : "border-border"}`} />
+                    <span aria-hidden className={`flex h-4 w-4 items-center justify-center rounded border text-[11px] font-bold leading-none text-white ${isSelected ? "border-brandBlue bg-brandBlue" : "border-borderStrong"}`}>{isSelected ? "✓" : ""}</span>
                     {s.name}
                   </span>
                   <span className="text-xs text-textMuted">{s.level}</span>
@@ -136,29 +138,29 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-textSecondary">Fecha *</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-md border border-border px-2.5 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-textSecondary">Hora *</label>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border border-border px-2.5 py-2 text-sm" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-textSecondary">Duración (min) *</label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-textSecondary">Fecha *</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-textSecondary">Hora *</span>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-textSecondary">Duración (min) *</span>
           <input
             type="number"
             min="1"
             value={durationMinutes}
             onChange={(e) => setDurationMinutes(e.target.value)}
-            className="rounded-md border border-border px-2.5 py-2 text-sm"
+            className="rounded-md border border-borderStrong px-2.5 py-2 text-sm"
           />
-        </div>
+        </label>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-textSecondary">Modalidad</label>
-        <select value={modality} onChange={(e) => setModality(e.target.value)} className="rounded-md border border-border px-2.5 py-2 text-sm">
+        <select aria-label="Modalidad" value={modality} onChange={(e) => setModality(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm">
           <option value="presencial">Presencial</option>
           <option value="online">Online</option>
           <option value="mixta">Mixta</option>
@@ -167,7 +169,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
 
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-textSecondary">Resultado</label>
-        <select value={outcome} onChange={(e) => setOutcome(e.target.value as AdhocOutcome)} className="rounded-md border border-border px-2.5 py-2 text-sm">
+        <select aria-label="Resultado" value={outcome} onChange={(e) => setOutcome(e.target.value as AdhocOutcome)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm">
           {OUTCOMES.map((o) => (
             <option key={o} value={o}>
               {ADHOC_OUTCOME_LABEL[o]}
@@ -187,7 +189,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
               <select
                 value={lateCancellationPolicy}
                 onChange={(e) => setLateCancellationPolicy(e.target.value as LateCancellationPolicy)}
-                className="mt-1 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
               >
                 {LATE_CANCELLATION_POLICIES.map((p) => (
                   <option key={p} value={p}>
@@ -205,7 +207,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
                   max="100"
                   value={lateCancellationPercentage}
                   onChange={(e) => setLateCancellationPercentage(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
                 />
               </label>
             )}

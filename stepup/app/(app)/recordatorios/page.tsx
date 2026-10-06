@@ -23,7 +23,7 @@ export default async function RecordatoriosPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar los recordatorios." />
-        <Link href="/recordatorios" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/recordatorios" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -32,7 +32,7 @@ export default async function RecordatoriosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/inicio" className="text-sm font-semibold text-brandBlue hover:underline">
+      <Link href="/inicio" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
         ← Volver a Inicio
       </Link>
       <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Recordatorios</h1>

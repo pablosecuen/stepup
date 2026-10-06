@@ -12,7 +12,7 @@ import {
 import { todayInArgentina } from "@/lib/format/date-format";
 
 const inputClassName =
-  "rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
+  "rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 const labelClassName = "text-sm font-medium text-textSecondary";
 const fieldClassName = "flex flex-col gap-1.5";
 
@@ -57,9 +57,10 @@ export function StudentFormFields({
           {allLevelNames.map((level) => (
             <label
               key={level}
-              className="flex cursor-pointer items-center gap-1.5 rounded-pill border border-border bg-background px-3 py-1.5 text-xs font-medium text-textSecondary has-[:checked]:border-brandBlue has-[:checked]:bg-brandBlue/10 has-[:checked]:text-brandBlueDark"
+              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-pill border border-border bg-background px-4 py-1.5 text-sm font-medium text-textSecondary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brandBlue has-[:focus-visible]:ring-offset-2 has-[:checked]:border-brandBlue has-[:checked]:bg-brandBlue/10 has-[:checked]:text-brandBlueDark"
             >
-              <input type="checkbox" name="levels" value={level} defaultChecked={selectedLevels.has(level)} className="sr-only" />
+              <input type="checkbox" name="levels" value={level} defaultChecked={selectedLevels.has(level)} className="peer sr-only" />
+              <span aria-hidden className="hidden text-xs font-bold peer-checked:inline">✓</span>
               {level}
             </label>
           ))}

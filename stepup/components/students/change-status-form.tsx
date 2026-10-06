@@ -93,7 +93,7 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
             setSelectedStatus(e.target.value as StudentStatus);
             setRemoveFromFuture("");
           }}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         >
           {STUDENT_STATUS_OPTIONS.filter((s) => s !== "activo").map((option) => (
             <option key={option} value={option}>
@@ -150,7 +150,7 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
           id="reason"
           name="reason"
           type="text"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 

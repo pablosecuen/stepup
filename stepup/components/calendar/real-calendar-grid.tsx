@@ -64,6 +64,7 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${today ? "bg-brandBlue text-white" : "text-textPrimary"}`}
                   >
                     {dayOfMonth(dayKey)}
+                    {today && <span className="sr-only"> (hoy)</span>}
                   </span>
                 </div>
               );

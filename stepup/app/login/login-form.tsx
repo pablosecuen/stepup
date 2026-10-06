@@ -48,7 +48,7 @@ export function LoginForm({ next }: { next: string }) {
           autoComplete="email"
           required
           placeholder="tu@correo.com"
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -63,7 +63,7 @@ export function LoginForm({ next }: { next: string }) {
           autoComplete="current-password"
           required
           placeholder="••••••••"
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -72,21 +72,21 @@ export function LoginForm({ next }: { next: string }) {
       {showCreateAccountHint && (
         <FormInfoBox>
           ¿Todavía no tenés cuenta con este correo?{" "}
-          <Link href="/crear-cuenta" className="font-semibold text-brandBlue hover:underline">
+          <Link href="/crear-cuenta" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
             Crear cuenta
           </Link>
         </FormInfoBox>
       )}
 
-      <Link href="/recuperar-contrasena" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/recuperar-contrasena" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         Olvidé mi contraseña
       </Link>
 
       <SubmitButton />
 
-      <p className="mt-1 text-center text-sm text-textSecondary">
+      <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-sm text-textSecondary">
         ¿No tenés cuenta?{" "}
-        <Link href="/crear-cuenta" className="font-semibold text-brandBlue hover:underline">
+        <Link href="/crear-cuenta" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
           Crear cuenta
         </Link>
       </p>

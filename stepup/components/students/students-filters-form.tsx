@@ -2,7 +2,7 @@ import Link from "@/components/nav/private-link";
 import { STUDENT_STATUS_LABEL, STUDENT_STATUS_OPTIONS, MODALITY_LABEL, MODALITY_OPTIONS, STANDARD_LEVELS } from "@/lib/students/constants";
 
 const selectClassName =
-  "rounded-md border border-border bg-surface px-3 py-2 text-sm text-textPrimary transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
+  "rounded-md border border-borderStrong bg-surface px-3 py-2 text-sm text-textPrimary transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 
 /**
  * Formulario GET puro — sin JavaScript en el cliente. Cada envío navega a
@@ -37,7 +37,7 @@ export function StudentsFiltersForm({
           type="text"
           defaultValue={search}
           placeholder="Nombre del alumno..."
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -92,7 +92,7 @@ export function StudentsFiltersForm({
         >
           Aplicar filtros
         </button>
-        <Link href="/alumnos" className="text-sm font-medium text-textSecondary hover:text-textPrimary hover:underline">
+        <Link href="/alumnos" className="inline-flex min-h-11 items-center text-sm font-medium text-textSecondary hover:text-textPrimary hover:underline">
           Limpiar
         </Link>
       </div>

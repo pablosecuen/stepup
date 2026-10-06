@@ -107,12 +107,12 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
               max={balance}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded-md border border-borderStrong px-2 py-1.5 text-sm"
             />
           </label>
           <label className="text-xs text-textSecondary">
             Método
-            <select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm">
+            <select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 w-full rounded-md border border-borderStrong px-2 py-1.5 text-sm">
               {Object.entries(METHOD_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -127,12 +127,12 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
               value={paidAt}
               max={todayInArgentina()}
               onChange={(e) => setPaidAt(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              className="mt-1 w-full rounded-md border border-borderStrong px-2 py-1.5 text-sm"
             />
           </label>
           <label className="text-xs text-textSecondary">
             Observación (opcional)
-            <input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm" />
+            <input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 w-full rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
           </label>
         </div>
         <p className="mt-2 text-xs text-textMuted">Saldo pendiente de este cobro: {formatMoney(balance)}.</p>
@@ -161,7 +161,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
       </p>
       <label className="mt-2 block text-xs text-textSecondary">
         Motivo (obligatorio)
-        <input value={voidReason} onChange={(e) => setVoidReason(e.target.value)} className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm" />
+        <input value={voidReason} onChange={(e) => setVoidReason(e.target.value)} className="mt-1 w-full rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
       </label>
       <div className="mt-3 flex gap-2">
         <button

@@ -51,7 +51,7 @@ function RenameLevelRow({ level }: { level: CustomLevelRecord }) {
           name="name"
           defaultValue={level.name}
           autoFocus
-          className="min-w-[8rem] flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="min-w-[8rem] flex-1 rounded-md border border-borderStrong bg-surface px-2 py-1 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
         <SmallSubmitButton label="Guardar" />
         <button
@@ -95,7 +95,7 @@ export function ManageLevelsSection({ customLevels }: { customLevels: CustomLeve
             type="text"
             name="name"
             placeholder="Nombre del nivel nuevo"
-            className="min-w-[10rem] flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+            className="min-w-[10rem] flex-1 rounded-md border border-borderStrong bg-background px-2 py-1.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
           />
           <SmallSubmitButton label="Crear nivel" />
         </form>

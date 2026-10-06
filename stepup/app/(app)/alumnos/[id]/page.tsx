@@ -123,7 +123,7 @@ export default async function AlumnoProfilePage({
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar este alumno." />
-        <a href={`/alumnos/${id}`} className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <a href={`/alumnos/${id}`} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </a>
       </div>
@@ -134,7 +134,7 @@ export default async function AlumnoProfilePage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/alumnos" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/alumnos" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver a Alumnos
       </Link>
 
@@ -151,7 +151,7 @@ export default async function AlumnoProfilePage({
         </div>
         <Link
           href={`/alumnos/${id}/editar`}
-          className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
         >
           Editar alumno
         </Link>

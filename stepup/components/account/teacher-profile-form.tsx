@@ -36,7 +36,7 @@ export function TeacherProfileForm({ displayName }: { displayName: string }) {
           type="text"
           defaultValue={displayName}
           placeholder="Tu nombre"
-          className="min-w-[10rem] flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="min-w-[10rem] flex-1 rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
         <SaveButton />
       </div>

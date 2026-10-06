@@ -39,7 +39,7 @@ export default async function RegistroPendientesPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar las clases por registrar." />
-        <Link href="/registro" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -57,7 +57,7 @@ export default async function RegistroPendientesPage() {
         </div>
         <Link
           href="/registro/nuevo"
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
         >
           + Registrar clase no programada
         </Link>

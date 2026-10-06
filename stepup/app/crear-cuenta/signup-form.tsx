@@ -45,7 +45,7 @@ export function SignUpForm() {
         <FormInfoBox>Tocá el enlace del correo para activar tu cuenta.</FormInfoBox>
         <EmailCodeForm flow="signup" email={email} />
         <ResendConfirmationForm email={email} />
-        <Link href="/login" className="text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Volver a iniciar sesión
         </Link>
       </div>
@@ -70,7 +70,7 @@ export function SignUpForm() {
           placeholder="tu@correo.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -88,7 +88,7 @@ export function SignUpForm() {
           placeholder="••••••••"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -107,7 +107,7 @@ export function SignUpForm() {
           onChange={(event) => setConfirmPassword(event.target.value)}
           aria-invalid={showMismatchError}
           className={`rounded-md border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue ${
-            showMismatchError ? "border-statusRojo focus-visible:border-statusRojo" : "border-border focus-visible:border-brandBlue"
+            showMismatchError ? "border-statusRojo focus-visible:border-statusRojo" : "border-borderStrong focus-visible:border-brandBlue"
           }`}
         />
         {showMismatchError && <p className="text-xs text-statusRojo">Las contraseñas no coinciden.</p>}
@@ -118,7 +118,7 @@ export function SignUpForm() {
       {showLoginHint && (
         <FormInfoBox>
           ¿Ya tenías cuenta con este correo?{" "}
-          <Link href="/login" className="font-semibold text-brandBlue hover:underline">
+          <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
             Iniciar sesión
           </Link>
         </FormInfoBox>
@@ -126,9 +126,9 @@ export function SignUpForm() {
 
       <SubmitButton canSubmit={canSubmitSignUp(email, password, confirmPassword)} />
 
-      <p className="mt-1 text-center text-sm text-textSecondary">
+      <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-sm text-textSecondary">
         ¿Ya tenés cuenta?{" "}
-        <Link href="/login" className="font-semibold text-brandBlue hover:underline">
+        <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
           Iniciar sesión
         </Link>
       </p>

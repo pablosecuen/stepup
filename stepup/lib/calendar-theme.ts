@@ -48,6 +48,11 @@ export const REPLACEMENT_COLORS = { bg: "#FCE8E6", border: "#D96C68" };
 
 export const CURRENT_TIME_COLOR = "#E53935";
 
+// Color del TEXTO de las tarjetas que no traen el suyo (modalidad y reemplazo). La escala congelada fija fondo y borde; el
+// texto se había tomado del color del borde, que sobre el coral del reemplazo (2,8:1) y el naranja de presencial (4,1:1) no
+// llega a 4,5:1. Texto casi negro / gris oscuro: 8:1 o más sobre cualquiera de los fondos.
+export const CARD_TEXT_COLORS = { primary: "#1B1B1B", secondary: "#3F454D" };
+
 export const STATUS_LABELS: Record<LessonStatus, string> = {
   scheduled: "Programada",
   cancelled: "Cancelada",

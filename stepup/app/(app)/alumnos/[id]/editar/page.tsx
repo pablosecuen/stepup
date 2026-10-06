@@ -39,7 +39,7 @@ export default async function EditarAlumnoPage({ params }: { params: Promise<{ i
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href={`/alumnos/${id}`} className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href={`/alumnos/${id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver a la ficha
       </Link>
       <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Editar a {student.name}</h1>

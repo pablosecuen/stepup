@@ -50,7 +50,7 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar este registro." />
-        <Link href="/registro" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Volver
         </Link>
       </div>
@@ -66,7 +66,7 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/registro" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver a Clases por registrar
       </Link>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

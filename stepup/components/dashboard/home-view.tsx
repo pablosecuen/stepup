@@ -32,7 +32,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
         <Link
           href="/recordatorios"
           aria-label={remindersCount > 0 ? `${remindersCount} recordatorios pendientes` : "Recordatorios"}
-          className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-textSecondary transition-colors hover:border-brandBlue/30 hover:text-brandBlue"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-textSecondary transition-colors hover:border-brandBlue/30 hover:text-brandBlue"
         >
           <BellIcon className="h-5 w-5" aria-hidden />
           {remindersCount > 0 && (
@@ -99,7 +99,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
               </li>
             ))}
           </ul>
-          <Link href="/calendario/series" className="mt-2 inline-block text-xs font-semibold text-brandBlue hover:underline">
+          <Link href="/calendario/series" className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-brandBlue hover:underline">
             Revisar en Series →
           </Link>
         </section>
@@ -124,7 +124,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
             ))}
           </ul>
           {data.pendingLessons.length > MAX_VISIBLE_PENDING && (
-            <Link href="/registro" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+            <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
               Ver todas ({data.pendingLessons.length}) →
             </Link>
           )}
@@ -136,7 +136,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
         <section className="mt-8">
           <Link
             href="/calendario/nueva"
-            className="flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-3 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98]"
+            className="min-h-11 flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-3 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98]"
           >
             + Nueva clase
           </Link>
@@ -147,7 +147,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
       {stage !== "empty" && (
         <Link
           href="/cobros"
-          className="mt-8 flex items-center justify-between rounded-lg border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-premium hover:-translate-y-0.5 hover:border-brandBlue/30 hover:shadow-cardHover"
+          className="min-h-11 mt-8 flex items-center justify-between rounded-lg border border-border bg-surface p-4 shadow-card transition-all duration-200 ease-premium hover:-translate-y-0.5 hover:border-brandBlue/30 hover:shadow-cardHover"
         >
           <div>
             <p className="text-sm font-semibold text-textPrimary">Cobros</p>

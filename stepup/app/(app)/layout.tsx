@@ -53,7 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen md:pl-56">
       <PrimaryNav account={account} />
-      <main className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+      <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
     </div>
   );
 }

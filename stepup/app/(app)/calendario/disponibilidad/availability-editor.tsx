@@ -95,7 +95,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
         <form action={addWeeklyBlock} className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-textSecondary">Día</label>
-            <select name="weekday" defaultValue="0" className="rounded-md border border-border px-2 py-1.5 text-sm">
+            <select name="weekday" aria-label="Día de la semana" defaultValue="0" className="rounded-md border border-borderStrong px-2 py-1.5 text-sm">
               {WEEKDAY_LABELS.map((label, index) => (
                 <option key={label} value={index}>
                   {label}
@@ -103,17 +103,17 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-textSecondary">Desde</label>
-            <input type="time" name="startTime" required className="rounded-md border border-border px-2 py-1.5 text-sm" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-textSecondary">Hasta</label>
-            <input type="time" name="endTime" required className="rounded-md border border-border px-2 py-1.5 text-sm" />
-          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-textSecondary">Desde</span>
+            <input type="time" name="startTime" required className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-textSecondary">Hasta</span>
+            <input type="time" name="endTime" required className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+          </label>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-textSecondary">Motivo</label>
-            <select name="reason" defaultValue="work" className="rounded-md border border-border px-2 py-1.5 text-sm">
+            <select name="reason" aria-label="Motivo del bloqueo" defaultValue="work" className="rounded-md border border-borderStrong px-2 py-1.5 text-sm">
               {Object.entries(BLOCK_REASON_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -145,17 +145,17 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
         </ul>
 
         <form action={addException} className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-textSecondary">Desde</label>
-            <input type="date" name="date" required className="rounded-md border border-border px-2 py-1.5 text-sm" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-textSecondary">Hasta (opcional)</label>
-            <input type="date" name="endDate" className="rounded-md border border-border px-2 py-1.5 text-sm" />
-          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-textSecondary">Desde</span>
+            <input type="date" name="date" required className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-textSecondary">Hasta (opcional)</span>
+            <input type="date" name="endDate" className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+          </label>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-textSecondary">Motivo</label>
-            <select name="reason" defaultValue="vacation" className="rounded-md border border-border px-2 py-1.5 text-sm">
+            <select name="reason" aria-label="Motivo de la excepción" defaultValue="vacation" className="rounded-md border border-borderStrong px-2 py-1.5 text-sm">
               {Object.entries(EXCEPTION_REASON_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}

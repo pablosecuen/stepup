@@ -39,7 +39,7 @@ export function ForgotPasswordForm() {
           para elegir una contraseña nueva.
         </p>
         {state.email && <EmailCodeForm flow="recovery" email={state.email} />}
-        <Link href="/login" className="text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Volver a iniciar sesión
         </Link>
       </div>
@@ -59,7 +59,7 @@ export function ForgotPasswordForm() {
           autoComplete="email"
           required
           placeholder="tu@correo.com"
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -67,7 +67,7 @@ export function ForgotPasswordForm() {
 
       <SubmitButton />
 
-      <Link href="/login" className="text-center text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/login" className="inline-flex min-h-11 items-center text-center text-sm font-medium text-brandBlue hover:underline">
         Volver a iniciar sesión
       </Link>
     </form>

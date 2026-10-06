@@ -574,7 +574,7 @@ export function BackupImportWizard() {
                   type="text"
                   value={strongConfirmInput}
                   onChange={(e) => setStrongConfirmInput(e.target.value)}
-                  className="mt-1 rounded-md border border-border px-2 py-1.5 text-sm"
+                  className="mt-1 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
                   placeholder={STRONG_CONFIRMATION_PHRASE}
                 />
               </label>

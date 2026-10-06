@@ -41,7 +41,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         </div>
         <div className="px-4 py-6 sm:px-8">
           <ErrorState message="No pudimos cargar el calendario." />
-          <Link href="/calendario" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+          <Link href="/calendario" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
             Reintentar
           </Link>
         </div>
@@ -64,23 +64,21 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-8 sm:px-8">
         <div>
           <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Calendario</h1>
-          <p className="mt-1.5 text-sm text-textMuted">
-            <Link href="/calendario/series" className="font-semibold text-brandBlue hover:underline">
+          <nav aria-label="Secciones del calendario" className="mt-1 flex flex-wrap items-center gap-x-4">
+            <Link href="/calendario/series" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
               Series
-            </Link>{" "}
-            ·{" "}
-            <Link href="/calendario/disponibilidad" className="font-semibold text-brandBlue hover:underline">
+            </Link>
+            <Link href="/calendario/disponibilidad" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
               Disponibilidad
-            </Link>{" "}
-            ·{" "}
-            <Link href="/registro" className="font-semibold text-brandBlue hover:underline">
+            </Link>
+            <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
               Clases por registrar
             </Link>
-          </p>
+          </nav>
         </div>
         <Link
           href="/calendario/nueva"
-          className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           + Nueva clase
         </Link>

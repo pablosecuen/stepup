@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SkipLink } from "@/components/ui/skip-link";
 
 // TeacherFlow móvil no usa una fuente custom (ver src/theme/typography.ts:
 // "Sin fuente custom por ahora... se apoya en la fuente de sistema") — la
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="min-h-screen max-w-screen overflow-x-hidden bg-background text-textPrimary antialiased">
+        <SkipLink />
         {children}
       </body>
     </html>

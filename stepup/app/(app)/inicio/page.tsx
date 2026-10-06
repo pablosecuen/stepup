@@ -45,7 +45,7 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
                 : "No pudimos cargar Inicio."
           }
         />
-        <Link href="/inicio" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/inicio" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>

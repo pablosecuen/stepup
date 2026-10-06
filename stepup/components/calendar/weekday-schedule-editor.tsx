@@ -87,6 +87,7 @@ export function WeekdayScheduleEditor({
               key={option.value}
               type="button"
               onClick={() => onCycleLengthChange(option.value)}
+              aria-pressed={cycleLengthWeeks === option.value}
               className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 cycleLengthWeeks === option.value ? "border-brandBlue bg-brandBlue/10 text-brandBlueDark" : "border-border text-textSecondary hover:border-brandBlue/30"
               }`}
@@ -122,7 +123,7 @@ export function WeekdayScheduleEditor({
                         max="23"
                         value={row.hour}
                         onChange={(e) => updateCell(weekIndex, dayIndex, { hour: Number(e.target.value) })}
-                        className="w-16 rounded-md border border-border px-2 py-1 text-sm"
+                        className="w-16 rounded-md border border-borderStrong px-2 py-1 text-sm"
                         aria-label={`Hora — semana ${weekIndex + 1}, ${label}`}
                       />
                       <span className="text-textMuted">:</span>
@@ -132,7 +133,7 @@ export function WeekdayScheduleEditor({
                         max="59"
                         value={row.minute}
                         onChange={(e) => updateCell(weekIndex, dayIndex, { minute: Number(e.target.value) })}
-                        className="w-16 rounded-md border border-border px-2 py-1 text-sm"
+                        className="w-16 rounded-md border border-borderStrong px-2 py-1 text-sm"
                         aria-label={`Minuto — semana ${weekIndex + 1}, ${label}`}
                       />
                       <input
@@ -140,7 +141,7 @@ export function WeekdayScheduleEditor({
                         min="1"
                         value={row.durationMinutes}
                         onChange={(e) => updateCell(weekIndex, dayIndex, { durationMinutes: Number(e.target.value) })}
-                        className="w-20 rounded-md border border-border px-2 py-1 text-sm"
+                        className="w-20 rounded-md border border-borderStrong px-2 py-1 text-sm"
                         aria-label={`Duración en minutos — semana ${weekIndex + 1}, ${label}`}
                       />
                       <span className="text-xs text-textMuted">min</span>

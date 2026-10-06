@@ -5,6 +5,7 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { loadFinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
 import { ErrorState } from "@/components/ui/states";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import { formatCivilMonth } from "@/lib/format/date-format";
 import { formatMinutesAsHours, formatMoney, formatPercent } from "@/lib/format/number-format";
 
@@ -41,7 +42,7 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar el resumen financiero." />
-        <Link href="/resumen-financiero" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/resumen-financiero" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -56,7 +57,7 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/inicio" className="text-sm font-semibold text-brandBlue hover:underline">
+      <Link href="/inicio" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
         ← Volver a Inicio
       </Link>
       <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Resumen financiero</h1>
@@ -67,10 +68,12 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
           <Link
             key={p}
             href={`/resumen-financiero?preset=${p}`}
-            className={`rounded-pill border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            aria-current={p === preset ? "true" : undefined}
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-4 text-sm font-semibold transition-colors ${
               p === preset ? "border-brandBlue bg-brandBlue text-white" : "border-border bg-surface text-textSecondary hover:border-brandBlue/30"
             }`}
           >
+            {p === preset && <CheckIcon className="h-4 w-4" aria-hidden />}
             {FINANCIAL_PERIOD_PRESET_LABEL[p]}
           </Link>
         ))}

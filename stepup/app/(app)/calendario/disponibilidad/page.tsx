@@ -22,7 +22,7 @@ export default async function DisponibilidadPage() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar tu disponibilidad." />
-        <Link href="/calendario/disponibilidad" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/calendario/disponibilidad" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -31,7 +31,7 @@ export default async function DisponibilidadPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/calendario" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/calendario" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver al Calendario
       </Link>
       <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Disponibilidad</h1>

@@ -5,6 +5,42 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Un elemento enfocado o al que se salta con un ancla nunca queda tapado por el encabezado fijo (móvil, 56 px) ni por
+       la barra inferior (64 px + zona segura). */
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: 6rem;
+  }
+  /* Foco visible y consistente: todo lo enfocable por teclado muestra un anillo de 2 px en el azul de marca (3:1 como
+     mínimo sobre el fondo). Los controles con su propio `focus-visible:ring-*` lo reemplazan por el mismo anillo. */
+  :focus-visible {
+    outline: 2px solid #0a64d2;
+    outline-offset: 2px;
+  }
+  /* Objetivos táctiles de 44 px como mínimo (campos, selectores, botones, resúmenes desplegables y deslizadores). Los
+     bloques de la grilla horaria del calendario quedan afuera: su alto ES la duración de la clase. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea,
+  button:not([data-grid-event]),
+  summary {
+    min-height: 2.75rem;
+  }
+  button:not([data-grid-event]) {
+    min-width: 2.75rem;
+  }
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 2.75rem;
+  }
+  input[type="range"] {
+    accent-color: #0a64d2;
+  }
+  /* Casillas y opciones nativas más grandes (el objetivo táctil es la etiqueta, de 44 px). */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: #0a64d2;
   }
   body {
     background-color: #FAFAF8;

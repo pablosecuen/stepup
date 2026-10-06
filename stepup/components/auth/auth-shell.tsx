@@ -18,7 +18,7 @@ interface AuthShellProps {
  */
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Image src="/icon.png" alt="TeacherFlow" width={56} height={56} className="rounded-xl" />
@@ -32,7 +32,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
 
         <Link
           href="/"
-          className="mt-4 block text-center text-sm font-medium text-brandBlue transition-colors hover:underline"
+          className="mt-4 flex min-h-11 items-center justify-center text-center text-sm font-medium text-brandBlue transition-colors hover:underline"
         >
           Volver al inicio
         </Link>

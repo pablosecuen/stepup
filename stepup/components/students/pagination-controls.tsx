@@ -12,7 +12,7 @@ export function PaginationControls({ page, totalPages, buildHref }: PaginationCo
       {page > 1 ? (
         <a
           href={buildHref(page - 1)}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
         >
           ← Anterior
         </a>
@@ -29,7 +29,7 @@ export function PaginationControls({ page, totalPages, buildHref }: PaginationCo
       {page < totalPages ? (
         <a
           href={buildHref(page + 1)}
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
         >
           Siguiente →
         </a>

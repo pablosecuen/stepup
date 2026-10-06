@@ -11,7 +11,7 @@ export function FormErrorBox({ message }: { message: string }) {
 
 export function FormInfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-border bg-background px-3 py-2.5 text-sm text-textSecondary">
+    <div role="status" className="rounded-md border border-border bg-background px-3 py-2.5 text-sm text-textSecondary">
       {children}
     </div>
   );

@@ -28,7 +28,7 @@ export default async function RegistroNuevoPage() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar los alumnos activos." />
-        <Link href="/registro" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Volver
         </Link>
       </div>
@@ -37,7 +37,7 @@ export default async function RegistroNuevoPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/registro" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver a Clases por registrar
       </Link>
       <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Clase no programada</h1>

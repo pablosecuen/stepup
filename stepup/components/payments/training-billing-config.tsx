@@ -106,7 +106,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
             setMonthlyFee(e.target.value);
             setPlan(null);
           }}
-          className="mt-1 w-full rounded-md border border-border px-2.5 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
         />
       </label>
 

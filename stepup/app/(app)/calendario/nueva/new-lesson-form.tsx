@@ -18,7 +18,7 @@ import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 const INITIAL_STATE: FormState = {};
 
 const inputClassName =
-  "rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
+  "rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 const labelClassName = "text-sm font-medium text-textSecondary";
 
 function SubmitButton({ disabled }: { disabled?: boolean }) {
@@ -154,6 +154,7 @@ export function NewLessonForm({
           <button
             type="button"
             onClick={() => setMode("single")}
+            aria-pressed={mode === "single"}
             className={`flex-1 rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${mode === "single" ? "bg-brandBlue text-white" : "text-textSecondary"}`}
           >
             Clase única
@@ -161,6 +162,7 @@ export function NewLessonForm({
           <button
             type="button"
             onClick={() => setMode("series")}
+            aria-pressed={mode === "series"}
             className={`flex-1 rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${mode === "series" ? "bg-brandBlue text-white" : "text-textSecondary"}`}
           >
             Serie semanal

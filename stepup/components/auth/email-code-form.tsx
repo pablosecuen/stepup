@@ -33,7 +33,7 @@ export function EmailCodeForm({ flow, email }: { flow: "recovery" | "signup"; em
         required
         placeholder="123456"
         aria-label="Código de 6 dígitos"
-        className="rounded-md border border-border bg-surface px-3 py-2.5 text-center text-sm tracking-[0.4em] text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+        className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-center text-sm tracking-[0.4em] text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
       />
       {state.error && <FormErrorBox message={state.error} />}
       <button

@@ -53,7 +53,7 @@ export default async function CobrosPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar Cobros." />
-        <Link href="/cobros" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/cobros" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -69,7 +69,7 @@ export default async function CobrosPage() {
             {entries.length} obligaci{entries.length === 1 ? "ón" : "ones"} pendiente{entries.length === 1 ? "" : "s"}.
           </p>
         </div>
-        <Link href="/resumen-financiero" className="text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/resumen-financiero" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Ver resumen financiero →
         </Link>
       </div>
@@ -86,7 +86,7 @@ export default async function CobrosPage() {
               <li key={entry.chargeId} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <Link href={`/alumnos/${entry.studentId}`} className="text-sm font-semibold text-textPrimary [overflow-wrap:anywhere] hover:underline">
+                    <Link href={`/alumnos/${entry.studentId}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-textPrimary [overflow-wrap:anywhere] hover:underline">
                       {entry.studentName}
                     </Link>
                     <p className="mt-0.5 text-xs text-textMuted">

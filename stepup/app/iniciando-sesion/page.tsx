@@ -27,7 +27,7 @@ export default async function IniciandoSesionPage() {
   );
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Image src="/icon.png" alt="TeacherFlow" width={56} height={56} className="rounded-xl" />

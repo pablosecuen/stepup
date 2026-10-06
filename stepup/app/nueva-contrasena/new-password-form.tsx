@@ -48,7 +48,7 @@ export function NewPasswordForm() {
           placeholder="••••••••"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
 
@@ -67,7 +67,7 @@ export function NewPasswordForm() {
           onChange={(event) => setConfirmPassword(event.target.value)}
           aria-invalid={showMismatchError}
           className={`rounded-md border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue ${
-            showMismatchError ? "border-statusRojo focus-visible:border-statusRojo" : "border-border focus-visible:border-brandBlue"
+            showMismatchError ? "border-statusRojo focus-visible:border-statusRojo" : "border-borderStrong focus-visible:border-brandBlue"
           }`}
         />
         {showMismatchError && <p className="text-xs text-statusRojo">Las contraseñas no coinciden.</p>}

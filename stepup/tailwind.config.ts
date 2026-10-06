@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss";
 
-// Paleta copiada de TeacherFlow móvil (src/theme/colors.ts) — no se modifica
-// el original, sólo se reutilizan los mismos valores hexadecimales para que
-// la web mantenga la identidad visual actual.
+// Paleta de TeacherFlow móvil (src/theme/colors.ts), con los textos, la marca y los estados oscurecidos lo justo para
+// cumplir contraste AA en la web (texto 4.5:1 sobre blanco y sobre el fondo, también sobre sus tintes del 10%; blanco
+// sobre el azul de marca 5.6:1). El móvil no se toca; los colores del calendario (escala congelada) tampoco.
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -14,17 +14,20 @@ const config: Config = {
         background: "#FAFAF8",
         surface: "#FFFFFF",
         border: "#E3E5E8",
+        // Borde de controles de formulario (campos, selectores): 3:1 sobre blanco (WCAG 1.4.11). El borde claro de arriba
+        // queda para tarjetas y separadores, que no necesitan contraste propio.
+        borderStrong: "#8A8F97",
         textPrimary: "#080808",
         textSecondary: "#5D6168",
-        textMuted: "#9499A1",
-        brandBlue: "#168CF4",
-        brandBlueDark: "#0060DF",
-        statusVerde: "#2FB350",
-        statusAmarillo: "#E8B400",
-        statusNaranja: "#F07C1D",
-        statusRojo: "#E0362B",
+        textMuted: "#6B7078",
+        brandBlue: "#0A64D2",
+        brandBlueDark: "#004BA8",
+        statusVerde: "#1B7634",
+        statusAmarillo: "#7F5F00",
+        statusNaranja: "#AA5208",
+        statusRojo: "#BF2A20",
         statusPendiente: "#4361B8",
-        statusSinDatos: "#9499A1",
+        statusSinDatos: "#6B7078",
         ink: "#080808",
         ivory: "#F2EEDF",
         // Exclusivos del plan 50/30/20 (Fase 8, `Resumen financiero`/

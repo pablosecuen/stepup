@@ -200,6 +200,7 @@ function ParticipantCard({
                   key={option}
                   type="button"
                   onClick={() => updateForm({ attendanceStatus: option })}
+                  aria-pressed={form.attendanceStatus === option}
                   className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
                     form.attendanceStatus === option ? "border-brandBlue bg-brandBlue/10 text-brandBlueDark" : "border-border text-textSecondary"
                   }`}
@@ -215,7 +216,7 @@ function ParticipantCard({
                 placeholder="Minutos de tardanza"
                 value={form.lateMinutes}
                 onChange={(e) => updateForm({ lateMinutes: e.target.value })}
-                className="mt-1 w-40 rounded-md border border-border px-2 py-1.5 text-sm"
+                className="mt-1 w-40 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
               />
             )}
           </fieldset>
@@ -232,6 +233,7 @@ function ParticipantCard({
                         key={outcome}
                         type="button"
                         onClick={() => setHomeworkOutcome(task.taskId, outcome)}
+                        aria-pressed={form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome}
                         className={`rounded-md border px-2 py-1 text-xs font-semibold ${
                           form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome
                             ? "border-brandBlue bg-brandBlue/10 text-brandBlueDark"
@@ -248,8 +250,8 @@ function ParticipantCard({
           )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-textSecondary">Nota general (1-10, opcional)</label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-textSecondary">Nota general (1-10, opcional)</span>
               <input
                 type="number"
                 min="1"
@@ -257,9 +259,9 @@ function ParticipantCard({
                 value={form.generalGrade}
                 onChange={(e) => updateForm({ generalGrade: e.target.value })}
                 placeholder="Sin calificar"
-                className="rounded-md border border-border px-2 py-1.5 text-sm"
+                className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
               />
-            </div>
+            </label>
           </div>
 
           <fieldset className="flex flex-col gap-2">
@@ -281,25 +283,25 @@ function ParticipantCard({
             ))}
           </fieldset>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-textSecondary">Observaciones</label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-textSecondary">Observaciones</span>
             <textarea
               value={form.individualObservation}
               onChange={(e) => updateForm({ individualObservation: e.target.value })}
               rows={2}
-              className="rounded-md border border-border px-2 py-1.5 text-sm"
+              className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
             />
-          </div>
+          </label>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-textSecondary">Fortalezas (separadas por coma)</label>
-              <input value={form.strengths} onChange={(e) => updateForm({ strengths: e.target.value })} className="rounded-md border border-border px-2 py-1.5 text-sm" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-textSecondary">A mejorar (separadas por coma)</label>
-              <input value={form.areasToImprove} onChange={(e) => updateForm({ areasToImprove: e.target.value })} className="rounded-md border border-border px-2 py-1.5 text-sm" />
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-textSecondary">Fortalezas (separadas por coma)</span>
+              <input value={form.strengths} onChange={(e) => updateForm({ strengths: e.target.value })} className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-textSecondary">A mejorar (separadas por coma)</span>
+              <input value={form.areasToImprove} onChange={(e) => updateForm({ areasToImprove: e.target.value })} className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
+            </label>
           </div>
 
           {activityKind === "class" && (
@@ -309,13 +311,13 @@ function ParticipantCard({
                 value={form.homeworkDescription}
                 onChange={(e) => updateForm({ homeworkDescription: e.target.value })}
                 placeholder="Descripción"
-                className="rounded-md border border-border px-2 py-1.5 text-sm"
+                className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
               />
               <input
                 type="date"
                 value={form.homeworkDueDate}
                 onChange={(e) => updateForm({ homeworkDueDate: e.target.value })}
-                className="w-48 rounded-md border border-border px-2 py-1.5 text-sm"
+                className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
               />
             </fieldset>
           )}
@@ -523,28 +525,28 @@ export function RegistrationWorkspace({
             value={commonHomeworkDescription}
             onChange={(e) => setCommonHomeworkDescription(e.target.value)}
             placeholder="Descripción"
-            className="rounded-md border border-border px-2 py-1.5 text-sm"
+            className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
           />
           <input
             type="date"
             value={commonHomeworkDueDate}
             onChange={(e) => setCommonHomeworkDueDate(e.target.value)}
-            className="w-48 rounded-md border border-border px-2 py-1.5 text-sm"
+            className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
           />
         </fieldset>
       )}
 
       {countsAsClass && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-textSecondary">Duración real (minutos)</label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-textSecondary">Duración real (minutos)</span>
           <input
             type="number"
             min="1"
             value={durationMinutes}
             onChange={(e) => setDurationMinutes(e.target.value)}
-            className="w-40 rounded-md border border-border px-2 py-1.5 text-sm"
+            className="w-40 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
           />
-        </div>
+        </label>
       )}
 
       {error && <FormErrorBox message={error} />}

@@ -18,7 +18,7 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col">
+    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <div className="flex items-center gap-3">
           <Image src="/icon.png" alt="TeacherFlow" width={36} height={36} className="rounded-md" />
@@ -26,7 +26,7 @@ export default function HomePage() {
         </div>
         <Link
           href="/login"
-          className="rounded-md bg-brandBlue px-4 py-2 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-4 py-2 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Iniciar sesión
         </Link>
@@ -42,7 +42,7 @@ export default function HomePage() {
         </p>
         <Link
           href="/login"
-          className="mt-2 rounded-md bg-brandBlue px-6 py-3 text-base font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark hover:shadow-cardHover active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center mt-2 rounded-md bg-brandBlue px-6 py-3 text-base font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark hover:shadow-cardHover active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Empezar
         </Link>

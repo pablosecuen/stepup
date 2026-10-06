@@ -32,7 +32,7 @@ export default async function SeriesPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
         <ErrorState message="No pudimos cargar las series." />
-        <Link href="/calendario/series" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/calendario/series" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Reintentar
         </Link>
       </div>
@@ -58,7 +58,7 @@ export default async function SeriesPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/calendario" className="text-sm font-medium text-brandBlue hover:underline">
+      <Link href="/calendario" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
         ← Volver al Calendario
       </Link>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

@@ -105,13 +105,13 @@ async function ConfiguredSections({ email }: { email: string | null }) {
       </SectionCard>
 
       <SectionCard title="Disponibilidad" description="Bloqueos semanales, vacaciones y feriados.">
-        <Link href="/calendario/disponibilidad" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/calendario/disponibilidad" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Gestionar disponibilidad →
         </Link>
       </SectionCard>
 
       <SectionCard title="Niveles personalizados" description="Crear y renombrar niveles propios de tus alumnos.">
-        <Link href="/alumnos" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/alumnos" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Gestionar desde Alumnos →
         </Link>
       </SectionCard>
@@ -126,7 +126,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
       </SectionCard>
 
       <SectionCard title="Respaldo" description="Copias de seguridad de tus datos.">
-        <Link href="/configuracion/respaldo" className="mt-3 inline-block text-sm font-semibold text-brandBlue hover:underline">
+        <Link href="/configuracion/respaldo" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
           Recuperar datos del respaldo →
         </Link>
       </SectionCard>

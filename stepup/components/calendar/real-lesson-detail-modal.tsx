@@ -11,6 +11,7 @@ import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/action
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { formatMinutes } from "@/lib/format/number-format";
+import { useDialogA11y } from "@/lib/ui/use-dialog-a11y";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-textSecondary">{children}</span>;
@@ -30,6 +31,19 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [now, setNow] = useState<number | null>(null);
+  // Foco, Escape, Tab atrapado y devolución del foco al control que abrió el detalle.
+  const dialogRef = useDialogA11y(onClose);
+
+  // Al pasar de un paso a otro (reprogramar, confirmar, cancelar, volver) el foco va al control principal del paso nuevo
+  // (marcado con data-autofocus) o, al volver a las acciones, al propio diálogo: nunca se pierde en <body>.
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const target = dialog.querySelector<HTMLElement>("[data-autofocus]");
+    (target ?? dialog).focus();
+  }, [reschedulingOpen, reschedulePreview !== null, confirmingCancel]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -132,10 +146,13 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" role="presentation" onClick={onClose}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="lesson-detail-title"
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-panel sm:rounded-2xl"
+        aria-busy={pending}
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-panel focus:outline-none sm:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -146,9 +163,9 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
             type="button"
             onClick={onClose}
             aria-label="Cerrar detalle de la clase"
-            className="rounded-full p-1.5 text-textMuted transition-all duration-150 ease-premium hover:bg-background hover:text-textPrimary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-textMuted transition-all duration-150 ease-premium hover:bg-background hover:text-textPrimary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
           >
-            <XMarkIcon className="h-5 w-5" />
+            <XMarkIcon className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
@@ -168,12 +185,16 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
             <h3 className="text-sm font-semibold uppercase tracking-wide text-textSecondary">Alumno</h3>
             <Link
               href={`/alumnos/${item.studentId}`}
-              className="mt-2 block rounded-md border border-border px-3 py-2 text-sm font-medium text-brandBlue transition-colors hover:border-brandBlue/30 hover:underline"
+              className="mt-2 flex min-h-11 items-center rounded-md border border-border px-3 py-2 text-sm font-medium text-brandBlue transition-colors hover:border-brandBlue/30 hover:underline"
             >
               {item.studentName || "Ver perfil"} →
             </Link>
           </section>
         )}
+
+        <p role="status" aria-live="polite" className="sr-only">
+          {pending ? "Guardando el cambio…" : ""}
+        </p>
 
         {error && (
           <div className="mt-4">
@@ -194,6 +215,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
                 type="button"
                 onClick={confirmReschedule}
                 disabled={pending}
+                data-autofocus
                 className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {pending ? "Guardando..." : "Confirmar reprogramación"}
@@ -206,8 +228,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         ) : reschedulingOpen ? (
           <form action={(fd) => openReschedulePreview(fd)} className="mt-5 flex flex-col gap-3 rounded-md border border-border p-3">
             <p className="text-sm font-semibold text-textPrimary">Nuevo horario</p>
-            <input type="date" name="date" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
-            <input type="time" name="time" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
+            <input type="date" name="date" required aria-label="Nueva fecha" data-autofocus className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm" />
+            <input type="time" name="time" required aria-label="Nueva hora" className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm" />
             <p className="text-xs text-textMuted">La duración ({formatMinutes(durationMinutes)}) se mantiene igual a la clase original.</p>
             <div className="flex gap-2">
               <button type="submit" className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white">
@@ -226,7 +248,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
             </div>
           </form>
         ) : confirmingCancel ? (
-          <div className="mt-5 flex flex-col gap-3 rounded-md border border-statusRojo/30 bg-statusRojo/5 p-3">
+          <div role="alert" className="mt-5 flex flex-col gap-3 rounded-md border border-statusRojo/30 bg-statusRojo/5 p-3">
             <p className="text-sm font-medium text-statusRojo">¿Cancelar esta clase? Esta acción queda registrada y es visible para la profesora.</p>
             <div className="flex gap-2">
               <button
@@ -237,7 +259,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
               >
                 {pending ? "Cancelando..." : "Sí, cancelar clase"}
               </button>
-              <button type="button" onClick={() => setConfirmingCancel(false)} className="rounded-md border border-border px-3 py-2 text-sm">
+              <button type="button" onClick={() => setConfirmingCancel(false)} data-autofocus className="rounded-md border border-border px-3 py-2 text-sm">
                 Volver
               </button>
             </div>
@@ -248,7 +270,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
               {isPast && item.status !== "cancelled" && item.status !== "completed" && (
                 <Link
                   href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"}
-                  className="flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
+                  className="min-h-11 flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
                 >
                   Registrar esta clase
                 </Link>
@@ -256,7 +278,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
               {canReuseSlot && (
                 <Link
                   href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
-                  className="flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
+                  className="min-h-11 flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
                 >
                   Reemplazar con otro alumno
                 </Link>
@@ -282,7 +304,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
               {item.recurrenceId && (
                 <Link
                   href={`/calendario/series`}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textPrimary transition-colors hover:border-brandBlue/30"
+                  className="min-h-11 flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textPrimary transition-colors hover:border-brandBlue/30"
                 >
                   Administrar esta serie →
                 </Link>

@@ -47,7 +47,7 @@ function DuplicateReviewPanel({ candidates, changed }: { candidates: NonNullable
               href={`/alumnos/${c.id}`}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-semibold text-brandBlue underline underline-offset-2"
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-brandBlue underline underline-offset-2"
             >
               Revisar alumno existente
             </a>

@@ -30,5 +30,5 @@ export function NotFoundView({
     </>
   );
   const className = "mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center";
-  return inShell ? <div className={className}>{content}</div> : <main className={className}>{content}</main>;
+  return inShell ? <div className={className}>{content}</div> : <main id="contenido" tabIndex={-1} className={`${className} focus:outline-none`}>{content}</main>;
 }

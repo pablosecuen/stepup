@@ -13,11 +13,12 @@ import {
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import { formatCivilDateRange, formatCivilMonth, formatInstantDate } from "@/lib/format/date-format";
 import { formatGrade, formatHours, formatPercent } from "@/lib/format/number-format";
 
 const inputClassName =
-  "w-full rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
+  "w-full rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 const labelClassName = "text-sm font-medium text-textSecondary";
 
 /** Reemplaza (si ya existe, por id) o agrega al frente la fila canónica devuelta por el servidor — nunca una entrada construida desde el formulario local. */
@@ -244,10 +245,12 @@ export function ReportesTabContent({
                   key={month}
                   type="button"
                   onClick={() => toggleMonth(month)}
+                  aria-pressed={selectedMonths.has(month)}
                   className={`rounded-pill border px-3 py-1.5 text-xs font-semibold transition-colors ${
                     selectedMonths.has(month) ? "border-brandBlue bg-brandBlue text-white" : "border-border bg-background text-textSecondary hover:border-brandBlue/30"
                   }`}
                 >
+                  {selectedMonths.has(month) && <CheckIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />}
                   {formatCivilMonth(month)}
                 </button>
               ))}
