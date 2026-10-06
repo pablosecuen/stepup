@@ -10,7 +10,7 @@ import { billingPeriodOfDateKey, daysBetweenDateKeys, firstDayOfBillingPeriod, l
 export type FinancialPeriodPreset = "current_month" | "last_3_months" | "last_6_months" | "current_year" | "previous_year";
 
 export const FINANCIAL_PERIOD_PRESET_LABEL: Record<FinancialPeriodPreset, string> = {
-  current_month: "Mes",
+  current_month: "Mes actual",
   last_3_months: "Últimos 3 meses",
   last_6_months: "Últimos 6 meses",
   current_year: "Año actual",

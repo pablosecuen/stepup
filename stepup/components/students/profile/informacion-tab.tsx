@@ -1,7 +1,8 @@
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { StatusHistoryRecord, LevelHistoryRecord, PriceHistoryRecord } from "@/lib/repositories/student-history-mapping";
 import { CATEGORY_LABEL, BILLING_LABEL, STUDENT_STATUS_LABEL } from "@/lib/students/constants";
-import { formatHours, monthlyDueDayOf, type ProfileClassStats } from "@/lib/students/profile-overview";
+import { monthlyDueDayOf, type ProfileClassStats } from "@/lib/students/profile-overview";
+import { formatHours, formatMinutes, formatMoney } from "@/lib/format/number-format";
 import { formatCivilDate } from "@/lib/format/date-format";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -15,10 +16,6 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function formatDate(dateKey: string | null): string {
   return formatCivilDate(dateKey);
-}
-
-function formatCurrencyARS(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(amount);
 }
 
 const STATUS_CHANGE_LABEL: Partial<Record<StudentRecord["status"], string>> = {
@@ -54,11 +51,11 @@ export function InformacionTabContent({
           <Row label="Fecha de alta" value={formatDate(student.dateJoined)} />
           {student.lastReactivatedAt && <Row label="Última reactivación" value={formatDate(student.lastReactivatedAt)} />}
           {statusChangeLabel && student.statusChangeDate && <Row label={statusChangeLabel} value={formatDate(student.statusChangeDate)} />}
-          <Row label="Duración habitual" value={`${student.usualDurationMinutes} min`} />
+          <Row label="Duración habitual" value={formatMinutes(student.usualDurationMinutes)} />
           <Row label="Frecuencia semanal" value={`${student.weeklyFrequency}x por semana`} />
           <Row label="Categoría" value={CATEGORY_LABEL[student.category]} />
           <Row label="Tipo de facturación" value={BILLING_LABEL[student.billingType]} />
-          <Row label="Precio de referencia" value={formatCurrencyARS(student.price)} />
+          <Row label="Precio de referencia" value={formatMoney(student.price)} />
           {monthlyDueDay !== null && <Row label="Vencimiento mensual" value={`Día ${monthlyDueDay} de cada mes`} />}
         </div>
       </section>
@@ -68,7 +65,7 @@ export function InformacionTabContent({
         <div className="mt-2 divide-y divide-border">
           <Row label="Clases dictadas" value={String(stats.classesHeld)} />
           {stats.hours !== null && <Row label="Horas de clase" value={formatHours(stats.hours)} />}
-          <Row label="Total cobrado" value={formatCurrencyARS(totalCollected)} />
+          <Row label="Total cobrado" value={formatMoney(totalCollected)} />
         </div>
         <p className="mt-2 text-xs text-textMuted">
           Cuenta sólo clases finalizadas a las que el alumno asistió (las horas, además, con horario conocido) y pagos vigentes.
@@ -129,7 +126,7 @@ export function InformacionTabContent({
           <ul className="mt-2 flex flex-col gap-2">
             {priceHistory.map((entry) => (
               <li key={entry.id} className="text-sm text-textSecondary">
-                <span className="font-medium text-textPrimary">{formatCurrencyARS(entry.price)}</span> — {formatDate(entry.effectiveOn)}
+                <span className="font-medium text-textPrimary">{formatMoney(entry.price)}</span> — {formatDate(entry.effectiveOn)}
               </li>
             ))}
           </ul>

@@ -6,6 +6,7 @@ import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments"
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { todayInArgentina } from "@/lib/format/date-format";
+import { formatMoney } from "@/lib/format/number-format";
 
 const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferencia: "Transferencia", otro: "Otro" };
 
@@ -134,7 +135,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
             <input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm" />
           </label>
         </div>
-        <p className="mt-2 text-xs text-textMuted">Saldo pendiente de este cobro: {formatCurrency(balance)}.</p>
+        <p className="mt-2 text-xs text-textMuted">Saldo pendiente de este cobro: {formatMoney(balance)}.</p>
         <div className="mt-3 flex gap-2">
           <button
             type="button"
@@ -179,6 +180,3 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
   );
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
-}

@@ -6,6 +6,7 @@ import { loadFinancialOverviewData } from "@/lib/dashboard/load-financial-overvi
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
 import { ErrorState } from "@/components/ui/states";
 import { formatCivilMonth } from "@/lib/format/date-format";
+import { formatMinutesAsHours, formatMoney, formatPercent } from "@/lib/format/number-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Resumen financiero · TeacherFlow" };
@@ -13,18 +14,9 @@ export const metadata = { title: "Resumen financiero · TeacherFlow" };
 const PRESETS: FinancialPeriodPreset[] = ["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"];
 const WEEKDAY_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(amount);
-}
-
-function formatPercent(value: number | null): string {
-  if (value === null) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${Math.round(value)}%`;
-}
-
-function formatMinutesAsHours(minutes: number): string {
-  return `${Math.round((minutes / 60) * 10) / 10} h`;
+/** Variación porcentual con signo, redondeada a entero (la comparación entre períodos no necesita decimales). */
+function formatChange(value: number | null): string {
+  return formatPercent(value === null ? null : Math.round(value), { signed: true });
 }
 
 function formatMinuteOfDay(minuteOfDay: number): string {
@@ -87,21 +79,21 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
       <section className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-xs text-textMuted">Facturación prevista</p>
-          <p className="mt-1 text-xl font-bold text-textPrimary">{formatCurrency(data.summary.generated)}</p>
-          {data.comparison && <p className="mt-1 text-xs text-textMuted">vs. período anterior: {formatPercent(data.comparison.generated.percentChange)}</p>}
+          <p className="mt-1 text-xl font-bold text-textPrimary">{formatMoney(data.summary.generated)}</p>
+          {data.comparison && <p className="mt-1 text-xs text-textMuted">vs. período anterior: {formatChange(data.comparison.generated.percentChange)}</p>}
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-xs text-textMuted">Cobrado (por fecha real de pago)</p>
-          <p className="mt-1 text-xl font-bold text-brandBlue">{formatCurrency(data.summary.collected)}</p>
-          {data.comparison && <p className="mt-1 text-xs text-textMuted">vs. período anterior: {formatPercent(data.comparison.collected.percentChange)}</p>}
+          <p className="mt-1 text-xl font-bold text-brandBlue">{formatMoney(data.summary.collected)}</p>
+          {data.comparison && <p className="mt-1 text-xs text-textMuted">vs. período anterior: {formatChange(data.comparison.collected.percentChange)}</p>}
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-xs text-textMuted">Pendiente en término</p>
-          <p className="mt-1 text-xl font-bold text-statusPendiente">{formatCurrency(data.summary.pending)}</p>
+          <p className="mt-1 text-xl font-bold text-statusPendiente">{formatMoney(data.summary.pending)}</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
           <p className="text-xs text-textMuted">Vencido</p>
-          <p className="mt-1 text-xl font-bold text-statusRojo">{formatCurrency(data.summary.overdue)}</p>
+          <p className="mt-1 text-xl font-bold text-statusRojo">{formatMoney(data.summary.overdue)}</p>
         </div>
       </section>
 
@@ -143,7 +135,7 @@ export default async function ResumenFinancieroPage({ searchParams }: { searchPa
 
       <section className="mt-6 rounded-lg border border-border bg-surface p-4 shadow-card">
         <h2 className="text-sm font-semibold text-textPrimary">Valor programado de la hora</h2>
-        <p className="mt-1 text-xl font-bold text-textPrimary">{data.hourlyRate.generalRatePerHour !== null ? formatCurrency(data.hourlyRate.generalRatePerHour) : "Sin datos suficientes"}</p>
+        <p className="mt-1 text-xl font-bold text-textPrimary">{data.hourlyRate.generalRatePerHour !== null ? formatMoney(data.hourlyRate.generalRatePerHour) : "Sin datos suficientes"}</p>
         {data.hourlyRate.isEstimate && data.hourlyRate.generalRatePerHour !== null && (
           <p className="mt-1 text-xs text-textMuted">Estimado — todavía hay clases del período sin registrar o el período no cerró.</p>
         )}

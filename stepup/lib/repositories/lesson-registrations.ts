@@ -18,6 +18,7 @@ import {
   type LessonRegistrationDetail,
 } from "./lesson-registrations-mapping";
 import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
+import { instantDateKey } from "@/lib/calendar/civil-calendar";
 import { commonHomeworkTaskId, individualHomeworkTaskId, isHomeworkTaskResolved, type PendingHomeworkTask } from "@/lib/lessons/homework";
 
 /**
@@ -570,7 +571,8 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
       return {
         registrationId: registration.id,
         anchorAt: anchor,
-        dateKey: anchor.slice(0, 10),
+        // Día civil de Argentina del instante (nunca el recorte UTC: una clase nocturna pasaría al día/mes siguiente).
+        dateKey: instantDateKey(anchor),
         scheduledStartAt: registration.scheduledStartAt,
         scheduledEndAt: registration.scheduledEndAt,
         actualStartedAt: registration.actualStartedAt,

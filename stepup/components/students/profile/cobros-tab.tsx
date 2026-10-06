@@ -5,6 +5,7 @@ import { ChargeActions } from "@/components/payments/charge-actions";
 import { VoidPaymentButton } from "@/components/payments/void-payment-button";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from "@/lib/repositories/payments";
 import { formatCivilDate, formatDateValue } from "@/lib/format/date-format";
+import { formatMoney } from "@/lib/format/number-format";
 
 const CHARGE_TYPE_LABEL: Record<string, string> = {
   mensual: "Mensualidad",
@@ -17,9 +18,6 @@ const CHARGE_TYPE_LABEL: Record<string, string> = {
 
 const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferencia: "Transferencia", otro: "Otro" };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
-}
 
 /**
  * Pestaña real de Cobros del alumno — puerto de `CobrosTab.tsx` (móvil),
@@ -83,12 +81,12 @@ export function CobrosTabContent({
                     )}
                   </div>
                   <p className="mt-2 text-sm text-textSecondary">
-                    Importe original: <span className="font-medium text-textPrimary">{formatCurrency(charge.originalAmount)}</span>
-                    {paidAmount > 0 && <> · Pagado: <span className="font-medium text-textPrimary">{formatCurrency(paidAmount)}</span></>}
+                    Importe original: <span className="font-medium text-textPrimary">{formatMoney(charge.originalAmount)}</span>
+                    {paidAmount > 0 && <> · Pagado: <span className="font-medium text-textPrimary">{formatMoney(paidAmount)}</span></>}
                     {!charge.voidedAt && !balance.isFullyPaid && (
                       <>
                         {" "}
-                        · Pendiente: <span className="font-semibold text-textPrimary">{formatCurrency(balance.balance)}</span>
+                        · Pendiente: <span className="font-semibold text-textPrimary">{formatMoney(balance.balance)}</span>
                       </>
                     )}
                   </p>
@@ -113,7 +111,7 @@ export function CobrosTabContent({
               <li key={payment.id} className={`rounded-lg border border-border p-3 ${payment.voidedAt ? "bg-background opacity-60" : "bg-surface shadow-card"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm text-textPrimary">
-                    <span className="font-semibold">{formatCurrency(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
+                    <span className="font-semibold">{formatMoney(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
                   </p>
                   {payment.voidedAt ? (
                     <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textMuted">Anulado</span>

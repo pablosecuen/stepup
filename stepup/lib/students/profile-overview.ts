@@ -91,11 +91,6 @@ export function skillAveragesFromEvaluations(
   return out;
 }
 
-/** Texto de horas: «12 h», «1,5 h». */
-export function formatHours(hours: number): string {
-  return `${String(hours).replace(".", ",")} h`;
-}
-
 export interface MoneyAllocation {
   chargeId: string;
   paymentId: string;

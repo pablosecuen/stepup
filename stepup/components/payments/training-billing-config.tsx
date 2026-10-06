@@ -11,11 +11,9 @@ import {
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { billingPeriodOfDateKey, nextBillingPeriod } from "@/lib/payments/dates";
+import { formatMoney } from "@/lib/format/number-format";
 import { formatCivilDate, todayInArgentina } from "@/lib/format/date-format";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
-}
 
 /**
  * Puerto de `TrainingBillingAgreementSheet.tsx` (móvil) — dos modos sobre el
@@ -128,8 +126,8 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId }: {
           <p className="text-xs font-semibold text-textSecondary">Se van a generar estas obligaciones del período vigente:</p>
           <ul className="mt-1.5 flex flex-col gap-1">
             {plan.charges.map((c) => (
-              <li key={c.studentId} className="text-xs text-textSecondary">
-                {c.studentName}: <span className="font-semibold text-textPrimary">{formatCurrency(c.amount)}</span> · vence {formatCivilDate(c.dueDate)}
+              <li key={c.studentId} className="text-xs text-textSecondary [overflow-wrap:anywhere]">
+                {c.studentName}: <span className="font-semibold text-textPrimary">{formatMoney(c.amount)}</span> · vence {formatCivilDate(c.dueDate)}
                 {c.classesRemaining < 3 && <span className="text-textMuted"> (primer período proporcional — {c.classesRemaining} clase{c.classesRemaining === 1 ? "" : "s"} real{c.classesRemaining === 1 ? "" : "es"})</span>}
               </li>
             ))}

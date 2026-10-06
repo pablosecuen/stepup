@@ -4,6 +4,7 @@ import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registr
 import type { LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import { EmptyState } from "@/components/ui/states";
 import { formatInstantDate } from "@/lib/format/date-format";
+import { formatGrade } from "@/lib/format/number-format";
 import { skillAveragesFromEvaluations } from "@/lib/students/profile-overview";
 
 /**
@@ -21,7 +22,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
         <p className="text-xs font-medium uppercase tracking-wide text-textMuted">Promedio general</p>
-        <p className="mt-1 text-2xl font-bold text-textPrimary">{average != null ? average.toFixed(1) : "Sin calificar"}</p>
+        <p className="mt-1 text-2xl font-bold text-textPrimary">{average != null ? formatGrade(average) : "Sin calificar"}</p>
       </div>
       {skillAverages.length > 0 && (
         <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -30,7 +31,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
             {skillAverages.map((skill) => (
               <li key={skill.skill} className="flex items-center justify-between text-sm">
                 <span className="text-textSecondary">{skill.label}</span>
-                <span className="font-semibold text-textPrimary">{skill.averageGrade.toFixed(1)}/10</span>
+                <span className="font-semibold text-textPrimary">{formatGrade(skill.averageGrade)}/10</span>
               </li>
             ))}
           </ul>

@@ -13,17 +13,12 @@ import {
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
-import { formatCivilDateRange, formatInstantDate } from "@/lib/format/date-format";
+import { formatCivilDateRange, formatCivilMonth, formatInstantDate } from "@/lib/format/date-format";
+import { formatGrade, formatHours, formatPercent } from "@/lib/format/number-format";
 
 const inputClassName =
   "w-full rounded-md border border-border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
 const labelClassName = "text-sm font-medium text-textSecondary";
-
-function monthLabel(month: string): string {
-  const [year, monthNumber] = month.split("-");
-  const names = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-  return `${names[Number(monthNumber) - 1]} ${year}`;
-}
 
 /** Reemplaza (si ya existe, por id) o agrega al frente la fila canónica devuelta por el servidor — nunca una entrada construida desde el formulario local. */
 function upsertHistoryEntry(prev: ReportRecordSummary[], entry: ReportRecordSummary): ReportRecordSummary[] {
@@ -253,7 +248,7 @@ export function ReportesTabContent({
                     selectedMonths.has(month) ? "border-brandBlue bg-brandBlue text-white" : "border-border bg-background text-textSecondary hover:border-brandBlue/30"
                   }`}
                 >
-                  {monthLabel(month)}
+                  {formatCivilMonth(month)}
                 </button>
               ))}
             </div>
@@ -283,15 +278,15 @@ export function ReportesTabContent({
             </div>
             <div>
               <p className="text-xs text-textMuted">Horas reales</p>
-              <p className="font-semibold text-textPrimary">{preview.data.hoursTaught}</p>
+              <p className="font-semibold text-textPrimary">{formatHours(preview.data.hoursTaught)}</p>
             </div>
             <div>
               <p className="text-xs text-textMuted">Asistencia</p>
-              <p className="font-semibold text-textPrimary">{preview.data.attendance.ratePercent !== null ? `${preview.data.attendance.ratePercent}%` : "Sin datos"}</p>
+              <p className="font-semibold text-textPrimary">{preview.data.attendance.ratePercent !== null ? formatPercent(preview.data.attendance.ratePercent) : "Sin datos"}</p>
             </div>
             <div>
               <p className="text-xs text-textMuted">Promedio general</p>
-              <p className="font-semibold text-textPrimary">{preview.data.generalAverageGrade ?? "Sin calificar"}</p>
+              <p className="font-semibold text-textPrimary">{preview.data.generalAverageGrade !== null ? formatGrade(preview.data.generalAverageGrade) : "Sin calificar"}</p>
             </div>
           </div>
 
@@ -303,7 +298,7 @@ export function ReportesTabContent({
                   .filter((s) => s.averageGrade !== null)
                   .map((s) => (
                     <li key={s.skill} className="text-textSecondary">
-                      {s.label}: <span className="font-semibold text-textPrimary">{s.averageGrade}</span>
+                      {s.label}: <span className="font-semibold text-textPrimary">{formatGrade(s.averageGrade)}</span>
                     </li>
                   ))}
               </ul>

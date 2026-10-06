@@ -831,9 +831,26 @@ La revisión visual de B1 (sesión QA real, solo lectura, 22 rutas en escritorio
 
 **Seguridad de datos.** Resumen e Información no disparan la generación de cobros (sigue sólo en la pestaña Cobros) y no escriben nada; una prueba lo fija. Se agregó `anchorAt` (instante de la clase) a las filas de `listCompletedRegistrationsForStudentReport`.
 
-**No incluido / pendientes registrados.** Pestañas móviles del perfil (la activa no se desplaza a la vista) y objetivos táctiles (B8); formatos y anchos (B7). **Pendiente nuevo a diagnosticar:** `listCompletedRegistrationsForStudentReport` deriva `dateKey` con el recorte UTC del instante (`slice(0,10)`), por lo que una clase de la noche argentina podría caer en el día (y mes) siguiente en Reportes; B6 no lo toca (el perfil usa el instante real).
+**No incluido / pendientes registrados.** Pestañas móviles del perfil (la activa no se desplaza a la vista) y objetivos táctiles (B8); formatos y anchos (B7). **Pendiente nuevo (CORREGIDO en B7):** `listCompletedRegistrationsForStudentReport` derivaba `dateKey` con el recorte UTC del instante (`slice(0,10)`), por lo que una clase de la noche argentina podría caer en el día (y mes) siguiente en Reportes; B6 no lo toca (el perfil usa el instante real).
 
 **Pruebas.** 19 nuevas (`lib/students/__tests__/profile-overview.test.ts`; 17/17 mutaciones detectadas); se actualizaron dos existentes (B3: ya no prohíbe próxima/última clase, sí el texto de fases; B4: lista de acciones de vacío). Verificación en navegador con un arnés temporal ya retirado (activo con actividad, sin actividad, archivado, pausado; las cuatro pestañas con datos; escritorio y 320 px sin desborde, enlaces de 44 px).
+
+### B7 — Anchos, densidad visual y formatos (6/oct/2026) — implementado
+
+**Definición.** B7 es el bloque «plantilla / anchos / formatos de fecha, moneda y números» del plan por bloques B0–B8 del 4/oct/2026, más el pendiente que dejó B6 (días civiles en Reportes). B8 (accesibilidad, objetivos táctiles, teclado, contraste) queda fuera. Sin migraciones, autenticación ni datos.
+
+**Auditoría.** Rutas públicas y privadas de sólo lectura, en 320, 375, 430 px y escritorio: 0 desbordes horizontales, 0 textos en formato técnico (ISO, UUID, `undefined`, `NaN`) y un solo `h1` por pantalla, tanto en Production (cuenta QA) como en las pantallas públicas y en un arnés local con datos sintéticos (nombres sin espacios, importes grandes, centavos). Las superficies que escriben al abrirse en Production (Cobros, Recordatorios, la pestaña Cobros y Reportes del perfil, los registros dinámicos) NO se abrieron: se verificaron con pruebas y el arnés local, ya retirado.
+
+**Hallazgos corregidos.**
+1. *Días en hora de Argentina (pendiente de B6):* `listCompletedRegistrationsForStudentReport` derivaba `dateKey` recortando el instante UTC y `toDateKey` hacía lo mismo, así que una clase de la noche argentina (21:00 en adelante) caía en el día —y a fin de mes en el mes— siguiente en Reportes, en el Resumen financiero (tarifa por hora, actividad anual, alumnos atendidos) y en el selector de meses. Ahora ambas usan `instantDateKey` (la función civil existente); no se creó otro formateador.
+2. *Formatos dispersos de importes, horas y notas:* había seis formateadores de moneda propios («$ 15.000» en el perfil, «$ 15.000,00» en Cobros) y horas/notas con punto o coma según la pantalla («4.5 h» en el Resumen financiero, «8.0» en el perfil). Nuevo formateador único `lib/format/number-format.ts` (importes sin decimales si son enteros y con dos sólo si hay centavos; coma decimal; ausente o inválido → «—», nunca «$ NaN»). Migradas todas las pantallas, la vista previa de Reportes, la narrativa y el PDF.
+3. *PDF del reporte:* mostraba la fecha de generación y la de cada clase como `2026-09-24`, la asistencia como valor interno (`ausente_aviso`), las horas sin unidad y las notas con punto; además repetía la clave de React cuando había dos clases el mismo día. Ahora usa dd/mm/aaaa, la etiqueta de asistencia, «2,5 h», «8,5» y «60 min».
+4. *Anchos:* un nombre o título sin espacios desbordaba la pantalla en Inicio y Cobros (se comprobó en el arnés: sin la regla, 447 px en un viewport de 320); regla global `overflow-wrap: anywhere` para `h1`–`h3` y `p`, más el nombre en el listado de Cobros y la confirmación de entrenamiento.
+5. *Densidad y textos:* Series ya no repite los alumnos como subtítulo cuando son el título; en escritorio el botón «Registrar» deja de ocupar todo el ancho de la tarjeta; el selector del Resumen financiero dice «Mes actual» (no «Mes»); los meses de Reportes usan `formatCivilMonth` en vez de una lista propia.
+
+**No incluido / pendientes registrados.** Objetivos táctiles de 44 px, pestañas móviles del perfil (la activa no se desplaza a la vista), salto al contenido, teclado y contraste (B8); textos densos del asistente de importación y reorganización de Configuración. En el Calendario semanal a 320 px se ven ~1,5 días y se navega con desplazamiento horizontal interno (es el diseño de la grilla, no un desborde).
+
+**Pruebas.** 19 nuevas (`lib/format/__tests__/number-format.test.ts` y `b7-consistency.test.ts`): importes, porcentajes, horas, notas y duraciones; días civiles en el límite de mes y de año; una clase nocturna de fin de mes cuenta en su mes; guarda estructural de formateadores paralelos (sin `Intl.NumberFormat`, `toFixed` ni `toLocale*` fuera de los dos formateadores únicos); PDF y narrativa sin formatos técnicos; anchos y densidad. 12/12 mutaciones detectadas.
 
 ## Continuación exacta
 

@@ -1,4 +1,5 @@
 import type { StudentReportData } from "./student-report-data.ts";
+import { formatDecimal, formatGrade, formatPercent } from "../format/number-format.ts";
 
 /**
  * Puerto de `buildDeterministicReportNarrative` (móvil) — texto DETERMINÍSTICO
@@ -24,17 +25,17 @@ export function buildDeterministicReportNarrative(data: StudentReportData, notes
   } else {
     const classWord = data.classesHeld === 1 ? "clase" : "clases";
     paragraphs.push(
-      `Durante el período se dictaron ${data.classesHeld} ${classWord}, totalizando ${data.hoursTaught} hora${data.hoursTaught === 1 ? "" : "s"} reales de trabajo.` +
-        (data.attendance.ratePercent !== null ? ` La asistencia registrada fue del ${data.attendance.ratePercent}%.` : "")
+      `Durante el período se dictaron ${data.classesHeld} ${classWord}, totalizando ${formatDecimal(data.hoursTaught)} hora${data.hoursTaught === 1 ? "" : "s"} reales de trabajo.` +
+        (data.attendance.ratePercent !== null ? ` La asistencia registrada fue del ${formatPercent(data.attendance.ratePercent)}.` : "")
     );
 
     if (data.generalAverageGrade !== null) {
-      paragraphs.push(`El promedio general del período fue ${data.generalAverageGrade}.`);
+      paragraphs.push(`El promedio general del período fue ${formatGrade(data.generalAverageGrade)}.`);
     }
 
     const gradedSkills = data.skillNotes.filter((s) => s.averageGrade !== null);
     if (gradedSkills.length > 0) {
-      paragraphs.push(`Por habilidad: ${gradedSkills.map((s) => `${s.label} ${s.averageGrade}`).join(", ")}.`);
+      paragraphs.push(`Por habilidad: ${gradedSkills.map((s) => `${s.label} ${formatGrade(s.averageGrade)}`).join(", ")}.`);
     }
 
     if (data.strengths.length > 0) {

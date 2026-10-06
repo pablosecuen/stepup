@@ -2,6 +2,9 @@ import "server-only";
 import * as React from "react";
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { StudentReportData } from "./student-report-data.ts";
+import { formatCivilDate } from "../format/date-format.ts";
+import { formatGrade, formatHours, formatMinutes, formatPercent } from "../format/number-format.ts";
+import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus } from "../lessons/attendance.ts";
 
 /**
  * Puerto de `buildReportHtml.ts`/`generateReportPdf.ts` (móvil) — el móvil
@@ -57,7 +60,7 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>{input.title}</Text>
         <Text style={styles.subtitle}>
-          {input.studentName} · {input.monthsSummaryLabel} · Generado el {input.generatedAtDateKey}
+          {input.studentName} · {input.monthsSummaryLabel} · Generado el {formatCivilDate(input.generatedAtDateKey)}
         </Text>
 
         <View style={styles.sectionTitle}>
@@ -69,15 +72,15 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Horas reales dictadas</Text>
-          <Text style={styles.value}>{data.hoursTaught}</Text>
+          <Text style={styles.value}>{formatHours(data.hoursTaught)}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Asistencia</Text>
-          <Text style={styles.value}>{data.attendance.ratePercent !== null ? `${data.attendance.ratePercent}% (${data.attendance.classesAttended} de ${data.attendance.classesHeld})` : "Sin datos"}</Text>
+          <Text style={styles.value}>{data.attendance.ratePercent !== null ? `${formatPercent(data.attendance.ratePercent)} (${data.attendance.classesAttended} de ${data.attendance.classesHeld})` : "Sin datos"}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Promedio general</Text>
-          <Text style={styles.value}>{data.generalAverageGrade ?? "Sin calificar"}</Text>
+          <Text style={styles.value}>{data.generalAverageGrade !== null ? formatGrade(data.generalAverageGrade) : "Sin calificar"}</Text>
         </View>
 
         {data.skillNotes.some((s) => s.averageGrade !== null) && (
@@ -90,7 +93,7 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
               .map((s) => (
                 <View style={styles.row} key={s.skill}>
                   <Text style={styles.label}>{s.label}</Text>
-                  <Text style={styles.value}>{s.averageGrade}</Text>
+                  <Text style={styles.value}>{formatGrade(s.averageGrade)}</Text>
                 </View>
               ))}
           </>
@@ -145,7 +148,7 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
               <Text style={styles.label}>Llegadas tarde</Text>
               <Text style={styles.value}>
                 {data.punctuality.lateCount}
-                {data.punctuality.averageLateMinutes !== null ? ` (promedio ${data.punctuality.averageLateMinutes} min)` : ""}
+                {data.punctuality.averageLateMinutes !== null ? ` (promedio ${formatMinutes(data.punctuality.averageLateMinutes)})` : ""}
               </Text>
             </View>
           </>
@@ -162,19 +165,19 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
               <Text style={styles.col3}>Nota</Text>
               <Text style={styles.col4}>Duración</Text>
             </View>
-            {data.lessonDetails.map((lesson) => (
-              <View style={styles.tableRow} key={lesson.dateKey}>
-                <Text style={styles.col1}>{lesson.dateKey}</Text>
-                <Text style={styles.col2}>{lesson.attendanceStatus ?? "—"}</Text>
-                <Text style={styles.col3}>{lesson.generalGrade ?? "—"}</Text>
-                <Text style={styles.col4}>{lesson.durationMinutes} min</Text>
+            {data.lessonDetails.map((lesson, index) => (
+              <View style={styles.tableRow} key={`${lesson.dateKey}-${index}`}>
+                <Text style={styles.col1}>{formatCivilDate(lesson.dateKey)}</Text>
+                <Text style={styles.col2}>{lesson.attendanceStatus ? (ATTENDANCE_STATUS_LABEL[lesson.attendanceStatus as AttendanceStatus] ?? "—") : "—"}</Text>
+                <Text style={styles.col3}>{formatGrade(lesson.generalGrade)}</Text>
+                <Text style={styles.col4}>{lesson.durationMinutes > 0 ? formatMinutes(lesson.durationMinutes) : "—"}</Text>
               </View>
             ))}
           </>
         )}
 
         <Text style={styles.footer} fixed>
-          TeacherFlow — Reporte generado el {input.generatedAtDateKey}. Uso pedagógico interno.
+          TeacherFlow — Reporte generado el {formatCivilDate(input.generatedAtDateKey)}. Uso pedagógico interno.
         </Text>
       </Page>
     </Document>

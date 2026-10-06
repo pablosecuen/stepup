@@ -11,6 +11,13 @@
     color: #080808;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Un nombre o título sin espacios (largo) se parte en vez de desbordar la pantalla; no afecta a texto que ya entra. */
+  h1,
+  h2,
+  h3,
+  p {
+    overflow-wrap: anywhere;
+  }
 }
 
 @layer utilities {

@@ -10,6 +10,7 @@ import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
 import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { formatMinutes } from "@/lib/format/number-format";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-textSecondary">{children}</span>;
@@ -154,7 +155,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
         <div className="mt-4 flex flex-wrap gap-1.5">
           <MetaChip>{dateLabel}</MetaChip>
           <MetaChip>{timeLabel}</MetaChip>
-          <MetaChip>{durationMinutes} min</MetaChip>
+          <MetaChip>{formatMinutes(durationMinutes)}</MetaChip>
           <MetaChip>{MODALITY_LABELS[item.modality]}</MetaChip>
           <MetaChip>{item.isRecurring ? "Serie recurrente" : "Clase suelta"}</MetaChip>
           <MetaChip>{STATUS_LABELS[item.status]}</MetaChip>
@@ -207,7 +208,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
             <p className="text-sm font-semibold text-textPrimary">Nuevo horario</p>
             <input type="date" name="date" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
             <input type="time" name="time" required className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
-            <p className="text-xs text-textMuted">La duración ({durationMinutes} min) se mantiene igual a la clase original.</p>
+            <p className="text-xs text-textMuted">La duración ({formatMinutes(durationMinutes)}) se mantiene igual a la clase original.</p>
             <div className="flex gap-2">
               <button type="submit" className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white">
                 Ver vista previa

@@ -7,6 +7,8 @@
  * tocar zona horaria una vez resuelto el date key.
  */
 
+import { instantDateKey } from "../calendar/civil-calendar.ts";
+
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isValidDateKey(value: string): boolean {
@@ -123,10 +125,14 @@ export function nextBillingPeriod(billingPeriod: string): string {
   return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
 }
 
-/** Convierte un instante ISO (o date key) a date key YYYY-MM-DD, sin ajuste de huso horario. */
+/**
+ * Día civil (YYYY-MM-DD) de un date key o de un instante ISO. Un date key se devuelve tal cual; un instante se pasa al día
+ * de Argentina con la función civil del calendario (`instantDateKey`). NUNCA se recorta el texto del instante: eso daba el
+ * día UTC, y una clase de la noche argentina (21:00 en adelante) caía en el día —y, a fin de mes, en el mes— siguiente.
+ */
 export function toDateKey(isoOrDateKey: string): string {
   if (isValidDateKey(isoOrDateKey)) return isoOrDateKey;
-  return isoOrDateKey.slice(0, 10);
+  return instantDateKey(isoOrDateKey);
 }
 
 export function isDateKeyBeforeOrEqual(a: string, b: string): boolean {

@@ -86,7 +86,7 @@ export default async function SeriesPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-textPrimary">{rule.classTitle || participantNames}</p>
-                    <p className="mt-0.5 text-xs text-textMuted">{participantNames}</p>
+                    {rule.classTitle && <p className="mt-0.5 text-xs text-textMuted">{participantNames}</p>}
                   </div>
                   <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[rule.activityKind]}</span>
                 </div>

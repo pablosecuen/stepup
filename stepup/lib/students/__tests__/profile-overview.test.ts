@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { formatHours } from "../../format/number-format.ts";
 import {
   buildProfileClassStats,
-  formatHours,
   monthlyDueDayOf,
   pickStudentNextClass,
   resolveProfileAudience,

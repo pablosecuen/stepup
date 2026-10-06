@@ -4,10 +4,10 @@ import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { PendingHomeworkTask } from "@/lib/lessons/homework";
 import { ATTENDANCE_STATUS_LABEL } from "@/lib/lessons/attendance";
 import { MODALITY_LABEL } from "@/lib/students/constants";
+import { formatGrade, formatHours } from "@/lib/format/number-format";
 import { formatInstantDate, formatInstantDayLongTime } from "@/lib/format/date-format";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import {
-  formatHours,
   resolveProfileAudience,
   type ProfileClassStats,
   type StudentNextClass,
@@ -132,7 +132,7 @@ export function ResumenTabContent({
               <Metric label="Asistencia" value={`${stats.attendanceRatePercent}%`} detail={`${stats.attended} de ${stats.attendanceBasis} clases`} />
             )}
             {stats.hours !== null && <Metric label="Horas de clase" value={formatHours(stats.hours)} />}
-            {stats.averageGrade !== null && <Metric label="Promedio" value={stats.averageGrade.toFixed(1)} />}
+            {stats.averageGrade !== null && <Metric label="Promedio" value={formatGrade(stats.averageGrade)} />}
           </div>
           {(stats.unresolved > 0 || stats.attendedWithoutDuration > 0) && (
             <ul className="mt-2 space-y-0.5 text-xs text-textMuted">

@@ -10,6 +10,7 @@ import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
 import { formatCivilDate } from "@/lib/format/date-format";
+import { formatMoney } from "@/lib/format/number-format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cobros · TeacherFlow" };
@@ -23,9 +24,6 @@ function statusLabel(entry: CollectionsCenterEntry): { text: string; className: 
   return { text: "Pago pendiente", className: "bg-statusPendiente/10 text-statusPendiente" };
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amount);
-}
 
 export default async function CobrosPage() {
   if (!isSupabaseConfigured()) {
@@ -87,8 +85,8 @@ export default async function CobrosPage() {
             return (
               <li key={entry.chargeId} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <Link href={`/alumnos/${entry.studentId}`} className="text-sm font-semibold text-textPrimary hover:underline">
+                  <div className="min-w-0">
+                    <Link href={`/alumnos/${entry.studentId}`} className="text-sm font-semibold text-textPrimary [overflow-wrap:anywhere] hover:underline">
                       {entry.studentName}
                     </Link>
                     <p className="mt-0.5 text-xs text-textMuted">
@@ -98,8 +96,8 @@ export default async function CobrosPage() {
                   <span className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-semibold tracking-tight ${status.className}`}>{status.text}</span>
                 </div>
                 <p className="mt-2 text-sm text-textSecondary">
-                  Saldo pendiente: <span className="font-semibold text-textPrimary">{formatCurrency(entry.balance)}</span>
-                  {entry.paidAmount > 0 && <span className="text-xs text-textMuted"> (de {formatCurrency(entry.originalAmount)}, ya pagó {formatCurrency(entry.paidAmount)})</span>}
+                  Saldo pendiente: <span className="font-semibold text-textPrimary">{formatMoney(entry.balance)}</span>
+                  {entry.paidAmount > 0 && <span className="text-xs text-textMuted"> (de {formatMoney(entry.originalAmount)}, ya pagó {formatMoney(entry.paidAmount)})</span>}
                 </p>
                 <ChargeActions chargeId={entry.chargeId} studentId={entry.studentId} balance={entry.balance} />
               </li>
