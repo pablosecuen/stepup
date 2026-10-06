@@ -272,6 +272,7 @@ export function NewLessonForm({
             <div className="flex gap-1.5">
               <input
                 id="hour-single"
+                aria-label="Hora"
                 name="hour"
                 type="number"
                 min="0"
@@ -281,7 +282,7 @@ export function NewLessonForm({
                 onChange={(e) => setHour(e.target.value)}
                 className={inputClassName}
               />
-              <input name="minute" type="number" min="0" max="59" required value={minute} onChange={(e) => setMinute(e.target.value)} className={inputClassName} />
+              <input name="minute" type="number" aria-label="Minutos" min="0" max="59" required value={minute} onChange={(e) => setMinute(e.target.value)} className={inputClassName} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">

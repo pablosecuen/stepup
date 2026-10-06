@@ -213,6 +213,7 @@ function ParticipantCard({
               <input
                 type="number"
                 min="0"
+                aria-label="Minutos de tardanza"
                 placeholder="Minutos de tardanza"
                 value={form.lateMinutes}
                 onChange={(e) => updateForm({ lateMinutes: e.target.value })}
@@ -310,11 +311,13 @@ function ParticipantCard({
               <input
                 value={form.homeworkDescription}
                 onChange={(e) => updateForm({ homeworkDescription: e.target.value })}
+                aria-label="Descripción de la tarea individual"
                 placeholder="Descripción"
                 className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
               />
               <input
                 type="date"
+                aria-label="Fecha de entrega de la tarea individual"
                 value={form.homeworkDueDate}
                 onChange={(e) => updateForm({ homeworkDueDate: e.target.value })}
                 className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
@@ -524,11 +527,13 @@ export function RegistrationWorkspace({
           <input
             value={commonHomeworkDescription}
             onChange={(e) => setCommonHomeworkDescription(e.target.value)}
+            aria-label="Descripción de la tarea común"
             placeholder="Descripción"
             className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
           />
           <input
             type="date"
+            aria-label="Fecha de entrega de la tarea común"
             value={commonHomeworkDueDate}
             onChange={(e) => setCommonHomeworkDueDate(e.target.value)}
             className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"

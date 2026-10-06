@@ -29,6 +29,7 @@ import { formatCivilDate } from "@/lib/format/date-format";
 import type { AttendanceStatus } from "@/lib/lessons/attendance";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Perfil del alumno · TeacherFlow" };
 
 const VALID_TABS: ProfileTabKey[] = ["resumen", "clases", "progreso", "tareas", "cobros", "reportes", "informacion"];
 

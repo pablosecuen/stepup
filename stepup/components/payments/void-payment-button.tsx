@@ -27,6 +27,7 @@ export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
       <input
         value={reason}
         onChange={(e) => setReason(e.target.value)}
+        aria-label="Motivo de la anulación"
         placeholder="Motivo de la anulación"
         className="w-full rounded-md border border-borderStrong px-2 py-1 text-xs"
       />

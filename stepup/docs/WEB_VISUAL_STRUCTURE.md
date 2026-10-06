@@ -1,5 +1,7 @@
 # TeacherFlow Web — Estructura visual y funcional (auditoría estructural)
 
+> **Documento histórico (nota de B11).** Es la auditoría estructural inicial, de cuando la web era una vista previa con datos ficticios («Fase A»). Hoy la web usa datos reales de Supabase; el estado vigente, por bloque y por fase, está en `docs/WEB_PARITY_PLAN.md`. No se actualizó su contenido por precisión histórica.
+
 **Alcance de este documento.** Describe qué existe hoy, con qué nombre, en qué archivo y con qué comportamiento — sin proponer estética ni tocar código. Es la base para que un futuro trabajo de diseño no invente pantallas, no elimine funciones y no altere reglas de negocio.
 
 **Fuentes auditadas y cómo leer las etiquetas.** Cada afirmación de este documento lleva una etiqueta de origen, en el mismo espíritu que ya usa `docs/AI_CONTEXT/00_LEER_PRIMERO.md` del proyecto móvil ("Implementado y verificado en código" vs. "Diseñado, no implementado"):

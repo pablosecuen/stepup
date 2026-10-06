@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { resolvePrivateAreaAccess } from "../route-protection.ts";
 import { isPrivatePath } from "../safe-redirect.ts";
 
-const PRIVATE_PATHS = ["/inicio", "/alumnos", "/calendario", "/cobros", "/configuracion"];
+const PRIVATE_PATHS = ["/inicio", "/alumnos", "/calendario", "/cobros", "/configuracion", "/recordatorios", "/registro", "/resumen-financiero"];
 
 test("usuario anónimo es redirigido desde cada ruta privada", () => {
   for (const pathname of PRIVATE_PATHS) {

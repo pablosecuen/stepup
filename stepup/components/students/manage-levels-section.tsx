@@ -49,6 +49,7 @@ function RenameLevelRow({ level }: { level: CustomLevelRecord }) {
         <input
           type="text"
           name="name"
+          aria-label="Nuevo nombre del nivel"
           defaultValue={level.name}
           autoFocus
           className="min-w-[8rem] flex-1 rounded-md border border-borderStrong bg-surface px-2 py-1 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
@@ -94,6 +95,7 @@ export function ManageLevelsSection({ customLevels }: { customLevels: CustomLeve
           <input
             type="text"
             name="name"
+            aria-label="Nombre del nivel nuevo"
             placeholder="Nombre del nivel nuevo"
             className="min-w-[10rem] flex-1 rounded-md border border-borderStrong bg-background px-2 py-1.5 text-sm text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
           />

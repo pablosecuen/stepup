@@ -51,6 +51,13 @@ test("isPrivatePath: reconoce rutas del área privada", () => {
   assert.equal(isPrivatePath("/calendario"), true);
   assert.equal(isPrivatePath("/cobros"), true);
   assert.equal(isPrivatePath("/configuracion"), true);
+  assert.equal(isPrivatePath("/recordatorios"), true);
+  assert.equal(isPrivatePath("/resumen-financiero"), true);
+});
+
+test("sanitizeNextPath: conserva /resumen-financiero y /recordatorios (antes caían en /inicio)", () => {
+  assert.equal(sanitizeNextPath("/resumen-financiero"), "/resumen-financiero");
+  assert.equal(sanitizeNextPath("/recordatorios"), "/recordatorios");
 });
 
 test("isPrivatePath: rutas públicas no se marcan como privadas", () => {
