@@ -1,6 +1,6 @@
 # Supabase Auth — plantillas compartidas web + móvil (recuperación y alta)
 
-Documento de referencia para configurar Supabase Auth con el flujo seguro de `/auth/confirm` (código ya desplegado en Production, commit `6930b83`). **Nada de esto está aplicado en Supabase.** Copiá cada bloque directamente desde este archivo, no desde un chat renderizado.
+Documento de referencia para configurar Supabase Auth con el flujo seguro de `/auth/confirm` (código ya desplegado en Production, commit `6930b83`). **Estado (corregido en B12, 6/oct/2026): la Redirect URL y las plantillas de este documento ya fueron aplicadas manualmente en Supabase, y los flujos web de recuperación de contraseña y confirmación de alta se probaron.** La afirmación anterior («nada de esto está aplicado») estaba desactualizada. Este documento queda como referencia de lo que está configurado: no se vuelven a cambiar las plantillas ni Supabase por este trabajo. Para volver a copiar un bloque, copialo directamente desde este archivo, no desde un chat renderizado.
 
 ## Por qué las plantillas son condicionales
 
