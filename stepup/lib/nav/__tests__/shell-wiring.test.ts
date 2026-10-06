@@ -134,7 +134,7 @@ test("ningún cambio en autenticación ni datos: el shell sólo LEE el nombre y 
 });
 
 test("Recordatorios y Resumen financiero siguen accesibles desde sus puntos actuales", () => {
-  assert.match(read("app/(app)/inicio/page.tsx"), /href="\/recordatorios"/);
+  assert.match(read("components/dashboard/home-view.tsx"), /href="\/recordatorios"/);
   assert.match(read("app/(app)/cobros/page.tsx"), /href="\/resumen-financiero"/);
 });
 

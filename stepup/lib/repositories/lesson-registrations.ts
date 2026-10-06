@@ -39,6 +39,13 @@ export interface RegistrationProgressRow {
   totalParticipants: number;
 }
 
+/** ¿Existe al menos un registro de clase (ligado o libre, de cualquier fecha)? Lectura mínima: una fila, sin traer datos. */
+export async function hasAnyLessonRegistration(ctx: AuthenticatedDbContext): Promise<boolean> {
+  const { data, error } = await ctx.supabase.from("lesson_registrations").select("id").eq("owner_id", ctx.ownerId).limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
 export async function listRegistrationProgressForCalendarLessonIds(
   ctx: AuthenticatedDbContext,
   calendarLessonIds: string[]

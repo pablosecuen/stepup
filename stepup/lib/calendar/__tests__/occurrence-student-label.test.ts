@@ -146,7 +146,7 @@ test("cableado: las pantallas siguen leyendo `item.studentName` (la corrección 
   assert.match(read("components/calendar/real-lesson-card.tsx"), /item\.title\?\.trim\(\) \|\| item\.studentName \|\| "Serie sin alumnos"/);
   assert.match(read("components/calendar/real-lesson-detail-modal.tsx"), /item\.title\?\.trim\(\) \|\| item\.studentName \|\| "Serie sin alumnos"/);
   assert.match(read("app/(app)/registro/page.tsx"), /item\.studentName \|\| "Sin alumnos"/);
-  assert.match(read("app/(app)/inicio/page.tsx"), /item\.studentName \|\| "Sin alumnos"/);
+  assert.match(read("components/dashboard/home-view.tsx"), /item\.studentName \|\| "Sin alumnos"/);
   assert.match(read("lib/dashboard/reminders-center.ts"), /pending\.item\.studentName \|\| "Sin alumnos"/);
   const view = read("lib/calendar/view.ts");
   assert.match(view, /listStudents\(ctx\)/);

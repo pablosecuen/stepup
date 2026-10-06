@@ -15,6 +15,7 @@ import { buildPendingLessons, type PendingLessonItem } from "@/lib/lessons/pendi
 import { buildCollectionsCenterEntries, type CollectionsCenterEntry } from "@/lib/payments/collections-center";
 import { summarizeCollectionsUrgency, type CollectionsUrgencySummary } from "@/lib/payments/collections-urgency";
 import { buildRemindersCenterSummary, type RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
+import { instantMinutesOfDay } from "@/lib/calendar/civil-calendar";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
@@ -26,6 +27,13 @@ export interface HomeNextClass {
 
 export interface HomeData {
   todayDateKey: string;
+  /** Hora civil (0-23) en Argentina al momento de la carga: la usa el saludo (nunca la hora del servidor, que es UTC). */
+  localHour: number;
+  /** Alumnos de la cuenta en cualquier estado / sólo activos (datos ya cargados, sin consulta extra). */
+  studentCount: number;
+  activeStudentCount: number;
+  /** `true` si lo ya cargado muestra alguna clase o serie; `false` NO prueba que no exista ninguna (ver `loadHomeWelcome`). */
+  hasClassSignal: boolean;
   nextClass: HomeNextClass | null;
   todayLessons: CalendarViewItem[];
   emptyClasses: EmptyClassesSummary;
@@ -131,6 +139,10 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
 
   return {
     todayDateKey,
+    localHour: Math.floor(instantMinutesOfDay(now.toISOString()) / 60),
+    studentCount: students.length,
+    activeStudentCount: students.filter((student) => student.status === "activo").length,
+    hasClassSignal: rules.length > 0 || todayItems.length > 0 || horizonLessons.length > 0 || pendingItems.length > 0,
     nextClass,
     todayLessons,
     emptyClasses,

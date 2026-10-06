@@ -37,6 +37,13 @@ async function attachParticipants(ctx: AuthenticatedDbContext, rows: CalendarLes
   return rows.map((row) => toCalendarLessonRecord(row, byLesson.get(row.id) ?? []));
 }
 
+/** ¿Existe al menos una clase materializada (de cualquier fecha y estado)? Lectura mínima: una fila, sin traer datos. */
+export async function hasAnyCalendarLesson(ctx: AuthenticatedDbContext): Promise<boolean> {
+  const { data, error } = await ctx.supabase.from("calendar_lessons").select("id").eq("owner_id", ctx.ownerId).limit(1);
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
 /** Clases materializadas cuyo `start_at` cae dentro de `[rangeStartIso, rangeEndIso]` — suficiente para pintar semana/día. */
 export async function listCalendarLessonsInRange(ctx: AuthenticatedDbContext, rangeStartIso: string, rangeEndIso: string): Promise<CalendarLessonRecord[]> {
   const { data, error } = await ctx.supabase
