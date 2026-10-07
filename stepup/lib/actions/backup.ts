@@ -2,6 +2,7 @@
 
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { validateBackupPayload } from "@/lib/backup/validation";
+import { BACKUP_IMPORT_LIMITS } from "@/lib/backup/limits";
 import { toImportPreviewDto, type ImportPreviewDto, type BackupStudentSummaryMap, type RawDuplicatePersonSource } from "@/lib/backup/import-preview-mapping";
 import { toHumanBlockedRow, UNDO_BLOCKED_EXPLANATION, type UndoBlockedPreview } from "@/lib/backup/undo-blocked-mapping";
 import {
@@ -19,7 +20,8 @@ import {
   type ApplyRunSummary,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import { translateImportError, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
+import { translateImportError, translateImportTimeout, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
+import { describeLoadFailure } from "@/lib/errors/load-failure";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 import { consumeActionQuota } from "@/lib/repositories/action-quota";
@@ -44,6 +46,12 @@ export interface ActionResult<T> {
 // Todo error del asistente se traduce a una frase útil + un código de soporte (`lib/backup/import-copy.ts`): el mensaje
 // interno de la RPC (ids, palabras como «preview» o «invariante») nunca llega al navegador.
 function failure(error: unknown, context: ImportErrorContext): { error: string; errorCode: string } {
+  // R6: la base cortó la operación por tiempo (SQLSTATE 57014): se revirtió todo y se explica sin detalles técnicos. Sólo el código, nunca el mensaje.
+  if (describeLoadFailure(error).code === "57014") {
+    console.error(`[action-error] ${JSON.stringify({ scope: "backup", kind: "database", code: "57014", name: null })}`);
+    const timeout = translateImportTimeout(context);
+    return { error: timeout.message, errorCode: timeout.code };
+  }
   const translated = translateImportError(actionErrorMessage("backup", error), context);
   return { error: translated.message, errorCode: translated.code };
 }
@@ -129,6 +137,16 @@ export async function applyImportPreviewAction(
   duplicateDecisions: DuplicateDecision[]
 ): Promise<ActionResult<{ importRunId: string; summary: ApplyRunSummary }>> {
   try {
+    // R6: lo que llega del navegador no es de confianza — forma y cantidad de decisiones se controlan ANTES de llamar a la base (que repite el control).
+    if (
+      !Array.isArray(fieldOverrides) ||
+      !Array.isArray(duplicateDecisions) ||
+      fieldOverrides.length > BACKUP_IMPORT_LIMITS.MAX_FIELD_OVERRIDES ||
+      duplicateDecisions.length > BACKUP_IMPORT_LIMITS.MAX_DUPLICATE_DECISIONS
+    ) {
+      const translated = translateImportError("La selección tiene demasiadas decisiones para confirmar de una vez.", "apply");
+      return { error: translated.message, errorCode: translated.code };
+    }
     const ctx = await requireAuthenticatedDbContext();
     const result = await applyBackupImport(ctx, previewId, fieldOverrides, duplicateDecisions);
     return { data: { importRunId: result.importRunId, summary: result.summary } };

@@ -7,7 +7,7 @@
  * único técnico que se muestra es un código corto y estable para soporte (`Código para soporte: …`).
  */
 import { formatCivilDate } from "../format/date-format.ts";
-import { formatMoney, formatPercent } from "../format/number-format.ts";
+import { formatCount, formatMoney, formatPercent } from "../format/number-format.ts";
 import { BACKUP_IMPORT_LIMITS } from "./limits.ts";
 import { isQuotaMessage } from "../errors/quota-message.ts";
 
@@ -33,6 +33,15 @@ export const IMPORT_GLOSSARY: ReadonlyArray<{ term: string; meaning: string }> =
 ];
 
 export const PREVIEW_VALIDITY_MINUTES = BACKUP_IMPORT_LIMITS.PREVIEW_TTL_MINUTES;
+
+/**
+ * El máximo por importación, dicho ANTES de empezar (R6): una copia más grande se rechaza al analizar, sin tocar nada. El número es el máximo de
+ * `BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS` (alumnos, clases, registros, cobros y sus detalles), nunca otra cifra.
+ */
+export const IMPORT_SIZE_LIMIT_NOTICE = {
+  lead: "Hay un máximo por importación.",
+  body: `Se importa de una vez una copia de hasta ${formatCount(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS)} elementos entre alumnos, clases, registros, cobros y sus detalles. Si la tuya es más grande, te lo decimos al analizar y no se cambia nada.`,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Datos que se pueden reemplazar: etiquetas y valores legibles
@@ -207,6 +216,31 @@ function networkMessage(context: ImportErrorContext): string {
   return "No se pudo conectar con el servidor. Revisá tu conexión y volvé a intentar. No se cambió nada.";
 }
 
+/**
+ * La base cortó la operación por tardar más de lo permitido (SQLSTATE 57014). Postgres revierte TODO lo que esa operación hubiera escrito y suelta
+ * sus bloqueos, así que al ANALIZAR, DESHACER o REVISAR no se cambió nada; al IMPORTAR tampoco se importó nada, pero por si el corte llegó justo al
+ * confirmar se manda a mirar el historial (mismo criterio que una falla de red).
+ */
+export function translateImportTimeout(context: ImportErrorContext): TranslatedImportError {
+  if (context === "apply") {
+    return {
+      message:
+        "La importación tardó más de lo permitido y se detuvo; no se importó nada a medias. Mirá el historial de importaciones: si no figura ahí, podés volver a intentar (si volvés a confirmar, no se duplica nada). Si se repite, avisá a soporte con el código.",
+      code: "operation_timeout",
+    };
+  }
+  if (context === "undo") {
+    return {
+      message: "Deshacer tardó más de lo permitido y se detuvo; no se tocó nada a medias. Mirá el historial para ver su estado antes de reintentar. Si se repite, avisá a soporte con el código.",
+      code: "operation_timeout",
+    };
+  }
+  return {
+    message: "La operación tardó más de lo permitido y se detuvo. No se cambió nada. Probá de nuevo en unos minutos; si se repite, avisá a soporte con el código.",
+    code: "operation_timeout",
+  };
+}
+
 const GENERIC_BY_CONTEXT: Record<ImportErrorContext, string> = {
   analyze: "No pudimos analizar la copia por un problema inesperado. No se cambió nada. Probá de nuevo en unos minutos.",
   apply:
@@ -234,6 +268,17 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
     };
   }
   if (/El backup supera el tamaño máximo/i.test(text)) return validationMessage("backup_too_large");
+  // R6: límites por importación que la base repite como defensa en profundidad (la web ya los controló antes de llamarla).
+  if (/demasiados datos para importar de una vez/i.test(text)) return validationMessage("backup_too_many_rows");
+  if (/El backup no tiene el formato esperado/i.test(text)) return validationMessage("backup_format_invalid");
+  if (/El backup tiene datos repetidos/i.test(text)) return validationMessage("backup_duplicate_items");
+  if (/demasiadas decisiones para confirmar/i.test(text)) {
+    return {
+      message:
+        "Marcaste demasiadas opciones para confirmar de una vez. No se importó nada. Confirmá primero una parte (por ejemplo, los reemplazos más importantes), después analizá la copia otra vez para ver el resto.",
+      code: "selection_too_large",
+    };
+  }
 
   if (/Esta importación ya fue deshecha|ya no puede deshacerse/i.test(text)) {
     return { message: "Esta importación ya fue deshecha. No hay nada más que revertir.", code: "undo_already_done" };
@@ -289,7 +334,16 @@ function validationMessage(code: string): TranslatedImportError {
         code,
       };
     case "backup_too_many_rows":
-      return { message: "La copia tiene más datos de los que se pueden importar de una vez. No se cambió nada. Avisá a soporte con el código.", code };
+      return {
+        message: `Tu copia tiene más datos de los que se pueden importar de una sola vez (el límite es de ${formatCount(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS)} elementos entre alumnos, clases, registros, cobros y sus detalles). No se cambió nada y tu copia en la nube sigue intacta. Avisá a soporte con el código y la pasamos a la web por partes.`,
+        code,
+      };
+    case "backup_duplicate_items":
+      return {
+        message:
+          "La copia tiene datos repetidos y no se puede importar tal como está. No se cambió nada. Abrí la app móvil para que genere una copia nueva y volvé a intentar; si sigue igual, avisá a soporte con el código.",
+        code,
+      };
     case "backup_text_too_long":
       return { message: "La copia tiene un texto demasiado largo (por ejemplo, una nota). No se cambió nada. Avisá a soporte con el código.", code };
     case "backup_version_unknown":
@@ -310,6 +364,8 @@ const VALIDATION_CODE_MAP: Record<string, string> = {
   too_large: "backup_too_large",
   too_many_rows: "backup_too_many_rows",
   too_many_rows_total: "backup_too_many_rows",
+  too_many_nested_rows: "backup_too_many_rows",
+  too_much_work: "backup_too_many_rows",
   string_too_long: "backup_text_too_long",
   unknown_schema_version: "backup_version_unknown",
 };

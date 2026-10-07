@@ -5,6 +5,9 @@ import { ImportHistory } from "@/components/backup/import-history";
 import { SettingsBreadcrumb } from "@/components/account/settings-ui";
 
 export const dynamic = "force-dynamic";
+// R6: analizar (descarga de hasta 20 MB + validación + vista previa) y confirmar una importación grande llevan segundos; la base corta cualquier operación a los 8 s
+// (revierte todo), así que 60 s sobran para la Server Action sin dejar el límite de la plataforma como única defensa.
+export const maxDuration = 60;
 export const metadata = { title: "Respaldo · TeacherFlow" };
 
 export default async function RespaldoPage() {

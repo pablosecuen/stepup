@@ -78,6 +78,12 @@ test("estado inicial: explica qué archivo (ninguno), qué se revisa, qué puede
   assert.match(wizard, /Se puede deshacer, con límites\./);
   assert.match(wizard, /Analizar la última copia/);
   assert.doesNotMatch(wizard, /Analizar último respaldo/);
+  // R6: el máximo por importación se dice ANTES de empezar, con el número del límite real (nunca una cifra escrita a mano en la pantalla).
+  assert.match(wizard, /IMPORT_SIZE_LIMIT_NOTICE\.lead/);
+  assert.match(wizard, /IMPORT_SIZE_LIMIT_NOTICE\.body/);
+  const copyText = code("lib/backup/import-copy.ts");
+  assert.match(copyText, /Hay un máximo por importación\./);
+  assert.match(copyText, /formatCount\(BACKUP_IMPORT_LIMITS\.MAX_WORK_UNITS\)/);
   const page = code(PAGE);
   assert.match(page, /Por defecto no se reemplaza nada de lo que ya cargaste acá\./);
   assert.doesNotMatch(page, /nunca reemplaza/i, "ya no promete algo que el usuario puede cambiar");

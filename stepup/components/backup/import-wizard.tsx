@@ -18,6 +18,7 @@ import {
 import {
   EXCLUDED_COLLECTION_LABELS,
   EXCLUDED_COLLECTION_REASON,
+  IMPORT_SIZE_LIMIT_NOTICE,
   PREVIEW_VALIDITY_MINUTES,
   translateImportError,
   type ImportErrorContext,
@@ -274,6 +275,9 @@ export function IdleStage({ error, errorCode, pending, focusHeading, onAnalyze }
         </li>
         <li>
           <strong className="text-textPrimary">Se puede deshacer, con límites.</strong> Por un tiempo limitado y solo si no cambiaste ni usaste después lo que se importó.
+        </li>
+        <li>
+          <strong className="text-textPrimary">{IMPORT_SIZE_LIMIT_NOTICE.lead}</strong> {IMPORT_SIZE_LIMIT_NOTICE.body}
         </li>
       </ul>
       {error && <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />}

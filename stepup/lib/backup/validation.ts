@@ -79,12 +79,22 @@ function findDangerousKeysDeep(value: unknown, path = "$"): string | null {
 }
 
 function maxDepth(value: unknown): number {
+  // Con bucle y no con `Math.max(...hijos)`: un arreglo enorme revienta la pila antes de poder rechazarlo con un mensaje claro.
   if (Array.isArray(value)) {
-    return value.length === 0 ? 1 : 1 + Math.max(...value.map(maxDepth));
+    let deepest = 0;
+    for (const item of value) {
+      const depth = maxDepth(item);
+      if (depth > deepest) deepest = depth;
+    }
+    return 1 + deepest;
   }
   if (value !== null && typeof value === "object") {
-    const values = Object.values(value as Record<string, unknown>);
-    return values.length === 0 ? 1 : 1 + Math.max(...values.map(maxDepth));
+    let deepest = 0;
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      const depth = maxDepth(item);
+      if (depth > deepest) deepest = depth;
+    }
+    return 1 + deepest;
   }
   return 0;
 }
@@ -136,12 +146,105 @@ function countRows(backup: Record<string, unknown>): { perCollection: Record<str
   return { perCollection, total };
 }
 
+function arrayLength(value: unknown): number {
+  return Array.isArray(value) ? value.length : 0;
+}
+
+/**
+ * Filas ANIDADAS que `countRows` no ve (lo que se escribe además de las filas principales): historial de niveles, integrantes de clases y de
+ * series, y roster / asistencias / evaluaciones / revisiones de tarea de cada registro. Mismo criterio que `_import_check_payload` en la base.
+ */
+export function countNestedRows(backup: Record<string, unknown>): number {
+  let nested = 0;
+  const profiles = backup.profiles;
+  if (profiles !== null && typeof profiles === "object" && !Array.isArray(profiles)) {
+    for (const profile of Object.values(profiles as Record<string, unknown>)) {
+      if (profile !== null && typeof profile === "object") nested += arrayLength((profile as Record<string, unknown>).levelHistory);
+    }
+  }
+  const items = (key: string): Record<string, unknown>[] =>
+    Array.isArray(backup[key]) ? (backup[key] as unknown[]).filter((x): x is Record<string, unknown> => x !== null && typeof x === "object") : [];
+  for (const lesson of items("calendarLessons")) nested += arrayLength(lesson.participants);
+  for (const rule of items("recurrenceRules")) nested += arrayLength(rule.participantStudentIds);
+  for (const registration of items("pedagogicalLessons")) {
+    nested += arrayLength(registration.roster) + arrayLength(registration.attendance) + arrayLength(registration.evaluations) + arrayLength(registration.homeworkReviews);
+  }
+  return nested;
+}
+
+function hasStringId(item: unknown): boolean {
+  if (item === null || typeof item !== "object") return false;
+  const id = (item as Record<string, unknown>).id;
+  return typeof id === "string" && id.trim() !== "";
+}
+
+function isObjectItem(item: unknown): boolean {
+  return item !== null && typeof item === "object" && !Array.isArray(item);
+}
+
+/**
+ * Rechazo TEMPRANO y barato (antes de serializar, medir profundidad o recorrer textos): colección que no es lista, cantidad de filas y de trabajo por
+ * encima de los límites, elementos sin identificador y referencias obligatorias ausentes. La base repite estos mismos controles
+ * (`_import_check_payload`) como defensa en profundidad.
+ */
+export function checkImportWorkLimits(doc: Record<string, unknown>): BackupValidationError[] {
+  const errors: BackupValidationError[] = [];
+  for (const key of ARRAY_COLLECTIONS) {
+    const value = doc[key];
+    if (value !== undefined && value !== null && !Array.isArray(value)) {
+      errors.push({ code: "invalid_collection", message: "Una colección del backup no es una lista.", path: key });
+    }
+  }
+  if (errors.length > 0) return errors;
+
+  const { perCollection, total } = countRows(doc);
+  for (const [key, count] of Object.entries(perCollection)) {
+    if (count > BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION) {
+      errors.push({ code: "too_many_rows", message: `'${key}' tiene ${count} filas, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION} por colección.`, path: key });
+    }
+  }
+  if (total > BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL) {
+    errors.push({ code: "too_many_rows_total", message: `El backup tiene ${total} filas en total, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL}.` });
+  }
+  if (errors.length > 0) return errors;
+
+  const nested = countNestedRows(doc);
+  if (nested > BACKUP_IMPORT_LIMITS.MAX_NESTED_ROWS) {
+    errors.push({ code: "too_many_nested_rows", message: `El backup tiene ${nested} filas anidadas, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_NESTED_ROWS}.` });
+  } else if (total + nested > BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS) {
+    errors.push({ code: "too_much_work", message: `El backup suma ${total + nested} filas entre principales y anidadas, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS}.` });
+  }
+  if (errors.length > 0) return errors;
+
+  for (const key of ARRAY_COLLECTIONS) {
+    const value = doc[key];
+    if (!Array.isArray(value)) continue;
+    const valid = key === "recurrenceExceptions" ? value.every(isObjectItem) : value.every(hasStringId);
+    if (!valid) errors.push({ code: "invalid_item", message: "Un elemento del backup no tiene el formato esperado.", path: key });
+  }
+  const list = (key: string): Record<string, unknown>[] => (Array.isArray(doc[key]) ? (doc[key] as Record<string, unknown>[]) : []);
+  if (list("paymentAllocations").some((a) => typeof a.paymentId !== "string" || typeof a.chargeId !== "string")) {
+    errors.push({ code: "invalid_item", message: "Una asignación de pago no tiene el formato esperado.", path: "paymentAllocations" });
+  }
+  if (list("paymentAdjustments").some((a) => typeof a.chargeId !== "string")) {
+    errors.push({ code: "invalid_item", message: "Un ajuste de cobro no tiene el formato esperado.", path: "paymentAdjustments" });
+  }
+  if (list("packageCreditMovements").some((m) => typeof m.packageId !== "string")) {
+    errors.push({ code: "invalid_item", message: "Un movimiento de paquete no tiene el formato esperado.", path: "packageCreditMovements" });
+  }
+  return errors;
+}
+
 export function validateBackupPayload(raw: unknown): BackupValidationResult {
   const errors: BackupValidationError[] = [];
 
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return { ok: false, errors: [{ code: "not_an_object", message: "El backup no es un objeto JSON válido." }] };
   }
+
+  // Rechazo temprano y barato: cantidad de filas / trabajo y forma de los elementos, ANTES de serializar o recorrer el documento entero.
+  const early = checkImportWorkLimits(raw as Record<string, unknown>);
+  if (early.length > 0) return { ok: false, errors: early };
 
   const sizeBytes = new TextEncoder().encode(JSON.stringify(raw)).length;
   if (sizeBytes > BACKUP_IMPORT_LIMITS.MAX_PAYLOAD_BYTES) {
@@ -193,17 +296,7 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
 
   if (errors.length > 0) return { ok: false, errors };
 
-  const { perCollection, total } = countRows(doc);
-  for (const [key, count] of Object.entries(perCollection)) {
-    if (count > BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION) {
-      errors.push({ code: "too_many_rows", message: `'${key}' tiene ${count} filas, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION} por colección.`, path: key });
-    }
-  }
-  if (total > BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL) {
-    errors.push({ code: "too_many_rows_total", message: `El backup tiene ${total} filas en total, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL}.` });
-  }
-
-  if (errors.length > 0) return { ok: false, errors };
+  // (Cantidad de filas y de trabajo: ya controlada al principio por `checkImportWorkLimits`, antes de recorrer el documento.)
 
   // schemaVersion 1 -> se normaliza a v2 con las 4 colecciones financieras
   // vacías (mismo criterio que el móvil: nunca queda un "modo v1" después

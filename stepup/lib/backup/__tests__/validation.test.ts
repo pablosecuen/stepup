@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateBackupPayload, isDateKey, isIsoDateTime } from "../validation.ts";
+import { validateBackupPayload, isDateKey, isIsoDateTime, countNestedRows } from "../validation.ts";
 import { BACKUP_IMPORT_LIMITS } from "../limits.ts";
 
 function minimalV1(overrides: Record<string, unknown> = {}) {
@@ -140,4 +140,102 @@ test("resume las 3 colecciones excluidas de v1 con motivo, nunca las omite en si
     assert.equal(result.excludedCollections.studentPriceHistory.count, 1);
     assert.ok(result.excludedCollections.studentStatusHistory.reason.length > 0);
   }
+});
+
+// ---------------------------------------------------------------------------
+// R6 — límites por importación: −1 / exacto / +1, rechazo temprano y barato
+// ---------------------------------------------------------------------------
+
+function items(count: number, prefix = "x"): Array<{ id: string }> {
+  return Array.from({ length: count }, (_, i) => ({ id: `${prefix}${i}` }));
+}
+
+/** Reparte `total` filas entre colecciones sin pasar el tope por colección. */
+function withTotalRows(total: number): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  let left = total;
+  for (const key of ["students", "calendarLessons", "payments", "paymentCharges", "customLevels"]) {
+    const n = Math.min(BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION, left);
+    out[key] = items(n, key[0]);
+    left -= n;
+  }
+  return out;
+}
+
+function codes(result: ReturnType<typeof validateBackupPayload>): string[] {
+  return result.ok ? [] : result.errors.map((e) => e.code);
+}
+
+test("R6: exactamente MAX_ROWS_PER_COLLECTION entra y una más se rechaza", () => {
+  assert.equal(validateBackupPayload(minimalV1({ students: items(BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION) })).ok, true);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1({ students: items(BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION + 1) }))), ["too_many_rows"]);
+});
+
+test("R6: exactamente MAX_ROWS_TOTAL entra y una más se rechaza", () => {
+  assert.equal(validateBackupPayload(minimalV1(withTotalRows(BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL))).ok, true);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1(withTotalRows(BACKUP_IMPORT_LIMITS.MAX_ROWS_TOTAL + 1)))), ["too_many_rows_total"]);
+});
+
+function withNested(count: number): Record<string, unknown> {
+  return { profiles: { p1: { id: "p1", levelHistory: items(count, "lh") } } };
+}
+
+test("R6: exactamente MAX_NESTED_ROWS filas anidadas entran y una más se rechaza", () => {
+  assert.equal(validateBackupPayload(minimalV1(withNested(BACKUP_IMPORT_LIMITS.MAX_NESTED_ROWS))).ok, true);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1(withNested(BACKUP_IMPORT_LIMITS.MAX_NESTED_ROWS + 1)))), ["too_many_nested_rows"]);
+});
+
+test("R6: el trabajo total (contadas + anidadas) se controla aunque ninguna de las dos pase sola", () => {
+  const half = Math.floor(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS / 2);
+  const at = { students: items(half), ...withNested(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS - half) };
+  const over = { students: items(half), ...withNested(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS - half + 1) };
+  assert.equal(validateBackupPayload(minimalV1(at)).ok, true);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1(over))), ["too_much_work"]);
+});
+
+test("R6: cuenta las filas anidadas de clases, series y registros", () => {
+  const nested = countNestedRows({
+    profiles: { a: { levelHistory: [{}, {}] }, b: { levelHistory: [{}] } },
+    calendarLessons: [{ participants: [{}, {}, {}] }, {}],
+    recurrenceRules: [{ participantStudentIds: ["x", "y"] }],
+    pedagogicalLessons: [{ roster: [{}], attendance: [{}, {}], evaluations: [{}], homeworkReviews: [{}, {}, {}] }],
+  });
+  assert.equal(nested, 3 + 3 + 2 + 7);
+  assert.equal(countNestedRows({}), 0);
+  assert.equal(countNestedRows({ profiles: [1, 2], calendarLessons: "x" }), 0, "formas raras no rompen el conteo");
+});
+
+test("R6: el rechazo por tamaño es TEMPRANO: no recorre textos ni profundidad del documento", () => {
+  const longText = "a".repeat(BACKUP_IMPORT_LIMITS.MAX_FREE_TEXT_LENGTH + 1);
+  const students = Array.from({ length: BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION + 1 }, (_, i) => ({ id: `s${i}`, notes: longText }));
+  assert.deepEqual(codes(validateBackupPayload(minimalV1({ students }))), ["too_many_rows"], "sólo el exceso de filas: nunca llegó a mirar los textos");
+});
+
+test("R6: un arreglo gigantesco se rechaza sin reventar la pila ni tardar", () => {
+  const started = Date.now();
+  const result = validateBackupPayload(minimalV1({ students: new Array(300_000).fill({ id: "x" }) }));
+  assert.equal(result.ok, false);
+  assert.ok(codes(result).includes("too_many_rows"));
+  assert.ok(Date.now() - started < 1500, "rechazo inmediato");
+});
+
+test("R6: la profundidad se mide con un bucle (un arreglo grande y plano no usa la pila)", () => {
+  const result = validateBackupPayload(minimalV1({ students: items(BACKUP_IMPORT_LIMITS.MAX_ROWS_PER_COLLECTION) }));
+  assert.equal(result.ok, true);
+});
+
+test("R6: una colección que no es lista, un elemento sin id o una referencia obligatoria ausente se rechazan antes de llamar a la base", () => {
+  assert.deepEqual(codes(validateBackupPayload(minimalV1({ students: {} }))), ["invalid_collection"]);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1({ students: [{ name: "sin id" }] }))), ["invalid_item"]);
+  assert.deepEqual(codes(validateBackupPayload(minimalV1({ students: [{ id: "   " }] }))), ["invalid_item"]);
+  assert.ok(codes(validateBackupPayload(minimalV1({ schemaVersion: 2, paymentCharges: [], payments: [], paymentAdjustments: [], paymentAllocations: [{ id: "a1" }] }))).includes("invalid_item"));
+  assert.ok(codes(validateBackupPayload(minimalV1({ schemaVersion: 2, paymentCharges: [], payments: [], paymentAllocations: [], paymentAdjustments: [{ id: "j1" }] }))).includes("invalid_item"));
+  assert.ok(codes(validateBackupPayload(minimalV1({ packageCreditMovements: [{ id: "m1" }] }))).includes("invalid_item"));
+  // Las excepciones de series no llevan `id`: se identifican por serie + ocurrencia.
+  assert.equal(validateBackupPayload(minimalV1({ recurrenceExceptions: [{ recurrenceId: "r", occurrenceKey: "k", exceptionType: "cancelled" }] })).ok, true);
+});
+
+test("R6: importación vacía y mínima válidas", () => {
+  assert.equal(validateBackupPayload(minimalV1()).ok, true);
+  assert.equal(validateBackupPayload(minimalV1({ students: items(1) })).ok, true);
 });

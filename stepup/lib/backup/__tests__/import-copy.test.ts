@@ -1,8 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   EXCLUDED_COLLECTION_LABELS,
   IMPORT_GLOSSARY,
+  IMPORT_SIZE_LIMIT_NOTICE,
   PREVIEW_VALIDITY_MINUTES,
   countOf,
   describeFinancialMembers,
@@ -10,6 +13,7 @@ import {
   fieldLabel,
   formatFieldValue,
   translateImportError,
+  translateImportTimeout,
   translateOmissionReason,
   translateValidationErrors,
   type ImportErrorContext,
@@ -236,4 +240,80 @@ test("el alumno en conflicto trae su nombre si se pudo leer; si no, la propiedad
   const blank = toImportPreviewDto(rawWithConflict(), { backupStudents: {}, candidateStudents: { r1: { name: "   " } } });
   assert.equal("studentName" in blank.students.conflicts[0], false);
   assert.doesNotMatch(JSON.stringify(withName), /fingerprint/i);
+});
+
+// ---------------------------------------------------------------------------
+// R6 — límites, datos repetidos, demasiadas decisiones y tiempo agotado
+// ---------------------------------------------------------------------------
+
+test("R6: pasar el máximo de datos explica qué hacer, con el límite, sin términos técnicos y con código de soporte", () => {
+  for (const code of ["too_many_rows", "too_many_rows_total", "too_many_nested_rows", "too_much_work"]) {
+    const t = translateValidationErrors([{ code }]);
+    assert.equal(t.code, "backup_too_many_rows", code);
+    assert.match(t.message, /No se cambió nada/);
+    assert.match(t.message, /soporte/);
+    assert.match(t.message, /7\.500/, "dice el límite en lenguaje de la persona");
+    assert.doesNotMatch(t.message, LEAKS);
+  }
+  const fromDb = translateImportError("El backup tiene demasiados datos para importar de una vez.", "analyze");
+  assert.equal(fromDb.code, "backup_too_many_rows");
+  assert.match(fromDb.message, /No se cambió nada/);
+});
+
+test("R6: la copia con datos repetidos, con formato inesperado o con demasiadas decisiones tienen su propio texto y código", () => {
+  const repeated = translateImportError("El backup tiene datos repetidos.", "analyze");
+  assert.equal(repeated.code, "backup_duplicate_items");
+  assert.match(repeated.message, /No se cambió nada/);
+  assert.equal(translateImportError("El backup tiene datos repetidos — el preview quedó desactualizado.", "apply").code, "backup_duplicate_items", "gana sobre «desactualizado»");
+  assert.equal(translateImportError("El backup no tiene el formato esperado.", "analyze").code, "backup_format_invalid");
+  const decisions = translateImportError("La selección tiene demasiadas decisiones para confirmar de una vez.", "apply");
+  assert.equal(decisions.code, "selection_too_large");
+  assert.match(decisions.message, /No se importó nada/);
+  for (const t of [repeated, decisions]) assert.doesNotMatch(t.message, LEAKS);
+});
+
+test("R6: los mensajes nuevos de la base (sin ids ni tablas) llegan al traductor y se explican", () => {
+  assert.equal(translateImportError("Un alumno ya existe — el preview quedó desactualizado.", "apply").code, "review_outdated");
+  assert.equal(translateImportError("Una fila cambió desde que se generó el preview. Generá un preview nuevo.", "apply").code, "review_outdated");
+  assert.equal(translateImportError("Una fila cambió desde el preview de undo — deshacer bloqueado por completo, no se tocó nada. Generá un preview de undo nuevo.", "undo").code, "undo_blocked");
+  assert.equal(translateImportError("Una fila tiene dependencias creadas después de la importación — deshacer bloqueado por completo, no se tocó nada.", "undo").code, "undo_blocked");
+  assert.equal(translateImportError("Decisión de duplicado inválida.", "apply").code, "selection_invalid");
+  assert.equal(translateImportError("Tabla no admite overrides de campo.", "apply").code, "selection_invalid");
+  assert.equal(translateImportError("No se encontró en el backup un dato que la vista previa pedía agregar — el preview quedó desactualizado.", "apply").code, "review_outdated");
+});
+
+test("R6: el tiempo agotado revierte todo y se explica según el paso, sin detalles técnicos", () => {
+  const apply = translateImportTimeout("apply");
+  assert.equal(apply.code, "operation_timeout");
+  assert.match(apply.message, /no se importó nada a medias/);
+  assert.match(apply.message, /historial/);
+  assert.match(apply.message, /no se duplica nada/);
+  const undo = translateImportTimeout("undo");
+  assert.match(undo.message, /no se tocó nada a medias/);
+  for (const context of ["analyze", "undoPreview", "discard", "history"] as ImportErrorContext[]) {
+    const t = translateImportTimeout(context);
+    assert.equal(t.code, "operation_timeout");
+    assert.match(t.message, /No se cambió nada/);
+  }
+  for (const context of ["analyze", "apply", "undoPreview", "undo", "discard", "history"] as ImportErrorContext[]) {
+    assert.doesNotMatch(translateImportTimeout(context).message, LEAKS, context);
+  }
+});
+
+test("R6: la Server Action detecta el corte por tiempo POR CÓDIGO (57014), nunca por el texto, y controla las decisiones antes de llamar a la base", () => {
+  const source = readFileSync(join(process.cwd(), "lib", "actions", "backup.ts"), "utf8");
+  assert.match(source, /describeLoadFailure\(error\)\.code === "57014"/);
+  assert.match(source, /translateImportTimeout\(context\)/);
+  assert.match(source, /MAX_FIELD_OVERRIDES/);
+  assert.match(source, /MAX_DUPLICATE_DECISIONS/);
+  assert.match(source, /Array\.isArray\(fieldOverrides\)/);
+  // El log del corte lleva sólo la categoría y el código, nunca el mensaje.
+  assert.match(source, /code: "57014", name: null/);
+});
+
+test("R6: el máximo por importación se dice antes de empezar, con el número del límite real y en lenguaje simple", () => {
+  assert.equal(IMPORT_SIZE_LIMIT_NOTICE.lead, "Hay un máximo por importación.");
+  assert.match(IMPORT_SIZE_LIMIT_NOTICE.body, /hasta 7\.500 elementos/);
+  assert.match(IMPORT_SIZE_LIMIT_NOTICE.body, /no se cambia nada/);
+  assert.doesNotMatch(`${IMPORT_SIZE_LIMIT_NOTICE.lead} ${IMPORT_SIZE_LIMIT_NOTICE.body}`, LEAKS);
 });
