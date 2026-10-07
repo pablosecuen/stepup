@@ -99,9 +99,9 @@ Se encontraron al correr datos realistas; ninguno estaba en la lista del encargo
 
 Observaciones **que no se cambian** (fuera de alcance; quedan para decisión):
 
-* La clasificación sólo reconoce como «existente» una **serie, clase o acuerdo ya cargado en la web**, no los que la misma copia está agregando: en una primera importación a una cuenta vacía, las clases que pertenecen a una serie nueva, los registros que referencian una clase nueva y las series que referencian un acuerdo nuevo se **omiten** (`omitted_broken_reference`, se muestran en la vista previa). Es el comportamiento vigente desde la Fase 9 y se conserva exactamente.
-* Los reemplazos de **porcentajes del presupuesto 50/30/20** fallan siempre: `_apply_singleton` actualiza cada campo por separado y el `CHECK` de suma 100 salta en el primero (falla en la versión anterior y en la nueva; esa función no se tocó).
-* Un nivel personalizado del respaldo cuyo **nombre** ya existe en la web con otro id de la app móvil termina en «Ese registro ya existe» (restricción única por nombre) al confirmar.
+* La clasificación sólo reconoce como «existente» una **serie, clase o acuerdo ya cargado en la web**, no los que la misma copia está agregando: en una primera importación a una cuenta vacía, las clases que pertenecen a una serie nueva, los registros que referencian una clase nueva y las series que referencian un acuerdo nuevo se **omiten** (`omitted_broken_reference`, se muestran en la vista previa). Es el comportamiento vigente desde la Fase 9 y se conserva exactamente. **→ Corregido en R6.1** (`docs/R6_1_CORRECCIONES_IMPORTACION.md`, §2): la vista previa clasifica por fases y resuelve cada referencia contra la web ∪ lo que la misma importación agrega.
+* Los reemplazos de **porcentajes del presupuesto 50/30/20** fallan siempre: `_apply_singleton` actualiza cada campo por separado y el `CHECK` de suma 100 salta en el primero (falla en la versión anterior y en la nueva; esa función no se tocó). **→ Corregido en R6.1** (§3): los tres porcentajes se validan (suma exactamente 100) y se aplican en un solo `UPDATE`.
+* Un nivel personalizado del respaldo cuyo **nombre** ya existe en la web con otro id de la app móvil termina en «Ese registro ya existe» (restricción única por nombre) al confirmar. **→ Corregido en R6.1** (§4): se informa como repetido, se conserva el nivel existente y nunca se crean dos niveles con el mismo nombre normalizado.
 * `_enforce_owner_match_fk` (disparador de integridad entre cuentas, 2 consultas dinámicas por fila y por clave foránea) es el **40 %** del tiempo de la aplicación ya optimizada (26.000 llamadas × ≈ 40 µs en 5.000 elementos). No se toca (es de otro bloque y su semántica es de seguridad); es la siguiente palanca si algún día hace falta subir el máximo.
 
 ## 6. Diseño nuevo
@@ -233,6 +233,6 @@ Exponente de crecimiento entre 2.000 y 10.000 elementos (t ∝ n^p; p=1 lineal, 
 ## 12. Riesgos residuales y pendiente
 
 * **Una cuenta con más de 7.500 unidades no se importa de una vez** (≈ un año de clases, registros y cobros de una cuenta grande). Es el costo de conservar «todo o nada» dentro de los 8 s de la API; el mensaje lo explica y manda a soporte. Subir el máximo requiere reducir el costo por fila (§5, `_enforce_owner_match_fk`) o un diseño de importación en varias confirmaciones (cambia la garantía de atomicidad: decisión del producto).
-* Las observaciones de §5 que no se cambian.
+* Las observaciones de §5 que no se cambian (las tres primeras se corrigieron después, en R6.1).
 * El deshacer vuelve a verificar **todo** bajo el lock (decisión de seguridad heredada): ≈ 2,0 s con el máximo.
 * No se verificó en Production una importación real (a propósito: sólo lecturas, un ensayo revertido con dos cuentas sintéticas de ≈ 200 filas y estados seguros).
