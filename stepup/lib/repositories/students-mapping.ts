@@ -131,7 +131,7 @@ export function validateNewStudentInput(input: NewStudentInput): StudentValidati
   return errors;
 }
 
-/** Posible duplicado devuelto por la RPC `create_student_via_web` — nunca se auto-fusiona, sólo se muestra para que el profesor decida. */
+/** Posible duplicado devuelto por la RPC `create_student_with_operation` — nunca se auto-fusiona, sólo se muestra para que el profesor decida. */
 export interface StudentDuplicateCandidate {
   id: string;
   name: string;
@@ -140,7 +140,7 @@ export interface StudentDuplicateCandidate {
   matchSignals: string[];
 }
 
-/** Payload camelCase que espera `create_student_via_web` — mismos campos que `NewStudentInput`, con los mismos defaults que `studentInputToRowPatch`. */
+/** Payload camelCase que espera `create_student_with_operation` — mismos campos que `NewStudentInput`, con los mismos defaults que `studentInputToRowPatch`. */
 export function studentInputToRpcPayload(input: NewStudentInput): Record<string, unknown> {
   return {
     name: input.name.trim(),

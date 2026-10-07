@@ -1,6 +1,7 @@
 -- TeacherFlow Web — pruebas reales de la migración PENDIENTE
 -- `20261004120000_split_original_patch_end_date_contract.sql` (contrato `original_patch.end_date` del split
 -- "esta y las siguientes"). Mismo procedimiento transaccional descartable que el resto de supabase/tests — ROLLBACK al final.
+-- (R8, 2026-10-12: los casos 6-7 pasaron de «endDate se acepta» a «endDate se rechaza»; ejecutados con el mismo contenido por `supabase/tests/postgres/r8_retire.cjs`.)
 -- Corrida 22/22 el 2026-10-05 dentro de un ensayo transaccional con ROLLBACK (pgTAP instalado sólo en la transacción, migración
 -- aplicada sólo en la transacción): supabase/repairs/20261004_p1_rehearsal_rollback.sql. Requiere la migración aplicada.
 
@@ -48,10 +49,10 @@ select is((select status from public.recurrence_rules where id = 'f4200000-0000-
 select is((select effective_from_date from public.recurrence_rules where id = 'f4300000-0000-0000-0000-000000000001')::text, '2026-11-16', 'la sucesora rige desde effective_date');
 select is((select superseded_by_recurrence_id from public.recurrence_rules where id = 'f4200000-0000-0000-0000-000000000001')::text, 'f4300000-0000-0000-0000-000000000001', 'la original apunta a su sucesora');
 
--- 6-7) Compatibilidad temporal: un cliente anterior que manda `endDate` (camelCase) también cierra la original.
+-- 6-7) R8 retiró la compatibilidad `endDate`: un cliente que manda SÓLO `endDate` (camelCase) se rechaza (22023) y no se escribe nada.
 set local role authenticated;
 set local "request.jwt.claims" to '{"sub": "f4000000-0000-0000-0000-000000000001", "role": "authenticated"}';
-select lives_ok(
+select throws_ok(
   $$ select public.split_recurrence_this_and_future(jsonb_build_object(
        'original_recurrence_id', 'f4200000-0000-0000-0000-000000000002', 'effective_date', '2026-11-23',
        'original_patch', jsonb_build_object('status', 'active', 'endDate', '2026-11-22'),
@@ -61,12 +62,13 @@ select lives_ok(
        'participant_ids', jsonb_build_array('f4100000-0000-0000-0000-000000000001'),
        'primary_student_id', 'f4100000-0000-0000-0000-000000000001', 'excluded_occurrence_keys', '[]'::jsonb
      )) $$,
-  'split con original_patch.endDate (clave anterior, compatibilidad temporal) funciona'
+  '22023', null,
+  'split con SÓLO original_patch.endDate (clave retirada en R8): se rechaza (22023)'
 );
 set local role postgres;
-select is((select end_date from public.recurrence_rules where id = 'f4200000-0000-0000-0000-000000000002')::text, '2026-11-22', 'endDate legado: la original queda con su fin');
+select is((select end_date from public.recurrence_rules where id = 'f4200000-0000-0000-0000-000000000002'), null, 'endDate retirado: la original queda intacta, sin fin');
 
--- 8-9) Si llegan las dos claves y difieren, gana la canónica `end_date`.
+-- 8-9) Si llegan las dos claves, gana (y es la única que se lee) la canónica `end_date`.
 set local role authenticated;
 set local "request.jwt.claims" to '{"sub": "f4000000-0000-0000-0000-000000000001", "role": "authenticated"}';
 select lives_ok(

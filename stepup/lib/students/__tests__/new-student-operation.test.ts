@@ -126,5 +126,5 @@ test("SQL: el claim se crea SÓLO al enviar, dentro de la función atómica, des
   assert.match(fn, /if v_existing and v_claim\.status = 'created' then\s+return query select 'created'::text, v_claim\.student_id, true/, "reintento → alumno canónico");
   assert.match(migration, /create unique index if not exists student_creation_claims_owner_operation_uidx\s+on public\.student_creation_claims \(owner_id, operation_id\)\s+where operation_id is not null/);
   assert.match(migration, /revoke all on function public\.create_student_with_operation\(uuid, jsonb, boolean\) from anon;/);
-  assert.doesNotMatch(migration, /create or replace function public\.(claim_student_creation|create_student_via_web)/, "no se tocan las funciones viejas (compatibilidad)");
+  assert.doesNotMatch(migration, /create or replace function public\.(claim_student_creation|create_student_via_web)/, "esta migración (R5 de alta) no redefine las funciones viejas: las retira R8, en su propia migración");
 });

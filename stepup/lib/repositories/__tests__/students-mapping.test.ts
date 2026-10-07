@@ -165,7 +165,7 @@ test("studentInputToRowPatch: owner_id siempre viene del segundo argumento (la s
   assert.equal("ownerId" in patch, false, "el input nunca puede inyectar su propio owner_id");
 });
 
-test("studentInputToRpcPayload: mismos defaults reales que studentInputToRowPatch, en camelCase para la RPC create_student_via_web", () => {
+test("studentInputToRpcPayload: mismos defaults reales que studentInputToRowPatch, en camelCase para la RPC create_student_with_operation", () => {
   const payload = studentInputToRpcPayload({
     name: "  Pedro Gómez  ",
     modality: "presencial",

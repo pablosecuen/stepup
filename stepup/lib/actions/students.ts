@@ -31,7 +31,7 @@ import { actionErrorMessage } from "@/lib/errors/action-error";
 export interface FormState {
   error?: string;
   /**
-   * Presente sólo cuando `create_student_via_web` encontró posibles
+   * Presente sólo cuando `create_student_with_operation` encontró posibles
    * coincidencias y todavía no se confirmó "es otra persona" — CERO
    * escritura mientras este campo esté presente. `changed=true` significa
    * que este resultado llegó DESPUÉS de intentar confirmar — el conjunto

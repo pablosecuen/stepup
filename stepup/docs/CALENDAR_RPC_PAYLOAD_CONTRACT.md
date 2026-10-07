@@ -10,7 +10,7 @@ Auditado el 2026-10-04 (hallazgo "Series vs. Calendario"). Frontera: `ctx.supaba
 - Los objetos de **dominio** TypeScript (camelCase, p. ej. el plan de `planRecurrenceSplit`: `{ status, endDate }`) **nunca** cruzan la frontera tal cual: se arman con un constructor de payload (`buildSplitRpcPayload`, `buildParticipantFreezePayload`, `recurrenceSeriesInputToPayload`).
 - El SQL lee con `->>'clave'`: una clave mal escrita **no falla**, llega como `NULL`. Por eso hay un test de contrato (`lib/calendar/__tests__/split-rpc-contract.test.ts`) que compara las claves del payload real con las que lee la **versión vigente** (última migración que la define) de cada función.
 
-## `split_recurrence_this_and_future` (versión vigente: `20261004120000_split_original_patch_end_date_contract.sql`)
+## `split_recurrence_this_and_future` (versión vigente: `20261012100000_r8_retire_legacy_student_claims_and_enddate.sql`)
 
 | Clave del payload | Tipo | Constructor TS | Lectura SQL |
 |---|---|---|---|
@@ -19,7 +19,7 @@ Auditado el 2026-10-04 (hallazgo "Series vs. Calendario"). Frontera: `ctx.supaba
 | `original_patch` | objeto | idem | `->'original_patch'` |
 | `original_patch.status` | `active` \| `ended` | idem | `->>'status'` (obligatorio, validado) |
 | `original_patch.end_date` | date \| null | idem | `->>'end_date'` — **canónica**. Obligatoria si `status = active`, anterior a `effective_date` y no anterior al inicio de la original |
-| `original_patch.endDate` | — | **ya no se envía** | `->>'endDate'` — aceptada **temporalmente** (clientes anteriores); si llegan las dos gana `end_date` |
+| `original_patch.endDate` | — | **ya no se envía ni se acepta** | R8 (2026-10-12) retiró el respaldo: un payload que sólo trae `endDate` llega con la fecha en NULL y, si la original queda `active`, se rechaza con 22023 sin escribir nada |
 | `successor_id` | uuid | idem | `->>'successor_id'` |
 | `successor_start_date` / `successor_end_date` | date / date \| null | idem | `->>'successor_start_date'`, `->>'successor_end_date'` |
 | `rule_type`, `cycle_length_weeks`, `modality`, `class_title`, `activity_kind` | texto / número | idem | `->>` homónimos |

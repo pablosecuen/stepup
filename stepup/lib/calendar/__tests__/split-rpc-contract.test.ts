@@ -105,12 +105,14 @@ test("split: ninguna clave del payload (salvo el contenido de `weeks`) es camelC
   assert.deepEqual(camel, [], "toda clave anidada del payload es snake_case");
 });
 
-test("split: el SQL acepta end_date como canónica y endDate sólo como compatibilidad temporal, y rechaza una original activa sin fin", () => {
+test("split: el SQL acepta SÓLO end_date (R8 retiró el respaldo endDate) y rechaza una original activa sin fin", () => {
   const sql = latestFunction("split_recurrence_this_and_future");
-  assert.equal(sql.file, "20261004120000_split_original_patch_end_date_contract.sql", "la versión vigente es la migración del contrato");
+  assert.equal(sql.file, "20261012100000_r8_retire_legacy_student_claims_and_enddate.sql", "la versión vigente es la de R8");
   const patchKeys = keysRead(sql.body, "v_original_patch");
-  assert.deepEqual([...patchKeys].sort(), ["endDate", "end_date", "status"], "claves aceptadas de original_patch");
-  assert.match(sql.body, /coalesce\(\s*nullif\(v_original_patch->>'end_date', ''\),\s*nullif\(v_original_patch->>'endDate', ''\)\s*\)::date/, "end_date primero, endDate sólo como respaldo");
+  assert.deepEqual([...patchKeys].sort(), ["end_date", "status"], "claves aceptadas de original_patch");
+  assert.match(sql.body, /v_patch_end_date := nullif\(v_original_patch->>'end_date', ''\)::date;/, "end_date es la única fuente de la fecha de fin");
+  assert.doesNotMatch(sql.body.replace(/--[^\n]*/g, ""), /endDate/, "el código (sin comentarios) ya no menciona endDate");
+  assert.match(sql.body, /set search_path = ''/, "conserva el search_path vacío de R5");
   assert.match(sql.body, /if v_patch_end_date is null then\s+raise exception 'No se puede determinar la fecha de fin[^;]*errcode = '22023'/, "una original active sin fecha de fin se rechaza (22023), con la condición real");
   assert.match(sql.body, /v_patch_end_date >= v_effective_date[\s\S]*?anterior a la fecha efectiva/, "el fin debe ser anterior a la fecha efectiva");
   assert.match(sql.body, /v_patch_end_date < v_original\.start_date/, "el fin no puede ser anterior al inicio de la original");
@@ -173,4 +175,32 @@ test("create_recurrence_series: el payload TypeScript usa exactamente las claves
     participantIds: ["s1"],
   } as never);
   assert.deepEqual(Object.keys(payload).sort(), [...keysRead(sql.body, "p_payload")].sort());
+});
+
+test("R8: las funciones del alta por borrador se retiran y el alta nueva (create_student_with_operation) no se toca", () => {
+  const file = "20261012100000_r8_retire_legacy_student_claims_and_enddate.sql";
+  const sql = readFileSync(join(MIGRATIONS, file), "utf8").replace(/--[^\n]*/g, "");
+  assert.match(sql, /drop function if exists public\.create_student_via_web\(uuid, jsonb, boolean\);/);
+  assert.match(sql, /drop function if exists public\.claim_student_creation\(\);/);
+  assert.doesNotMatch(sql, /create_student_with_operation|student_creation_claims/, "R8 no toca el alta nueva ni la tabla de claims");
+  assert.doesNotMatch(sql, /drop table|truncate|alter table/i, "R8 no toca datos ni tablas");
+  assert.match(sql, /revoke all on function public\.split_recurrence_this_and_future\(jsonb\) from public;[\s\S]*revoke execute on function public\.split_recurrence_this_and_future\(jsonb\) from anon;/, "regla de proyecto: anon sin EXECUTE");
+});
+
+test("R8: la web no llama a ninguna de las RPC retiradas", () => {
+  const roots = ["../../../app", "../../../lib", "../../../components"];
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "__tests__" && entry.name !== "node_modules") walk(path);
+      } else if (/\.(ts|tsx)$/.test(entry.name)) {
+        const source = readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+        if (/rpc\(\s*["'](claim_student_creation|create_student_via_web)["']/.test(source)) offenders.push(path);
+      }
+    }
+  };
+  for (const root of roots) walk(fileURLToPath(new URL(root, import.meta.url)));
+  assert.deepEqual(offenders, [], "ningún archivo llama a las RPC retiradas");
 });

@@ -113,12 +113,12 @@ const ok = (cond, msg) => { if (cond) { passed++; console.log("  ok   " + msg); 
   const priv = (await db.query("select has_function_privilege('anon','public.create_student_with_operation(uuid,jsonb,boolean)','execute') as anon, has_function_privilege('authenticated','public.create_student_with_operation(uuid,jsonb,boolean)','execute') as auth")).rows[0];
   ok(priv.anon === false && priv.auth === true, "anon sin EXECUTE, authenticated con EXECUTE");
 
-  console.log("\n[12] Compatibilidad: las funciones viejas siguen existiendo (web anterior abierto)");
+  console.log("\n[12] Retiro (R8): las funciones del alta por borrador ya no existen");
   await as(A);
-  const old = (await db.query("select * from public.claim_student_creation()")).rows[0];
-  ok(!!old.claim_id, "claim_student_creation() sigue funcionando (en desuso)");
-  const oldCreate = (await db.query("select * from public.create_student_via_web($1::uuid, $2::jsonb, false)", [old.claim_id, payload("Viejo Camino")])).rows[0];
-  ok(oldCreate.status === "created", "create_student_via_web() sigue funcionando (en desuso)");
+  const gone = Number((await db.query("select count(*) c from pg_proc where pronamespace = 'public'::regnamespace and proname in ('claim_student_creation', 'create_student_via_web')")).rows[0].c);
+  ok(gone === 0, "claim_student_creation() y create_student_via_web() fueron retiradas (R8)");
+  m = await throws(() => db.query("select * from public.claim_student_creation()"));
+  ok(!!m && /does not exist/i.test(m), "llamar a claim_student_creation() falla porque ya no existe");
 
   console.log(`\nRESULTADO: ${passed} ok, ${failed} fallas`);
   process.exit(failed ? 1 : 0);
