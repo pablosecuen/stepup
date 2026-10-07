@@ -61,6 +61,7 @@ const FIELD_LABELS: Record<string, string> = {
   usual_days: "Días habituales",
   usual_time: "Horario habitual",
   display_name: "Nombre visible",
+  distribution: "Distribución 50/30/20 (necesidades / gustos / ahorro)",
   needs_percent: "Porcentaje para necesidades",
   wants_percent: "Porcentaje para gustos",
   savings_percent: "Porcentaje para ahorro",
@@ -131,6 +132,23 @@ export function describeMatchSignals(signals: readonly string[]): string {
   if (labels.length === 0) return "otros datos";
   if (labels.length === 1) return labels[0];
   return `${labels.slice(0, -1).join(", ")} y ${labels[labels.length - 1]}`;
+}
+
+// ---------------------------------------------------------------------------
+// Niveles repetidos
+// ---------------------------------------------------------------------------
+
+/** Qué pasa con un nivel de la copia que no se agrega por repetido. Usa el nombre del nivel, nunca ids ni nombres de tabla. */
+export function describeCustomLevelDuplicate(level: { reason: "same_name_in_web" | "same_name_in_copy" | "blank_name"; name: string; existingName?: string }): string {
+  const name = level.name.trim();
+  if (level.reason === "same_name_in_web") {
+    const existing = level.existingName?.trim();
+    return existing && existing !== name
+      ? `«${truncate(name)}»: ya tenés el nivel «${truncate(existing)}» (se escribe casi igual). Se conserva el que ya tenés.`
+      : `«${truncate(name)}»: ya tenés un nivel con ese nombre. Se conserva el que ya tenés.`;
+  }
+  if (level.reason === "same_name_in_copy") return `«${truncate(name)}»: aparece más de una vez en la copia. Se agrega una sola vez.`;
+  return "Hay un nivel sin nombre en la copia. No se agrega.";
 }
 
 // ---------------------------------------------------------------------------
@@ -301,6 +319,31 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
     return {
       message: `Esta revisión ya no sirve: venció (dura ${PREVIEW_VALIDITY_MINUTES} minutos) o ya se usó. No se importó nada nuevo. Analizá la copia otra vez para ver el estado actual.`,
       code: "review_expired",
+    };
+  }
+  // R6.1: cada uno de estos casos se distingue de cualquier otro error (antes caían en «ya existe» / «problema inesperado»).
+  if (/Ya existe otro nivel con ese nombre/i.test(text)) {
+    return {
+      message:
+        "No se pudo reemplazar el nombre de un nivel porque ya tenés otro nivel con ese nombre (los niveles no pueden repetirse). No se importó nada. Dejá ese nivel sin marcar para conservar el que tenés y volvé a confirmar.",
+      code: "level_name_taken",
+    };
+  }
+  if (/Un nivel quedaría sin nombre/i.test(text)) {
+    return { message: "Un nivel de la copia no tiene nombre, así que no se puede reemplazar. No se importó nada. Dejá ese nivel sin marcar y volvé a confirmar.", code: "level_name_blank" };
+  }
+  if (/distribución 50\/30\/20 que elegiste no suma 100/i.test(text)) {
+    return {
+      message:
+        "Los porcentajes elegidos para el plan 50/30/20 no suman 100, así que no se importó nada. Marcá la distribución completa (los tres porcentajes juntos) o dejala sin marcar, y volvé a confirmar.",
+      code: "budget_sum_invalid",
+    };
+  }
+  if (/Apareció un nivel con el mismo nombre/i.test(text)) {
+    return {
+      message:
+        "Mientras revisabas, apareció en la web un nivel con el mismo nombre que uno de la copia, y para no repetirlo la importación se frenó. No se importó nada. Analizá la copia otra vez y volvé a decidir.",
+      code: "level_name_appeared",
     };
   }
   if (SERVICE_MESSAGE.test(text)) return { message: text, code: "service_error" };

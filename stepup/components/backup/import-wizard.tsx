@@ -23,6 +23,7 @@ import {
   translateImportError,
   type ImportErrorContext,
   countOf,
+  describeCustomLevelDuplicate,
   describeFinancialMembers,
   describeMatchSignals,
   fieldLabel,
@@ -30,6 +31,7 @@ import {
   translateOmissionReason,
 } from "@/lib/backup/import-copy";
 import { formatImportCounts } from "@/lib/backup/import-count-labels";
+import { BUDGET_DISTRIBUTION_FIELD, BUDGET_TABLE, groupBudgetFields, groupedSelection, toggleDistribution } from "@/lib/backup/budget-distribution-fields";
 import { formatInstantTime } from "@/lib/format/date-format";
 import { LoadingState } from "@/components/ui/states";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_CLASS } from "@/components/account/settings-ui";
@@ -157,13 +159,17 @@ function SingletonBlock({
   if (!state.presentInBackup) return <p>{label}: no viene en la copia.</p>;
   if (state.status === "insert") return <p>{label}: se agregará (todavía no lo tenés en la web).</p>;
   if (state.status === "equal") return <p>{label}: sin cambios (ya es igual en la web).</p>;
-  const fields: FieldDiffMap = Object.fromEntries(Object.keys(state.web).map((k) => [k, { web: state.web[k], backup: state.backup[k] }]));
+  // Los tres porcentajes del 50/30/20 se muestran (y se reemplazan) como UNA decisión: tienen que sumar 100 juntos.
+  const isBudget = tableName === BUDGET_TABLE;
+  const fields: FieldDiffMap = isBudget
+    ? groupBudgetFields(state.web, state.backup)
+    : Object.fromEntries(Object.keys(state.web).map((k) => [k, { web: state.web[k], backup: state.backup[k] }]));
   return (
     <FieldChoices
       tableName={tableName}
       rowId={state.rowId}
       fields={fields}
-      selected={selected}
+      selected={isBudget ? groupedSelection(selected) : selected}
       onToggle={onToggle}
       legend={`${label}: tiene diferencias con la web`}
     />
@@ -450,10 +456,21 @@ export function PreviewStage(props: PreviewStageProps) {
               preview.customLevels.inserts.length > 0 && countOf(preview.customLevels.inserts.length, "nivel nuevo para agregar", "niveles nuevos para agregar"),
               preview.customLevels.equal.length > 0 && countOf(preview.customLevels.equal.length, "ya está igual en la web (se conserva)", "ya están iguales en la web (se conservan)"),
               preview.customLevels.conflicts.length > 0 && countOf(preview.customLevels.conflicts.length, "con diferencias (decidís vos)", "con diferencias (decidís vos)"),
+              preview.customLevels.duplicates.length > 0 && countOf(preview.customLevels.duplicates.length, "repetido (no se agrega)", "repetidos (no se agregan)"),
             ],
             "No hay niveles personalizados en la copia.",
           )}
         </p>
+        {preview.customLevels.duplicates.length > 0 && (
+          <Notice tone="info" title="Niveles que no se agregan">
+            <ul className="list-disc pl-4">
+              {preview.customLevels.duplicates.map((d) => (
+                <li key={d.legacyMobileId}>{describeCustomLevelDuplicate(d)}</li>
+              ))}
+            </ul>
+            <p>No hace falta que decidas nada: el nivel que ya tenés se conserva y no se crea otro igual.</p>
+          </Notice>
+        )}
         {preview.customLevels.conflicts.map((c) => (
           <FieldChoices
             key={c.rowId}
@@ -824,6 +841,10 @@ export function BackupImportWizard() {
     const key = overrideKey(tableName, rowId);
     setSelectedFields((prev) => {
       const next = { ...prev };
+      if (tableName === BUDGET_TABLE && field === BUDGET_DISTRIBUTION_FIELD) {
+        next[key] = toggleDistribution(next[key] ?? new Set<string>());
+        return next;
+      }
       const set = new Set(next[key] ?? []);
       if (set.has(field)) set.delete(field);
       else set.add(field);

@@ -116,6 +116,20 @@ export interface RawStudentsBucket extends RawMasterBucket {
   duplicates: RawStudentDuplicate[];
 }
 
+/** Nivel de la copia que NO se agrega porque ya existe uno con el mismo nombre (en la web o repetido dentro de la copia) — R6.1. */
+export type RawCustomLevelDuplicateReason = "same_name_in_web" | "same_name_in_copy" | "blank_name";
+export interface RawCustomLevelDuplicate {
+  legacy_mobile_id: string;
+  reason: RawCustomLevelDuplicateReason;
+  name: string;
+  existing_row_id: string | null;
+  existing_name: string | null;
+}
+export interface RawCustomLevelsBucket extends RawMasterBucket {
+  /** Ausente en las vistas previas anteriores a R6.1. */
+  duplicates?: RawCustomLevelDuplicate[];
+}
+
 export type RawSingletonState =
   | { present_in_backup: false }
   | { present_in_backup: true; status: "insert" }
@@ -151,7 +165,7 @@ export interface RawFinancialComponent {
 export interface RawClassification {
   maestros: {
     students: RawStudentsBucket;
-    custom_levels: RawMasterBucket;
+    custom_levels: RawCustomLevelsBucket;
     teacher_profiles: RawSingletonState;
     budget_distribution_settings: RawSingletonState;
     teacher_availability: RawSingletonState;
@@ -230,6 +244,20 @@ export interface StudentsBucket extends MasterBucket {
   duplicates: StudentDuplicate[];
 }
 
+export type CustomLevelDuplicateReason = RawCustomLevelDuplicateReason;
+/** Nivel de la copia que no se agrega: el que ya tenés se conserva tal cual (no hay nada que decidir). */
+export interface CustomLevelDuplicate {
+  legacyMobileId: string;
+  reason: CustomLevelDuplicateReason;
+  /** Nombre del nivel en la copia. */
+  name: string;
+  /** Nombre del nivel que ya existe (sólo si ya existe en la web). */
+  existingName?: string;
+}
+export interface CustomLevelsBucket extends MasterBucket {
+  duplicates: CustomLevelDuplicate[];
+}
+
 export type SingletonState =
   | { presentInBackup: false }
   | { presentInBackup: true; status: "insert" }
@@ -276,7 +304,7 @@ export interface ImportPreviewDto {
   previewId: string;
   expiresAt: string;
   students: StudentsBucket;
-  customLevels: MasterBucket;
+  customLevels: CustomLevelsBucket;
   singletons: {
     teacherProfile: SingletonState;
     budgetDistribution: SingletonState;
@@ -301,6 +329,18 @@ function toMasterBucket(raw: RawMasterBucket): MasterBucket {
     inserts: raw.inserts.map((i) => ({ legacyMobileId: i.legacy_mobile_id })),
     equal: raw.equal.map((e) => ({ legacyMobileId: e.legacy_mobile_id, rowId: e.row_id })),
     conflicts: raw.conflicts.map((c) => ({ legacyMobileId: c.legacy_mobile_id, rowId: c.row_id, fields: c.fields })),
+  };
+}
+
+function toCustomLevelsBucket(raw: RawCustomLevelsBucket): CustomLevelsBucket {
+  return {
+    ...toMasterBucket(raw),
+    duplicates: (raw.duplicates ?? []).map((d) => ({
+      legacyMobileId: d.legacy_mobile_id,
+      reason: d.reason,
+      name: d.name,
+      ...(d.existing_name ? { existingName: d.existing_name } : {}),
+    })),
   };
 }
 
@@ -366,7 +406,7 @@ export function toImportPreviewDto(
         // candidate_fingerprint deliberadamente omitido.
       })),
     },
-    customLevels: toMasterBucket(raw.classification.maestros.custom_levels),
+    customLevels: toCustomLevelsBucket(raw.classification.maestros.custom_levels),
     singletons: {
       teacherProfile: toSingletonState(raw.classification.maestros.teacher_profiles),
       budgetDistribution: toSingletonState(raw.classification.maestros.budget_distribution_settings),
