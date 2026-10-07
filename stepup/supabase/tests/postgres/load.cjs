@@ -39,11 +39,11 @@ const STUBS = `
   alter table public.cloud_backups enable row level security;
 `;
 
-async function start({ port = 5441, upTo = null } = {}) {
+async function start({ port = 5441, upTo = null, migrationsDir = null } = {}) {
   const EmbeddedPostgres = require("embedded-postgres").default;
   const { Client } = require("pg");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tf-epg-"));
-  const server = new EmbeddedPostgres({ databaseDir: dir, user: "postgres", password: "pw", port, persistent: false, initdbFlags: ["--encoding=UTF8", "--locale=C"], onLog: () => {}, onError: () => {} });
+  const server = new EmbeddedPostgres({ databaseDir: dir, user: "postgres", password: "pw", port, persistent: false, initdbFlags: ["--encoding=UTF8", "--locale=C"], onLog: process.env.PG_LOG ? (m) => fs.appendFileSync(process.env.PG_LOG, String(m)) : () => {}, onError: process.env.PG_LOG ? (m) => fs.appendFileSync(process.env.PG_LOG, String(m)) : () => {} });
   await server.initialise();
   await server.start();
   const connect = async () => {
@@ -57,11 +57,12 @@ async function start({ port = 5441, upTo = null } = {}) {
   // Funciones de la app móvil que existen en el proyecto real (fuera de este repo): ver fixtures/mobile_functions.sql.
   await admin.query(fs.readFileSync(path.join(__dirname, "fixtures", "mobile_functions.sql"), "utf8"));
   const failures = [];
-  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
+  const MIG = migrationsDir || MIGRATIONS;
+  const files = fs.readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort();
   for (const f of files) {
     if (upTo && f > upTo) break;
     try {
-      await admin.query(fs.readFileSync(path.join(MIGRATIONS, f), "utf8"));
+      await admin.query(fs.readFileSync(path.join(MIG, f), "utf8"));
     } catch (e) {
       failures.push([f, String(e.message).split("\n")[0].slice(0, 160)]);
     }

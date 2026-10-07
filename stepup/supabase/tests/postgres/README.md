@@ -15,6 +15,15 @@ móvil `active_sessions`/`cloud_backups`). Sirven para lo que PGlite no puede pr
     node supabase/tests/postgres/r5_hygiene.cjs                (batería de comportamiento de la aplicación ANTES/DESPUÉS de R5 con dos propietarias + catálogo)
     node supabase/tests/postgres/r5_hygiene.cjs --mutations    (rompe cada control de R5 a propósito; todas deben detectarse)
 
+    # R6 — importaciones grandes (usar embedded-postgres 17.x: la misma versión mayor que Production)
+    node supabase/tests/postgres/r6_import.cjs                  (154+ comprobaciones: límites ±1, vacía/mínima/normal/máxima, duplicados, referencias, concurrencia, reintento, errores/timeouts/cortes, deshacer, cuotas, purga)
+    node supabase/tests/postgres/r6_import.cjs --mutations     (17 mutaciones que rompen a propósito cada garantía; todas deben detectarse)
+    OLD_MIGRATIONS_DIR=<migraciones anteriores a R6> node supabase/tests/postgres/r6_differential.cjs     (mismos datos en la versión anterior y la nueva: mismo resultado)
+    node supabase/tests/postgres/r6_migration_rehearsal.cjs     (ensayo BEGIN…ROLLBACK de las migraciones R6, huellas, idempotencia, compatibilidad con lo creado antes y rollback)
+    node supabase/tests/postgres/r6_import_scale.cjs --sizes 100,1000,5000,10000 --label nuevo      (medición: tiempo, consultas, memoria, lock; MIGRATIONS_DIR=<anteriores> para medir «antes»)
+    OLD_MIGRATIONS_DIR=<migraciones anteriores a R6> node supabase/tests/postgres/r6_culprits.cjs   (qué parte exacta crecía de forma cuadrática: ablación y micro-pruebas)
+    node --expose-gc supabase/tests/postgres/r6_web_validation_bench.cjs                            (costo de la validación de la web)
+
 `r3_quotas.cjs`: topes (−1 / exacto / +1), rollback completo, idempotencia (misma clave en el tope), dos conexiones por la última unidad,
 varias conexiones por pocas unidades, dos propietarias en paralelo, ON CONFLICT DO NOTHING, categorías con filtro, límites por hora,
 tamaño de fila, acciones costosas por ventana, `anon`/sin sesión y configuración sin acceso desde la API.
