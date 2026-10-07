@@ -406,7 +406,7 @@ async function sectionReferences(pg) {
   const byId = (arr) => Object.fromEntries(arr.map((x) => [x.legacy_mobile_id, x]));
   const rr = byId(c.aggregates.recurrence_rules); const cl = byId(c.aggregates.calendar_lessons); const lr = byId(c.aggregates.lesson_registrations);
   check("referencias faltantes: serie con alumno que sólo es «posible duplicado» o con acuerdo inexistente se omite", rr.rr_dupref.status === "omitted_broken_reference" && rr.rr_badagr.status === "omitted_broken_reference" && rr.rr_new1.status === "insertable" && rr.rr_exist.status === "preserved");
-  check("referencias faltantes: clase con alumno inexistente o con serie nueva se omite; con serie ya existente entra", cl.cl_badstu.status === "omitted_broken_reference" && cl.cl_recnew.status === "omitted_broken_reference" && cl.cl_recweb.status === "insertable" && cl.cl_exist.status === "preserved");
+  check("referencias faltantes: clase con alumno inexistente se omite; con serie ya existente O con una serie que la misma copia agrega (R6.1) entra", cl.cl_badstu.status === "omitted_broken_reference" && cl.cl_recnew.status === "insertable" && cl.cl_recweb.status === "insertable" && cl.cl_exist.status === "preserved");
   check("referencias faltantes: registro con integrante inexistente se omite", lr.pl_badroster.status === "omitted_broken_reference" && lr.pl_new.status === "insertable");
   const fin = Object.fromEntries(c.aggregates.financial_components.flatMap((k) => k.members.map((m) => [m.legacy_mobile_id, k])));
   check("referencias rotas en cobros: el pago que no existe arrastra TODA la componente (nunca un cobro sin su pago)", fin.al_missing.status === "omitted" && fin.ch_missing_pay.status === "omitted" && /no existe ni en el backup ni en la web/.test(fin.al_missing.reason));
@@ -876,5 +876,5 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => { console.error(e); process.exit(1); });
-module.exports = { runAll };
+module.exports = { runAll, helpers: { A, B, LIM, mkOwner, reset, fp, sameFp, diffFp, count, advisoryLocks, previewOf, applyOf, undoPreviewOf, undoApplyOf, timed, apiSession } };
 void os;

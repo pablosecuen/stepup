@@ -58,6 +58,8 @@ async function dump(admin, withSnapshots = null) {
 
 function normClassification(c) {
   const x = JSON.parse(JSON.stringify(c));
+  // R6.1 agrega la clave `duplicates` a los niveles (vacía cuando no hay repetidos): es la única diferencia de FORMA admitida.
+  if (process.env.R61_COMPARE && Array.isArray(x.maestros.custom_levels.duplicates) && x.maestros.custom_levels.duplicates.length === 0) delete x.maestros.custom_levels.duplicates;
   x.aggregates.financial_components = x.aggregates.financial_components.map((k) => ({ ...k, members: [...k.members].map((m) => `${m.table_name}:${m.legacy_mobile_id}`).sort() })).sort((a, b) => (a.component_id < b.component_id ? -1 : 1));
   return x;
 }
@@ -119,6 +121,16 @@ async function main() {
     scenarioDuplicatesAndConflicts(),
     scenarioSingletons(),
   ];
+  // R6.1: comparando R6 (OLD_MIGRATIONS_DIR = migraciones hasta 20261010130000) contra R6.1, SÓLO pueden cambiar los tres defectos corregidos. Para comprobar que
+  // todo lo demás es idéntico se quita de los respaldos lo que R6.1 hace importable a propósito: una serie cuyo acuerdo agrega la misma copia, la clase de una
+  // serie que agrega la misma copia y el registro de una clase que agrega la misma copia. (Esos casos los cubre `r61_import.cjs`; los niveles repetidos y el presupuesto, también.)
+  if (process.env.R61_COMPARE) {
+    for (const sc of scenarios) {
+      for (const r of sc.backup.recurrenceRules || []) r.trainingBillingAgreementId = null;
+      for (const l of sc.backup.calendarLessons || []) if (l.id === "cl_recnew") { l.recurrenceId = null; l.isRecurring = false; l.recurrenceOccurrenceKey = null; l.recurrenceIndex = null; }
+      for (const g of sc.backup.pedagogicalLessons || []) if (g.id === "pl_clnew") g.calendarLessonId = null;
+    }
+  }
   let failed = 0;
   for (const sc of scenarios) {
     const undo = sc.undoComparable ?? false;

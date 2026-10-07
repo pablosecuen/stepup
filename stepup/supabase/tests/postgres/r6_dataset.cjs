@@ -17,7 +17,9 @@ const PROFILES = {
 
 function pad(n, w = 6) { return String(n).padStart(w, "0"); }
 
-function generateBackup(n, { profile = "mix", prefix = "s", giantComponent = false, chainReplaces = false, levelHistory = true, selfLinks = true, brokenLinks = false, nested = 0 } = {}) {
+function generateBackup(n, { profile = "mix", prefix = "s", giantComponent = false, chainReplaces = false, levelHistory = true, selfLinks = true, brokenLinks = false, linked = brokenLinks, nested = 0 } = {}) {
+  // `linked` (R6.1; antes `brokenLinks`): las clases pertenecen a series que ESTA copia agrega, los registros a clases que esta copia agrega y los cobros a registros y clases de la copia
+  // (la cadena acuerdo → serie → clase → registro → cobro completa, sobre una cuenta vacía).
   const mix = PROFILES[profile];
   const cnt = {};
   for (const [k, v] of Object.entries(mix)) cnt[k] = Math.max(k === "students" ? 1 : 0, Math.round(n * v));
@@ -56,8 +58,8 @@ function generateBackup(n, { profile = "mix", prefix = "s", giantComponent = fal
     const start = `2025-${pad(month, 2)}-${pad(day, 2)}T${pad(8 + (i % 10), 2)}:00:00.000Z`;
     const end = `2025-${pad(month, 2)}-${pad(day, 2)}T${pad(9 + (i % 10), 2)}:00:00.000Z`;
     // Una clase que pertenece a una serie NUEVA de la misma copia se OMITE en la primera importación (la clasificación sólo reconoce series ya existentes
-    // en la web): por defecto las clases son importables; `brokenLinks` reproduce el vínculo.
-    const rid = brokenLinks && recurrenceRules.length && i % 3 === 0 ? P("rr", i % recurrenceRules.length) : null;
+    // en la web): por defecto las clases son importables; `linked` arma la cadena completa dentro de la copia.
+    const rid = linked && recurrenceRules.length && i % 3 === 0 ? P("rr", i % recurrenceRules.length) : null;
     calendarLessons.push({
       id: P("cl", i), primaryStudentId: sid(i), studentName: `Alumno ${pad(i % S)}`, level: "A1", lessonType: i % 6 === 0 ? "group" : "individual", startAt: start, endAt: end, modality: "online", status: i % 9 === 0 ? "cancelled" : "scheduled",
       color: "#DDEEFF", overlapAllowed: false, notes: null, isRecurring: rid !== null, recurrenceId: rid, recurrenceOccurrenceKey: rid ? `${rid}:${i}` : null, recurrenceIndex: rid ? i : null, recurrenceOriginalStart: rid ? start : null,
@@ -78,7 +80,7 @@ function generateBackup(n, { profile = "mix", prefix = "s", giantComponent = fal
     const cl = calendarLessons.length ? calendarLessons[i % calendarLessons.length] : null;
     const a = sid(i); const b = sid(i + 1);
     pedagogicalLessons.push({
-      id: P("pl", i), calendarLessonId: brokenLinks && cl ? cl.id : null, activityKind: "class", countsAsClass: true, homeworkDescription: null, homeworkDueDate: null, billedAmount: 1000, scheduledStartAt: cl ? cl.startAt : "2025-03-01T10:00:00.000Z",
+      id: P("pl", i), calendarLessonId: linked && cl && i < calendarLessons.length ? cl.id : null, activityKind: "class", countsAsClass: true, homeworkDescription: null, homeworkDueDate: null, billedAmount: 1000, scheduledStartAt: cl ? cl.startAt : "2025-03-01T10:00:00.000Z",
       actualStartedAt: "2025-03-01T10:00:00.000Z", actualEndedAt: "2025-03-01T11:00:00.000Z", outcome: "clase_dictada", holidayException: false, modality: "online", scheduledEndAt: cl ? cl.endAt : "2025-03-01T11:00:00.000Z",
       lateCancellationPolicy: null, lateCancellationPercentage: null, rescheduledFromRegistrationId: selfLinks && i > 0 && i % 20 === 0 ? P("pl", i - 1) : null,
       roster: nested > 0 ? Array.from({ length: nested }, (_, j) => ({ studentId: sid(i + j) })) : [{ studentId: a }, { studentId: b }],
@@ -104,7 +106,11 @@ function generateBackup(n, { profile = "mix", prefix = "s", giantComponent = fal
     // Un cargo mensual por alumno y período (la base lo exige): el período avanza cada vez que se recorren todos los alumnos.
     const k = Math.floor(i / S);
     const period = `${2015 + Math.floor(k / 12)}-${pad(1 + (k % 12), 2)}`;
-    paymentCharges.push({ id: P("ch", i), studentId: sid(i), chargeType: "mensual", originalAmount: 1000, currency: "ARS", dueDate: `${period}-10`, billingPeriod: period, savedLessonId: null, packageId: null, trainingBillingAgreementId: null, trainingSeriesName: null, calendarLessonId: null, voidedAt: null, voidReason: null });
+    // Cobro enlazado a un registro y a una clase de la MISMA copia (del mismo alumno: el alumno del registro / clase j es `sid(j)`, con j = i % S).
+    const j = i % S;
+    const linkReg = linked && i % 5 === 0 && j < pedagogicalLessons.length;
+    const linkLesson = linked && i % 5 === 0 && j < calendarLessons.length;
+    paymentCharges.push({ id: P("ch", i), studentId: sid(i), chargeType: "mensual", originalAmount: 1000, currency: "ARS", dueDate: `${period}-10`, billingPeriod: period, savedLessonId: linkReg ? P("pl", j) : null, packageId: null, trainingBillingAgreementId: null, trainingSeriesName: null, calendarLessonId: linkLesson ? P("cl", j) : null, voidedAt: null, voidReason: null });
   }
   const payments = [];
   const nPayments = cnt.payments || 0;

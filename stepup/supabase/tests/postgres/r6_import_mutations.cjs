@@ -11,6 +11,9 @@ const F1 = "20261010100000_r6_import_limits_and_helpers.sql";
 const F2 = "20261010110000_r6_import_preview_set_based.sql";
 const F3 = "20261010120000_r6_import_apply_set_based.sql";
 const F4 = "20261010130000_r6_import_undo_set_based.sql";
+// R6.1 vuelve a definir (con el mismo texto salvo lo corregido) la vista previa, la validación de lo elegido y la aplicación de niveles: una mutación de R6 que
+// apunta a ese texto se aplica TAMBIÉN allí, porque la última definición es la que rige.
+const F5 = "20261011100000_r61_import_dependencies_budget_levels.sql";
 
 const MUTATIONS = [
   {
@@ -116,6 +119,11 @@ async function run({ runAll, state, reset }) {
       const text = fs.readFileSync(p, "utf8");
       if (!text.includes(from)) throw new Error(`La mutación «${m.name}» no encontró su texto en ${file}`);
       fs.writeFileSync(p, text.split(from).join(to));
+      const p5 = path.join(dir, F5);
+      if (file !== F5 && fs.existsSync(p5)) {
+        const t5 = fs.readFileSync(p5, "utf8");
+        if (t5.includes(from)) fs.writeFileSync(p5, t5.split(from).join(to));
+      }
     }
     const pg = await start({ port: 5610 + i, migrationsDir: dir });
     reset();

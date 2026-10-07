@@ -76,7 +76,8 @@ async function start({ port = 5441, upTo = null, migrationsDir = null } = {}) {
   }
   async function stop() {
     try { await admin.end(); } catch {}
-    await server.stop();
+    // En Windows el borrado del directorio temporal puede fallar con EBUSY justo después de apagar: no debe tumbar la prueba (el sistema lo limpia después).
+    try { await server.stop(); } catch {}
   }
   return { admin, connect, session, stop, failures, files };
 }

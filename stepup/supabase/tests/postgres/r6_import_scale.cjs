@@ -3,6 +3,7 @@
 //   set NODE_PATH=%TEMP%\epg\node_modules
 //   node supabase/tests/postgres/r6_import_scale.cjs --sizes 100,500,1000 --profile mix --label nuevo --out resultados.json
 //   MIGRATIONS_DIR=<copia de las migraciones anteriores> node … --label antes     (mismo banco contra el comportamiento previo)
+//   --linked  (R6.1) arma la cadena completa acuerdo → serie → clase → registro → cobro DENTRO de la copia (sobre una cuenta vacía)
 //
 // Por cada tamaño y fase (vista previa, aplicar, vista previa de deshacer, deshacer) mide: tiempo total, pico de memoria del backend
 // (conjunto de trabajo de Windows, incluye páginas compartidas tocadas), cantidad de consultas (escaneos de tablas dentro de la transacción) y de
@@ -26,7 +27,7 @@ async function main() {
   let sizes = arg("sizes", "100,500,1000").split(",").map(Number);
   if (process.argv.includes("--atmax")) {
     // Tamaño más grande del perfil que cabe en el máximo de trabajo por importación (7.500 unidades).
-    const opts = { profile: arg("profile", "mix"), levelHistory: !process.argv.includes("--no-level-history"), nested: Number(arg("nested", "0")) };
+    const opts = { profile: arg("profile", "mix"), levelHistory: !process.argv.includes("--no-level-history"), nested: Number(arg("nested", "0")), linked: process.argv.includes("--linked") };
     let lo = 100, hi = 30000;
     while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); const b = generateBackup(mid, opts); if (countedRows(b) + nestedRows(b) <= 7500) lo = mid; else hi = mid - 1; }
     sizes = [lo];
@@ -48,7 +49,7 @@ async function main() {
 
   for (const n of sizes) {
     const uid = (await admin.query(`insert into auth.users (email) values ($1) returning id`, [`r6-${n}@example.invalid`])).rows[0].id;
-    const backup = generateBackup(n, { profile, giantComponent: giant, chainReplaces: chain, levelHistory: !process.argv.includes("--no-level-history"), nested: Number(arg("nested", "0")) });
+    const backup = generateBackup(n, { profile, giantComponent: giant, chainReplaces: chain, levelHistory: !process.argv.includes("--no-level-history"), nested: Number(arg("nested", "0")), linked: process.argv.includes("--linked") });
     const payloadText = JSON.stringify(backup);
     const row = { label, profile, n, countedRows: countedRows(backup), nestedRows: nestedRows(backup), payloadBytes: Buffer.byteLength(payloadText), phases: {} };
     console.log(`\n== ${label} ${profile} n=${n} (contadas ${row.countedRows}, anidadas ${row.nestedRows}, payload ${(row.payloadBytes / 1048576).toFixed(2)} MB)`);
