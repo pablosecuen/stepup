@@ -7,6 +7,7 @@ import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { abandonRecovery, confirmAuthLink, savePassword, verifyEmailCode, type RecoveryDeps } from "@/lib/auth/recovery-session";
 import { clearRecoveryMarker, hasValidRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery-cookie";
+import { captchaTokenFromFormData } from "@/lib/auth/captcha";
 
 function recoveryDeps(): RecoveryDeps {
   return {
@@ -39,7 +40,7 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
     return { error: AUTH_ERROR_MESSAGES.unknown };
   }
 
-  const result = await createSupabaseAuthAdapter().signInWithPassword(email, password);
+  const result = await createSupabaseAuthAdapter().signInWithPassword(email, password, { captchaToken: captchaTokenFromFormData(formData) });
   if (!result.ok) return { error: result.error.message };
 
   // Un inicio de sesión normal abandona cualquier recuperación que haya quedado a medias en este dispositivo.
@@ -60,7 +61,7 @@ export async function signUpAction(_prevState: SignUpFormState, formData: FormDa
     return { error: AUTH_ERROR_MESSAGES.unknown };
   }
 
-  const result = await createSupabaseAuthAdapter().signUp(email, password);
+  const result = await createSupabaseAuthAdapter().signUp(email, password, { captchaToken: captchaTokenFromFormData(formData) });
   if (!result.ok) return { error: result.error.message };
 
   return { needsEmailConfirmation: result.data.needsEmailConfirmation };
@@ -75,7 +76,7 @@ export async function resendConfirmationAction(
     return { error: AUTH_ERROR_MESSAGES.unknown };
   }
 
-  const result = await createSupabaseAuthAdapter().resendConfirmationEmail(email);
+  const result = await createSupabaseAuthAdapter().resendConfirmationEmail(email, { captchaToken: captchaTokenFromFormData(formData) });
   if (!result.ok) return { error: result.error.message };
   return { sent: true };
 }
@@ -90,7 +91,7 @@ export async function requestPasswordResetAction(
     return { error: AUTH_ERROR_MESSAGES.unknown };
   }
 
-  const result = await createSupabaseAuthAdapter().requestPasswordReset(email);
+  const result = await createSupabaseAuthAdapter().requestPasswordReset(email, { captchaToken: captchaTokenFromFormData(formData) });
   if (!result.ok) return { error: result.error.message };
 
   // Un pedido nuevo reemplaza al anterior: no sobrevive el marcador de un intento viejo.

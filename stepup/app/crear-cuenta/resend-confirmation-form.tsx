@@ -5,6 +5,7 @@ import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { resendConfirmationAction, type AuthFormState } from "@/lib/auth/actions";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { CaptchaWidget } from "@/components/auth/captcha-widget";
 
 // Mismo cooldown que móvil (AuthEmailConfirmationScreen.tsx,
 // RESEND_COOLDOWN_SECONDS = 30) — cuenta regresiva puramente visual,
@@ -48,6 +49,7 @@ export function ResendConfirmationForm({ email }: { email: string }) {
   return (
     <form action={formAction} className="flex flex-col items-center gap-2">
       <input type="hidden" name="email" value={email} />
+      <CaptchaWidget />
       <ResendButton cooldown={cooldown} />
       {state.sent && <FormInfoBox>Te enviamos un nuevo enlace.</FormInfoBox>}
       {state.error && <FormErrorBox message={state.error} />}

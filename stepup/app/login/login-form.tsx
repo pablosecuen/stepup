@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signInAction, type AuthFormState } from "@/lib/auth/actions";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { CaptchaWidget } from "@/components/auth/captcha-widget";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -66,6 +67,8 @@ export function LoginForm({ next }: { next: string }) {
           className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
       </div>
+
+      <CaptchaWidget />
 
       {state.error && <FormErrorBox message={state.error} />}
 

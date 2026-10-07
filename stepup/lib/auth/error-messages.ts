@@ -11,6 +11,8 @@ export type AuthErrorCategory =
   | "weak_password"
   | "no_connection"
   | "server_unavailable"
+  | "captcha_failed"
+  | "rate_limited"
   | "unknown";
 
 // Mismo motivo que móvil: Supabase devuelve el mismo código
@@ -23,6 +25,9 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCategory, string> = {
   weak_password: "La contraseña es demasiado débil. Usá al menos 8 caracteres.",
   no_connection: "No hay conexión a internet. Conectate y probá de nuevo.",
   server_unavailable: "El servidor no está disponible en este momento. Probá de nuevo en unos minutos.",
+  // R3 (sólo web): protección de Supabase Auth contra abuso.
+  captcha_failed: "No pudimos verificar que sos una persona. Recargá la página e intentá de nuevo.",
+  rate_limited: "Hiciste demasiados intentos en poco tiempo. Esperá unos minutos y probá de nuevo.",
   unknown: "No se pudo completar la operación. Probá de nuevo.",
 };
 
@@ -72,11 +77,18 @@ export function classifyAuthError(error: RawAuthError | null | undefined): AuthE
       return "user_already_exists";
     case "weak_password":
       return "weak_password";
+    case "captcha_failed":
+      return "captcha_failed";
+    case "over_request_rate_limit":
+    case "over_email_send_rate_limit":
+    case "over_sms_send_rate_limit":
+      return "rate_limited";
   }
 
   if (error.name === "AuthRetryableFetchError") {
     return error.status === 0 ? "no_connection" : "server_unavailable";
   }
+  if (error.status === 429) return "rate_limited";
 
   return "unknown";
 }

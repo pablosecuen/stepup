@@ -15,6 +15,7 @@ import {
   ReportRecordNotFoundError,
 } from "@/lib/repositories/reports";
 import { claimReportDraft, startNewReportDraft, type ReportDraftTransition } from "@/lib/repositories/report-drafts";
+import { consumeActionQuota } from "@/lib/repositories/action-quota";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import { getStudentMonthsWithClasses, computeSelectedMonthsRange, buildMonthsSummaryLabel } from "@/lib/reports/months";
 import { evaluateGenerateReportOutcome } from "@/lib/reports/generate-outcome";
@@ -75,6 +76,7 @@ export async function previewStudentReportAction(input: { studentId: string; sel
   if (input.selectedMonths.length === 0) return { error: "Elegí al menos un mes." };
   try {
     const ctx = await requireAuthenticatedDbContext();
+    await consumeActionQuota(ctx, "report_preview");
     const student = await getStudent(ctx, input.studentId);
     if (!student) return { error: "Alumno no encontrado." };
 
@@ -205,6 +207,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
       // snapshot realmente persistido puede pertenecer al ganador, y el
       // PDF tiene que coincidir siempre con lo que la fila efectivamente
       // guardó.
+      await consumeActionQuota(ctx, "report_pdf");
       const pdfBytes = await renderReportPdf({
         studentName: record.snapshot.studentName,
         title: record.title,
@@ -313,6 +316,7 @@ export async function regenerateReportPdfAction(reportId: string): Promise<Actio
     if (!record) return { error: "El reporte no existe o no te pertenece." };
 
     const generatedAtDateKey = localDateKeyInTimeZone(new Date(record.generatedAt), ARGENTINA_TIME_ZONE);
+    await consumeActionQuota(ctx, "report_pdf");
     const pdfBytes = await renderReportPdf({
       studentName: record.snapshot.studentName,
       title: record.title,

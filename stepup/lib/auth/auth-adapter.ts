@@ -29,11 +29,16 @@ export interface SignUpOutcome {
   needsEmailConfirmation: boolean;
 }
 
+/** Token de CAPTCHA (Turnstile) opcional: sin él (CAPTCHA desactivado) el comportamiento es el de siempre. */
+export interface CaptchaOptions {
+  captchaToken?: string;
+}
+
 export interface AuthAdapter {
-  signInWithPassword(email: string, password: string): Promise<AuthActionResult<AuthUser>>;
-  signUp(email: string, password: string): Promise<AuthActionResult<SignUpOutcome>>;
-  resendConfirmationEmail(email: string): Promise<AuthActionResult>;
-  requestPasswordReset(email: string): Promise<AuthActionResult>;
+  signInWithPassword(email: string, password: string, options?: CaptchaOptions): Promise<AuthActionResult<AuthUser>>;
+  signUp(email: string, password: string, options?: CaptchaOptions): Promise<AuthActionResult<SignUpOutcome>>;
+  resendConfirmationEmail(email: string, options?: CaptchaOptions): Promise<AuthActionResult>;
+  requestPasswordReset(email: string, options?: CaptchaOptions): Promise<AuthActionResult>;
   updatePassword(newPassword: string): Promise<AuthActionResult>;
   signOut(): Promise<AuthActionResult>;
   exchangeCodeForSession(code: string): Promise<AuthActionResult<AuthExchangeUser>>;

@@ -22,6 +22,7 @@ import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import { translateImportError, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { consumeActionQuota } from "@/lib/repositories/action-quota";
 
 // Server Actions — Fase 9 (Backup e importación). Nunca reciben `ownerId`
 // del navegador; `requireAuthenticatedDbContext()` siempre resuelve la
@@ -69,6 +70,7 @@ export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ fou
 export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ preview: ImportPreviewDto; backup: { createdAtLabel: string; appVersion: string | null } }>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
+    await consumeActionQuota(ctx, "cloud_backup_analyze");
     const backup = await fetchOwnLatestCloudBackup(ctx);
     if (!backup) {
       const translated = translateImportError("No encontramos ningún respaldo en la nube para tu cuenta.", "analyze");

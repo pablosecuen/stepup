@@ -10,6 +10,7 @@ import { endActiveSession } from "@/lib/repositories/active-sessions";
 import { deleteOwnAccount } from "@/lib/repositories/account-deletion";
 import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { consumeActionQuota } from "@/lib/repositories/action-quota";
 
 // Server Actions — Cuenta/Configuración (Fase 8). Mismo patrón que
 // `lib/actions/students.ts`: nunca reciben `ownerId` del navegador,
@@ -111,14 +112,23 @@ export interface RequestPasswordChangeState extends FormState {
  * correo de la sesión activa, sin pasar por esa página. Mismo email real,
  * nunca uno provisto por el cliente.
  */
-export async function requestOwnPasswordChangeAction(): Promise<RequestPasswordChangeState> {
+export async function requestOwnPasswordChangeAction(captchaToken?: string): Promise<RequestPasswordChangeState> {
   const ctx = await requireAuthenticatedDbContext();
   const {
     data: { user },
   } = await ctx.supabase.auth.getUser();
   if (!user?.email) return { error: "No pudimos determinar tu correo." };
 
-  const result = await createSupabaseAuthAdapter().requestPasswordReset(user.email);
+  // R3: el correo consume la cuota de envíos del proveedor — límite por cuenta en la base ANTES de pedirlo.
+  try {
+    await consumeActionQuota(ctx, "password_change_email");
+  } catch (error) {
+    return { error: actionErrorMessage("account", error) };
+  }
+
+  // Con CAPTCHA activo en Supabase, el pedido de recuperación también exige el token (se valida su forma antes de reenviarlo).
+  const safeToken = typeof captchaToken === "string" && /^[0-9A-Za-z._-]{1,2048}$/.test(captchaToken) ? captchaToken : undefined;
+  const result = await createSupabaseAuthAdapter().requestPasswordReset(user.email, { captchaToken: safeToken });
   if (!result.ok) return { error: result.error.message };
   return { sent: true };
 }

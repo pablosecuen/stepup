@@ -305,5 +305,5 @@ test("el cliente del login y el de Inicio se arman con la misma configuración d
   assert.match(server, /getAll\(\) \{\s*return cookieStore\.getAll\(\);/);
   assert.match(server, /cookieStore\.set\(name, value, options\)/);
   const actions = readFileSync(`${root}lib/auth/actions.ts`, "utf8");
-  assert.match(actions, /signInWithPassword\(email, password\);\s*if \(!result\.ok\) return \{ error: result\.error\.message \};\s*\/\/[^\n]*\n\s*await clearRecoveryMarker\(\);\s*redirect\(/);
+  assert.match(actions, /signInWithPassword\(email, password, \{ captchaToken: captchaTokenFromFormData\(formData\) \}\);\s*if \(!result\.ok\) return \{ error: result\.error\.message \};\s*\/\/[^\n]*\n\s*await clearRecoveryMarker\(\);\s*redirect\(/);
 });

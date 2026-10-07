@@ -8,6 +8,7 @@ import { signUpAction, type SignUpFormState } from "@/lib/auth/actions";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { MIN_PASSWORD_LENGTH, passwordsMatch, canSubmitSignUp } from "@/lib/auth/validation";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { CaptchaWidget } from "@/components/auth/captcha-widget";
 import { ResendConfirmationForm } from "./resend-confirmation-form";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 
@@ -112,6 +113,8 @@ export function SignUpForm() {
         />
         {showMismatchError && <p className="text-xs text-statusRojo">Las contraseñas no coinciden.</p>}
       </div>
+
+      <CaptchaWidget />
 
       {state.error && <FormErrorBox message={state.error} />}
 

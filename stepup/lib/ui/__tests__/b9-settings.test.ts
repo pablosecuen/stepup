@@ -124,7 +124,7 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
   assert.doesNotMatch(session, /\{session\.deviceId/, "el id del dispositivo nunca se muestra");
   assert.match(session, /No hay ningún dispositivo autorizado activo en este momento\./);
 
-  assert.match(code("components/account/change-password-button.tsx"), /requestOwnPasswordChangeAction\(\)/);
+  assert.match(code("components/account/change-password-button.tsx"), /requestOwnPasswordChangeAction\(captchaToken\)/);
   assert.match(code("components/account/change-password-button.tsx"), /Te enviamos un enlace a tu correo para cambiar tu contraseña\./);
 
   const del = code("components/account/delete-account-button.tsx");
@@ -231,5 +231,5 @@ test("alcance: el asistente de importación, la autenticación, las sesiones y l
   const actions = code("lib/actions/account.ts");
   assert.match(actions, /await deleteOwnAccount\(ctx\);[\s\S]*?await createSupabaseAuthAdapter\(\)\.signOut\(\);/, "primero borra y sólo después cierra sesión");
   assert.match(actions, /endActiveSession\(ctx, deviceId, generation\)/);
-  assert.match(actions, /requestPasswordReset\(user\.email\)/);
+  assert.match(actions, /requestPasswordReset\(user\.email, \{ captchaToken: safeToken \}\)/);
 });

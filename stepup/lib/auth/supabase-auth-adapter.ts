@@ -4,6 +4,7 @@ import { getSiteOrigin, SiteOriginUnavailableError } from "@/lib/auth/site-url";
 import { normalizeEmail } from "@/lib/auth/normalize-email";
 import { AUTH_ERROR_MESSAGES, translateAuthError, translateCallbackError, classifyCallbackError, classifyVerifyOtpError, CALLBACK_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import type { AuthAdapter, AuthActionResult, AuthExchangeUser, AuthUser, SignUpOutcome } from "@/lib/auth/auth-adapter";
+import { captchaOptions } from "@/lib/auth/captcha";
 
 // Mismo texto que móvil cuando `getSupabaseClient()` devuelve null
 // (`useAuthSession.ts`): "La sincronización con la nube todavía no está
@@ -57,13 +58,14 @@ function toVerifyResult(
  */
 export function createSupabaseAuthAdapter(): AuthAdapter {
   return {
-    async signInWithPassword(email, password) {
+    async signInWithPassword(email, password, captcha) {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizeEmail(email),
         password,
+        options: { ...captchaOptions(captcha?.captchaToken) },
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
 
@@ -72,7 +74,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       return { ok: true, data: user };
     },
 
-    async signUp(email, password) {
+    async signUp(email, password, captcha) {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
@@ -82,7 +84,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
         email: normalizeEmail(email),
         password,
         // /auth/confirm acepta el enlace nuevo (`?token_hash=&type=email`, sin PKCE) y el antiguo (`?code=`).
-        options: { emailRedirectTo: `${origin}/auth/confirm` },
+        options: { emailRedirectTo: `${origin}/auth/confirm`, ...captchaOptions(captcha?.captchaToken) },
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
 
@@ -91,7 +93,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       return { ok: true, data: { needsEmailConfirmation: !data.session } };
     },
 
-    async resendConfirmationEmail(email) {
+    async resendConfirmationEmail(email, captcha) {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
@@ -100,13 +102,13 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: normalizeEmail(email),
-        options: { emailRedirectTo: `${origin}/auth/confirm` },
+        options: { emailRedirectTo: `${origin}/auth/confirm`, ...captchaOptions(captcha?.captchaToken) },
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
       return { ok: true, data: undefined };
     },
 
-    async requestPasswordReset(email) {
+    async requestPasswordReset(email, captcha) {
       const supabase = await createSupabaseServerClient();
       if (!supabase) return NOT_CONFIGURED;
 
@@ -115,6 +117,7 @@ export function createSupabaseAuthAdapter(): AuthAdapter {
       const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
         // /auth/confirm acepta el enlace nuevo (`?token_hash=`, sin PKCE) y el antiguo (`?code=`).
         redirectTo: `${origin}/auth/confirm`,
+        ...captchaOptions(captcha?.captchaToken),
       });
       if (error) return { ok: false, error: { message: translateAuthError(error) } };
       return { ok: true, data: undefined };

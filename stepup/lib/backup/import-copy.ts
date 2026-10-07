@@ -9,6 +9,7 @@
 import { formatCivilDate } from "../format/date-format.ts";
 import { formatMoney, formatPercent } from "../format/number-format.ts";
 import { BACKUP_IMPORT_LIMITS } from "./limits.ts";
+import { isQuotaMessage } from "../errors/quota-message.ts";
 
 // ---------------------------------------------------------------------------
 // Cantidades
@@ -224,6 +225,7 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
   const text = raw.trim();
   if (NETWORK_PREFIX.test(text)) return { message: networkMessage(context), code: "network_unreachable" };
   if (/No hay una sesión autenticada/i.test(text)) return { message: SESSION_ERROR, code: "session_required" };
+  if (isQuotaMessage(text)) return { message: text, code: "quota_exceeded" }; // límite de cuenta (R3): el texto ya es claro
   if (/No encontramos ningún respaldo en la nube/i.test(text)) {
     return {
       message:

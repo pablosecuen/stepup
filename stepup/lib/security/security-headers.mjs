@@ -27,20 +27,27 @@
 //  - Previews de Vercel: la barra de comentarios de Vercel carga scripts de vercel.live y producirá avisos de la política (sólo
 //    en Preview, no en Production).
 
-const CSP_REPORT_ONLY = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "manifest-src 'self'",
-  "media-src 'none'",
-  "object-src 'none'",
-  "frame-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
+/**
+ * @param {string | null} captchaOrigin Origen de Cloudflare Turnstile (R3): sólo si CAPTCHA está activo se permite su script, su
+ * iframe y su conexión en la política de PRUEBA; sin él la política es la de siempre (`frame-src 'none'`).
+ */
+function cspReportOnly(captchaOrigin = null) {
+  const extra = captchaOrigin ? ` ${captchaOrigin}` : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${extra}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self'${extra}`,
+    "manifest-src 'self'",
+    "media-src 'none'",
+    "object-src 'none'",
+    captchaOrigin ? `frame-src ${captchaOrigin}` : "frame-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
 
 // Funciones del navegador que TeacherFlow no usa (ni cámara, ni micrófono, ni ubicación, ni pagos del navegador, etc.):
 // quedan deshabilitadas para la página y para cualquier recurso incrustado. Sólo directivas ampliamente soportadas, para no
@@ -66,11 +73,11 @@ const PERMISSIONS_POLICY = [
   .join(", ");
 
 /**
- * @param {{ production?: boolean }} [options] La CSP Report-Only sólo se envía en Production (`next dev` necesita `eval` para el
+ * @param {{ production?: boolean; captchaOrigin?: string | null }} [options] La CSP Report-Only sólo se envía en Production (`next dev` necesita `eval` para el
  * recambio en caliente y llenaría la consola de avisos que no existen en el build real).
  * @returns {{ key: string; value: string }[]}
  */
-export function buildSecurityHeaders({ production = process.env.NODE_ENV === "production" } = {}) {
+export function buildSecurityHeaders({ production = process.env.NODE_ENV === "production", captchaOrigin = null } = {}) {
   const headers = [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -79,8 +86,25 @@ export function buildSecurityHeaders({ production = process.env.NODE_ENV === "pr
     // Bloqueante, y sólo esta directiva: protege contra el enmarcado sin tocar ningún otro recurso.
     { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   ];
-  if (production) headers.push({ key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY });
+  if (production) headers.push({ key: "Content-Security-Policy-Report-Only", value: cspReportOnly(captchaOrigin) });
   return headers;
+}
+
+/** Política de prueba SIN CAPTCHA (la de siempre). */
+const CSP_REPORT_ONLY = cspReportOnly(null);
+
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+const SITE_KEY_PATTERN = /^[0-9A-Za-z_-]{10,64}$/;
+const PLACEHOLDER_PATTERN = /^(?:x+|your[-_]?|changeme|example|placeholder|todo|<)/i;
+
+/**
+ * Origen de Turnstile si hay una clave de sitio VÁLIDA (misma validación que `lib/auth/captcha.ts`, una prueba comprueba que
+ * coincidan); `null` si CAPTCHA está desactivado.
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function captchaOriginFromEnv(env = process.env) {
+  const raw = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
+  return raw && SITE_KEY_PATTERN.test(raw) && !PLACEHOLDER_PATTERN.test(raw) ? TURNSTILE_ORIGIN : null;
 }
 
 export { CSP_REPORT_ONLY, PERMISSIONS_POLICY };
