@@ -125,16 +125,16 @@ test("cookie del marcador: httpOnly, secure en Production, SameSite=lax, máximo
   assert.match(cookie, /sameSite: "lax"/);
   assert.match(cookie, /maxAge: RECOVERY_MARKER_MAX_AGE_SECONDS/);
   assert.match(cookie, /path: "\/"/);
-  assert.match(cookie, /createRecoveryMarker\(userId, Date\.now\(\)\)/, "atada al id de usuario");
-  assert.match(cookie, /isValidRecoveryMarker\(store\.get\(RECOVERY_MARKER_COOKIE\)\?\.value, userId, Date\.now\(\)\)/, "se comprueba contra el usuario de la sesión");
+  assert.match(cookie, /createRecoveryMarker\(userId, Date\.now\(\), getRecoverySecrets\(\)\)/, "atada al id de usuario y FIRMADA con el secreto del servidor (R4)");
+  assert.match(cookie, /isValidRecoveryMarker\(store\.get\(RECOVERY_MARKER_COOKIE\)\?\.value, userId, Date\.now\(\), getRecoverySecrets\(\)\)/, "se comprueba contra el usuario de la sesión Y la firma");
   assert.equal(RECOVERY_MARKER_MAX_AGE_SECONDS, 900, "15 minutos");
 });
 
 test("el marcador se elimina al guardar, al abandonar, al iniciar/cerrar sesión, al pedir otro enlace y al confirmar un alta", () => {
-  const session = read("lib/auth/recovery-session.ts");
+  const session = read("lib/auth/recovery-session.ts").replace(/\r\n/g, "\n");
   assert.match(session, /await deps\.markers\.clear\(\);\n  await deps\.adapter\.signOut\(\);\n  return \{ redirectTo: "\/login" \};\n\}\n\n\/\*\* Abandonar/, "al guardar");
   assert.match(session, /export async function abandonRecovery\(deps: RecoveryDeps\)[\s\S]*deps\.markers\.clear\(\)/, "al abandonar");
-  assert.match(session, /else await deps\.markers\.clear\(\)/, "al confirmar un alta");
+  assert.match(session, /if \(flow !== "recovery"\) \{\n    await deps\.markers\.clear\(\);\n    return true;\n  \}/, "al confirmar un alta");
   const actions = read("lib/auth/actions.ts");
   assert.equal((actions.match(/await clearRecoveryMarker\(\);/g) ?? []).length, 3, "inicio de sesión, pedido nuevo y cierre de sesión");
 });
@@ -176,4 +176,23 @@ test("/auth/error se arma con describeAuthErrorScreen (aviso con Iniciar sesión
   assert.match(page, /describeAuthErrorScreen\(type\)/);
   assert.match(page, /screen\.primary\.href/);
   assert.match(page, /screen\.secondary\.href/);
+});
+
+test("R4: el secreto de firma es sólo del servidor, nunca público, y los tres puntos que emiten el marcador manejan la falta de secreto", () => {
+  const secret = read("lib/auth/recovery-secret.ts").replace(/\r\n/g, "\n");
+  assert.match(secret, /RECOVERY_MARKER_SECRET/);
+  assert.doesNotMatch(secret, /process\.env\.NEXT_PUBLIC_|env\.NEXT_PUBLIC_|"NEXT_PUBLIC_[A-Z_]*"/, "nunca se lee una variable pública");
+  assert.doesNotMatch(secret, /console\./, "nunca se imprime");
+  assert.match(secret, /env\.NODE_ENV !== "production"/, "el valor de desarrollo sólo fuera de Production");
+  const session = read("lib/auth/recovery-session.ts").replace(/\r\n/g, "\n");
+  assert.equal((session.match(/RecoveryMarkerUnavailableError/g) ?? []).length >= 2, true);
+  assert.equal((session.match(/server_error/g) ?? []).length >= 3, true, "confirmar enlace, código y canje PKCE responden el error controlado");
+  assert.match(session, /await deps\.adapter\.signOut\(\);\n    return false;/, "sin firma posible se cierra la sesión que dejó el enlace");
+});
+
+test("R4: .env.example documenta el secreto sin ningún valor y con la regla de rotación", () => {
+  const example = read(".env.example").replace(/\r\n/g, "\n");
+  assert.match(example, /RECOVERY_MARKER_SECRET=\n/);
+  assert.match(example, /RECOVERY_MARKER_SECRET_PREVIOUS/);
+  assert.doesNotMatch(example, /RECOVERY_MARKER_SECRET=\S/, "sin valor");
 });

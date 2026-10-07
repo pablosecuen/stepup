@@ -2,11 +2,12 @@ import "server-only";
 import type { AuthenticatedDbContext } from "../db/server-context.ts";
 import { readTable } from "../db/read.ts";
 import type { ReportRecordRow } from "../db/database.types.ts";
+import { REPORT_PDF_BUCKET } from "./report-pdf-storage.ts";
 import { toReportRecord, toReportRecordSummary, REPORT_RECORD_SCHEMA_VERSION, type ReportRecord, type ReportRecordSummary, type ReportRecordSnapshot } from "./reports-mapping.ts";
 
 export class ReportRecordNotFoundError extends Error {}
 
-const BUCKET = "report-pdfs";
+const BUCKET = REPORT_PDF_BUCKET;
 
 /** El path SIEMPRE se construye acá, a partir del `owner_id` real de sesión y el `student_id` de la FILA ya verificada — nunca a partir de un valor que mande el cliente. */
 function pdfObjectPath(ownerId: string, studentId: string, reportId: string): string {

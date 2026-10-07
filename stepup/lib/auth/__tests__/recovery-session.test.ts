@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { FakeAuthAdapter, FakeRecoveryServer } from "../testing/fake-auth-adapter.ts";
-import { RECOVERY_MARKER_MAX_AGE_SECONDS, createRecoveryMarker, isValidRecoveryMarker } from "../recovery-marker.ts";
+import { RECOVERY_MARKER_MAX_AGE_SECONDS, RecoveryMarkerUnavailableError, createRecoveryMarker, isValidRecoveryMarker, type RecoverySecrets } from "../recovery-marker.ts";
 import { abandonRecovery, authCallback, confirmAuthLink, newPasswordGate, savePassword, verifyEmailCode, type RecoveryDeps } from "../recovery-session.ts";
 import { authLinkSuccessDestination, planAuthLinkConfirmation } from "../recovery-flow.ts";
 import { CALLBACK_ERROR_MESSAGES, describeAuthErrorScreen } from "../error-messages.ts";
@@ -19,6 +19,7 @@ const QA = { id: "03e8e8f0-ce45-4730-93ae-31dad3666195", email: "qa@example.com"
 const OTRA = { id: "99999999-aaaa-bbbb-cccc-000000000001", email: "otra@example.com", password: "otra-12345", emailConfirmed: true };
 const NUEVA = { id: "77777777-aaaa-bbbb-cccc-000000000002", email: "nueva@example.com", password: "nueva-12345", emailConfirmed: false };
 const T0 = 1_790_000_000_000;
+const SECRETS: RecoverySecrets = { current: "secreto-de-prueba-para-firmar-el-marcador-0123456789" };
 const HASH = "pkce_abcdef0123456789abcdef0123456789abcdef0123456789abcdef01"; // correo "Reset Password" de QA
 const CODE = "482913";
 const HASH_ALTA = "pkce_fedcba9876543210fedcba9876543210fedcba9876543210fedcba98"; // correo "Confirm signup" de NUEVA
@@ -40,6 +41,8 @@ interface DeviceOptions {
   ownCodeVerifiers?: string[];
   recoveryCodes?: string[];
   marker?: string | null;
+  /** `null` = el servidor no tiene secreto de firma (Production sin configurar). */
+  secrets?: RecoverySecrets | null;
 }
 
 class Device {
@@ -47,11 +50,13 @@ class Device {
   readonly adapter: FakeAuthAdapter;
   readonly deps: RecoveryDeps;
   marker: string | null;
+  secrets: RecoverySecrets | null;
   verifyCalls = 0;
 
   constructor(name: string, server: FakeRecoveryServer, clock: Clock, options: DeviceOptions = {}) {
     this.name = name;
     this.marker = options.marker ?? null;
+    this.secrets = options.secrets === undefined ? SECRETS : options.secrets;
     this.adapter = new FakeAuthAdapter({
       users: USERS.map((user) => ({ ...user })),
       recoveryServer: server,
@@ -71,9 +76,9 @@ class Device {
       adapter: this.adapter,
       markers: {
         set: async (userId) => {
-          this.marker = createRecoveryMarker(userId, clock.nowMs);
+          this.marker = createRecoveryMarker(userId, clock.nowMs, this.secrets);
         },
-        isValid: async (userId) => isValidRecoveryMarker(this.marker, userId, clock.nowMs),
+        isValid: async (userId) => isValidRecoveryMarker(this.marker, userId, clock.nowMs, this.secrets),
         clear: async () => {
           this.marker = null;
         },
@@ -240,7 +245,7 @@ test("recuperación: sesión previa de OTRA cuenta — no se puede cambiar su co
 
 test("marcador: de otra cuenta, vencido o ausente — la puerta lo rechaza y la contraseña no se modifica", async () => {
   const { clock, server } = setup();
-  const otraCuenta = new Device("iphone", server, clock, { signedInUser: { id: QA.id, email: QA.email }, marker: createRecoveryMarker(OTRA.id, T0) });
+  const otraCuenta = new Device("iphone", server, clock, { signedInUser: { id: QA.id, email: QA.email }, marker: createRecoveryMarker(OTRA.id, T0, SECRETS) });
   assert.deepEqual(await newPasswordGate(otraCuenta.deps), { kind: "redirect", to: "/recuperar-contrasena" });
 
   const device = new Device("desktop", server, clock);
@@ -333,7 +338,7 @@ test("alta, dispositivo distinto: se creó la cuenta en el escritorio y se confi
 
 test("alta con enlace PKCE antiguo: mismo navegador → destino del callback (sin marcador); otro dispositivo → 'otro dispositivo'", async () => {
   const { clock, server } = setup();
-  const mismo = new Device("desktop", server, clock, { enforceCodeVerifier: true, ownCodeVerifiers: ["pkce-code-signup"], recoveryCodes: [], marker: createRecoveryMarker(QA.id, T0) });
+  const mismo = new Device("desktop", server, clock, { enforceCodeVerifier: true, ownCodeVerifiers: ["pkce-code-signup"], recoveryCodes: [], marker: createRecoveryMarker(QA.id, T0, SECRETS) });
   assert.deepEqual(await authCallback({ code: "pkce-code-signup", next: null }, mismo.deps), { redirectTo: "/inicio" });
   assert.equal(mismo.marker, null, "un marcador viejo no sobrevive a una confirmación de alta");
 
@@ -382,14 +387,14 @@ test("alta: el token de un correo de ALTA no sirve como recuperación, ni el de 
 
 test("alta con una sesión previa de OTRA cuenta: se reemplaza por la nueva, la otra no se modifica; si el enlace falla, la vieja queda intacta y no se va a Inicio", async () => {
   const { clock, server } = setup({ expiresInMinutes: 5 });
-  const device = new Device("iphone", server, clock, { signedInUser: { id: OTRA.id, email: OTRA.email }, marker: createRecoveryMarker(OTRA.id, T0) });
+  const device = new Device("iphone", server, clock, { signedInUser: { id: OTRA.id, email: OTRA.email }, marker: createRecoveryMarker(OTRA.id, T0, SECRETS) });
 
   clock.advanceMinutes(6);
   assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device.deps), { redirectTo: "/auth/error?type=link_expired" });
   assert.equal((await device.adapter.getUser())?.id, OTRA.id, "enlace vencido: la sesión previa queda como estaba");
 
   const fresh = setup();
-  const device2 = new Device("iphone2", fresh.server, fresh.clock, { signedInUser: { id: OTRA.id, email: OTRA.email }, marker: createRecoveryMarker(OTRA.id, T0) });
+  const device2 = new Device("iphone2", fresh.server, fresh.clock, { signedInUser: { id: OTRA.id, email: OTRA.email }, marker: createRecoveryMarker(OTRA.id, T0, SECRETS) });
   assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "email" }, device2.deps), { redirectTo: "/auth/confirmado" });
   assert.equal((await device2.adapter.getUser())?.id, NUEVA.id, "la sesión previa NO se reutiliza: ahora es la cuenta confirmada");
   assert.equal(device2.marker, null, "y el marcador viejo de la otra cuenta se borró");
@@ -498,4 +503,59 @@ test("pantalla de error: enlace usado/vencido → aviso con Iniciar sesión prim
     assert.equal(describeAuthErrorScreen(raw).title, "No pudimos verificar tu cuenta", String(raw));
     assert.equal(describeAuthErrorScreen(raw).message, CALLBACK_ERROR_MESSAGES.unknown, String(raw));
   }
+});
+
+// ======================================================================
+// R4: marcador firmado — sin secreto en el servidor y marcador fabricado
+// ======================================================================
+
+test("R4: sin secreto de firma, confirmar el enlace de recuperación falla controlado, no deja marcador y CIERRA la sesión del enlace", async () => {
+  const { clock, server } = setup();
+  const device = new Device("desktop", server, clock, { secrets: null });
+  assert.deepEqual(await confirmAuthLink(RECOVERY(HASH), device.deps), { redirectTo: "/auth/error?type=server_error" });
+  assert.equal(device.marker, null, "no queda ningún marcador");
+  assert.equal(await device.adapter.getUser(), null, "la sesión que dejó el enlace no queda abierta sin poder cambiar la contraseña");
+  assert.deepEqual(await newPasswordGate(device.deps), { kind: "redirect", to: "/login" });
+});
+
+test("R4: sin secreto, el código de 6 dígitos y el canje PKCE de una recuperación tampoco dejan marcador (mismo error controlado)", async () => {
+  const a = setup();
+  const byCode = new Device("iphone", a.server, a.clock, { secrets: null });
+  const outcome = await verifyEmailCode({ flow: "recovery", email: QA.email, code: CODE }, byCode.deps);
+  assert.ok("error" in outcome && outcome.error === CALLBACK_ERROR_MESSAGES.server_error);
+  assert.equal(byCode.marker, null);
+  assert.equal(await byCode.adapter.getUser(), null);
+
+  const b = setup();
+  const byPkce = new Device("desktop", b.server, b.clock, { secrets: null, enforceCodeVerifier: true, ownCodeVerifiers: ["pkce-code-recovery"] });
+  assert.deepEqual(await authCallback({ code: "pkce-code-recovery", next: "/nueva-contrasena" }, byPkce.deps), { redirectTo: "/auth/error?type=server_error" });
+  assert.equal(byPkce.marker, null);
+  assert.equal(await byPkce.adapter.getUser(), null);
+});
+
+test("R4: sin secreto, una ALTA confirmada sigue funcionando (el marcador sólo es de la recuperación)", async () => {
+  const { clock, server } = setup();
+  const device = new Device("desktop", server, clock, { secrets: null });
+  assert.deepEqual(await confirmAuthLink({ tokenHash: HASH_ALTA, type: "signup" }, device.deps), { redirectTo: "/auth/confirmado" });
+});
+
+test("R4: una sesión robada con un marcador FABRICADO a mano (el formato anterior, o firmado con otro secreto) no entra a Nueva contraseña ni guarda la contraseña", async () => {
+  const { clock, server } = setup();
+  for (const forged of [`${QA.id}.${T0}`, createRecoveryMarker(QA.id, T0, { current: "secreto-del-atacante-adivinado-0123456789-abcdef" }), `v1.${QA.id}.${T0}.${"A".repeat(43)}`]) {
+    const attacker = new Device("atacante", server, clock, { signedInUser: { id: QA.id, email: QA.email }, marker: forged });
+    assert.deepEqual(await newPasswordGate(attacker.deps), { kind: "redirect", to: "/recuperar-contrasena" }, forged.slice(0, 12));
+    const saved = await savePassword({ password: "la-del-atacante-1", confirmPassword: "la-del-atacante-1" }, attacker.deps);
+    assert.ok("error" in saved, "no guarda");
+    assert.equal((await attacker.adapter.signInWithPassword(QA.email, QA.password)).ok, true, "la contraseña real no cambió");
+  }
+});
+
+test("R4: un error que NO es de falta de secreto al guardar el marcador no se traga (se propaga)", async () => {
+  const { clock, server } = setup();
+  const device = new Device("desktop", server, clock);
+  device.deps.markers.set = async () => {
+    throw new Error("cookie store caída");
+  };
+  await assert.rejects(() => confirmAuthLink(RECOVERY(HASH), device.deps), /cookie store caída/);
+  void RecoveryMarkerUnavailableError;
 });

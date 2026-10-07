@@ -10,14 +10,15 @@ import { translateImportError } from "../../backup/import-copy.ts";
 // internas ni cifras de los límites, y sin pasar por el mensaje genérico.
 
 const MIGRATION = readFileSync("supabase/migrations/20261007100000_r3_quota_infrastructure.sql", "utf8");
-const quotaKeys = [...MIGRATION.matchAll(/^  \('([a-z_]+)', (?:null|\d+), /gm)].map((m) => m[1]).filter((key) => !["report_preview", "report_pdf", "cloud_backup_analyze", "password_change_email"].includes(key));
-const actionKeys = [...MIGRATION.matchAll(/^  \('(report_preview|report_pdf|cloud_backup_analyze|password_change_email)', \d+, \d+, /gm)].map((m) => m[1]);
+const quotaKeys = [...MIGRATION.matchAll(/^  \('([a-z_]+)', (?:null|\d+), /gm)].map((m) => m[1]).filter((key) => !["report_preview", "report_pdf", "cloud_backup_analyze", "password_change_email", "account_reauth"].includes(key));
+const REAUTH_MIGRATION = readFileSync("supabase/migrations/20261008110000_r4_reauth_quota.sql", "utf8");
+const actionKeys = [...(MIGRATION + REAUTH_MIGRATION).matchAll(/^  \('(report_preview|report_pdf|cloud_backup_analyze|password_change_email|account_reauth)', \d+, \d+, /gm)].map((m) => m[1]);
 
 const pg = (message: string, details: string) => ({ code: "53400", message, details, hint: null });
 
-test("hay 37 categorías y 4 acciones en los valores por defecto de la migración (la prueba lee el SQL real)", () => {
+test("hay 37 categorías y 5 acciones en los valores por defecto de las migraciones (la prueba lee el SQL real)", () => {
   assert.equal(new Set(quotaKeys).size, 37);
-  assert.equal(new Set(actionKeys).size, 4);
+  assert.equal(new Set(actionKeys).size, 5, "4 de R3 + account_reauth de R4");
 });
 
 test("toda categoría de la base tiene un rubro en lenguaje simple (ninguna cae en el texto genérico)", () => {

@@ -7,7 +7,9 @@ import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { saveTeacherDisplayName } from "@/lib/repositories/teacher-profile";
 import { saveBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
 import { endActiveSession } from "@/lib/repositories/active-sessions";
-import { deleteOwnAccount } from "@/lib/repositories/account-deletion";
+import { deleteOwnAccount, removeOwnReportPdfs } from "@/lib/repositories/account-deletion";
+import { verifyOwnPassword } from "@/lib/auth/reauth-supabase";
+import { runDeleteAccount } from "@/lib/account/delete-account-flow";
 import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 import { consumeActionQuota } from "@/lib/repositories/action-quota";
@@ -138,15 +140,32 @@ export async function requestOwnPasswordChangeAction(captchaToken?: string): Pro
 // ---------------------------------------------------------------------------
 
 /**
- * Mismo orden que móvil (`deleteAccount()`, `useAuthSession.ts`): primero
- * borrar en el servidor, RECIÉN DESPUÉS cerrar sesión — si el borrado falla,
- * la cuenta sigue existiendo intacta y nunca se cierra sesión sobre una
- * cuenta que en realidad sobrevivió.
+ * Mismo orden que móvil (`deleteAccount()`, `useAuthSession.ts`): primero borrar en el servidor, RECIÉN DESPUÉS cerrar sesión — si
+ * el borrado falla, la cuenta sigue existiendo intacta y nunca se cierra sesión sobre una cuenta que en realidad sobrevivió.
+ *
+ * R4 (M-06): es una acción CRÍTICA e irreversible, así que exige reautenticación: la contraseña se vuelve a verificar contra
+ * Supabase Auth en esta misma petición (una sesión robada no alcanza), la palabra de confirmación se valida acá (no sólo en el
+ * navegador), el intento consume un límite por hora de la cuenta, y los PDF de reportes se borran de Storage y se comprueba que no
+ * quede ninguno ANTES de eliminar la cuenta (la cascada de la base no llega a Storage). Ver `lib/account/delete-account-flow.ts`.
  */
-export async function deleteOwnAccountAction(): Promise<FormState> {
+export interface DeleteAccountInput {
+  password: string;
+  confirmation: string;
+  captchaToken?: string;
+}
+
+export async function deleteOwnAccountAction(input: DeleteAccountInput): Promise<FormState> {
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await deleteOwnAccount(ctx);
+    const outcome = await runDeleteAccount(input ?? { password: "", confirmation: "" }, {
+      getEmail: async () => (await ctx.supabase.auth.getUser()).data.user?.email ?? null,
+      consumeReauthQuota: () => consumeActionQuota(ctx, "account_reauth"),
+      verifyPassword: verifyOwnPassword,
+      removePdfs: () => removeOwnReportPdfs(ctx),
+      deleteAccount: () => deleteOwnAccount(ctx),
+      errorMessage: friendlyErrorMessage,
+    });
+    if (!outcome.ok) return { error: outcome.error };
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }

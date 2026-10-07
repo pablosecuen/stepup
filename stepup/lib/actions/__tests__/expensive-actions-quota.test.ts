@@ -60,7 +60,8 @@ test("cambio de contraseña desde Configuración: pide cuota ANTES de pedir el c
 });
 
 test("las acciones del tipo ExpensiveAction coinciden exactamente con las acciones por defecto de la base", () => {
-  const sql = read("supabase/migrations/20261007100000_r3_quota_infrastructure.sql");
+  // Las acciones nacen en R3 y R4 agrega `account_reauth` (su propia migración, antes de desplegar la web que la usa).
+  const sql = read("supabase/migrations/20261007100000_r3_quota_infrastructure.sql") + read("supabase/migrations/20261008110000_r4_reauth_quota.sql");
   const dbActions = [...sql.matchAll(/^  \('([a-z_]+)', \d+, \d+, '/gm)].map((m) => m[1]).sort();
   const type = read("lib/repositories/action-quota.ts").match(/export type ExpensiveAction = ([^;]+);/)![1];
   const tsActions = [...type.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]).sort();

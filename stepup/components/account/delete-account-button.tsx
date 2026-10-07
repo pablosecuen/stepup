@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteOwnAccountAction } from "@/lib/actions/account";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { CaptchaWidget } from "@/components/auth/captcha-widget";
 import { BUTTON_DANGER, BUTTON_DANGER_OUTLINE, BUTTON_SECONDARY } from "@/components/account/settings-ui";
 
 const CONFIRM_WORD = "ELIMINAR";
@@ -17,13 +18,20 @@ const CONFIRM_WORD = "ELIMINAR";
  * diferencia del móvil, acá NO hay una copia local que sobreviva: todos los
  * datos viven en el servidor y se borran con la cuenta).
  *
- * Teclado: al abrir la confirmación el foco entra al campo; al cancelar (botón o Escape) vuelve al botón «Eliminar cuenta».
+ * R4: además de la palabra, pide la CONTRASEÑA (reautenticación): una sesión abierta u olvidada no alcanza para una acción
+ * irreversible. La contraseña y la palabra se vuelven a validar en el servidor; nunca se guardan ni se muestran de nuevo.
+ *
+ * Teclado: al abrir la confirmación el foco entra al primer campo; al cancelar (botón o Escape) vuelve al botón «Eliminar cuenta».
  */
 export function DeleteAccountButton() {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // CAPTCHA (R3, desactivado salvo que haya clave de sitio): la verificación de contraseña pasa por Supabase Auth, que lo pide si está activo.
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreFocus = useRef(false);
@@ -40,6 +48,7 @@ export function DeleteAccountButton() {
     restoreFocus.current = true;
     setOpen(false);
     setConfirmText("");
+    setPassword("");
     setError(null);
   }
 
@@ -51,7 +60,9 @@ export function DeleteAccountButton() {
     );
   }
 
-  const canConfirm = confirmText.trim() === CONFIRM_WORD;
+  const canConfirm = confirmText.trim() === CONFIRM_WORD && password.length > 0;
+  const fieldClass =
+    "mt-1 w-full max-w-[16rem] rounded-md border border-statusRojo bg-surface px-3 text-sm text-textPrimary focus:outline-none focus-visible:ring-2 focus-visible:ring-statusRojo";
 
   return (
     <div
@@ -63,7 +74,7 @@ export function DeleteAccountButton() {
       className="rounded-md border border-statusRojo/30 bg-statusRojo/5 p-3"
     >
       <p id="delete-warning" className="text-sm text-textSecondary">
-        Se va a eliminar tu cuenta y TODOS tus datos (alumnos, clases, pagos, reportes) de forma permanente — esta
+        Se va a eliminar tu cuenta y TODOS tus datos (alumnos, clases, pagos, reportes y sus archivos PDF) de forma permanente — esta
         acción no se puede deshacer.
       </p>
       <label htmlFor="delete-confirm" className="mt-3 block text-sm font-medium text-textSecondary">
@@ -76,8 +87,22 @@ export function DeleteAccountButton() {
         value={confirmText}
         onChange={(e) => setConfirmText(e.target.value)}
         autoComplete="off"
-        className="mt-1 w-full max-w-[16rem] rounded-md border border-statusRojo bg-surface px-3 text-sm text-textPrimary focus:outline-none focus-visible:ring-2 focus-visible:ring-statusRojo"
+        className={fieldClass}
       />
+      <label htmlFor="delete-password" className="mt-3 block text-sm font-medium text-textSecondary">
+        Tu contraseña
+      </label>
+      <input
+        id="delete-password"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="current-password"
+        className={fieldClass}
+      />
+      <div className="mt-3">
+        <CaptchaWidget key={captchaAttempt} onToken={setCaptchaToken} />
+      </div>
       {error && (
         <div className="mt-2">
           <FormErrorBox message={error} />
@@ -91,19 +116,21 @@ export function DeleteAccountButton() {
           onClick={() =>
             startTransition(async () => {
               setError(null);
-              const result = await guardNetwork(() => deleteOwnAccountAction());
-              if (result?.error) setError(result.error);
+              const result = await guardNetwork(() => deleteOwnAccountAction({ password, confirmation: confirmText, captchaToken }));
+              // El token del CAPTCHA es de un solo uso, y la contraseña no queda en pantalla tras un intento fallido.
+              setCaptchaToken(undefined);
+              setCaptchaAttempt((n) => n + 1);
+              if (result?.error) {
+                setPassword("");
+                setError(result.error);
+              }
             })
           }
           className={BUTTON_DANGER}
         >
           {pending ? "Eliminando..." : "Eliminar definitivamente"}
         </button>
-        <button
-          type="button"
-          onClick={cancel}
-          className={BUTTON_SECONDARY}
-        >
+        <button type="button" onClick={cancel} className={BUTTON_SECONDARY}>
           Cancelar
         </button>
       </div>

@@ -12,6 +12,8 @@ import type { ActiveSessionRow } from "@/lib/db/database.types";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
+// R4: eliminar la cuenta borra antes todos los PDF de reportes de Storage (puede llevar un rato en cuentas con muchos): tiempo máximo explícito.
+export const maxDuration = 60;
 export const metadata = { title: "Configuración · TeacherFlow" };
 
 function toSessionInfo(row: ActiveSessionRow): ActiveSessionInfo {

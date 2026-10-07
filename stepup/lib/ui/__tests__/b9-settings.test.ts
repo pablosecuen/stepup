@@ -131,8 +131,8 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
   assert.match(del, /const CONFIRM_WORD = "ELIMINAR"/);
   assert.match(del, /confirmText\.trim\(\) === CONFIRM_WORD/);
   assert.match(del, /disabled=\{!canConfirm \|\| pending\}/);
-  assert.match(del, /deleteOwnAccountAction\(\)/);
-  assert.match(del, /Se va a eliminar tu cuenta y TODOS tus datos \(alumnos, clases, pagos, reportes\) de forma permanente/);
+  assert.match(del, /deleteOwnAccountAction\(\{ password, confirmation: confirmText, captchaToken \}\)/, "R4: reautenticación con contraseña");
+  assert.match(del, /Se va a eliminar tu cuenta y TODOS tus datos \(alumnos, clases, pagos, reportes y sus archivos PDF\) de forma permanente/);
 
   const page = code(VIEW);
   for (const href of ["/calendario/disponibilidad", "/alumnos", "/configuracion/respaldo"]) assert.match(page, new RegExp(`href="${href}"`));
@@ -229,7 +229,7 @@ test("alcance: el asistente de importación, la autenticación, las sesiones y l
   assert.match(wizard, /Primero solo se analiza\./, "el asistente se simplificó en B10; su lógica no cambia");
   assert.match(code("app/(app)/inicio/page.tsx"), /redirect\(SESSION_RECOVERY_PATH\)/);
   const actions = code("lib/actions/account.ts");
-  assert.match(actions, /await deleteOwnAccount\(ctx\);[\s\S]*?await createSupabaseAuthAdapter\(\)\.signOut\(\);/, "primero borra y sólo después cierra sesión");
+  assert.match(actions, /deleteAccount: \(\) => deleteOwnAccount\(ctx\)[\s\S]*?await createSupabaseAuthAdapter\(\)\.signOut\(\);/, "primero borra y sólo después cierra sesión");
   assert.match(actions, /endActiveSession\(ctx, deviceId, generation\)/);
   assert.match(actions, /requestPasswordReset\(user\.email, \{ captchaToken: safeToken \}\)/);
 });

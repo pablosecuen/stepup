@@ -10,7 +10,7 @@ import type { AuthenticatedDbContext } from "@/lib/db/server-context";
  * Si se agotó, lanza el error de PostgREST (SQLSTATE 53400, `quota_rate_exceeded`) que `actionErrorMessage` traduce a un texto
  * claro. Cualquier otro fallo también corta la acción (falla cerrado): no se hace el trabajo costoso sin poder contarlo.
  */
-export type ExpensiveAction = "report_preview" | "report_pdf" | "cloud_backup_analyze" | "password_change_email";
+export type ExpensiveAction = "report_preview" | "report_pdf" | "cloud_backup_analyze" | "password_change_email" | "account_reauth";
 
 export async function consumeActionQuota(ctx: AuthenticatedDbContext, action: ExpensiveAction): Promise<void> {
   const { error } = await ctx.supabase.rpc("consume_action_quota", { p_action: action });
