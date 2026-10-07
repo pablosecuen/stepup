@@ -12,6 +12,8 @@ móvil `active_sessions`/`cloud_backups`). Sirven para lo que PGlite no puede pr
     node supabase/tests/postgres/r4_retention.cjs              (50 comprobaciones de la purga de importaciones vencidas: gracia, locks, concurrencia, privilegios)
     node supabase/tests/postgres/r4_retention.cjs --mutations  (rompe cada control de la purga a propósito; todas deben detectarse)
     node supabase/tests/postgres/r4_migration_rehearsal.cjs    (ensayo BEGIN…ROLLBACK de las migraciones R4, huellas, idempotencia, web anterior y rollback)
+    node supabase/tests/postgres/r5_hygiene.cjs                (batería de comportamiento de la aplicación ANTES/DESPUÉS de R5 con dos propietarias + catálogo)
+    node supabase/tests/postgres/r5_hygiene.cjs --mutations    (rompe cada control de R5 a propósito; todas deben detectarse)
 
 `r3_quotas.cjs`: topes (−1 / exacto / +1), rollback completo, idempotencia (misma clave en el tope), dos conexiones por la última unidad,
 varias conexiones por pocas unidades, dos propietarias en paralelo, ON CONFLICT DO NOTHING, categorías con filtro, límites por hora,

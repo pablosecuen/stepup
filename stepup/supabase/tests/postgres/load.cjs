@@ -48,11 +48,14 @@ async function start({ port = 5441, upTo = null } = {}) {
   await server.start();
   const connect = async () => {
     const client = new Client({ host: "localhost", port, user: "postgres", password: "pw", database: "postgres" });
+    client.on("error", () => {}); // un cierre del servidor al terminar no debe tumbar la prueba
     await client.connect();
     return client;
   };
   const admin = await connect();
   await admin.query(STUBS);
+  // Funciones de la app móvil que existen en el proyecto real (fuera de este repo): ver fixtures/mobile_functions.sql.
+  await admin.query(fs.readFileSync(path.join(__dirname, "fixtures", "mobile_functions.sql"), "utf8"));
   const failures = [];
   const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
   for (const f of files) {
