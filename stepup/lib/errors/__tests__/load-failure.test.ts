@@ -16,11 +16,11 @@ test("sesión vencida se distingue de cualquier otra falla", () => {
 });
 
 test("error de PostgREST/Postgres: se identifica por código, sin copiar mensaje, details ni hint", () => {
-  const postgrest = { code: "42501", message: 'permission denied for table payment_charges', details: "Failing row contains (03e8e8f0…)", hint: "revisá los grants" };
+  const postgrest = { code: "42501", message: 'permission denied for table payment_charges', details: "Failing row contains (11111111…)", hint: "revisá los grants" };
   const failure = describeLoadFailure(postgrest);
   assert.deepEqual(failure, { kind: "database", code: "42501", name: undefined });
   const log = formatLoadFailureLog("inicio", failure);
-  assert.doesNotMatch(log, /payment_charges|Failing row|03e8e8f0|revisá/);
+  assert.doesNotMatch(log, /payment_charges|Failing row|11111111|revisá/);
   assert.match(log, /"code":"42501"/);
   assert.equal(describeLoadFailure({ code: "PGRST301", message: "JWT expired" }).kind, "database");
   assert.equal(describeLoadFailure({ code: "57014", message: "canceling statement due to statement timeout" }).code, "57014");
@@ -42,7 +42,7 @@ test("el motivo sólo se copia para el JWT: ni otros códigos, ni textos que no 
   assert.equal(describeLoadFailure({ code: "PGRST303", message: "JWT " + "x".repeat(200) }).detail, undefined);
   assert.equal(describeLoadFailure({ code: "PGRST303", message: "JWT eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiIxIn0.firma" }).detail, undefined, "un token tiene puntos y es largo: no pasa");
   assert.equal(describeLoadFailure({ code: "PGRST303", message: 42 }).detail, undefined);
-  assert.doesNotMatch(formatLoadFailureLog("inicio", describeLoadFailure({ code: "PGRST303", message: "JWT expired", details: "sub=03e8e8f0" })), /03e8e8f0/);
+  assert.doesNotMatch(formatLoadFailureLog("inicio", describeLoadFailure({ code: "PGRST303", message: "JWT expired", details: "sub=11111111" })), /11111111/);
 });
 
 test("red y rechazos de fetch no se confunden con errores de datos", () => {

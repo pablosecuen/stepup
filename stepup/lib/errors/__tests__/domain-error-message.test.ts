@@ -28,11 +28,11 @@ test("23502 (el error real del bug): nunca expone columna, tabla ni la fila fall
   const leaked = {
     code: "23502",
     message: 'null value in column "needs_percent" of relation "budget_distribution_settings" violates not-null constraint',
-    details: "Failing row contains (03e8e8f0-ce45-4730-93ae-31dad3666195, null, null, null, f, null, null)",
+    details: "Failing row contains (<id de la cuenta QA descartable>, null, null, null, f, null, null)",
   };
   const shown = domainErrorMessage(leaked);
   assert.equal(shown, "Faltan datos obligatorios o no son válidos.");
-  assert.doesNotMatch(shown, /needs_percent|budget_distribution|03e8e8f0|Failing row/);
+  assert.doesNotMatch(shown, /needs_percent|budget_distribution|11111111|Failing row/);
 });
 
 test("códigos conocidos de Postgres se traducen a un texto genérico", () => {
@@ -49,7 +49,7 @@ test("código desconocido o de PostgREST: genérico, aunque traiga un message", 
 
 test("un mensaje de dominio que parece interno (tabla/columna/URL/token) cae al genérico", () => {
   assert.equal(domainErrorMessage({ code: "P0001", message: 'relation "public.students" does not exist' }), GENERIC_ERROR_MESSAGE);
-  assert.equal(domainErrorMessage(new Error("fallo en https://foljsapgewxnatgreggz.supabase.co/rest/v1/rpc")), GENERIC_ERROR_MESSAGE);
+  assert.equal(domainErrorMessage(new Error("fallo en https://abcdefghijklmnopqrst.supabase.co/rest/v1/rpc")), GENERIC_ERROR_MESSAGE);
   assert.equal(domainErrorMessage(new Error("token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc")), GENERIC_ERROR_MESSAGE);
   assert.equal(domainErrorMessage(new Error("línea 1\n    at fn (file.ts:1:1)")), GENERIC_ERROR_MESSAGE);
   assert.equal(domainErrorMessage({ code: "P0001", message: "x".repeat(400) }), GENERIC_ERROR_MESSAGE);

@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { RECOVERY_MARKER_MAX_AGE_SECONDS, RecoveryMarkerUnavailableError, createRecoveryMarker, isValidRecoveryMarker, type RecoverySecrets } from "../recovery-marker.ts";
 import { evaluateRecoverySecrets, getRecoverySecrets } from "../recovery-secret.ts";
 
-const USER = "03e8e8f0-ce45-4730-93ae-31dad3666195";
+const USER = "11111111-2222-4333-8444-555555555555";
 const OTHER = "11111111-2222-3333-4444-555555555555";
 const NOW = 1_790_000_000_000;
 const SECRETS: RecoverySecrets = { current: "k3y-de-prueba-0123456789-abcdefghijklmnop-QRSTUV" };

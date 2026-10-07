@@ -3,7 +3,7 @@
 -- IMPORTANTE (léase antes de asumir que esto ya se ejecutó): este entorno
 -- de desarrollo NO tiene Docker ni el CLI de Supabase instalados, así que
 -- estas pruebas NUNCA corrieron contra una base real todavía — ni local ni
--- contra el proyecto de producción (foljsapgewxnatgreggz), al que
+-- contra el proyecto de producción (<project-ref>), al que
 -- deliberadamente no me conecté con ninguna credencial (nunca uso ni pido
 -- la contraseña de Postgres ni la service_role key). Este archivo es
 -- pgTAP real, listo para ejecutarse con:

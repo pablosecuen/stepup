@@ -5,7 +5,7 @@
  *
  * Frontera de seguridad real (corrección de UX post-E2E, a pedido explícito
  * de Joaquín): antes, el bloqueo mostraba `table_name`/`row_id` crudos
- * (ej. "students 0ad6d18b-... — tiene datos creados después..."). Esta es
+ * (ej. "students 11111111-... — tiene datos creados después..."). Esta es
  * la única puerta entre esos datos ya resueltos (nombre real del alumno,
  * fecha/concepto real de la dependencia) y lo que ve el navegador — nunca
  * deja pasar un UUID ni un nombre de tabla en ningún string final.

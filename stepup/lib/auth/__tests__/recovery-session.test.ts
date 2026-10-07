@@ -15,7 +15,7 @@ import { resolvePrivateAreaAccess } from "../route-protection.ts";
  * prueba la lógica REAL de producción (`recovery-session.ts`); sólo el
  * adaptador y la cookie son de prueba.
  */
-const QA = { id: "03e8e8f0-ce45-4730-93ae-31dad3666195", email: "qa@example.com", password: "vieja-12345", emailConfirmed: true };
+const QA = { id: "11111111-2222-4333-8444-555555555555", email: "qa@example.com", password: "vieja-12345", emailConfirmed: true };
 const OTRA = { id: "99999999-aaaa-bbbb-cccc-000000000001", email: "otra@example.com", password: "otra-12345", emailConfirmed: true };
 const NUEVA = { id: "77777777-aaaa-bbbb-cccc-000000000002", email: "nueva@example.com", password: "nueva-12345", emailConfirmed: false };
 const T0 = 1_790_000_000_000;

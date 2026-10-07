@@ -10,7 +10,7 @@ Un token de acceso **válido**, emitido por Supabase Auth, es rechazado por Post
 
 | Dato | Valor |
 |---|---|
-| Project ref | `foljsapgewxnatgreggz` |
+| Project ref | `<project-ref>` |
 | Servicios implicados | Auth (`/auth/v1/token`, `/auth/v1/user`) y PostgREST (`/rest/v1/*`) |
 | Cliente | `@supabase/ssr` 0.12.7 + `@supabase/supabase-js` 2.116.0, ejecutado en Vercel (Next.js 16.3.4) |
 | Clave usada | publicable (`sb_publishable_…`) + el JWT del usuario en `Authorization` |
