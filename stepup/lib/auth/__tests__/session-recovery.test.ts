@@ -266,7 +266,8 @@ test("Inicio: sólo el caso exacto redirige a la pantalla transitoria, una sola 
   assert.match(page, /if \(sessionNotRecognizedYet && recuperada !== "1"\) redirect\(SESSION_RECOVERY_PATH\);/);
   assert.equal((page.match(/redirect\(/g) ?? []).length, 1, "un único redirect en toda la página");
   assert.match(page, /logLoadFailure\("inicio", error\)/, "el fallo sigue registrándose");
-  assert.match(page, /<ErrorState/, "los demás errores muestran el error normal");
+  assert.match(page, /<HomeLoadError\s+message=/, "los demás errores muestran el error normal (componente propio de Inicio)");
+  assert.match(code("components/dashboard/home-error.tsx"), /<ErrorState message=\{message\} \/>/, "…que usa el ErrorState de siempre");
   assert.doesNotMatch(page, /catch \{/, "no hay catch vacío");
   assert.doesNotMatch(page, /\bdata = (\{|\[\])/, "ningún error se convierte en datos vacíos");
 });

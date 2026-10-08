@@ -114,9 +114,12 @@ test("Inicio: la etapa decide qué se muestra, sin métricas ni textos inventado
   assert.match(page, /resolveHomeStage\(\{ studentCount: data\.studentCount, hasAnyClass: welcome\.hasAnyClass \}\)/);
   assert.match(page, /buildGreeting\(data\.localHour, welcome\.displayName\)/, "saludo con la hora de Argentina y el nombre del perfil");
   assert.match(page, /\{onboarding && <FirstSteps/, "primeros pasos sólo sin clases");
-  assert.match(page, /\{!onboarding && \(\s*<section className="mt-8">\s*<h2[^>]*>Clases de hoy/, "sin clases no se muestra una agenda vacía");
-  assert.match(page, /\{stage !== "empty" && \(\s*<Link\s+href="\/cobros"/, "sin alumnos no se muestra un 'Cobros 0 · 0' vacío");
-  assert.match(page, /\{!onboarding && \(\s*<section className="mt-8">\s*<Link\s+href="\/calendario\/nueva"/, "el acceso rápido lo reemplazan los primeros pasos");
+  assert.match(page, /\{!onboarding && \(\s*<section className=\{CARD\}>\s*<div[^>]*>\s*<h2[^>]*>Clases de hoy/, "sin clases no se muestra una agenda vacía");
+  assert.match(page, /\{stage !== "empty" && \(\s*<Link href="\/cobros"/, "sin alumnos no se muestra un 'Cobros 0 · 0' vacío");
+  assert.match(page, /\{!onboarding && \(\s*<section className="mt-4">\s*<PrivateButtonLink href="\/calendario\/nueva"/, "el acceso rápido lo reemplazan los primeros pasos");
+  assert.match(page, /\{!onboarding && \(\s*<section aria-label="Resumen del día"/, "el resumen del día sólo con actividad");
+  // Sólo datos YA cargados: Inicio no muestra nombres ni importes de cobros (sólo las dos cantidades del resumen).
+  assert.doesNotMatch(page, /collectionEntries|formatMoney|\.amount|balanceCents/, "sin nombres ni importes de cobros");
   assert.match(page, /first-letter:uppercase/, "la fecha sólo capitaliza la primera letra (no 'De Octubre')");
   // Un solo <h1> (el saludo) y la campana de recordatorios se conserva.
   assert.equal((page.match(/<h1/g) ?? []).length, 1);
@@ -132,10 +135,10 @@ test("componente de primeros pasos: accesible (texto + ícono, no sólo color), 
   assert.match(view, /aria-labelledby="first-steps-title"/);
   assert.match(view, /<ol /);
   assert.match(view, /sr-only[^>]*>\{step\.done \? "Listo: " : `Paso \$\{index \+ 1\}: `\}/);
-  assert.match(view, /Listo<\/p>/, "el estado hecho se dice con texto");
+  assert.match(view, /Listo\s*<\/p>/, "el estado hecho se dice con texto");
   assert.match(view, /CheckCircleIcon[^>]*aria-hidden/);
-  assert.match(view, /min-h-11/);
-  assert.match(view, /step\.href \?[\s\S]*PrivateLink[\s\S]*:\s*\(\s*<p[^>]*>\{step\.blockedReason\}/, "bloqueado: explica el motivo, no es un enlace");
+  assert.match(view, /<PrivateButtonLink href=\{step\.href\} variant="accent"/, "el botón del paso es el botón del sistema (44 px: design-tokens.test.ts)");
+  assert.match(view, /step\.href \?[\s\S]*PrivateButtonLink[\s\S]*:\s*\(\s*<p[^>]*>\{step\.blockedReason\}/, "bloqueado: explica el motivo, no es un enlace");
   assert.doesNotMatch(view, /<button|onClick|supabase|fetch\(/);
   assert.doesNotMatch(view, /text-statusVerde">Listo/, "el texto 'Listo' no usa el verde de estado (contraste)");
 });

@@ -4,8 +4,8 @@ Base: remoto `815ace5` (regresión final previa al rediseño: 79/79, «LISTA par
 
 | Bloque | Alcance | Estado |
 |---|---|---|
-| **1 · Fundaciones y estructura** | Tokens, tipografías (`next/font`), fondo/bordes/sombras/foco; componentes base (botones, campos, tarjetas, avisos, insignias, tablas, menús, diálogos y hojas móviles); shell privado de escritorio; navegación móvil; menú de cuenta; landing; login; crear cuenta; recuperar contraseña; confirmación y errores de autenticación; estados globales de carga, error y no encontrado. | Implementado en la rama local `v1-web` (sin push ni deploy); en revisión visual. Ver `06-bloque-1.md`. |
-| 2 · Inicio | `/inicio` y sus siete estados, sin información nueva que cambie consultas. | Pendiente (no iniciar sin aprobar el Bloque 1). |
+| **1 · Fundaciones y estructura** | Tokens, tipografías (`next/font`), fondo/bordes/sombras/foco; componentes base (botones, campos, tarjetas, avisos, insignias, tablas, menús, diálogos y hojas móviles); shell privado de escritorio; navegación móvil; menú de cuenta; landing; login; crear cuenta; recuperar contraseña; confirmación y errores de autenticación; estados globales de carga, error y no encontrado. | **Cerrado y aprobado** (rama local `v1-web`, commits 2491bb4 y 032a9ac; sin push ni deploy). Ver `06-bloque-1.md`. |
+| 2 · Inicio | `/inicio` y sus estados reales, sin información nueva que cambie consultas. | Implementado en `v1-web` (sin push ni deploy); en revisión visual. Ver `07-bloque-2.md`. |
 | 3 · Alumnos y perfil | Lista, alta, edición y las siete pestañas del perfil. | Pendiente. |
 | 4 · Calendario y Registro | Semana/día (agenda en móvil), detalle y diálogos, nueva clase/serie, series, disponibilidad; clases por registrar y registro. **La escala de color del calendario no se toca.** | Pendiente. |
 | 5 · Cobros, Recordatorios, Resumen financiero | Centro de cobros, recordatorios, resumen y plan 50/30/20. | Pendiente. |

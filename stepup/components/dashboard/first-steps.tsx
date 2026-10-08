@@ -1,5 +1,7 @@
-import PrivateLink from "@/components/nav/private-link";
+import { CheckIcon } from "@heroicons/react/24/solid";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { FirstStep } from "@/lib/dashboard/home-welcome";
 
 /**
@@ -8,47 +10,56 @@ import type { FirstStep } from "@/lib/dashboard/home-welcome";
  */
 export function FirstSteps({ steps }: { steps: FirstStep[] }) {
   const doneCount = steps.filter((step) => step.done).length;
+  const percent = steps.length === 0 ? 0 : Math.round((doneCount / steps.length) * 100);
   return (
-    <section aria-labelledby="first-steps-title" className="mt-8 rounded-lg border border-border bg-surface p-4 shadow-card sm:p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="first-steps-title" className="text-base font-semibold text-textPrimary">
+    <section aria-labelledby="first-steps-title" className="mt-6 max-w-[960px] rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 id="first-steps-title" className="font-display text-[24px] font-semibold tracking-tight text-textPrimary">
           Primeros pasos
         </h2>
-        <p className="text-xs font-semibold text-textSecondary">
+        <Badge tone={doneCount > 0 ? "ok" : "neutral"}>
           {doneCount} de {steps.length} listos
-        </p>
+        </Badge>
       </div>
-      <p className="mt-1 text-sm text-textMuted">Así vas a ver tu agenda y tus cobros acá.</p>
+      <p className="mt-1 text-[15px] text-textSecondary">Así vas a ver tu agenda y tus cobros acá.</p>
+      <div aria-hidden className="mt-3 h-2 max-w-[420px] overflow-hidden rounded-pill bg-paperDeep">
+        <div className="h-full rounded-pill bg-accent" style={{ width: `${percent}%` }} />
+      </div>
       <ol className="mt-4 flex flex-col gap-3">
         {steps.map((step, index) => (
-          <li key={step.id} className="flex items-start gap-3 rounded-md border border-border px-3.5 py-3">
+          <li
+            key={step.id}
+            className={`flex items-start gap-3.5 rounded-lg border-[1.5px] border-border p-4 ${step.done || !step.href ? "bg-surface2" : "bg-surface"}`}
+          >
             {step.done ? (
-              <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0 text-statusVerde" aria-hidden />
+              <span aria-hidden className="mt-0.5 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-pill border-2 border-okLine bg-okSoft text-ok">
+                <CheckIcon className="h-4 w-4" />
+              </span>
             ) : (
               <span
                 aria-hidden
-                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-bold text-textSecondary"
+                className="mt-0.5 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-pill border-2 border-borderMid font-display font-bold text-textSecondary"
               >
                 {index + 1}
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-textPrimary">
+              <p className="font-display text-[19px] font-semibold leading-snug text-textPrimary">
                 <span className="sr-only">{step.done ? "Listo: " : `Paso ${index + 1}: `}</span>
                 {step.title}
               </p>
-              <p className="mt-0.5 text-sm text-textMuted">{step.description}</p>
+              <p className="mt-0.5 text-[14.5px] text-textSecondary">{step.description}</p>
               {step.done ? (
-                <p className="mt-1.5 text-xs font-semibold text-textSecondary">Listo</p>
+                <p className="mt-2 flex items-center gap-1.5 text-[13.5px] font-bold text-textSecondary">
+                  <CheckCircleIcon className="h-4 w-4 text-ok" aria-hidden />
+                  Listo
+                </p>
               ) : step.href ? (
-                <PrivateLink
-                  href={step.href}
-                  className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-                >
+                <PrivateButtonLink href={step.href} variant="accent" className="mt-3 w-full nav:w-auto">
                   {step.actionLabel}
-                </PrivateLink>
+                </PrivateButtonLink>
               ) : (
-                <p className="mt-1.5 text-xs font-medium text-textSecondary">{step.blockedReason}</p>
+                <p className="mt-2 text-[13.5px] font-[650] text-textSecondary">{step.blockedReason}</p>
               )}
             </div>
           </li>
