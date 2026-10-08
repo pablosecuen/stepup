@@ -1,24 +1,27 @@
+import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { buttonClass } from "@/components/ui/button";
+
 interface PaginationControlsProps {
   page: number;
   totalPages: number;
   buildHref: (page: number) => string;
 }
 
+// Enlaces comunes (sin precarga de Next): cada página es una recarga completa del servidor con los filtros en la URL.
 export function PaginationControls({ page, totalPages, buildHref }: PaginationControlsProps) {
   if (totalPages <= 1) return null;
 
   return (
-    <nav aria-label="Paginación de alumnos" className="mt-6 flex items-center justify-center gap-3">
+    <nav aria-label="Paginación de alumnos" className="mt-6 flex flex-wrap items-center justify-center gap-3">
       {page > 1 ? (
-        <a
-          href={buildHref(page - 1)}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
-          ← Anterior
+        <a href={buildHref(page - 1)} className={buttonClass({ variant: "secondary" })}>
+          <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+          Anterior
         </a>
       ) : (
-        <span aria-disabled="true" className="rounded-md border border-border px-3 py-2 text-sm font-medium text-textMuted opacity-50">
-          ← Anterior
+        <span aria-disabled="true" className={buttonClass({ variant: "secondary" })}>
+          <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+          Anterior
         </span>
       )}
 
@@ -27,15 +30,14 @@ export function PaginationControls({ page, totalPages, buildHref }: PaginationCo
       </span>
 
       {page < totalPages ? (
-        <a
-          href={buildHref(page + 1)}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-textPrimary transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
-          Siguiente →
+        <a href={buildHref(page + 1)} className={buttonClass({ variant: "secondary" })}>
+          Siguiente
+          <ArrowRightIcon className="h-4 w-4" aria-hidden />
         </a>
       ) : (
-        <span aria-disabled="true" className="rounded-md border border-border px-3 py-2 text-sm font-medium text-textMuted opacity-50">
-          Siguiente →
+        <span aria-disabled="true" className={buttonClass({ variant: "secondary" })}>
+          Siguiente
+          <ArrowRightIcon className="h-4 w-4" aria-hidden />
         </span>
       )}
     </nav>

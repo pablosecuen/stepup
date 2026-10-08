@@ -167,18 +167,18 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
   assert.deepEqual(
     used.map(([file, href]) => `${file} → ${href}`).sort(),
     [
-      "app/(app)/alumnos/page.tsx → /alumnos",
-      "app/(app)/alumnos/page.tsx → /alumnos/nuevo",
       "app/(app)/calendario/series/page.tsx → /calendario/nueva",
       "app/(app)/configuracion/page.tsx → /configuracion",
       "components/students/profile/clases-tab.tsx → /registro",
       "components/students/profile/progreso-tab.tsx → /registro",
       "components/students/profile/resumen-tab.tsx → /registro",
+      "components/students/students-list-view.tsx → /alumnos",
+      "components/students/students-list-view.tsx → /alumnos/nuevo",
     ],
   );
   for (const [file, href] of used) assert.ok(routeExists(href), `${file}: ${href} existe`);
 
-  const alumnos = code("app/(app)/alumnos/page.tsx");
+  const alumnos = code("components/students/students-list-view.tsx");
   assert.match(alumnos, /hasAnyStudentEver \? \{ label: "Limpiar filtros", href: "\/alumnos" \} : \{ label: "Agregar alumno", href: "\/alumnos\/nuevo" \}/, "con filtros: limpiar; sin alumnos: agregar");
 });
 

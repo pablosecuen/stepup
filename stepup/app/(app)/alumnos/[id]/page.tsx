@@ -1,4 +1,3 @@
-import Link from "@/components/nav/private-link";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -7,15 +6,10 @@ import { getStudent } from "@/lib/repositories/students";
 import { listStatusHistory, listLevelHistory, listPriceHistory } from "@/lib/repositories/student-history";
 import { listLessonRegistrationsForStudent, listPendingHomeworkTasksForStudent, listEvaluationsForStudent } from "@/lib/repositories/lesson-registrations";
 import { ErrorState } from "@/components/ui/states";
-import { StudentStatusBadge } from "@/components/students/student-status-badge";
-import { ChangeStatusForm } from "@/components/students/change-status-form";
-import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
-import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
-import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
-import { ClasesTabContent } from "@/components/students/profile/clases-tab";
-import { TareasTabContent } from "@/components/students/profile/tareas-tab";
-import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
-import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
+import { buttonClass } from "@/components/ui/button";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
+import { StudentProfileView } from "@/components/students/profile/student-profile-view";
 import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent } from "@/lib/repositories/payments";
 import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { ReportCleanupTrigger } from "@/components/students/profile/report-cleanup-trigger";
@@ -23,11 +17,8 @@ import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/d
 import { listCompletedRegistrationsForStudentReport } from "@/lib/repositories/lesson-registrations";
 import { listReportRecordsForStudent } from "@/lib/repositories/reports";
 import { getStudentMonthsWithClasses } from "@/lib/reports/months";
-import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 import { loadProfileClassStats, loadStudentNextClass, loadStudentTotalCollected } from "@/lib/students/load-profile-overview";
 import { buildProfileClassStats, type ProfileClassStats, type StudentNextClass } from "@/lib/students/profile-overview";
-import { MODALITY_LABEL } from "@/lib/students/constants";
-import { formatCivilDate } from "@/lib/format/date-format";
 import type { AttendanceStatus } from "@/lib/lessons/attendance";
 
 export const dynamic = "force-dynamic";
@@ -118,9 +109,12 @@ export default async function AlumnoProfilePage({
     }
   } catch {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar este alumno." />
-        <a href={`/alumnos/${id}`} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+      <div className={PAGE_WIDTH.medium}>
+        <PageTitle>Perfil del alumno</PageTitle>
+        <div className="mt-5">
+          <ErrorState message="No pudimos cargar este alumno." />
+        </div>
+        <a href={`/alumnos/${id}`} className={`mt-3 ${buttonClass({ variant: "secondary" })}`}>
           Reintentar
         </a>
       </div>
@@ -130,67 +124,31 @@ export default async function AlumnoProfilePage({
   if (!student) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/alumnos" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver a Alumnos
-      </Link>
-
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">{student.name}</h1>
-          <div className="mt-1.5 flex items-center gap-2">
-            <StudentStatusBadge status={student.status} />
-            <span className="text-sm text-textMuted">{student.levels.length > 0 ? student.levels.join(", ") : "Sin nivel"}</span>
-          </div>
-          <p className="mt-1 text-sm text-textMuted">
-            {MODALITY_LABEL[student.modality]} · Alumno desde {formatCivilDate(student.dateJoined)}
-          </p>
-        </div>
-        <Link
-          href={`/alumnos/${id}/editar`}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-textPrimary shadow-card transition-colors duration-150 ease-premium hover:border-brandBlue/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
-          Editar alumno
-        </Link>
-      </div>
-
-      <div className="mt-6">
-        <ProfileTabsNav studentId={id} active={tab} />
-      </div>
-
-      <div className="mt-5">
-        {tab === "resumen" && (
-          <div className="flex flex-col gap-5">
-            <ResumenTabContent student={student} stats={stats} nextClass={nextClass} pendingTasks={pendingTasks} />
-            <ChangeStatusForm studentId={id} currentStatus={student.status} />
-          </div>
-        )}
-        {tab === "clases" && <ClasesTabContent registrations={registrations} attendanceByRegistrationId={attendanceByRegistrationId} />}
-        {tab === "progreso" && <ProgresoTabContent entries={evaluationEntries} />}
-        {tab === "tareas" && <TareasTabContent tasks={pendingTasks} />}
-        {tab === "cobros" && (
-          <>
-            <ChargeGenerationTrigger />
-            <CobrosTabContent studentId={id} charges={charges} payments={payments} allocations={allocations} todayDateKey={todayDateKey} />
-          </>
-        )}
-        {tab === "reportes" && (
-          <>
-            <ReportCleanupTrigger />
-            <ReportesTabContent studentId={id} studentName={student.name} monthsWithClasses={monthsWithClasses} initialHistory={reportHistory} />
-          </>
-        )}
-        {tab === "informacion" && (
-          <InformacionTabContent
-            student={student}
-            statusHistory={statusHistory}
-            levelHistory={levelHistory}
-            priceHistory={priceHistory}
-            stats={stats}
-            totalCollected={totalCollected}
-          />
-        )}
-      </div>
-    </div>
+    <>
+      {tab === "cobros" && <ChargeGenerationTrigger />}
+      {tab === "reportes" && <ReportCleanupTrigger />}
+      <StudentProfileView
+        student={student}
+        tab={tab}
+        data={{
+          statusHistory,
+          levelHistory,
+          priceHistory,
+          registrations,
+          attendanceByRegistrationId,
+          pendingTasks,
+          evaluationEntries,
+          charges,
+          payments,
+          allocations,
+          monthsWithClasses,
+          reportHistory,
+          stats,
+          nextClass,
+          totalCollected,
+          todayDateKey,
+        }}
+      />
+    </>
   );
 }

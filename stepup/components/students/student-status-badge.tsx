@@ -1,19 +1,19 @@
 import type { StudentStatus } from "@/lib/db/database.types";
 import { STUDENT_STATUS_LABEL } from "@/lib/students/constants";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 
-// Mismo criterio que StatusPill: un estado importante nunca se comunica
-// sólo por color — siempre va acompañado de texto.
-const STATUS_STYLES: Record<StudentStatus, string> = {
-  activo: "bg-statusVerde/10 text-statusVerde",
-  pausado: "bg-statusAmarillo/10 text-statusAmarillo",
-  inactivo: "bg-statusSinDatos/10 text-textSecondary",
-  archivado: "bg-textMuted/10 text-textMuted",
+// Mismo criterio que el resto de la app: un estado importante nunca se comunica sólo por color — siempre va con punto y texto.
+const STATUS_TONE: Record<StudentStatus, BadgeTone> = {
+  activo: "ok",
+  pausado: "warn",
+  inactivo: "neutral",
+  archivado: "neutral",
 };
 
 export function StudentStatusBadge({ status }: { status: StudentStatus }) {
   return (
-    <span className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-semibold tracking-tight ${STATUS_STYLES[status]}`}>
+    <Badge tone={STATUS_TONE[status]} dot>
       {STUDENT_STATUS_LABEL[status]}
-    </span>
+    </Badge>
   );
 }

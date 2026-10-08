@@ -1,15 +1,13 @@
-import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext, DbUnauthenticatedError } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
 import { listCustomLevels } from "@/lib/repositories/custom-levels";
 import { applyStudentFilters, paginate, type StudentsFilterState } from "@/lib/students/filters";
-import { EmptyState, ErrorState } from "@/components/ui/states";
-import { StudentCard } from "@/components/students/student-card";
-import { StudentsFiltersForm } from "@/components/students/students-filters-form";
-import { PaginationControls } from "@/components/students/pagination-controls";
-import { ManageLevelsSection } from "@/components/students/manage-levels-section";
+import { ErrorState } from "@/components/ui/states";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { PageTitle, PAGE_WIDTH } from "@/components/ui/page-header";
+import { StudentsListView } from "@/components/students/students-list-view";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Alumnos · TeacherFlow" };
@@ -60,13 +58,15 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
       return <ErrorState message="Tu sesión expiró. Volvé a iniciar sesión." />;
     }
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Alumnos</h1>
-        <div className="mt-6">
-          <ErrorState message="No pudimos cargar tus alumnos." />
-          <Link href="/alumnos" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+      <div className={PAGE_WIDTH.wide}>
+        <PageTitle>Alumnos</PageTitle>
+        <div className="mt-6 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No pudimos cargar tus alumnos." />
+          </div>
+          <PrivateButtonLink href="/alumnos" variant="secondary">
             Reintentar
-          </Link>
+          </PrivateButtonLink>
         </div>
       </div>
     );
@@ -82,60 +82,21 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
   const filtered = applyStudentFilters(students, filters);
   const result = paginate(filtered, page, PAGE_SIZE);
   const isFiltered = search !== "" || status !== "activo" || level !== "todos" || modality !== "todos";
-  const hasAnyStudentEver = students.length > 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Alumnos</h1>
-          <p className="mt-1.5 text-sm text-textMuted">
-            {result.totalItems} alumno{result.totalItems === 1 ? "" : "s"}
-            {isFiltered ? " (filtrados)" : ""}
-          </p>
-        </div>
-        <Link
-          href="/alumnos/nuevo"
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-        >
-          + Nuevo alumno
-        </Link>
-      </div>
-
-      <div className="mt-6 flex flex-col gap-4">
-        <StudentsFiltersForm
-          search={search}
-          status={status}
-          level={level}
-          modality={modality}
-          levelOptions={customLevels.map((l) => l.name)}
-        />
-        <ManageLevelsSection customLevels={customLevels} />
-      </div>
-
-      {result.items.length > 0 ? (
-        <>
-          <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {result.items.map((student) => (
-              <li key={student.id}>
-                <StudentCard student={student} />
-              </li>
-            ))}
-          </ul>
-          <PaginationControls page={result.page} totalPages={result.totalPages} buildHref={(p) => buildQueryHref(params, { page: String(p) })} />
-        </>
-      ) : (
-        <div className="mt-6">
-          <EmptyState
-            message={
-              hasAnyStudentEver
-                ? "Ningún alumno coincide con los filtros elegidos."
-                : "Todavía no hay alumnos cargados."
-            }
-            action={hasAnyStudentEver ? { label: "Limpiar filtros", href: "/alumnos" } : { label: "Agregar alumno", href: "/alumnos/nuevo" }}
-          />
-        </div>
-      )}
-    </div>
+    <StudentsListView
+      items={result.items}
+      page={result.page}
+      totalPages={result.totalPages}
+      totalItems={result.totalItems}
+      isFiltered={isFiltered}
+      hasAnyStudentEver={students.length > 0}
+      search={search}
+      status={status}
+      level={level}
+      modality={modality}
+      customLevels={customLevels}
+      buildHref={(p) => buildQueryHref(params, { page: String(p) })}
+    />
   );
 }

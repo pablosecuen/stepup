@@ -36,8 +36,8 @@ export function ProfileTabsNav({ studentId, active }: { studentId: string; activ
   }, [active]);
 
   return (
-    <nav ref={scrollerRef} aria-label="Secciones del perfil" className="relative -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <ul className="flex gap-1 border-b border-border">
+    <nav ref={scrollerRef} aria-label="Secciones del perfil" className="relative -mx-4 overflow-x-auto px-4 nav:mx-0 nav:px-0">
+      <ul className="flex w-max min-w-full gap-1 border-b-[1.5px] border-border">
         {TABS.map((tab) => {
           const isActive = tab.key === active;
           return (
@@ -46,8 +46,8 @@ export function ProfileTabsNav({ studentId, active }: { studentId: string; activ
                 ref={isActive ? activeRef : undefined}
                 href={`/alumnos/${studentId}?tab=${tab.key}`}
                 aria-current={isActive ? "page" : undefined}
-                className={`inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition-colors duration-150 ease-premium focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brandBlue ${
-                  isActive ? "border-brandBlue text-brandBlueDark" : "border-transparent text-textSecondary hover:text-textPrimary"
+                className={`-mb-[1.5px] inline-flex min-h-11 items-center whitespace-nowrap border-b-[3px] px-3.5 text-[14.5px] transition-colors duration-150 ease-premium nav:px-4 ${
+                  isActive ? "border-accent font-bold text-textPrimary" : "border-transparent font-[650] text-textSecondary hover:text-textPrimary"
                 }`}
               >
                 {tab.label}

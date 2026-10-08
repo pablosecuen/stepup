@@ -1,9 +1,13 @@
 import Link from "@/components/nav/private-link";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus } from "@/lib/lessons/attendance";
 import { MODALITY_LABEL } from "@/lib/students/constants";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { linkClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { formatInstantDayLong, formatInstantTime } from "@/lib/format/date-format";
 
@@ -29,10 +33,10 @@ export function ClasesTabContent({
   attendanceByRegistrationId: Record<string, AttendanceStatus>;
 }) {
   if (registrations.length === 0) {
-    return <EmptyState message="Todavía no hay clases registradas para este alumno." action={{ label: "Ir a Registro", href: "/registro" }} />;
+    return <EmptyState icon={CalendarDaysIcon} message="Todavía no hay clases registradas para este alumno." action={{ label: "Ir a Registro", href: "/registro" }} />;
   }
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-3">
       {registrations.map((registration) => {
         const attendance = attendanceByRegistrationId[registration.id];
         const modality = registration.modality ? MODALITY_LABEL[registration.modality as keyof typeof MODALITY_LABEL] : undefined;
@@ -42,20 +46,21 @@ export function ClasesTabContent({
             : formatInstantTime(registration.scheduledStartAt)
           : null;
         return (
-          <li key={registration.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-textPrimary">{formatInstantDayLong(registrationAnchor(registration), "Sin fecha")}</p>
-              <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[registration.activityKind]}</span>
-            </div>
-            <p className="mt-1 text-xs text-textMuted">
-              {[statusLabel(registration), timeRange, modality, attendance ? `Asistencia: ${ATTENDANCE_STATUS_LABEL[attendance]}` : null].filter(Boolean).join(" · ")}
-            </p>
-            <Link
-              href={registration.calendarLessonId ? `/registro/${registration.calendarLessonId}` : `/registro/libre/${registration.id}`}
-              className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-brandBlue hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-            >
-              Ver registro →
-            </Link>
+          <li key={registration.id}>
+            <Card className="!p-4">
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                <p className="min-w-0 font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">
+                  {formatInstantDayLong(registrationAnchor(registration), "Sin fecha")}
+                </p>
+                <Badge>{ACTIVITY_KIND_LABEL[registration.activityKind]}</Badge>
+              </div>
+              <p className="mt-1.5 text-[14px] text-textMuted [overflow-wrap:anywhere]">
+                {[statusLabel(registration), timeRange, modality, attendance ? `Asistencia: ${ATTENDANCE_STATUS_LABEL[attendance]}` : null].filter(Boolean).join(" · ")}
+              </p>
+              <Link href={registration.calendarLessonId ? `/registro/${registration.calendarLessonId}` : `/registro/libre/${registration.id}`} className={`mt-1 ${linkClass()}`}>
+                Ver registro →
+              </Link>
+            </Card>
           </li>
         );
       })}

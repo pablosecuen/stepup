@@ -5,24 +5,24 @@ import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { changeStudentStatusAction, type ChangeStatusFormState } from "@/lib/actions/students";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import { STUDENT_STATUS_LABEL, STUDENT_STATUS_OPTIONS } from "@/lib/students/constants";
 import type { StudentStatus } from "@/lib/db/database.types";
 import { todayInArgentina } from "@/lib/format/date-format";
 
 const INITIAL_STATE: ChangeStatusFormState = {};
 
-function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }) {
+const RADIO_OPTION =
+  "flex min-h-11 cursor-pointer items-start gap-3 rounded-md border-[1.5px] border-border bg-surface px-3 py-2.5 text-[15px] text-textPrimary has-[:checked]:border-ink has-[:checked]:bg-surface2 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2";
+
+function SubmitButton({ label, disabled, destructive }: { label: string; disabled?: boolean; destructive?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending || disabled}
-      aria-busy={pending}
-      className="flex items-center justify-center gap-2 rounded-md bg-brandBlue px-4 py-2 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-    >
-      {pending && <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+    <Button type="submit" variant={destructive ? "dangerOutline" : "secondary"} busy={pending} disabled={disabled}>
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -41,6 +41,9 @@ function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }
  * conservar o quitar la agenda futura es SIEMPRE explícita, nunca
  * preseleccionada — el envío queda bloqueado hasta que la profesora la
  * marca a propósito.
+ *
+ * Presentación: tarjeta propia al final del Resumen, separada de las acciones normales. Al elegir «Archivado» el botón pasa a
+ * contorno rojo (acción con consecuencias); la lógica del formulario no cambió.
  */
 export function ChangeStatusForm({ studentId, currentStatus }: { studentId: string; currentStatus: StudentStatus }) {
   const boundAction = changeStudentStatusAction.bind(null, studentId);
@@ -54,23 +57,26 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
 
   if (currentStatus !== "activo") {
     return (
-      <form action={formAction} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card">
-        <input type="hidden" name="status" value="activo" />
-        <input type="hidden" name="occurredOn" value={today} />
-        <input type="hidden" name="operationId" value={operationId} />
-        <p className="text-sm text-textSecondary">
-          Este alumno está <strong>{STUDENT_STATUS_LABEL[currentStatus].toLowerCase()}</strong>.
-        </p>
-        <p className="text-xs text-textMuted">
-          Restaurar vuelve el estado a activo — nunca recrea sola la agenda que se haya quitado al archivar. Pagos, cargos, reportes
-          e historial nunca se tocaron ni se tocan al restaurar.
-        </p>
-        {state.error && <FormErrorBox message={state.error} />}
-        {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}
-        <div>
-          <SubmitButton label="Restaurar (volver a activo)" />
-        </div>
-      </form>
+      <Card padded={false}>
+        <CardHeader title="Cambiar estado" />
+        <form action={formAction} className="flex flex-col gap-3 px-4 pb-4 nav:px-5 nav:pb-5">
+          <input type="hidden" name="status" value="activo" />
+          <input type="hidden" name="occurredOn" value={today} />
+          <input type="hidden" name="operationId" value={operationId} />
+          <p className="text-[15px] text-textSecondary">
+            Este alumno está <strong className="text-textPrimary">{STUDENT_STATUS_LABEL[currentStatus].toLowerCase()}</strong>.
+          </p>
+          <p className="text-[13.5px] text-textMuted">
+            Restaurar vuelve el estado a activo — nunca recrea sola la agenda que se haya quitado al archivar. Pagos, cargos, reportes
+            e historial nunca se tocaron ni se tocan al restaurar.
+          </p>
+          {state.error && <FormErrorBox message={state.error} />}
+          {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}
+          <div>
+            <SubmitButton label="Restaurar (volver a activo)" />
+          </div>
+        </form>
+      </Card>
     );
   }
 
@@ -78,93 +84,82 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
   const canSubmit = !isArchiving || removeFromFuture !== "";
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card">
-      <input type="hidden" name="occurredOn" value={today} />
-      <input type="hidden" name="operationId" value={operationId} />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="status" className="text-sm font-medium text-textSecondary">
-          Cambiar estado a
-        </label>
-        <select
-          id="status"
-          name="status"
-          value={selectedStatus}
-          onChange={(e) => {
-            setSelectedStatus(e.target.value as StudentStatus);
-            setRemoveFromFuture("");
-          }}
-          className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
-          {STUDENT_STATUS_OPTIONS.filter((s) => s !== "activo").map((option) => (
-            <option key={option} value={option}>
-              {STUDENT_STATUS_LABEL[option]}
-            </option>
-          ))}
-        </select>
-      </div>
+    <Card padded={false}>
+      <CardHeader title="Cambiar estado" />
+      <form action={formAction} className="flex flex-col gap-4 px-4 pb-4 nav:px-5 nav:pb-5">
+        <input type="hidden" name="occurredOn" value={today} />
+        <input type="hidden" name="operationId" value={operationId} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Cambiar estado a" htmlFor="status">
+            <SelectInput
+              id="status"
+              name="status"
+              value={selectedStatus}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value as StudentStatus);
+                setRemoveFromFuture("");
+              }}
+            >
+              {STUDENT_STATUS_OPTIONS.filter((s) => s !== "activo").map((option) => (
+                <option key={option} value={option}>
+                  {STUDENT_STATUS_LABEL[option]}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
 
-      {isArchiving && (
-        <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
-          <legend className="px-1 text-sm font-medium text-textSecondary">Agenda futura (elegí una opción)</legend>
-          <label className="flex items-start gap-2 text-sm text-textPrimary">
-            <input
-              type="radio"
-              name="removeFromFuture"
-              value="false"
-              checked={removeFromFuture === "false"}
-              onChange={() => setRemoveFromFuture("false")}
-              className="mt-0.5"
-            />
-            Conservar la agenda futura
-          </label>
-          <label className="flex items-start gap-2 text-sm text-textPrimary">
-            <input
-              type="radio"
-              name="removeFromFuture"
-              value="true"
-              checked={removeFromFuture === "true"}
-              onChange={() => setRemoveFromFuture("true")}
-              className="mt-0.5"
-            />
-            Quitar de clases y series futuras
-          </label>
-          <p className="mt-1 text-xs text-textMuted">
-            {removeFromFuture === "true"
-              ? "Se cancelan las clases sueltas futuras donde es el único participante, y se termina cada serie donde es el único participante. Donde hay otros alumnos, la actividad de ellos sigue igual — se promueve a otro participante como principal, nunca se cancela por él."
-              : removeFromFuture === "false"
-                ? "Las clases y series ya agendadas siguen exactamente igual."
-                : "Sin elegir todavía — el envío queda bloqueado hasta marcar una opción."}
-          </p>
-          <p className="text-xs text-textMuted">
-            Pagos, cargos, reportes e historial nunca se borran, elijas lo que elijas. Nada de esto es reversible automáticamente:
-            restaurar más adelante vuelve el estado a activo, pero nunca reconstruye sola la agenda que se haya quitado acá.
-          </p>
-        </fieldset>
-      )}
+          <Field label="Motivo (opcional)" htmlFor="reason">
+            <TextInput id="reason" name="reason" type="text" />
+          </Field>
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="reason" className="text-sm font-medium text-textSecondary">
-          Motivo (opcional)
-        </label>
-        <input
-          id="reason"
-          name="reason"
-          type="text"
-          className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm text-textPrimary focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
-        />
-      </div>
+        {isArchiving && (
+          <fieldset className="flex min-w-0 flex-col gap-2.5 rounded-md border-[1.5px] border-warnLine bg-warnSoft p-3.5">
+            <legend className="px-1 text-sm font-[650] text-textPrimary">Agenda futura (elegí una opción)</legend>
+            <label className={RADIO_OPTION}>
+              <input
+                type="radio"
+                name="removeFromFuture"
+                value="false"
+                checked={removeFromFuture === "false"}
+                onChange={() => setRemoveFromFuture("false")}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-ink"
+              />
+              Conservar la agenda futura
+            </label>
+            <label className={RADIO_OPTION}>
+              <input
+                type="radio"
+                name="removeFromFuture"
+                value="true"
+                checked={removeFromFuture === "true"}
+                onChange={() => setRemoveFromFuture("true")}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-ink"
+              />
+              Quitar de clases y series futuras
+            </label>
+            <p className="text-[13.5px] text-textSecondary">
+              {removeFromFuture === "true"
+                ? "Se cancelan las clases sueltas futuras donde es el único participante, y se termina cada serie donde es el único participante. Donde hay otros alumnos, la actividad de ellos sigue igual — se promueve a otro participante como principal, nunca se cancela por él."
+                : removeFromFuture === "false"
+                  ? "Las clases y series ya agendadas siguen exactamente igual."
+                  : "Sin elegir todavía — el envío queda bloqueado hasta marcar una opción."}
+            </p>
+            <p className="text-[13.5px] text-textSecondary">
+              Pagos, cargos, reportes e historial nunca se borran, elijas lo que elijas. Nada de esto es reversible automáticamente:
+              restaurar más adelante vuelve el estado a activo, pero nunca reconstruye sola la agenda que se haya quitado acá.
+            </p>
+          </fieldset>
+        )}
 
-      {!isArchiving && (
-        <p className="text-xs text-textMuted">
-          El historial de clases y cobros nunca se borra al cambiar de estado.
-        </p>
-      )}
+        {!isArchiving && <p className="text-[13.5px] text-textMuted">El historial de clases y cobros nunca se borra al cambiar de estado.</p>}
 
-      {state.error && <FormErrorBox message={state.error} />}
-      {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}
-      <div>
-        <SubmitButton label="Aplicar cambio de estado" disabled={!canSubmit} />
-      </div>
-    </form>
+        {state.error && <FormErrorBox message={state.error} />}
+        {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}
+        <div>
+          <SubmitButton label="Aplicar cambio de estado" disabled={!canSubmit} destructive={isArchiving} />
+        </div>
+      </form>
+    </Card>
   );
 }

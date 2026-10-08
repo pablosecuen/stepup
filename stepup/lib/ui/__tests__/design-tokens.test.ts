@@ -157,7 +157,7 @@ test("buttonClass y linkClass: TODA variante y tamaño trae min-h-11 (objetivo t
   assert.match(button, /md: ""/, "no existe un tamaño por debajo de 44 px");
   assert.match(button, /export function linkClass[\s\S]*inline-flex min-h-11/);
   assert.match(button, /disabled:pointer-events-none/, "deshabilitado no recibe eventos");
-  for (const variant of ["primary", "accent", "secondary", "ghost", "danger", "dangerOutline"]) assert.match(button, new RegExp(variant + ': "'));
+  for (const variant of ["primary", "accent", "secondary", "ghost", "danger", "dangerOutline", "dangerGhost"]) assert.match(button, new RegExp(variant + ': "'));
 });
 
 test("avatarToneFor: estable, dentro de 0–5 y con reparto razonable", () => {

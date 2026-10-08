@@ -1,4 +1,3 @@
-import Link from "@/components/nav/private-link";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -6,6 +5,8 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getStudent } from "@/lib/repositories/students";
 import { listCustomLevels } from "@/lib/repositories/custom-levels";
 import { ErrorState } from "@/components/ui/states";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { StudentFormPage } from "@/components/students/student-form-page";
 import { EditStudentForm } from "./edit-student-form";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +30,11 @@ export default async function EditarAlumnoPage({ params }: { params: Promise<{ i
     [student, customLevels] = await Promise.all([getStudent(ctx, id), listCustomLevels(ctx)]);
   } catch {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar este alumno. Volvé a intentarlo." />
+      <div className={PAGE_WIDTH.narrow}>
+        <PageTitle>Editar alumno</PageTitle>
+        <div className="mt-5">
+          <ErrorState message="No pudimos cargar este alumno. Volvé a intentarlo." />
+        </div>
       </div>
     );
   }
@@ -38,15 +42,8 @@ export default async function EditarAlumnoPage({ params }: { params: Promise<{ i
   if (!student) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href={`/alumnos/${id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver a la ficha
-      </Link>
-      <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Editar a {student.name}</h1>
-
-      <div className="mt-7">
-        <EditStudentForm student={student} customLevels={customLevels} />
-      </div>
-    </div>
+    <StudentFormPage backHref={`/alumnos/${id}`} backLabel="Volver a la ficha" title={`Editar a ${student.name}`}>
+      <EditStudentForm student={student} customLevels={customLevels} />
+    </StudentFormPage>
   );
 }

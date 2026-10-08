@@ -4,7 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 // Botones del rediseño (docs/design/web-v1/02-componentes-y-navegacion.md §2). Una sola fuente de clases para <button> y para
 // enlaces con aspecto de botón. Nunca hay un tamaño por debajo de 44 px (B8): `min-h-11` va en TODAS las variantes.
 
-export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger" | "dangerOutline";
+export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger" | "dangerOutline" | "dangerGhost";
 export type ButtonSize = "md" | "lg";
 
 const BASE =
@@ -17,6 +17,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: "border-transparent bg-transparent text-textSecondary hover:bg-paperDeep hover:text-ink",
   danger: "border-bad bg-bad text-white hover:border-[#7A1F17] hover:bg-[#7A1F17]",
   dangerOutline: "border-bad bg-transparent text-bad hover:bg-badSoft",
+  // Acción destructiva de poco peso (anular, eliminar): texto rojo sin borde, lejos de las acciones normales.
+  dangerGhost: "border-transparent bg-transparent text-bad hover:bg-badSoft",
 };
 
 const SIZES: Record<ButtonSize, string> = {

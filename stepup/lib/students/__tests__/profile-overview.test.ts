@@ -212,12 +212,14 @@ test("cableado: cada pestaña carga sólo lo suyo y el Resumen/Información NUNC
   assert.match(page, /tab === "resumen"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentNextClass\(ctx, student\),\s*listPendingHomeworkTasksForStudent\(ctx, id\)/);
   assert.match(page, /tab === "informacion"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentTotalCollected\(ctx, id\)/);
   assert.match(page, /tab === "clases"\) \{[\s\S]*?listCompletedRegistrationsForStudentReport\(ctx, id\)/);
-  assert.match(page, /<ResumenTabContent student=\{student\} stats=\{stats\} nextClass=\{nextClass\} pendingTasks=\{pendingTasks\} \/>/);
+  assert.match(code("components/students/profile/student-profile-view.tsx"), /<ResumenTabContent student=\{student\} stats=\{data\.stats\} nextClass=\{data\.nextClass\} pendingTasks=\{data\.pendingTasks\} \/>/);
+  assert.match(page, /<StudentProfileView\s+student=\{student\}\s+tab=\{tab\}/);
   // R2: la página NUNCA escribe durante el GET (ni genera cobros ni barre PDFs). La generación idempotente de cobros la dispara
   // un Server Action (POST) desde `ChargeGenerationTrigger`, sólo en la pestaña Cobros; el barrido de PDFs, desde `ReportCleanupTrigger`.
   assert.doesNotMatch(page, /ensureCurrentMonthlyCharges|ensureTrainingCharges|sweepPendingReportPdfCleanupJobs/);
-  assert.match(page, /tab === "cobros" && \(\s*<>\s*<ChargeGenerationTrigger \/>/);
-  assert.match(page, /tab === "reportes" && \(\s*<>\s*<ReportCleanupTrigger \/>/);
+  assert.match(page, /\{tab === "cobros" && <ChargeGenerationTrigger \/>\}/);
+  assert.match(page, /\{tab === "reportes" && <ReportCleanupTrigger \/>\}/);
+  assert.doesNotMatch(code("components/students/profile/student-profile-view.tsx"), /ChargeGenerationTrigger|ReportCleanupTrigger/, "la vista no dispara tareas de fondo: las dispara la página");
   assert.equal([...page.matchAll(/<ChargeGenerationTrigger \/>/g)].length, 1);
 
   const loader = code("lib/students/load-profile-overview.ts");
@@ -243,7 +245,7 @@ test("Resumen: no usa la columna `pending_homework` (la web nunca la actualiza),
 
 test("Información: actividad real (clases, horas, total cobrado) y fecha de cambio de estado sólo si el alumno NO está activo", () => {
   const info = code("components/students/profile/informacion-tab.tsx");
-  assert.match(info, /<h2[^>]*>Actividad<\/h2>/);
+  assert.match(info, /<Section title="Actividad">/);
   assert.match(info, /label="Clases dictadas"/);
   assert.match(info, /\{stats\.hours !== null && <Row label="Horas de clase"/);
   assert.match(info, /label="Total cobrado"/);

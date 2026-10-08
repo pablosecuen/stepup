@@ -13,17 +13,135 @@ import {
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowPathIcon, CheckIcon, DocumentTextIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
+import { Field, TextArea } from "@/components/ui/field";
+import { Notice } from "@/components/ui/notice";
 import { formatCivilDateRange, formatCivilMonth, formatInstantDate } from "@/lib/format/date-format";
 import { formatGrade, formatHours, formatPercent } from "@/lib/format/number-format";
-
-const inputClassName =
-  "w-full rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
-const labelClassName = "text-sm font-medium text-textSecondary";
 
 /** Reemplaza (si ya existe, por id) o agrega al frente la fila canónica devuelta por el servidor — nunca una entrada construida desde el formulario local. */
 function upsertHistoryEntry(prev: ReportRecordSummary[], entry: ReportRecordSummary): ReportRecordSummary[] {
   return [entry, ...prev.filter((r) => r.id !== entry.id)];
+}
+
+const CHECKBOX = "h-5 w-5 shrink-0 rounded border-[1.5px] border-borderStrong accent-ink";
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-3">
+      <p className="text-[13px] font-[650] text-textMuted">{label}</p>
+      <p className="mt-1 font-display text-[26px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{value}</p>
+    </div>
+  );
+}
+
+/** Vista previa del reporte y el formulario para generarlo (presentación; el estado vive en `ReportesTabContent`). */
+export function ReportPreviewCard({
+  preview,
+  narrativeText,
+  onNarrativeText,
+  generalComment,
+  onGeneralComment,
+  behaviorAndParticipation,
+  onBehaviorAndParticipation,
+  nextObjectives,
+  onNextObjectives,
+  recommendations,
+  onRecommendations,
+  includeClassDetail,
+  onIncludeClassDetail,
+  includePunctualitySummary,
+  onIncludePunctualitySummary,
+  isGenerating,
+  onGenerate,
+}: {
+  preview: StudentReportPreview;
+  narrativeText: string;
+  onNarrativeText: (value: string) => void;
+  generalComment: string;
+  onGeneralComment: (value: string) => void;
+  behaviorAndParticipation: string;
+  onBehaviorAndParticipation: (value: string) => void;
+  nextObjectives: string;
+  onNextObjectives: (value: string) => void;
+  recommendations: string;
+  onRecommendations: (value: string) => void;
+  includeClassDetail: boolean;
+  onIncludeClassDetail: (value: boolean) => void;
+  includePunctualitySummary: boolean;
+  onIncludePunctualitySummary: (value: boolean) => void;
+  isGenerating: boolean;
+  onGenerate: () => void;
+}) {
+  return (
+    <Card>
+      <h2 className="font-display text-section font-semibold">{preview.monthsSummaryLabel}</h2>
+      <p className="text-[14px] text-textMuted">{formatCivilDateRange(preview.periodStart, preview.periodEnd)}</p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Clases dictadas" value={String(preview.data.classesHeld)} />
+        <Stat label="Horas reales" value={formatHours(preview.data.hoursTaught)} />
+        <Stat label="Asistencia" value={preview.data.attendance.ratePercent !== null ? formatPercent(preview.data.attendance.ratePercent) : "Sin datos"} />
+        <Stat label="Promedio general" value={preview.data.generalAverageGrade !== null ? formatGrade(preview.data.generalAverageGrade) : "Sin calificar"} />
+      </div>
+
+      {preview.data.skillNotes.some((s) => s.averageGrade !== null) && (
+        <div className="mt-4">
+          <p className="text-label font-bold uppercase text-textMuted">Habilidades</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {preview.data.skillNotes
+              .filter((s) => s.averageGrade !== null)
+              .map((s) => (
+                <li key={s.skill} className="inline-flex min-h-[26px] items-center rounded-pill border border-border bg-paperDeep px-2.5 text-[12.5px] font-[650] text-textSecondary">
+                  {s.label}: {formatGrade(s.averageGrade)}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-col gap-5">
+        <Field label="Vista previa (editable)" htmlFor="narrativeText">
+          <TextArea id="narrativeText" rows={8} value={narrativeText} onChange={(e) => onNarrativeText(e.target.value)} />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Field label="Comentario general" htmlFor="generalComment">
+            <TextArea id="generalComment" rows={3} value={generalComment} onChange={(e) => onGeneralComment(e.target.value)} />
+          </Field>
+          <Field label="Comportamiento y participación" htmlFor="behaviorAndParticipation">
+            <TextArea id="behaviorAndParticipation" rows={3} value={behaviorAndParticipation} onChange={(e) => onBehaviorAndParticipation(e.target.value)} />
+          </Field>
+          <Field label="Próximos objetivos" htmlFor="nextObjectives">
+            <TextArea id="nextObjectives" rows={3} value={nextObjectives} onChange={(e) => onNextObjectives(e.target.value)} />
+          </Field>
+          <Field label="Recomendaciones" htmlFor="recommendations">
+            <TextArea id="recommendations" rows={3} value={recommendations} onChange={(e) => onRecommendations(e.target.value)} />
+          </Field>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col">
+        <label className="flex min-h-11 items-center gap-3 text-[15px] text-textSecondary">
+          <input type="checkbox" checked={includeClassDetail} onChange={(e) => onIncludeClassDetail(e.target.checked)} className={CHECKBOX} />
+          Incluir detalle clase por clase
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-[15px] text-textSecondary">
+          <input type="checkbox" checked={includePunctualitySummary} onChange={(e) => onIncludePunctualitySummary(e.target.checked)} className={CHECKBOX} />
+          Puntualidad y asistencia
+        </label>
+      </div>
+
+      <Button variant="accent" onClick={onGenerate} busy={isGenerating} className="mt-5 w-full sm:w-auto">
+        {!isGenerating && <DocumentTextIcon className="h-5 w-5" aria-hidden />}
+        {isGenerating ? "Generando PDF..." : "Generar PDF"}
+      </Button>
+    </Card>
+  );
 }
 
 export function ReportesTabContent({
@@ -209,234 +327,167 @@ export function ReportesTabContent({
     setNotice(result.data!.resolvedCount > 0 ? `Se resolvieron ${result.data!.resolvedCount} archivo(s) pendiente(s) de limpieza.` : "No había limpieza pendiente.");
   }
 
+  const confirmingRecord = confirmingDeleteId ? history.find((r) => r.id === confirmingDeleteId) : undefined;
+  const isDeleting = actionState?.kind === "delete" && actionState.id === confirmingDeleteId;
+
   return (
     <div className="flex flex-col gap-6">
-      {error && <div className="rounded-md border border-statusRojo/30 bg-statusRojo/5 px-4 py-3 text-sm text-statusRojo">{error}</div>}
+      {error && <Notice tone="bad">{error}</Notice>}
       {warning && (
-        <div className="rounded-md border border-statusAmarillo/40 bg-statusAmarillo/10 px-4 py-3 text-sm text-textPrimary">
+        <Notice tone="warn">
           {warning}
-          <button type="button" onClick={handleStartNewReport} disabled={isStartingNew} className="ml-2 font-semibold text-brandBlue underline hover:no-underline disabled:opacity-60">
+          <Button variant="secondary" onClick={handleStartNewReport} busy={isStartingNew} className="mt-3">
             {isStartingNew ? "Iniciando..." : "Crear otro reporte"}
-          </button>
-        </div>
+          </Button>
+        </Notice>
       )}
-      {notice && <div className="rounded-md border border-brandBlue/30 bg-brandBlue/5 px-4 py-3 text-sm text-textPrimary">{notice}</div>}
+      {notice && <Notice tone="info">{notice}</Notice>}
 
-      <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-textPrimary">Generar reporte</h2>
-          <button
-            type="button"
-            onClick={handleStartNewReport}
-            disabled={isStartingNew || isGenerating || isPreviewing}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textSecondary transition-colors hover:border-brandBlue/30 hover:text-brandBlue disabled:cursor-not-allowed disabled:opacity-60"
-          >
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 className="font-display text-card font-semibold">Generar reporte</h2>
+          <Button variant="ghost" onClick={handleStartNewReport} disabled={isGenerating || isPreviewing} busy={isStartingNew}>
             {isStartingNew ? "Iniciando..." : "Crear otro reporte"}
-          </button>
+          </Button>
         </div>
         {monthsWithClasses.length === 0 ? (
-          <p className="mt-2 text-sm text-textMuted">Este alumno todavía no tiene clases dictadas registradas.</p>
+          <p className="mt-2 text-[15px] text-textMuted">Este alumno todavía no tiene clases dictadas registradas.</p>
         ) : (
           <>
-            <p className="mt-1 text-xs text-textMuted">Elegí uno o varios meses reales con clases (no necesariamente consecutivos).</p>
+            <p className="mt-1 text-[14px] text-textMuted">Elegí uno o varios meses reales con clases (no necesariamente consecutivos).</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {monthsWithClasses.map((month) => (
-                <button
-                  key={month}
-                  type="button"
-                  onClick={() => toggleMonth(month)}
-                  aria-pressed={selectedMonths.has(month)}
-                  className={`rounded-pill border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    selectedMonths.has(month) ? "border-brandBlue bg-brandBlue text-white" : "border-border bg-background text-textSecondary hover:border-brandBlue/30"
-                  }`}
-                >
-                  {selectedMonths.has(month) && <CheckIcon className="mr-1 inline h-3.5 w-3.5" aria-hidden />}
-                  {formatCivilMonth(month)}
-                </button>
-              ))}
+              {monthsWithClasses.map((month) => {
+                const selected = selectedMonths.has(month);
+                return (
+                  <button
+                    key={month}
+                    type="button"
+                    onClick={() => toggleMonth(month)}
+                    aria-pressed={selectedMonths.has(month)}
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border-[1.5px] px-4 text-[14.5px] font-[650] transition-colors duration-150 ${
+                      selected ? "border-ink bg-ink text-background" : "border-borderMid bg-surface text-textPrimary hover:border-ink"
+                    }`}
+                  >
+                    {selected && <CheckIcon className="h-4 w-4" aria-hidden />}
+                    <span className="inline-block first-letter:uppercase">{formatCivilMonth(month)}</span>
+                  </button>
+                );
+              })}
             </div>
-            <button
-              type="button"
-              onClick={handlePreview}
-              disabled={isPreviewing || selectedMonths.size === 0}
-              className="mt-4 rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold text-textPrimary transition-colors hover:border-brandBlue/30 disabled:cursor-not-allowed disabled:opacity-60"
-            >
+            <Button variant={preview ? "secondary" : "primary"} onClick={handlePreview} busy={isPreviewing} disabled={selectedMonths.size === 0} className="mt-4">
               {isPreviewing ? "Calculando..." : "Previsualizar"}
-            </button>
+            </Button>
           </>
         )}
-      </section>
+      </Card>
 
       {preview && (
-        <section className="rounded-lg border border-border bg-surface p-4 shadow-card">
-          <h2 className="text-sm font-semibold text-textPrimary">{preview.monthsSummaryLabel}</h2>
-          <p className="text-xs text-textMuted">
-            {formatCivilDateRange(preview.periodStart, preview.periodEnd)}
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-textMuted">Clases dictadas</p>
-              <p className="font-semibold text-textPrimary">{preview.data.classesHeld}</p>
-            </div>
-            <div>
-              <p className="text-xs text-textMuted">Horas reales</p>
-              <p className="font-semibold text-textPrimary">{formatHours(preview.data.hoursTaught)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-textMuted">Asistencia</p>
-              <p className="font-semibold text-textPrimary">{preview.data.attendance.ratePercent !== null ? formatPercent(preview.data.attendance.ratePercent) : "Sin datos"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-textMuted">Promedio general</p>
-              <p className="font-semibold text-textPrimary">{preview.data.generalAverageGrade !== null ? formatGrade(preview.data.generalAverageGrade) : "Sin calificar"}</p>
-            </div>
-          </div>
-
-          {preview.data.skillNotes.some((s) => s.averageGrade !== null) && (
-            <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-textSecondary">Habilidades</p>
-              <ul className="mt-1.5 grid grid-cols-2 gap-1 text-sm sm:grid-cols-4">
-                {preview.data.skillNotes
-                  .filter((s) => s.averageGrade !== null)
-                  .map((s) => (
-                    <li key={s.skill} className="text-textSecondary">
-                      {s.label}: <span className="font-semibold text-textPrimary">{formatGrade(s.averageGrade)}</span>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-col gap-1.5">
-            <label htmlFor="narrativeText" className={labelClassName}>
-              Vista previa (editable)
-            </label>
-            <textarea id="narrativeText" rows={8} value={narrativeText} onChange={(e) => setNarrativeText(e.target.value)} className={inputClassName} />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="generalComment" className={labelClassName}>
-                Comentario general
-              </label>
-              <textarea id="generalComment" rows={3} value={generalComment} onChange={(e) => setGeneralComment(e.target.value)} className={inputClassName} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="behaviorAndParticipation" className={labelClassName}>
-                Comportamiento y participación
-              </label>
-              <textarea id="behaviorAndParticipation" rows={3} value={behaviorAndParticipation} onChange={(e) => setBehaviorAndParticipation(e.target.value)} className={inputClassName} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="nextObjectives" className={labelClassName}>
-                Próximos objetivos
-              </label>
-              <textarea id="nextObjectives" rows={3} value={nextObjectives} onChange={(e) => setNextObjectives(e.target.value)} className={inputClassName} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="recommendations" className={labelClassName}>
-                Recomendaciones
-              </label>
-              <textarea id="recommendations" rows={3} value={recommendations} onChange={(e) => setRecommendations(e.target.value)} className={inputClassName} />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-sm text-textSecondary">
-              <input type="checkbox" checked={includeClassDetail} onChange={(e) => setIncludeClassDetail(e.target.checked)} className="h-4 w-4 rounded border-border text-brandBlue" />
-              Incluir detalle clase por clase
-            </label>
-            <label className="flex items-center gap-2 text-sm text-textSecondary">
-              <input
-                type="checkbox"
-                checked={includePunctualitySummary}
-                onChange={(e) => setIncludePunctualitySummary(e.target.checked)}
-                className="h-4 w-4 rounded border-border text-brandBlue"
-              />
-              Puntualidad y asistencia
-            </label>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="mt-5 flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isGenerating ? "Generando PDF..." : "Generar PDF"}
-          </button>
-        </section>
+        <ReportPreviewCard
+          preview={preview}
+          narrativeText={narrativeText}
+          onNarrativeText={setNarrativeText}
+          generalComment={generalComment}
+          onGeneralComment={setGeneralComment}
+          behaviorAndParticipation={behaviorAndParticipation}
+          onBehaviorAndParticipation={setBehaviorAndParticipation}
+          nextObjectives={nextObjectives}
+          onNextObjectives={setNextObjectives}
+          recommendations={recommendations}
+          onRecommendations={setRecommendations}
+          includeClassDetail={includeClassDetail}
+          onIncludeClassDetail={setIncludeClassDetail}
+          includePunctualitySummary={includePunctualitySummary}
+          onIncludePunctualitySummary={setIncludePunctualitySummary}
+          isGenerating={isGenerating}
+          onGenerate={handleGenerate}
+        />
       )}
 
       <section>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-textSecondary">Historial de reportes</h2>
-          <button
-            type="button"
-            onClick={handleRetryCleanup}
-            disabled={isRetryingCleanup}
-            className="text-xs font-semibold text-textMuted underline hover:text-brandBlue disabled:opacity-60"
-          >
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 className="text-label font-bold uppercase text-textMuted">Historial de reportes</h2>
+          <Button variant="ghost" onClick={handleRetryCleanup} busy={isRetryingCleanup}>
             {isRetryingCleanup ? "Reintentando..." : "Reintentar limpieza pendiente"}
-          </button>
+          </Button>
         </div>
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-textMuted">Todavía no se generó ningún reporte para este alumno.</p>
+          <p className="mt-2 text-[15px] text-textMuted">Todavía no se generó ningún reporte para este alumno.</p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-2.5">
-            {history.map((record) => (
-              <li key={record.id} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-sm font-semibold text-textPrimary">{record.title}</p>
-                <p className="mt-0.5 text-xs text-textMuted">
-                  {formatCivilDateRange(record.periodStart, record.periodEnd)} · Generado el {formatInstantDate(record.generatedAt)}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleView(record.id)}
-                    disabled={!record.hasPdf || actionState?.id === record.id}
-                    className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textPrimary hover:border-brandBlue/30 disabled:opacity-50"
-                  >
-                    {actionState?.id === record.id && actionState.kind === "view" ? "Abriendo..." : "Ver / Descargar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRegenerate(record.id)}
-                    disabled={actionState?.id === record.id}
-                    className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textPrimary hover:border-brandBlue/30 disabled:opacity-50"
-                  >
-                    {actionState?.id === record.id && actionState.kind === "regenerate" ? "Regenerando..." : "Regenerar"}
-                  </button>
-                  {confirmingDeleteId === record.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(record.id)}
-                        disabled={actionState?.id === record.id}
-                        className="rounded-md border border-statusRojo/40 px-3 py-1.5 text-xs font-semibold text-statusRojo hover:border-statusRojo disabled:opacity-50"
-                      >
-                        {actionState?.id === record.id && actionState.kind === "delete" ? "Eliminando..." : "Confirmar eliminación"}
-                      </button>
-                      <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textSecondary">
-                        Cancelar
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingDeleteId(record.id)}
-                      className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textSecondary hover:border-statusRojo/40 hover:text-statusRojo"
-                    >
-                      Eliminar
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
+          <ul className="mt-3 flex flex-col gap-3">
+            {history.map((record) => {
+              const busy = actionState?.id === record.id;
+              return (
+                <li key={record.id}>
+                  <Card className="!p-4">
+                    <div className="flex items-start gap-3">
+                      <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-accentSoft text-accentText">
+                        <DocumentTextIcon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{record.title}</p>
+                        <p className="mt-0.5 text-[13.5px] text-textMuted">
+                          {formatCivilDateRange(record.periodStart, record.periodEnd)} · Generado el {formatInstantDate(record.generatedAt)}
+                        </p>
+                        {!record.hasPdf && (
+                          <div className="mt-2">
+                            <Badge tone="warn" icon={<ExclamationTriangleIcon className="h-3.5 w-3.5" aria-hidden />}>
+                              PDF no disponible
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" onClick={() => handleView(record.id)} disabled={!record.hasPdf || busy} busy={busy && actionState?.kind === "view"}>
+                        {busy && actionState?.kind === "view" ? "Abriendo..." : (
+                          <>
+                            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
+                            Ver / Descargar
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="ghost" onClick={() => handleRegenerate(record.id)} disabled={busy} busy={busy && actionState?.kind === "regenerate"}>
+                        {busy && actionState?.kind === "regenerate" ? "Regenerando..." : (
+                          <>
+                            <ArrowPathIcon className="h-4 w-4" aria-hidden />
+                            Regenerar
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="dangerGhost" onClick={() => setConfirmingDeleteId(record.id)} aria-haspopup="dialog" className="sm:ml-auto">
+                        <TrashIcon className="h-4 w-4" aria-hidden />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {confirmingRecord && (
+        <Dialog
+          title="Eliminar reporte"
+          size="sm"
+          onClose={() => setConfirmingDeleteId(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirmingDeleteId(null)}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={() => handleDelete(confirmingRecord.id)} busy={isDeleting}>
+                {isDeleting ? "Eliminando..." : "Confirmar eliminación"}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-[15px] text-textSecondary [overflow-wrap:anywhere]">
+            Vas a eliminar <b className="text-textPrimary">{confirmingRecord.title}</b> del historial de {studentName}.
+          </p>
+        </Dialog>
+      )}
     </div>
   );
 }
