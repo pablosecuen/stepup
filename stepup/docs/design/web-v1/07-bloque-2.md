@@ -1,6 +1,6 @@
-# 07 · Bloque 2 — Inicio (implementado, en revisión visual)
+# 07 · Bloque 2 — Inicio (cerrado y aprobado)
 
-Misma rama local `v1-web` / worktree `C:\Users\joaqu\tf-web-v1`, a continuación del cierre del Bloque 1. **Sin push ni deploy** hasta la revisión.
+Misma rama local `v1-web` / worktree `C:\Users\joaqu\tf-web-v1`, a continuación del cierre del Bloque 1. Aprobado visualmente por Joaquín (commit `787a145`). La rama `v1-web` se publica sin force y separada de la rama de Production; **sin deploy**.
 
 ## Alcance
 

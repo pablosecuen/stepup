@@ -49,3 +49,7 @@ Cuando una de estas se apruebe se implementa como cambio de producto, con sus pr
 - **PDF generado y descarga real.** Se representa el estado y el aviso de apertura; el documento PDF no se dibuja.
 - **Impresión.** No se diseñó la versión impresa.
 - **Calendario semanal en 320 px.** Se resuelve como agenda por día (lista), no como grilla de siete columnas.
+
+## Monetización (bloque futuro separado)
+
+Las suscripciones comerciales y el proveedor de cobro **no forman parte del rediseño visual** y no se implementan en ningún bloque visual. Definición preliminar de Joaquín (2026-10-08), para un bloque futuro propio con su decisión y pruebas: mensual $24.900; 3 meses $69.900; 6 meses $133.900; 1 año $249.000; proveedor preliminar Mobbex.
