@@ -158,8 +158,8 @@ export function AccountMenu({ identity, variant }: { identity: AccountIdentity; 
           <div className="flex items-center gap-3 border-b-[1.5px] border-border bg-surface2 p-4">
             <Avatar initial={identity.initial} tone={0} size="l" />
             <div className="min-w-0">
-              <p className="truncate font-display text-lg font-semibold leading-tight text-textPrimary">{identity.primary}</p>
-              {identity.secondary && <p className="truncate text-[13px] text-textMuted">{identity.secondary}</p>}
+              <p className="break-words font-display text-lg font-semibold leading-tight text-textPrimary">{identity.primary}</p>
+              {identity.secondary && <p className="break-all text-[13px] text-textMuted">{identity.secondary}</p>}
             </div>
           </div>
           <div ref={menuRef} id={menuId} role="menu" aria-labelledby={triggerId} className="flex flex-col gap-0.5 p-1.5">

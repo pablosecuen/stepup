@@ -26,7 +26,7 @@ Lógica de negocio, Supabase, migraciones, autenticación, datos, rutas, textos 
 | Campana con contador en la barra superior/del escritorio | No está | Panel de notificaciones = «Propuesta»; hoy la campana sólo existe dentro de Inicio. |
 | Botón flotante «Nueva clase» (móvil) | No está | Depende de pantallas del Bloque 2–4. |
 | Botones de 36 px (`sm`) | 44 px | B8: objetivo táctil mínimo. |
-| Landing: botón secundario «Ya tengo cuenta» y «Empezar» → crear cuenta | «Empezar» sigue yendo a `/login`; sin botón extra | No cambiar destinos ni textos funcionales sin decisión. |
+| Landing: botón secundario «Ya tengo cuenta» | «Empezar» va a `/crear-cuenta` (decisión de Joaquín); sin «Ya tengo cuenta» | «Iniciar sesión» ya está visible en el encabezado. |
 | Landing: tarjeta «Hoy» con nombres y datos ficticios | Agenda genérica sin nombres | No inventar personas en una pantalla pública. |
 | Panel de marca con textos nuevos | Reusa los textos de la landing | No introducir copy nuevo. |
 | Íconos de estado distintos por categoría de enlace vencido/inválido/sin conexión | Dos tonos (aviso / error) según `describeAuthErrorScreen` | El producto sólo distingue dos tonos. |

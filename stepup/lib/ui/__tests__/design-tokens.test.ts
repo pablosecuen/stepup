@@ -51,6 +51,7 @@ const TOKEN_VARIABLES: Record<string, string> = {
   info: "--tf-info",
   infoSoft: "--tf-info-soft",
   infoLine: "--tf-info-line",
+  dataNeeds: "--tf-data-needs",
 };
 
 test("cada token de color de Tailwind coincide con su variable CSS --tf-* (una sola fuente de valores)", () => {
@@ -100,6 +101,12 @@ test("los tokens reservados siguen siendo suyos: el semáforo de cobro y el plan
   assert.equal(colors.pastelLavender, "#E9E2FF");
   assert.equal(colors.pastelSageText, "#35613B");
   assert.equal(colors.brandBlue, "#0A64D2");
+  // Azul con significado de dato (Necesidades del 50/30/20): token propio, no arrastrado por el retiro del azul de interfaz.
+  assert.equal(colors.dataNeeds, "#0A64D2");
+  const budget = code("components/account/budget-distribution-form.tsx");
+  assert.match(budget, /text-dataNeeds/);
+  assert.match(budget, /accent-dataNeeds/);
+  assert.doesNotMatch(budget, /brandBlue/, "el plan 50/30/20 no depende del azul heredado");
   // Los componentes nuevos no usan los tokens exclusivos del plan 50/30/20 ni el semáforo.
   for (const file of ["button.tsx", "field.tsx", "notice.tsx", "badge.tsx", "card.tsx", "avatar.tsx", "table.tsx", "dialog.tsx", "menu-styles.ts", "states.tsx", "status-circle.tsx"]) {
     assert.doesNotMatch(code(`components/ui/${file}`), /pastelLavender|pastelSage|statusVerde|statusRojo|statusAmarillo|statusNaranja|brandBlue/, file);

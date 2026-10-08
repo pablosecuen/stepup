@@ -62,7 +62,14 @@ Tonos de estado (siempre **texto + ícono + tono**, nunca sólo color). Cada uno
 
 `brandBlue #0A64D2` / `brandBlueDark #004BA8` (azul «en vivo» y estados de las pantallas todavía no migradas), `statusVerde`, `statusAmarillo`, `statusNaranja`, `statusRojo`, `statusPendiente` (semáforo de cobro: **reservados**, no se usan para otra cosa), `statusSinDatos` (pasa de `#6B7078` a `#655B4D` para llegar a 4,5:1 sobre el papel cálido), `pastelLavender*` y `pastelSage*` (plan 50/30/20, exclusivos). La escala del calendario vive en `lib/calendar-theme.ts` y **no** pasa por estos tokens.
 
-El azul de marca desaparece del rediseño a medida que cada bloque migra sus pantallas; el último bloque lo retira de las que queden.
+**Dos significados del azul (decisión del Bloque 1):**
+
+| Uso | Token | Destino |
+|---|---|---|
+| Azul heredado como **estilo de interfaz** (botones, enlaces, foco, pastillas activas, fondos de acento) | `brandBlue` / `brandBlueDark` | **Se retira**: cada bloque lo reemplaza al migrar su pantalla (terracota/tinta). No se reemplaza globalmente. |
+| Azul con **significado de dato o categoría**: «Necesidades» del plan 50/30/20 (control y cifra) | `dataNeeds` (`--tf-data-needs`, mismo valor `#0A64D2`) | **Se conserva**. Es un token aparte para que el retiro del azul de interfaz no lo arrastre. Los otros dos renglones del plan siguen con lavanda y salvia. |
+
+Al migrar una pantalla, si un azul expresa un dato o una categoría (no un estado de interfaz), se pasa a un token de dato propio y se documenta acá.
 
 ### 1.5 Avatares de alumnos (tonos cálidos)
 

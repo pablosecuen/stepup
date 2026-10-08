@@ -42,7 +42,7 @@ function Slider({
         max={100}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-brandBlue"
+        className="w-full accent-dataNeeds"
       />
     </label>
   );
@@ -75,7 +75,7 @@ export function BudgetDistributionForm({ initial }: { initial: BudgetDistributio
         label="Necesidades"
         value={distribution.needs}
         onChange={(v) => change(adjustNeeds(distribution, v))}
-        colorClass="text-brandBlue"
+        colorClass="text-dataNeeds"
       />
       <Slider
         label="Gustos"

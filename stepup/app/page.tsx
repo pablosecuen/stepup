@@ -53,7 +53,7 @@ export default function HomePage() {
               TeacherFlow reúne alumnos, calendario y cobros de tus clases particulares en una sola herramienta simple, pensada para profesoras y profesores independientes.
             </p>
             <div className="mt-7">
-              <ButtonLink href="/login" variant="accent" size="lg">
+              <ButtonLink href="/crear-cuenta" variant="accent" size="lg">
                 Empezar
                 <ArrowRightIcon className="h-5 w-5" aria-hidden />
               </ButtonLink>
@@ -70,7 +70,7 @@ export default function HomePage() {
                 <div key={row.time} className="mt-2.5 flex items-center gap-3 border-t border-border pt-2.5">
                   <b className="w-12 font-display font-semibold tf-num">{row.time}</b>
                   <span className={`h-7 w-7 shrink-0 rounded-pill ${row.tone}`} />
-                  <span className="min-w-0 flex-1 truncate font-[650]">{row.label}</span>
+                  <span className="min-w-0 flex-1 font-[650] leading-snug">{row.label}</span>
                   {row.live && (
                     <Badge tone="accent" dot>
                       En curso
