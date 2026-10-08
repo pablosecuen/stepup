@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
+import { Button } from "@/components/ui/button";
 import { NewPasswordForm } from "./new-password-form";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
@@ -29,13 +30,13 @@ export default async function NuevaContrasenaPage() {
   if (access.kind === "redirect") redirect(access.to);
 
   return (
-    <AuthShell title="Elegí una contraseña nueva" subtitle="Después de guardarla, vas a iniciar sesión de nuevo con ella.">
+    <AuthShell layout="card" title="Elegí una contraseña nueva" subtitle="Después de guardarla, vas a iniciar sesión de nuevo con ella.">
       <NewPasswordForm />
       {/* Abandonar la recuperación: borra el marcador y cierra la sesión que dejó el enlace. */}
       <form action={abandonRecoveryAction} aria-label="Cancelar la recuperación de contraseña">
-        <button type="submit" className="w-full text-center text-sm font-medium text-textMuted hover:text-textSecondary hover:underline">
+        <Button type="submit" variant="ghost" block>
           Cancelar
-        </button>
+        </Button>
       </form>
     </AuthShell>
   );

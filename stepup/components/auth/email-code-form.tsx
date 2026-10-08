@@ -3,6 +3,8 @@
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { verifyEmailCodeAction, type EmailCodeFormState } from "@/lib/auth/actions";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/field";
 
 const INITIAL_STATE: EmailCodeFormState = {};
 
@@ -21,10 +23,10 @@ export function EmailCodeForm({ flow, email }: { flow: "recovery" | "signup"; em
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-3 text-left" aria-label="Ingresar el código de 6 dígitos">
-      <p className="text-center text-xs text-textMuted">{help}</p>
+      <p className="text-center text-[13.5px] text-textMuted">{help}</p>
       <input type="hidden" name="flow" value={flow} />
       <input type="hidden" name="email" value={email} />
-      <input
+      <TextInput
         name="code"
         inputMode="numeric"
         autoComplete="one-time-code"
@@ -33,15 +35,12 @@ export function EmailCodeForm({ flow, email }: { flow: "recovery" | "signup"; em
         required
         placeholder="123456"
         aria-label="Código de 6 dígitos"
-        className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-center text-sm tracking-[0.4em] text-textPrimary placeholder:text-textMuted focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
+        className="text-center font-display text-2xl font-semibold tracking-[0.4em]"
       />
       {state.error && <FormErrorBox message={state.error} />}
-      <button
-        type="submit"
-        className="rounded-md border border-brandBlue px-4 py-2 text-sm font-semibold text-brandBlue transition-colors hover:bg-brandBlue/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-      >
+      <Button type="submit" variant="secondary" block>
         Usar el código
-      </button>
+      </Button>
     </form>
   );
 }

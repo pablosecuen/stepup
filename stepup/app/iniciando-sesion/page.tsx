@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { signOutAction } from "@/lib/auth/actions";
+import { Button } from "@/components/ui/button";
 import { SessionRecovery } from "./session-recovery";
 
 export const dynamic = "force-dynamic";
@@ -20,19 +21,19 @@ export default async function IniciandoSesionPage() {
 
   const signOutForm = (
     <form action={signOutAction}>
-      <button type="submit" className="w-full text-center text-sm font-medium text-textMuted hover:text-textSecondary hover:underline">
+      <Button type="submit" variant="ghost" block>
         Cerrar sesión
-      </button>
+      </Button>
     </form>
   );
 
   return (
-    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <Image src="/icon.png" alt="TeacherFlow" width={56} height={56} className="rounded-xl" />
+    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-5 py-8">
+      <div className="w-full max-w-[440px]">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <Image src="/icon.png" alt="TeacherFlow" width={60} height={60} className="rounded-2xl" />
         </div>
-        <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
+        <div className="rounded-lg border-[1.5px] border-border bg-surface p-5 shadow-card nav:p-6">
           <SessionRecovery signOutForm={signOutForm} />
         </div>
       </div>

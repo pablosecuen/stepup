@@ -19,8 +19,8 @@
 //    entonces se QUITA `'unsafe-inline'`. Nunca `'unsafe-eval'`: la versión de producción de Next no lo necesita.
 //  - `style-src 'self' 'unsafe-inline'`: TEMPORAL. React/Next y los estilos dinámicos de Tailwind usan atributos `style` y
 //    <style> en línea; se revisará junto con el nonce.
-//  - `img-src 'self' data: blob:`: íconos propios y SVG/imágenes embebidas. `font-src 'self'`: no hay fuentes externas (se usa
-//    la fuente del sistema). `connect-src 'self'`: el navegador NUNCA habla con Supabase (todo pasa por el servidor de
+//  - `img-src 'self' data: blob:`: íconos propios y SVG/imágenes embebidas. `font-src 'self'`: no hay fuentes externas (las de
+//    `next/font` —Hanken Grotesk y Fraunces— se autoalojan en el propio origen). `connect-src 'self'`: el navegador NUNCA habla con Supabase (todo pasa por el servidor de
 //    TeacherFlow), sólo con su propio origen (Server Actions y datos RSC).
 //  - Los PDF de informes se abren con una URL firmada de Supabase Storage en una pestaña nueva (`window.open`): es una
 //    NAVEGACIÓN de nivel superior, no un recurso de la página, así que ninguna directiva la afecta.

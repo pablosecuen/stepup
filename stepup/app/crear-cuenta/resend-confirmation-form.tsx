@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { resendConfirmationAction, type AuthFormState } from "@/lib/auth/actions";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { CaptchaWidget } from "@/components/auth/captcha-widget";
+import { Button } from "@/components/ui/button";
 
 // Mismo cooldown que móvil (AuthEmailConfirmationScreen.tsx,
 // RESEND_COOLDOWN_SECONDS = 30) — cuenta regresiva puramente visual,
@@ -16,13 +17,9 @@ function ResendButton({ cooldown }: { cooldown: number }) {
   const { pending } = useFormStatus();
   const isDisabled = pending || cooldown > 0;
   return (
-    <button
-      type="submit"
-      disabled={isDisabled}
-      className="text-sm font-semibold text-brandBlue transition hover:underline disabled:cursor-not-allowed disabled:text-textMuted disabled:no-underline"
-    >
+    <Button type="submit" variant="ghost" disabled={isDisabled}>
       {cooldown > 0 ? `Podrás reenviar en ${cooldown} segundos` : "Reenviar enlace"}
-    </button>
+    </Button>
   );
 }
 
@@ -47,7 +44,7 @@ export function ResendConfirmationForm({ email }: { email: string }) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col items-center gap-2">
+    <form action={formAction} className="flex w-full flex-col items-center gap-2">
       <input type="hidden" name="email" value={email} />
       <CaptchaWidget />
       <ResendButton cooldown={cooldown} />

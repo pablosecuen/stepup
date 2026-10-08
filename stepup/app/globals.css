@@ -2,19 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens del rediseño visual v1 (docs/design/web-v1/01-fundamentos.md). Espejan 1:1 los colores de tailwind.config.ts
+   (lib/ui/__tests__/design-tokens.test.ts verifica la coincidencia). Sirven para el CSS que no pasa por Tailwind (avatares,
+   resplandores, estilos de impresión futuros) y como referencia única de los valores. */
+:root {
+  --tf-paper: #F6F0E5;
+  --tf-paper-deep: #EFE6D4;
+  --tf-surface: #FFFDF8;
+  --tf-surface-2: #FAF4E8;
+  --tf-line: #E6DAC4;
+  --tf-line-mid: #CDBE9F;
+  --tf-line-strong: #8E8369;
+  --tf-ink: #1C1812;
+  --tf-text-2: #4B4337;
+  --tf-muted: #655B4D;
+  --tf-side: #1F1A14;
+  --tf-side-2: #2C251C;
+  --tf-side-active: #34291D;
+  --tf-side-line: #3A3126;
+  --tf-side-text: #D2C8B5;
+  --tf-side-muted: #A89E8B;
+  --tf-side-accent: #E58A5F;
+  --tf-accent: #B4461E;
+  --tf-accent-dark: #953815;
+  --tf-accent-soft: #F6DCCB;
+  --tf-accent-text: #7A2C0E;
+  --tf-accent-line: #E9B79D;
+  --tf-ok: #2F5736;
+  --tf-ok-soft: #DCEADB;
+  --tf-ok-line: #B9D3B8;
+  --tf-warn: #6B4700;
+  --tf-warn-soft: #FBEBC6;
+  --tf-warn-line: #E6C873;
+  --tf-bad: #962A20;
+  --tf-bad-soft: #F9DEDA;
+  --tf-bad-line: #E9AFA8;
+  --tf-info: #1F4D63;
+  --tf-info-soft: #D8E8F0;
+  --tf-info-line: #B0CDDB;
+  --tf-placeholder: #7D7260;
+  --tf-focus-ring: #1C1812;
+  --tf-focus-ring-on-dark: #F6F0E5;
+  /* Ancho de la barra lateral del escritorio. */
+  --tf-side-w: 236px;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    /* Un elemento enfocado o al que se salta con un ancla nunca queda tapado por el encabezado fijo (móvil, 56 px) ni por
-       la barra inferior (64 px + zona segura). */
+    /* Un elemento enfocado o al que se salta con un ancla nunca queda tapado por el encabezado fijo (móvil, 58 px) ni por
+       la barra inferior (58 px + zona segura). */
     scroll-padding-top: 4.5rem;
     scroll-padding-bottom: 6rem;
   }
-  /* Foco visible y consistente: todo lo enfocable por teclado muestra un anillo de 2 px en el azul de marca (3:1 como
-     mínimo sobre el fondo). Los controles con su propio `focus-visible:ring-*` lo reemplazan por el mismo anillo. */
+  /* Foco visible y consistente: todo lo enfocable por teclado muestra un anillo de 2,5 px en tinta (15:1 sobre el papel; 3:1
+     como mínimo sobre cualquier superficie). Sobre las superficies oscuras (barra lateral, panel de marca) el anillo es
+     marfil. Los controles con su propio `focus-visible:ring-*` o borde lo reemplazan. */
   :focus-visible {
-    outline: 2px solid #0a64d2;
+    outline: 2.5px solid #1C1812;
     outline-offset: 2px;
+  }
+  [data-surface="dark"] :focus-visible,
+  [data-surface="dark"]:focus-visible {
+    outline-color: #F6F0E5;
   }
   /* Objetivos táctiles de 44 px como mínimo (campos, selectores, botones, resúmenes desplegables y deslizadores). Los
      bloques de la grilla horaria del calendario quedan afuera: su alto ES la duración de la clase. */
@@ -33,19 +83,23 @@
     min-height: 2.75rem;
   }
   input[type="range"] {
-    accent-color: #0a64d2;
+    accent-color: #B4461E;
   }
   /* Casillas y opciones nativas más grandes (el objetivo táctil es la etiqueta, de 44 px). */
   input[type="checkbox"],
   input[type="radio"] {
     width: 1.25rem;
     height: 1.25rem;
-    accent-color: #0a64d2;
+    accent-color: #B4461E;
   }
   body {
-    background-color: #FAFAF8;
-    color: #080808;
+    background-color: #F6F0E5;
+    color: #1C1812;
     -webkit-tap-highlight-color: transparent;
+  }
+  ::placeholder {
+    color: #7D7260;
+    opacity: 1;
   }
   /* Un nombre o título sin espacios (largo) se parte en vez de desbordar la pantalla; no afecta a texto que ya entra. */
   h1,
@@ -56,9 +110,53 @@
   }
 }
 
+@layer components {
+  /* Flecha propia de los selectores (el control nativo se oculta con `appearance-none`). */
+  .tf-select-arrow {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23655B4D' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px;
+  }
+  /* Tabla apilable: bajo 820 px cada fila es una tarjeta (el encabezado se oculta; cada celda trae su rótulo en `data-label`). */
+  @media (max-width: 819.98px) {
+    .tf-table-stack thead {
+      display: none;
+    }
+    .tf-table-stack tr {
+      display: block;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #E6DAC4;
+    }
+    .tf-table-stack td {
+      display: block;
+      border: 0;
+      padding: 0.125rem 0;
+      text-align: left;
+    }
+    .tf-table-stack td[data-label]::before {
+      content: attr(data-label) ": ";
+      font-weight: 650;
+      color: #655B4D;
+    }
+  }
+}
+
+/* Avatares de alumnos y de la cuenta: seis tonos cálidos (fondo + texto ≥ 4.5:1). Se elige con un hash estable. Fuera de @layer a propósito: la clase se arma en tiempo de ejecución (`tf-av-${n}`) y Tailwind la descartaría. */
+.tf-av-0 { background-color: #F8DCCB; color: #7A2C0E; }
+.tf-av-1 { background-color: #FBEBC6; color: #6B4700; }
+.tf-av-2 { background-color: #DCEADB; color: #2F5736; }
+.tf-av-3 { background-color: #E9E2FF; color: #4D3B77; }
+.tf-av-4 { background-color: #F7D9DD; color: #7A2A3A; }
+.tf-av-5 { background-color: #D8E8F0; color: #1F4D63; }
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  /* Cifras e importes: numerales alineados. */
+  .tf-num {
+    font-variant-numeric: tabular-nums lining-nums;
   }
 }
 

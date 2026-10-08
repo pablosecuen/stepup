@@ -10,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Gestión de alumnos, calendario y cobros para profesoras particulares.",
     start_url: "/",
     display: "standalone",
-    background_color: "#080808",
-    theme_color: "#080808",
+    background_color: "#1F1A14",
+    theme_color: "#1F1A14",
     icons: [
       {
         src: "/icons/icon-192.png",

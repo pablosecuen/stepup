@@ -1,4 +1,5 @@
 import PrivateLink from "@/components/nav/private-link";
+import { buttonClass } from "@/components/ui/button";
 
 /**
  * Vista de "no encontrado" (la usan los `not-found.tsx` de la app). Mensaje simple y UN camino claro de vuelta.
@@ -19,12 +20,12 @@ export function NotFoundView({
 }) {
   const content = (
     <>
-      <h1 className="text-xl font-semibold text-textPrimary">{title}</h1>
-      <p className="text-sm text-textSecondary">{message}</p>
-      <PrivateLink
-        href={actionHref}
-        className="inline-flex min-h-11 items-center rounded-md bg-brandBlue px-5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brandBlueDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-      >
+      <p aria-hidden className="font-display text-[72px] font-normal leading-none text-accent">
+        404
+      </p>
+      <h1 className="font-display text-section font-medium text-textPrimary">{title}</h1>
+      <p className="text-[15px] text-textSecondary">{message}</p>
+      <PrivateLink href={actionHref} className={`min-h-11 ${buttonClass({ variant: "primary" })}`}>
         {actionLabel}
       </PrivateLink>
     </>

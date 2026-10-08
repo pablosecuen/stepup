@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SkipLink } from "@/components/ui/skip-link";
 
-// TeacherFlow móvil no usa una fuente custom (ver src/theme/typography.ts:
-// "Sin fuente custom por ahora... se apoya en la fuente de sistema") — la
-// web reproduce la misma decisión, sin depender de una fuente externa.
+// Rediseño visual v1 (docs/design/web-v1/01-fundamentos.md): Hanken Grotesk para la interfaz y Fraunces para títulos, cifras
+// grandes y nombres. `next/font` las autoaloja (sin pedidos a Google al navegar; CSP `font-src 'self'`) y reserva el espacio
+// con una fuente de reemplazo ajustada, así no hay saltos de diseño. Ambas son variables: no hace falta elegir pesos.
+const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const display = Fraunces({ subsets: ["latin"], variable: "--font-display", display: "swap", axes: ["opsz"] });
 
 export const metadata: Metadata = {
   title: "TeacherFlow",
@@ -20,7 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#080808",
+  themeColor: "#1F1A14",
 };
 
 export default function RootLayout({
@@ -29,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className="min-h-screen max-w-screen overflow-x-hidden bg-background text-textPrimary antialiased">
+    <html lang="es" className={`${sans.variable} ${display.variable}`}>
+      <body className="min-h-screen max-w-screen overflow-x-hidden bg-background font-sans text-textPrimary antialiased">
         <SkipLink />
         {children}
       </body>

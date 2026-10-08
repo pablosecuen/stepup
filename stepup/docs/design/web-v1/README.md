@@ -36,6 +36,7 @@ Todo lo marcado «Propuesta» en el prototipo (ver [04-propuestas-y-limites.md](
 | [03-mapa-de-pantallas.md](03-mapa-de-pantallas.md) | Las 59 pantallas del prototipo, flujos, y la tabla ruta real ↔ pantalla del prototipo. |
 | [04-propuestas-y-limites.md](04-propuestas-y-limites.md) | Propuestas no implementadas y lo que el prototipo no pudo representar. |
 | [05-plan-de-bloques.md](05-plan-de-bloques.md) | Bloques de implementación y su estado. |
+| [06-bloque-1.md](06-bloque-1.md) | Bloque 1 implementado: alcance, diferencias con el prototipo y verificación. |
 
 ## Dónde está el prototipo
 

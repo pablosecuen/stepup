@@ -1,3 +1,4 @@
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { AuthShell } from "./auth-shell";
 import { FormInfoBox } from "./form-boxes";
 
@@ -5,7 +6,7 @@ import { FormInfoBox } from "./form-boxes";
 // nunca nombra proveedores ni configuración interna.
 export function AuthNotConfigured() {
   return (
-    <AuthShell title="Cuenta no disponible" subtitle="No pudimos conectar con tu cuenta en este momento.">
+    <AuthShell layout="card" status={{ tone: "warn", icon: ExclamationTriangleIcon }} title="Cuenta no disponible" subtitle="No pudimos conectar con tu cuenta en este momento.">
       <FormInfoBox>Volvé a intentarlo en unos minutos. No hace falta hacer nada más.</FormInfoBox>
     </AuthShell>
   );

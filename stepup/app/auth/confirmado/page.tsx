@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ButtonLink } from "@/components/auth/public-links";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cuenta confirmada · TeacherFlow", robots: { index: false, follow: false } };
@@ -12,13 +13,10 @@ export const metadata = { title: "Cuenta confirmada · TeacherFlow", robots: { i
  */
 export default function AccountConfirmedPage() {
   return (
-    <AuthShell title="Cuenta confirmada" subtitle="Tu correo fue verificado correctamente.">
-      <Link
-        href="/login"
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-4 py-2.5 text-center text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-      >
+    <AuthShell layout="card" status={{ tone: "ok", icon: CheckCircleIcon }} title="Cuenta confirmada" subtitle="Tu correo fue verificado correctamente.">
+      <ButtonLink href="/login" size="lg" block>
         Iniciar sesión
-      </Link>
+      </ButtonLink>
     </AuthShell>
   );
 }

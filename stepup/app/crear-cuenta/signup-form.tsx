@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { signUpAction, type SignUpFormState } from "@/lib/auth/actions";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { MIN_PASSWORD_LENGTH, passwordsMatch, canSubmitSignUp } from "@/lib/auth/validation";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { CaptchaWidget } from "@/components/auth/captcha-widget";
+import { StatusCircle } from "@/components/ui/status-circle";
+import { Button } from "@/components/ui/button";
+import { TextLink } from "@/components/auth/public-links";
+import { Field, TextInput, fieldErrorId } from "@/components/ui/field";
 import { ResendConfirmationForm } from "./resend-confirmation-form";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 
@@ -17,17 +21,9 @@ const INITIAL_STATE: SignUpFormState = {};
 function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending || !canSubmit}
-      aria-busy={pending}
-      className="mt-2 flex items-center justify-center gap-2 rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-    >
-      {pending && (
-        <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-      )}
+    <Button type="submit" size="lg" block busy={pending} disabled={!canSubmit}>
       Crear cuenta
-    </button>
+    </Button>
   );
 }
 
@@ -40,15 +36,14 @@ export function SignUpForm() {
   if (state.needsEmailConfirmation) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
+        <StatusCircle tone="accent" icon={EnvelopeIcon} />
         <p className="text-sm text-textSecondary">
           Enviamos un enlace de confirmación a: <strong className="text-textPrimary">{email}</strong>
         </p>
         <FormInfoBox>Tocá el enlace del correo para activar tu cuenta.</FormInfoBox>
         <EmailCodeForm flow="signup" email={email} />
         <ResendConfirmationForm email={email} />
-        <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
-          Volver a iniciar sesión
-        </Link>
+        <TextLink href="/login">Volver a iniciar sesión</TextLink>
       </div>
     );
   }
@@ -57,12 +52,9 @@ export function SignUpForm() {
   const showLoginHint = state.error === AUTH_ERROR_MESSAGES.user_already_exists;
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" aria-label="Formulario de creación de cuenta">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-textSecondary">
-          Correo electrónico
-        </label>
-        <input
+    <form action={formAction} className="flex flex-col gap-[18px]" aria-label="Formulario de creación de cuenta">
+      <Field label="Correo electrónico" htmlFor="email">
+        <TextInput
           id="email"
           name="email"
           type="email"
@@ -71,15 +63,11 @@ export function SignUpForm() {
           placeholder="tu@correo.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-textSecondary">
-          Contraseña (mínimo {MIN_PASSWORD_LENGTH} caracteres)
-        </label>
-        <input
+      <Field label={`Contraseña (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`} htmlFor="password">
+        <TextInput
           id="password"
           name="password"
           type="password"
@@ -89,15 +77,11 @@ export function SignUpForm() {
           placeholder="••••••••"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="confirmPassword" className="text-sm font-medium text-textSecondary">
-          Repetir contraseña
-        </label>
-        <input
+      <Field label="Repetir contraseña" htmlFor="confirmPassword" error={showMismatchError ? "Las contraseñas no coinciden." : undefined}>
+        <TextInput
           id="confirmPassword"
           name="confirmPassword"
           type="password"
@@ -107,12 +91,9 @@ export function SignUpForm() {
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           aria-invalid={showMismatchError}
-          className={`rounded-md border bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue ${
-            showMismatchError ? "border-statusRojo focus-visible:border-statusRojo" : "border-borderStrong focus-visible:border-brandBlue"
-          }`}
+          aria-describedby={showMismatchError ? fieldErrorId("confirmPassword") : undefined}
         />
-        {showMismatchError && <p className="text-xs text-statusRojo">Las contraseñas no coinciden.</p>}
-      </div>
+      </Field>
 
       <CaptchaWidget />
 
@@ -120,20 +101,14 @@ export function SignUpForm() {
 
       {showLoginHint && (
         <FormInfoBox>
-          ¿Ya tenías cuenta con este correo?{" "}
-          <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
-            Iniciar sesión
-          </Link>
+          ¿Ya tenías cuenta con este correo? <TextLink href="/login">Iniciar sesión</TextLink>
         </FormInfoBox>
       )}
 
       <SubmitButton canSubmit={canSubmitSignUp(email, password, confirmPassword)} />
 
-      <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-sm text-textSecondary">
-        ¿Ya tenés cuenta?{" "}
-        <Link href="/login" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
-          Iniciar sesión
-        </Link>
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-center text-sm text-textSecondary">
+        ¿Ya tenés cuenta? <TextLink href="/login">Iniciar sesión</TextLink>
       </p>
     </form>
   );

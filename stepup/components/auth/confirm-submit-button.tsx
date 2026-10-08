@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
 
 /**
  * Botón de `/auth/confirm`. El token es de un solo uso y la verificación tarda un instante: sin una señal visible,
@@ -12,13 +13,8 @@ export function ConfirmSubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-    >
+    <Button type="submit" size="lg" block busy={pending} disabled={pending}>
       {pending ? "Confirmando…" : label}
-    </button>
+    </Button>
   );
 }

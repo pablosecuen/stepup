@@ -59,10 +59,11 @@ const lineOf = (source: string, index: number) => source.slice(0, index).split("
 // --- Contraste ---------------------------------------------------------------------------------------------------------
 
 const colors = (config.theme!.extend as { colors: Record<string, string> }).colors;
-const SURFACES = { white: "#FFFFFF", page: "#FAFAF8" };
+// Rediseño v1: las superficies son el blanco puro, la superficie cálida de tarjetas y campos, y el papel cálido del fondo.
+const SURFACES = { white: "#FFFFFF", surface: "#FFFDF8", page: "#F6F0E5" };
 
 test("contraste de texto: el texto y los colores de estado llegan a 4.5:1 sobre blanco, sobre el fondo y sobre su tinte del 10%", () => {
-  const textColors = ["textPrimary", "textSecondary", "textMuted", "brandBlue", "brandBlueDark", "statusVerde", "statusAmarillo", "statusNaranja", "statusRojo", "statusPendiente", "pastelLavenderText", "pastelSageText"];
+  const textColors = ["textPrimary", "textSecondary", "textMuted", "accent", "accentDark", "accentText", "ok", "warn", "bad", "info", "brandBlue", "brandBlueDark", "statusVerde", "statusAmarillo", "statusNaranja", "statusRojo", "statusPendiente", "pastelLavenderText", "pastelSageText"];
   for (const name of textColors) {
     const hex = colors[name];
     for (const [surfaceName, surface] of Object.entries(SURFACES)) {
@@ -92,10 +93,13 @@ test("contraste de controles: texto blanco sobre el azul de marca y el rojo (bot
   }
 });
 
-test("el anillo de foco global usa el mismo azul de marca (3:1) y el texto de las tarjetas del calendario llega a 4.5:1 sobre todos sus fondos", () => {
+test("el anillo de foco global es de tinta (3:1 sobre cualquier superficie; marfil sobre las oscuras) y el texto de las tarjetas del calendario llega a 4.5:1 sobre todos sus fondos", () => {
   const css = read("app/globals.css");
-  assert.match(css, /:focus-visible\s*\{\s*outline: 2px solid #0a64d2;\s*outline-offset: 2px;\s*\}/i);
-  assert.equal(colors.brandBlue.toLowerCase(), "#0a64d2");
+  assert.match(css, /:focus-visible\s*\{\s*outline: 2\.5px solid #1C1812;\s*outline-offset: 2px;\s*\}/i);
+  assert.match(css, /\[data-surface="dark"\] :focus-visible[\s\S]{0,80}outline-color: #F6F0E5/);
+  assert.equal(colors.ink.toLowerCase(), "#1c1812");
+  for (const surface of Object.values(SURFACES)) assert.ok(contrastRatio(colors.ink, surface) >= 3, "anillo de tinta sobre " + surface);
+  assert.ok(contrastRatio("#F6F0E5", colors.side) >= 3, "anillo marfil sobre la barra lateral oscura");
   const theme = read("lib/calendar-theme.ts");
   const text = { primary: /primary: "(#[0-9A-Fa-f]{6})"/.exec(theme)![1], secondary: /secondary: "(#[0-9A-Fa-f]{6})"/.exec(theme)![1] };
   for (const bg of ["#DDEEFF", "#FCE4D2", "#E9DDFC", "#FCE8E6"]) {
@@ -126,7 +130,7 @@ test("todo enlace de texto o botón del área privada y pública declara 44 px d
     if (EXEMPT.some((r) => r.test(file))) continue;
     const source = read(file);
     for (const tag of openingTags(source, ["Link", "PrivateLink", "a"])) {
-      if (/sr-only|min-h-1[1-9]|min-h-\[|\bh-1[12]\b|min-h-16|min-h-14/.test(tag.text)) continue;
+      if (/sr-only|min-h-1[1-9]|min-h-\[|\bh-1[12]\b|min-h-16|min-h-14|buttonClass\(|linkClass\(/.test(tag.text)) continue; // buttonClass/linkClass siempre traen min-h-11 (design-tokens.test.ts)
       offenders.push(`${file}:${lineOf(source, tag.index)}`);
     }
   }
@@ -301,8 +305,9 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
 
 test("mensajes anunciables: errores con role=alert, carga y avisos con role=status, el esqueleto con aria-busy", () => {
   const boxes = code("components/auth/form-boxes.tsx");
-  assert.match(boxes, /<div role="alert"/);
-  assert.match(boxes, /<div role="status"/);
+  assert.match(boxes, /<Notice tone="bad" role="alert">/);
+  assert.match(boxes, /<Notice tone="info" role="status">/);
+  assert.match(code("components/ui/notice.tsx"), /<div role=\{role \?\? \(tone === "bad" \? "alert" : "status"\)\}/);
   assert.match(code("components/ui/states.tsx"), /role="alert"/);
   assert.match(code("components/ui/states.tsx"), /role="status" aria-live="polite"/);
   assert.match(code("components/ui/page-skeleton.tsx"), /role="status" aria-busy="true" aria-live="polite"/);

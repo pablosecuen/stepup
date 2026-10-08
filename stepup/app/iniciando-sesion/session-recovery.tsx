@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { checkSessionReadyAction } from "@/lib/auth/session-recovery-action";
 import { SESSION_RECOVERED_DESTINATION, runSessionRecovery } from "@/lib/auth/session-recovery";
 
@@ -37,18 +38,16 @@ export function SessionRecovery({ signOutForm }: { signOutForm: ReactNode }) {
   if (exhausted) {
     return (
       <div role="alert" className="flex flex-col gap-4 text-center">
-        <p className="text-sm font-semibold text-statusRojo">No pudimos cargar Inicio.</p>
+        <p className="text-[15px] font-bold text-bad">No pudimos cargar Inicio.</p>
         <p className="text-sm text-textSecondary">Tu sesión se inició, pero el servidor todavía no la reconoce. Probá de nuevo en unos segundos.</p>
-        <button
-          type="button"
+        <Button
           onClick={() => {
             setExhausted(false);
             setRun((current) => current + 1);
           }}
-          className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
         >
           Reintentar
-        </button>
+        </Button>
         {signOutForm}
       </div>
     );
@@ -56,9 +55,9 @@ export function SessionRecovery({ signOutForm }: { signOutForm: ReactNode }) {
 
   return (
     <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 text-center">
-      <span aria-hidden className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-brandBlue" />
-      <p className="text-sm font-semibold text-textPrimary">Estamos terminando de iniciar tu sesión…</p>
-      <p className="text-xs text-textMuted">Esto tarda unos segundos. No cierres esta ventana.</p>
+      <span aria-hidden className="h-7 w-7 animate-spin rounded-full border-[3px] border-accentSoft border-t-accent motion-reduce:animate-none" />
+      <p className="text-[15px] font-bold text-textPrimary">Estamos terminando de iniciar tu sesión…</p>
+      <p className="text-[13.5px] text-textMuted">Esto tarda unos segundos. No cierres esta ventana.</p>
     </div>
   );
 }

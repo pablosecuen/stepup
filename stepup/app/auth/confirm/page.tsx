@@ -62,7 +62,7 @@ export default async function AuthConfirmPage({ searchParams }: { searchParams: 
   const copy = COPY[plan.flow];
 
   return (
-    <AuthShell title={copy.title} subtitle={copy.subtitle}>
+    <AuthShell layout="card" title={copy.title} subtitle={copy.subtitle}>
       <form action={confirmAuthLinkAction} className="flex flex-col gap-4" aria-label="Confirmar el enlace del correo">
         <input type="hidden" name="tokenHash" value={plan.tokenHash} />
         <input type="hidden" name="type" value={plan.type} />

@@ -1,5 +1,6 @@
-import Link from "next/link";
-import Image from "next/image";
+import { ExclamationTriangleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ButtonLink, TextLink } from "@/components/auth/public-links";
 import { describeAuthErrorScreen } from "@/lib/auth/error-messages";
 
 export const dynamic = "force-dynamic";
@@ -12,35 +13,25 @@ export const metadata = { title: "Verificación de tu cuenta · TeacherFlow", ro
 export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const { type } = await searchParams;
   const screen = describeAuthErrorScreen(type);
+  const isError = screen.tone === "error";
 
   return (
-    <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <Image src="/icon.png" alt="TeacherFlow" width={56} height={56} className="rounded-xl" />
-          <h1 className="text-xl font-bold text-textPrimary">{screen.title}</h1>
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6 shadow-card">
-          <p role={screen.tone === "error" ? "alert" : "status"} className="text-center text-sm text-textSecondary">
-            {screen.message}
-          </p>
-          <Link
-            href={screen.primary.href}
-            className="inline-flex min-h-11 items-center justify-center mt-2 rounded-md bg-brandBlue px-4 py-2.5 text-center text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-          >
-            {screen.primary.label}
-          </Link>
-        </div>
-
-        <Link href={screen.secondary.href} className="mt-4 flex min-h-11 items-center justify-center text-center text-sm font-medium text-brandBlue hover:underline">
+    <AuthShell
+      layout="card"
+      status={isError ? { tone: "bad", icon: ExclamationTriangleIcon } : { tone: "info", icon: InformationCircleIcon }}
+      title={screen.title}
+      footer={
+        <TextLink href={screen.secondary.href} block className="mt-2">
           {screen.secondary.label}
-        </Link>
-
-        <Link href="/" className="mt-2 flex min-h-11 items-center justify-center text-center text-sm font-medium text-brandBlue hover:underline">
-          Volver al inicio
-        </Link>
-      </div>
-    </main>
+        </TextLink>
+      }
+    >
+      <p role={isError ? "alert" : "status"} className="text-center text-[15px] text-textSecondary">
+        {screen.message}
+      </p>
+      <ButtonLink href={screen.primary.href} size="lg" block>
+        {screen.primary.label}
+      </ButtonLink>
+    </AuthShell>
   );
 }

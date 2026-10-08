@@ -3,26 +3,22 @@
 import { CaptchaWidget } from "@/components/auth/captcha-widget";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { requestPasswordResetAction, type AuthFormState } from "@/lib/auth/actions";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
+import { StatusCircle } from "@/components/ui/status-circle";
+import { Button } from "@/components/ui/button";
+import { TextLink } from "@/components/auth/public-links";
+import { Field, TextInput } from "@/components/ui/field";
 
 const INITIAL_STATE: AuthFormState & { sent?: boolean; email?: string } = {};
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      className="mt-2 flex items-center justify-center gap-2 rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-    >
-      {pending && (
-        <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-      )}
+    <Button type="submit" size="lg" block busy={pending}>
       Enviar enlace
-    </button>
+    </Button>
   );
 }
 
@@ -35,34 +31,22 @@ export function ForgotPasswordForm() {
   if (state.sent) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
+        <StatusCircle tone="accent" icon={EnvelopeIcon} />
         <p className="text-sm text-textSecondary">
           Si <strong className="text-textPrimary">{state.email}</strong> tiene una cuenta, te enviamos un enlace
           para elegir una contraseña nueva.
         </p>
         {state.email && <EmailCodeForm flow="recovery" email={state.email} />}
-        <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
-          Volver a iniciar sesión
-        </Link>
+        <TextLink href="/login">Volver a iniciar sesión</TextLink>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" aria-label="Formulario para recuperar la contraseña">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-textSecondary">
-          Correo electrónico
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="tu@correo.com"
-          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
-        />
-      </div>
+    <form action={formAction} className="flex flex-col gap-[18px]" aria-label="Formulario para recuperar la contraseña">
+      <Field label="Correo electrónico" htmlFor="email">
+        <TextInput id="email" name="email" type="email" autoComplete="email" required placeholder="tu@correo.com" />
+      </Field>
 
       <CaptchaWidget />
 
@@ -70,9 +54,9 @@ export function ForgotPasswordForm() {
 
       <SubmitButton />
 
-      <Link href="/login" className="inline-flex min-h-11 items-center text-center text-sm font-medium text-brandBlue hover:underline">
+      <TextLink href="/login" block>
         Volver a iniciar sesión
-      </Link>
+      </TextLink>
     </form>
   );
 }

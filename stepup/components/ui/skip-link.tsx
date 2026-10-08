@@ -9,7 +9,7 @@ export function SkipLink() {
   return (
     <a
       href={`#${MAIN_CONTENT_ID}`}
-      className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-md bg-brandBlue px-4 py-3 text-sm font-semibold text-white shadow-panel transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlueDark focus-visible:ring-offset-2 motion-reduce:transition-none"
+      className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-md bg-ink px-4 py-3 text-sm font-semibold text-background shadow-panel transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
       Saltar al contenido
     </a>

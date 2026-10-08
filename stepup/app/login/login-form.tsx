@@ -2,31 +2,22 @@
 
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
 import { signInAction, type AuthFormState } from "@/lib/auth/actions";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { CaptchaWidget } from "@/components/auth/captcha-widget";
+import { Button } from "@/components/ui/button";
+import { TextLink } from "@/components/auth/public-links";
+import { Field, TextInput } from "@/components/ui/field";
 
 const INITIAL_STATE: AuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      className="mt-2 flex items-center justify-center gap-2 rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-    >
-      {pending && (
-        <span
-          aria-hidden
-          className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-        />
-      )}
+    <Button type="submit" size="lg" block busy={pending}>
       Iniciar sesión
-    </button>
+    </Button>
   );
 }
 
@@ -35,38 +26,16 @@ export function LoginForm({ next }: { next: string }) {
   const showCreateAccountHint = state.error === AUTH_ERROR_MESSAGES.invalid_credentials;
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" aria-label="Formulario de inicio de sesión">
+    <form action={formAction} className="flex flex-col gap-[18px]" aria-label="Formulario de inicio de sesión">
       <input type="hidden" name="next" value={next} />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-textSecondary">
-          Correo electrónico
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="tu@correo.com"
-          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
-        />
-      </div>
+      <Field label="Correo electrónico" htmlFor="email">
+        <TextInput id="email" name="email" type="email" autoComplete="email" required placeholder="tu@correo.com" />
+      </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-textSecondary">
-          Contraseña
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          placeholder="••••••••"
-          className="rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue"
-        />
-      </div>
+      <Field label="Contraseña" htmlFor="password">
+        <TextInput id="password" name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
+      </Field>
 
       <CaptchaWidget />
 
@@ -74,24 +43,16 @@ export function LoginForm({ next }: { next: string }) {
 
       {showCreateAccountHint && (
         <FormInfoBox>
-          ¿Todavía no tenés cuenta con este correo?{" "}
-          <Link href="/crear-cuenta" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
-            Crear cuenta
-          </Link>
+          ¿Todavía no tenés cuenta con este correo? <TextLink href="/crear-cuenta">Crear cuenta</TextLink>
         </FormInfoBox>
       )}
 
-      <Link href="/recuperar-contrasena" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        Olvidé mi contraseña
-      </Link>
+      <TextLink href="/recuperar-contrasena">Olvidé mi contraseña</TextLink>
 
       <SubmitButton />
 
-      <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-sm text-textSecondary">
-        ¿No tenés cuenta?{" "}
-        <Link href="/crear-cuenta" className="inline-flex min-h-11 items-center font-semibold text-brandBlue hover:underline">
-          Crear cuenta
-        </Link>
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-center text-sm text-textSecondary">
+        ¿No tenés cuenta? <TextLink href="/crear-cuenta">Crear cuenta</TextLink>
       </p>
     </form>
   );

@@ -54,9 +54,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const account = resolveAccountIdentity(await loadAccountIdentity(user));
 
   return (
-    <div className="min-h-screen md:pl-56">
+    <div className="min-h-screen nav:pl-[236px]">
       <PrimaryNav account={account} />
-      <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+      <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
     </div>
   );
 }

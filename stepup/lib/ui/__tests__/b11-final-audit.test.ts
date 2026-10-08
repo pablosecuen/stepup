@@ -54,8 +54,10 @@ const lineOf = (source: string, index: number) => source.slice(0, index).split("
 test("todo campo de formulario tiene un nombre accesible propio: aria-label, etiqueta envolvente o `id` con su `htmlFor` (un placeholder no alcanza)", () => {
   const offenders: string[] = [];
   for (const file of sources(["app", "components"])) {
+    // components/ui/field.tsx DEFINE los envoltorios (reciben id/aria-* por props): lo que se verifica es cada USO.
+    if (file === "components/ui/field.tsx") continue;
     const source = code(file);
-    for (const name of ["input", "select", "textarea"]) {
+    for (const name of ["input", "select", "textarea", "TextInput", "SelectInput", "TextArea"]) {
       for (const tag of openingTags(source, name)) {
         if (/type="hidden"/.test(tag.text)) continue;
         if (/aria-label=|aria-labelledby=/.test(tag.text)) continue;

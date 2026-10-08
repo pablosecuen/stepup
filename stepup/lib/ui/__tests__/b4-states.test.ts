@@ -143,9 +143,9 @@ test("cada notFound() de una pantalla privada cae en un not-found DENTRO del she
 
 test("vacíos con acción: el estado vacío admite UNA acción y todas las acciones usadas llevan a rutas existentes", () => {
   const states = code("components/ui/states.tsx");
-  assert.match(states, /export function EmptyState\(\{ message, action \}/);
+  assert.match(states, /export function EmptyState\(\{ message, action, icon: Icon \}/);
   assert.match(states, /\{action && \(\s*<PrivateLink\s+href=\{action\.href\}/, "la acción es un enlace sin prefetch");
-  assert.match(states, /min-h-11/);
+  assert.match(states, /buttonClass\(/, "la acción usa el botón del sistema (que trae min-h-11: design-tokens.test.ts)");
 
   const used: Array<[string, string]> = [];
   const walk = (dir: string) => {

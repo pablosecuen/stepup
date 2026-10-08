@@ -28,8 +28,8 @@ const menu = read("components/nav/account-menu.tsx");
 const layout = read("app/(app)/layout.tsx");
 
 test("escritorio: barra lateral con logo, los cinco destinos y el bloque de cuenta abajo; Configuración fuera de la navegación", () => {
-  assert.match(nav, /fixed inset-y-0 left-0[^"]*hidden[^"]*md:flex/, "sidebar sólo en md+");
-  assert.match(nav, /<Logo \/>/);
+  assert.match(nav, /fixed inset-y-0 left-0[^"]*hidden[^"]*nav:flex/, "sidebar sólo desde 820 px (breakpoint nav)");
+  assert.match(nav, /<Logo className="text-background" \/>/);
   assert.match(nav, /<AccountMenu identity=\{account\} variant="sidebar" \/>/, "bloque de cuenta en la barra lateral");
   assert.match(nav, /PRIMARY_NAV_ITEMS\.map/, "los destinos salen de la lista única");
   assert.doesNotMatch(nav, /Configuraci|Cog6Tooth/, "Configuración ya no está en la navegación principal");
@@ -37,21 +37,22 @@ test("escritorio: barra lateral con logo, los cinco destinos y el bloque de cuen
 });
 
 test("móvil: encabezado con logo y botón de cuenta + barra inferior con los mismos destinos", () => {
-  assert.match(nav, /<header[^>]*md:hidden/, "encabezado sólo en móvil");
+  assert.match(nav, /<header[^>]*nav:hidden/, "encabezado sólo en móvil (< 820 px)");
   assert.match(nav, /<AccountMenu identity=\{account\} variant="header" \/>/);
   const bottom = nav.slice(nav.indexOf("fixed inset-x-0 bottom-0"));
-  assert.match(bottom, /md:hidden/, "barra inferior sólo en móvil");
+  assert.match(bottom, /nav:hidden/, "barra inferior sólo en móvil (< 820 px)");
   assert.equal((nav.match(/PRIMARY_NAV_ITEMS\.map/g) ?? []).length, 2, "móvil y escritorio recorren la MISMA lista de destinos");
 });
 
 test("objetivos táctiles de 44 px como mínimo (nav, logo, botón de cuenta, elementos del menú)", () => {
   assert.match(nav, /min-h-16 flex-col/, "barra inferior: 64 px de alto por destino");
-  assert.match(nav, /min-h-11 items-center gap-3 rounded-md px-3/, "destinos de la barra lateral: 44 px");
-  assert.match(nav, /flex min-h-11 items-center gap-2\.5/, "logo: 44 px");
+  assert.match(nav, /min-h-\[46px\] items-center gap-3 rounded-\[12px\] px-3/, "destinos de la barra lateral: 46 px (≥ 44)");
+  assert.match(nav, /flex min-h-11 w-fit items-center/, "logo: 44 px");
   assert.match(menu, /h-11 w-11 items-center justify-center rounded-full/, "botón de cuenta del encabezado: 44×44");
   assert.match(menu, /min-h-14 w-full/, "bloque de cuenta de escritorio");
-  assert.match(menu, /const ITEM_CLASS =\s*"flex min-h-11 w-full/, "elementos del menú: 44 px");
-  assert.match(nav, /<li key=\{item\.href\} className="min-w-0 flex-1">/, "cinco destinos reparten el ancho sin desbordar");
+  assert.match(read("components/ui/menu-styles.ts"), /MENU_ITEM =\s*"flex min-h-14 w-full[^"]*nav:min-h-12/, "elementos del menú: 56 px en la hoja móvil, 48 px en el panel de escritorio");
+  assert.match(nav, /<ul className="grid grid-cols-5/, "cinco columnas iguales");
+  assert.match(nav, /<li key=\{item\.href\} className="min-w-0">/, "cinco destinos reparten el ancho sin desbordar");
 });
 
 test("safe areas: arriba (muesca), abajo (barra de inicio) y laterales; viewport-fit=cover sólo en el área privada", () => {
@@ -61,7 +62,7 @@ test("safe areas: arriba (muesca), abajo (barra de inicio) y laterales; viewport
   assert.match(nav, /pl-\[env\(safe-area-inset-left\)\] pr-\[env\(safe-area-inset-right\)\]/);
   assert.match(layout, /export const viewport: Viewport = \{ viewportFit: "cover" \}/);
   assert.doesNotMatch(read("app/layout.tsx"), /viewportFit/, "el layout raíz (login, etc.) no cambia");
-  assert.match(layout, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] md:pb-0/, "el contenido deja lugar a la barra inferior + safe area");
+  assert.match(layout, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] nav:pb-0/, "el contenido deja lugar a la barra inferior + safe area");
 });
 
 test("menú de cuenta: ARIA, teclado, Escape, clic exterior, devolución de foco y cierre al navegar", () => {
