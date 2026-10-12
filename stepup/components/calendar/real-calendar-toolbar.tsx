@@ -1,8 +1,9 @@
-import Link from "@/components/nav/private-link";
+import PrivateLink from "@/components/nav/private-link";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { formatCivilDayLabel } from "@/lib/calendar/civil-calendar";
 import { formatCivilWeek } from "@/lib/format/date-format";
 import { addDaysToDateKey } from "@/lib/calendar/timezone";
+import { buttonClass } from "@/components/ui/button";
 
 interface RealCalendarToolbarProps {
   view: "week" | "day";
@@ -13,6 +14,10 @@ interface RealCalendarToolbarProps {
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
 }
 
+const ROUND_BUTTON =
+  "flex h-11 w-11 items-center justify-center rounded-md border-[1.5px] border-borderMid bg-surface text-ink transition-colors duration-150 ease-premium hover:border-ink hover:bg-white active:scale-95";
+
+/** Anterior / siguiente / Hoy, el período visible en serifa y el selector Semana · Día. */
 export function RealCalendarToolbar({ view, weekStartKey, dayKey, buildHref }: RealCalendarToolbarProps) {
   const isWeek = view === "week";
   const previousHref = isWeek ? buildHref({ week: addDaysToDateKey(weekStartKey, -7) }) : buildHref({ day: addDaysToDateKey(dayKey, -1) });
@@ -20,48 +25,36 @@ export function RealCalendarToolbar({ view, weekStartKey, dayKey, buildHref }: R
   const todayHref = isWeek ? buildHref({ week: undefined }) : buildHref({ day: undefined });
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8">
+    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-3 nav:gap-x-4">
       <div className="flex items-center gap-2">
-        <Link
-          href={previousHref}
-          aria-label={isWeek ? "Semana anterior" : "Día anterior"}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-textSecondary transition-all duration-150 ease-premium hover:border-brandBlue/30 hover:bg-background active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
+        <PrivateLink href={previousHref} aria-label={isWeek ? "Semana anterior" : "Día anterior"} className={`min-h-11 min-w-11 ${ROUND_BUTTON}`}>
           <ChevronLeftIcon className="h-5 w-5" aria-hidden />
-        </Link>
-        <Link
-          href={nextHref}
-          aria-label={isWeek ? "Semana siguiente" : "Día siguiente"}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-textSecondary transition-all duration-150 ease-premium hover:border-brandBlue/30 hover:bg-background active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-        >
+        </PrivateLink>
+        <PrivateLink href={nextHref} aria-label={isWeek ? "Semana siguiente" : "Día siguiente"} className={`min-h-11 min-w-11 ${ROUND_BUTTON}`}>
           <ChevronRightIcon className="h-5 w-5" aria-hidden />
-        </Link>
-        <Link
-          href={todayHref}
-          aria-label="Ir a hoy"
-          className="inline-flex min-h-11 items-center rounded-pill bg-brandBlue px-4 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-        >
+        </PrivateLink>
+        <PrivateLink href={todayHref} aria-label="Ir a hoy" className={buttonClass({ variant: "secondary" })}>
           Hoy
-        </Link>
+        </PrivateLink>
       </div>
-      <h2 className="text-sm font-semibold tracking-tight text-textPrimary first-letter:uppercase sm:text-base">
+      <h2 className="order-last basis-full font-display text-[26px] font-medium leading-tight tracking-[-0.02em] text-textPrimary first-letter:uppercase nav:order-none nav:basis-auto nav:flex-1 nav:text-[30px]">
         {isWeek ? formatCivilWeek(weekStartKey) : formatCivilDayLabel(dayKey)}
       </h2>
-      <div className="flex items-center gap-1 rounded-pill border border-border bg-background p-1">
-        <Link
+      <div className="flex items-center gap-1 rounded-md border-[1.5px] border-border bg-paperDeep p-1 nav:ml-auto">
+        <PrivateLink
           href={buildHref({ view: "week", week: weekStartKey })}
           aria-current={isWeek ? "true" : undefined}
-          className={`inline-flex min-h-11 items-center rounded-pill px-4 text-sm font-semibold transition-colors ${isWeek ? "bg-brandBlue text-white" : "text-textSecondary"}`}
+          className={`inline-flex min-h-11 items-center rounded-sm px-4 text-[14.5px] font-[650] transition-colors ${isWeek ? "bg-surface text-textPrimary shadow-subtle" : "text-textSecondary hover:text-textPrimary"}`}
         >
           Semana
-        </Link>
-        <Link
+        </PrivateLink>
+        <PrivateLink
           href={buildHref({ view: "day", day: dayKey })}
           aria-current={!isWeek ? "true" : undefined}
-          className={`inline-flex min-h-11 items-center rounded-pill px-4 text-sm font-semibold transition-colors ${!isWeek ? "bg-brandBlue text-white" : "text-textSecondary"}`}
+          className={`inline-flex min-h-11 items-center rounded-sm px-4 text-[14.5px] font-[650] transition-colors ${!isWeek ? "bg-surface text-textPrimary shadow-subtle" : "text-textSecondary hover:text-textPrimary"}`}
         >
           Día
-        </Link>
+        </PrivateLink>
       </div>
     </div>
   );

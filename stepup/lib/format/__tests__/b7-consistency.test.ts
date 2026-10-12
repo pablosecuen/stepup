@@ -176,8 +176,8 @@ test("anchos: los nombres y títulos sin espacios se parten en vez de desbordar 
 });
 
 test("densidad: Series no repite los alumnos como subtítulo cuando ya son el título, y Registro no estira el botón en escritorio", () => {
-  assert.match(code("app/(app)/calendario/series/page.tsx"), /\{rule\.classTitle && <p className="mt-0\.5 text-xs text-textMuted">\{participantNames\}<\/p>\}/);
-  assert.match(code("app/(app)/registro/start-registration-button.tsx"), /className="flex flex-col gap-1\.5 sm:items-start"/);
+  assert.match(code("components/calendar/series-list-view.tsx"), /\{rule\.classTitle && <p className="mt-0\.5 text-\[14px\] text-textMuted \[overflow-wrap:anywhere\]">\{participantNames\}<\/p>\}/);
+  assert.match(code("app/(app)/registro/start-registration-button.tsx"), /className="flex flex-col gap-1\.5 sm:items-end"/, "el botón no se estira: queda a la derecha de la fila en escritorio");
 });
 
 test("el selector de período del Resumen financiero dice «Mes actual» (no «Mes», ambiguo)", () => {

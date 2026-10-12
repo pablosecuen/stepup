@@ -1,11 +1,11 @@
-import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext, DbUnauthenticatedError } from "@/lib/db/server-context";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { ErrorState } from "@/components/ui/states";
-import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
-import { RealCalendarGrid } from "@/components/calendar/real-calendar-grid";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { CalendarView } from "@/components/calendar/calendar-view";
 import { resolveCalendarWindow } from "@/lib/calendar/civil-calendar";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +35,15 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       return <ErrorState message="Tu sesión expiró. Volvé a iniciar sesión." />;
     }
     return (
-      <div>
-        <div className="px-4 pt-8 sm:px-8">
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Calendario</h1>
-        </div>
-        <div className="px-4 py-6 sm:px-8">
-          <ErrorState message="No pudimos cargar el calendario." />
-          <Link href="/calendario" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
+      <div className={PAGE_WIDTH.wide}>
+        <PageTitle>Calendario</PageTitle>
+        <div className="mt-6 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No pudimos cargar el calendario." />
+          </div>
+          <PrivateButtonLink href="/calendario" variant="secondary">
             Reintentar
-          </Link>
+          </PrivateButtonLink>
         </div>
       </div>
     );
@@ -59,33 +59,5 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     return qs ? `/calendario?${qs}` : "/calendario";
   }
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-8 sm:px-8">
-        <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Calendario</h1>
-          <nav aria-label="Secciones del calendario" className="mt-1 flex flex-wrap items-center gap-x-2">
-            <Link href="/calendario/series" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
-              Series
-            </Link>
-            <Link href="/calendario/disponibilidad" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
-              Disponibilidad
-            </Link>
-            <Link href="/registro" className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-semibold text-brandBlue hover:underline">
-              Clases por registrar
-            </Link>
-          </nav>
-        </div>
-        <Link
-          href="/calendario/nueva"
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-        >
-          + Nueva clase
-        </Link>
-      </div>
-
-      <RealCalendarToolbar view={view} weekStartKey={weekStartKey} dayKey={dayKey} buildHref={buildHref} />
-      <RealCalendarGrid dayKeys={dayKeys} items={items} />
-    </div>
-  );
+  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} />;
 }

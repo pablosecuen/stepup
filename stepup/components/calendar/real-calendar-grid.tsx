@@ -14,9 +14,9 @@ import {
   groupItemsByDayKey,
   layoutDayItems,
 } from "@/lib/calendar/layout";
-import { dayOfMonth, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
+import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
-import { RealLessonCard } from "./real-lesson-card";
+import { RealLessonAgendaRow, RealLessonCard } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 
 interface RealCalendarGridProps {
@@ -24,6 +24,11 @@ interface RealCalendarGridProps {
   items: CalendarViewItem[];
 }
 
+/**
+ * Escritorio (≥ 820 px): grilla horaria con una columna por día. Móvil (320–819 px): agenda agrupada por día — nunca se
+ * comprime la grilla. Las dos dibujan los mismos datos y comparten el detalle de la clase; los colores salen de la escala
+ * congelada del calendario (`lib/calendar-theme.ts`).
+ */
 export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
@@ -40,29 +45,33 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
   const isWeek = dayKeys.length > 1;
   const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${dayKeys.length}, minmax(${DAY_COLUMN_MIN_WIDTH_PX}px, 1fr))`;
   const gridMinWidth = TIME_COLUMN_WIDTH_PX + dayKeys.length * DAY_COLUMN_MIN_WIDTH_PX;
-  const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E3E5E8 1px, transparent 1px)", backgroundSize: `100% ${HOUR_HEIGHT_PX}px` };
+  const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${HOUR_HEIGHT_PX}px` };
 
   const nowLineTop = now ? currentTimeTop(now) : null;
   // "Hoy" y el día de cada tarjeta se resuelven como claves civiles en la zona del calendario: igual en servidor (UTC) y navegador.
   const todayKey = now ? todayDateKey(now) : null;
   const itemsByDayKey = groupItemsByDayKey(visible);
+  const nowMs = (now ?? new Date()).getTime();
+
+  const stateOf = (item: CalendarViewItem) => ({
+    isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,
+    isActiveReplacement: isActiveReplacement(item, items),
+    isInProgress: now !== null && new Date(item.start).getTime() <= nowMs && nowMs < new Date(item.end).getTime(),
+  });
 
   return (
     <div>
-      <div className="overflow-x-auto px-4 pb-8 sm:px-8">
-        <div className="rounded-lg border border-border bg-surface shadow-card" style={{ minWidth: gridMinWidth }}>
-          <div className="grid rounded-t-lg border-b border-border" style={{ gridTemplateColumns }}>
+      {/* Escritorio: grilla horaria */}
+      <div className="hidden overflow-x-auto pb-2 nav:block">
+        <div className="rounded-lg border-[1.5px] border-border bg-surface shadow-card" style={{ minWidth: gridMinWidth }}>
+          <div className="grid rounded-t-lg border-b-[1.5px] border-border" style={{ gridTemplateColumns }}>
             <div />
             {dayKeys.map((dayKey) => {
               const today = todayKey === dayKey;
               return (
-                <div key={dayKey} className={`flex flex-col items-center gap-1 py-2.5 text-center ${today ? "rounded-t-lg bg-brandBlue/5" : ""}`}>
-                  {isWeek && (
-                    <span className={`text-[11px] font-semibold tracking-wide ${today ? "text-brandBlue" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>
-                  )}
-                  <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${today ? "bg-brandBlue text-white" : "text-textPrimary"}`}
-                  >
+                <div key={dayKey} className={`flex flex-col items-center gap-0.5 py-2.5 text-center ${today ? "bg-accentSoft" : ""}`}>
+                  {isWeek && <span className={`text-label font-bold ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
+                  <span className={`font-display text-[26px] font-semibold leading-none tracking-tight ${today ? "text-accentDark" : "text-textPrimary"}`}>
                     {dayOfMonth(dayKey)}
                     {today && <span className="sr-only"> (hoy)</span>}
                   </span>
@@ -75,7 +84,7 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
             <div className="relative">
               {HOURS.map((hour) => (
                 <div key={hour} className="relative" style={{ height: HOUR_HEIGHT_PX }}>
-                  <span className="absolute -top-2 right-1.5 text-[11px] text-textMuted">{String(hour).padStart(2, "0")}:00</span>
+                  <span className="absolute -top-2 right-1.5 text-[11px] font-medium text-textMuted tf-num">{String(hour).padStart(2, "0")}:00</span>
                 </div>
               ))}
             </div>
@@ -85,7 +94,7 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
               const positioned = layoutDayItems(itemsByDayKey.get(dayKey) ?? []);
 
               return (
-                <div key={dayKey} className={`relative border-l border-border ${today ? "bg-brandBlue/[0.03]" : ""}`} style={hourGridlinesStyle}>
+                <div key={dayKey} className={`relative border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
                   {today && nowLineTop !== null && (
                     <div className="pointer-events-none absolute left-0 right-0 z-10" style={{ top: nowLineTop }}>
                       <div className="relative h-0.5" style={{ backgroundColor: CURRENT_TIME_COLOR }}>
@@ -95,19 +104,47 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
                   )}
 
                   {positioned.map((positionedItem) => (
-                    <RealLessonCard
-                      key={positionedItem.item.id}
-                      positioned={positionedItem}
-                      isElapsed={positionedItem.item.status !== "cancelled" && new Date(positionedItem.item.end).getTime() <= (now ?? new Date()).getTime()}
-                      isActiveReplacement={isActiveReplacement(positionedItem.item, items)}
-                      onSelect={() => setSelected(positionedItem.item)}
-                    />
+                    <RealLessonCard key={positionedItem.item.id} positioned={positionedItem} {...stateOf(positionedItem.item)} onSelect={() => setSelected(positionedItem.item)} />
                   ))}
                 </div>
               );
             })}
           </div>
         </div>
+      </div>
+
+      {/* Móvil: agenda agrupada por día */}
+      <div className="flex flex-col gap-6 nav:hidden">
+        {dayKeys.map((dayKey) => {
+          const today = todayKey === dayKey;
+          const dayItems = layoutDayItems(itemsByDayKey.get(dayKey) ?? []).map((p) => p.item);
+          return (
+            <section key={dayKey} aria-label={formatCivilDayLabelShort(dayKey)}>
+              {/* En la vista de un solo día el título de la barra ya dice el día: acá sólo el recuento. */}
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className={isWeek ? `font-display text-[22px] font-semibold leading-tight tracking-tight first-letter:uppercase ${today ? "text-accentDark" : "text-textPrimary"}` : "sr-only"}>
+                  {formatCivilDayLabelShort(dayKey)}
+                  {today && <span> · hoy</span>}
+                </h3>
+                <p className={`text-[13.5px] text-textMuted ${isWeek ? "shrink-0" : ""}`}>
+                  {dayItems.length === 0 ? "Sin clases" : dayItems.length === 1 ? "1 clase" : `${dayItems.length} clases`}
+                  {!isWeek && today && " · hoy"}
+                </p>
+              </div>
+              {dayItems.length === 0 ? (
+                <p className="mt-2 rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">Día libre.</p>
+              ) : (
+                <ul className="mt-2 flex flex-col gap-2">
+                  {dayItems.map((item) => (
+                    <li key={item.id}>
+                      <RealLessonAgendaRow item={item} {...stateOf(item)} onSelect={() => setSelected(item)} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       {selected && (

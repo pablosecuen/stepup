@@ -17,6 +17,7 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
 const GUARDED = [
   "app/(app)/calendario/page.tsx",
+  "components/calendar/calendar-view.tsx",
   "components/calendar/real-calendar-grid.tsx",
   "components/calendar/real-calendar-toolbar.tsx",
   "components/calendar/real-lesson-card.tsx",
@@ -65,7 +66,9 @@ test("la página resuelve la ventana con resolveCalendarWindow y consulta con in
   const page = stripComments(readFileSync(ROOT + "app/(app)/calendario/page.tsx", "utf8"));
   assert.match(page, /resolveCalendarWindow\(params, new Date\(\)\)/);
   assert.match(page, /loadCalendarViewForRange\(ctx, new Date\(rangeStartIso\), new Date\(rangeEndIso\)\)/);
-  assert.match(page, /<RealCalendarGrid dayKeys=\{dayKeys\}/);
+  assert.match(page, /<CalendarView view=\{view\} weekStartKey=\{weekStartKey\} dayKey=\{dayKey\} dayKeys=\{dayKeys\}/);
+  const view = stripComments(readFileSync(ROOT + "components/calendar/calendar-view.tsx", "utf8"));
+  assert.match(view, /<RealCalendarGrid dayKeys=\{dayKeys\}/);
 });
 
 test("el primer render de la grilla no depende de la hora actual (estado `now` nace en null: sin diferencia servidor/cliente)", () => {

@@ -1,9 +1,11 @@
-import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
 import { ErrorState } from "@/components/ui/states";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { FormPage } from "@/components/ui/form-page";
 import { NuevoRegistroForm } from "./nuevo-registro-form";
 
 export const dynamic = "force-dynamic";
@@ -26,28 +28,28 @@ export default async function RegistroNuevoPage() {
     activeStudents = students.filter((s) => s.status === "activo").map((s) => ({ id: s.id, name: s.name, level: s.levels[0] ?? "" }));
   } catch {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar los alumnos activos." />
-        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
-          Volver
-        </Link>
+      <div className={PAGE_WIDTH.narrow}>
+        <PageTitle>Clase no programada</PageTitle>
+        <div className="mt-5 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No pudimos cargar los alumnos activos." />
+          </div>
+          <PrivateButtonLink href="/registro" variant="secondary">
+            Volver
+          </PrivateButtonLink>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver a Clases por registrar
-      </Link>
-      <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Clase no programada</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        Para una clase que diste sin reservarla antes en el Calendario — nunca crea ninguna reserva, sólo el registro pedagógico.
-      </p>
-
-      <div className="mt-6">
-        <NuevoRegistroForm students={activeStudents} />
-      </div>
-    </div>
+    <FormPage
+      backHref="/registro"
+      backLabel="Volver a Clases por registrar"
+      title="Clase no programada"
+      subtitle="Para una clase que diste sin reservarla antes en el Calendario — nunca crea ninguna reserva, sólo el registro pedagógico."
+    >
+      <NuevoRegistroForm students={activeStudents} />
+    </FormPage>
   );
 }

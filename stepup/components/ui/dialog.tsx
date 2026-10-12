@@ -19,7 +19,7 @@ const WIDTHS: Record<DialogSize, string> = {
  * `footer` recibe las acciones EN EL ORDEN DE ESCRITORIO (secundaria, principal): en la hoja móvil se apilan al revés para que la
  * principal quede arriba, a ancho completo.
  */
-export function Dialog({ title, onClose, size = "md", footer, children }: { title: string; onClose: () => void; size?: DialogSize; footer?: ReactNode; children: ReactNode }) {
+export function Dialog({ title, onClose, size = "md", footer, busy, children }: { title: string; onClose: () => void; size?: DialogSize; footer?: ReactNode; /** Acción en curso: marca el diálogo con `aria-busy`. */ busy?: boolean; children: ReactNode }) {
   const titleId = useId();
   const dialogRef = useDialogA11y(onClose);
 
@@ -31,6 +31,7 @@ export function Dialog({ title, onClose, size = "md", footer, children }: { titl
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-busy={busy || undefined}
         tabIndex={-1}
         className={`relative flex max-h-[92vh] w-full animate-tf-sheet flex-col overflow-hidden rounded-t-[24px] border-[1.5px] border-b-0 border-borderMid bg-surface shadow-panel focus:outline-none nav:max-h-[calc(100vh-48px)] nav:animate-tf-pop nav:rounded-xl nav:border-b-[1.5px] ${WIDTHS[size]}`}
       >

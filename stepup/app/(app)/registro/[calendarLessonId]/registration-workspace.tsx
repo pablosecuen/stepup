@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveParticipantAction, finalizeRegistrationAction, editCompletedRegistrationAction } from "@/lib/actions/lesson-registrations";
 import { guardNetwork } from "@/lib/actions/network-guard";
@@ -13,7 +13,15 @@ import { normalizeSkillGradeValue } from "@/lib/lessons/grades";
 import { SKILLS, SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { CheckCircleIcon, CheckIcon, ChevronDownIcon, ClockIcon, MinusCircleIcon } from "@heroicons/react/24/outline";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, TextArea, TextInput } from "@/components/ui/field";
+import { Notice } from "@/components/ui/notice";
+import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 
 const HOMEWORK_OUTCOME_LABEL: Record<HomeworkReviewOutcome, string> = {
   realizada: "Realizada",
@@ -59,19 +67,21 @@ function buildInitialForm(
 // nota real (`normalizeSkillGradeValue`), sólo 1-10 es una nota real.
 function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: number | null; onChange: (value: number | null) => void }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-28 shrink-0 text-xs text-textSecondary">{SKILL_LABEL[skill]}</span>
-      <input
-        type="range"
-        min="0"
-        max="10"
-        step="1"
-        value={value ?? 0}
-        onChange={(e) => onChange(normalizeSkillGradeValue(Number(e.target.value)))}
-        className="h-2 flex-1 accent-brandBlue"
-        aria-label={`${SKILL_LABEL[skill]}: ${value != null ? `${value} de 10` : "sin calificar"}`}
-      />
-      <span className="w-20 shrink-0 text-right text-xs font-semibold text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 sm:flex-nowrap">
+      <span className="w-full shrink-0 text-[14.5px] text-textSecondary sm:w-32">{SKILL_LABEL[skill]}</span>
+      <div className="flex min-h-11 min-w-[140px] flex-1 items-center">
+        <input
+          type="range"
+          min="0"
+          max="10"
+          step="1"
+          value={value ?? 0}
+          onChange={(e) => onChange(normalizeSkillGradeValue(Number(e.target.value)))}
+          className="h-2 w-full accent-accent"
+          aria-label={`${SKILL_LABEL[skill]}: ${value != null ? `${value} de 10` : "sin calificar"}`}
+        />
+      </div>
+      <span className="w-24 shrink-0 text-right text-[14px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
     </div>
   );
 }
@@ -138,6 +148,7 @@ function ParticipantCard({
   pendingHomework: PendingHomeworkTask[];
   onSaved: (status: ParticipantRegistrationStatus) => void;
 }) {
+  const uid = useId();
   const [open, setOpen] = useState(status === "pending");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -176,97 +187,100 @@ function ParticipantCard({
   }
 
   const statusLabel = status === "completed" ? "Completado" : status === "omitted" ? "Omitido" : "Pendiente";
-  const statusColor = status === "completed" ? "text-statusVerde" : status === "omitted" ? "text-textMuted" : "text-textSecondary";
+  const statusBadge =
+    status === "completed" ? (
+      <Badge tone="ok" icon={<CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />}>
+        {statusLabel}
+      </Badge>
+    ) : status === "omitted" ? (
+      <Badge icon={<MinusCircleIcon className="h-3.5 w-3.5" aria-hidden />}>{statusLabel}</Badge>
+    ) : (
+      <Badge icon={<ClockIcon className="h-3.5 w-3.5" aria-hidden />}>{statusLabel}</Badge>
+    );
+  const levelAndAttendance = [level, form.attendanceStatus ? ATTENDANCE_STATUS_LABEL[form.attendanceStatus] : null].filter(Boolean).join(" · ");
 
   return (
-    <div className="rounded-lg border border-border bg-surface shadow-card">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left">
-        <div>
-          <p className="text-sm font-semibold text-textPrimary">{name}</p>
-          <p className="text-xs text-textMuted">{level}</p>
+    <Card padded={false}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-h-[64px] w-full items-center gap-3 px-4 py-3 text-left">
+        <Avatar initial={avatarInitials(name)} tone={avatarToneFor(studentId)} size="m" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15.5px] font-bold text-textPrimary [overflow-wrap:anywhere]">{name}</p>
+          {levelAndAttendance && <p className="text-[13.5px] text-textMuted [overflow-wrap:anywhere]">{levelAndAttendance}</p>}
         </div>
-        <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
+        {statusBadge}
+        <ChevronDownIcon className={`h-5 w-5 shrink-0 text-textMuted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {open && (
-        <div className="flex flex-col gap-4 border-t border-border p-4">
+        <div className="flex flex-col gap-5 border-t-[1.5px] border-border p-4 nav:p-5">
           {error && <FormErrorBox message={error} />}
 
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Asistencia *</legend>
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="text-label font-bold uppercase text-textMuted">Asistencia *</legend>
             <div className="flex flex-wrap gap-2">
-              {ATTENDANCE_BUTTONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => updateForm({ attendanceStatus: option })}
-                  aria-pressed={form.attendanceStatus === option}
-                  className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    form.attendanceStatus === option ? "border-brandBlue bg-brandBlue/10 text-brandBlueDark" : "border-border text-textSecondary"
-                  }`}
-                >
-                  {ATTENDANCE_STATUS_LABEL[option]}
-                </button>
-              ))}
+              {ATTENDANCE_BUTTONS.map((option) => {
+                const selected = form.attendanceStatus === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => updateForm({ attendanceStatus: option })}
+                    aria-pressed={form.attendanceStatus === option}
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border-[1.5px] px-4 text-[14.5px] font-[650] transition-colors duration-150 ${
+                      selected ? "border-ink bg-ink text-background" : "border-borderMid bg-surface text-textPrimary hover:border-ink"
+                    }`}
+                  >
+                    {selected && <CheckIcon className="h-4 w-4" aria-hidden />}
+                    {ATTENDANCE_STATUS_LABEL[option]}
+                  </button>
+                );
+              })}
             </div>
             {form.attendanceStatus === "tarde" && (
-              <input
-                type="number"
-                min="0"
-                aria-label="Minutos de tardanza"
-                placeholder="Minutos de tardanza"
-                value={form.lateMinutes}
-                onChange={(e) => updateForm({ lateMinutes: e.target.value })}
-                className="mt-1 w-40 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-              />
+              <div className="sm:w-56">
+                <TextInput type="number" min="0" aria-label="Minutos de tardanza" placeholder="Minutos de tardanza" value={form.lateMinutes} onChange={(e) => updateForm({ lateMinutes: e.target.value })} />
+              </div>
             )}
           </fieldset>
 
           {blockingTasks.length > 0 && (
-            <fieldset className="flex flex-col gap-1.5 rounded-md border border-border p-3">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Tareas anteriores</legend>
+            <fieldset className="flex min-w-0 flex-col gap-3 rounded-md border-[1.5px] border-warnLine bg-warnSoft p-3.5">
+              <legend className="px-1 text-label font-bold uppercase text-textMuted">Tareas anteriores</legend>
               {pendingHomework.map((task) => (
-                <div key={task.taskId} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="text-textSecondary">{task.description}</span>
-                  <div className="flex gap-1">
-                    {(Object.keys(HOMEWORK_OUTCOME_LABEL) as HomeworkReviewOutcome[]).map((outcome) => (
-                      <button
-                        key={outcome}
-                        type="button"
-                        onClick={() => setHomeworkOutcome(task.taskId, outcome)}
-                        aria-pressed={form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome}
-                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${
-                          form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome
-                            ? "border-brandBlue bg-brandBlue/10 text-brandBlueDark"
-                            : "border-border text-textSecondary"
-                        }`}
-                      >
-                        {HOMEWORK_OUTCOME_LABEL[outcome]}
-                      </button>
-                    ))}
+                <div key={task.taskId} className="flex flex-col gap-2">
+                  <span className="text-[15px] text-textPrimary [overflow-wrap:anywhere]">{task.description}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Object.keys(HOMEWORK_OUTCOME_LABEL) as HomeworkReviewOutcome[]).map((outcome) => {
+                      const selected = form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome;
+                      return (
+                        <button
+                          key={outcome}
+                          type="button"
+                          onClick={() => setHomeworkOutcome(task.taskId, outcome)}
+                          aria-pressed={form.homeworkReviews[homeworkReviewSelectionKey(task.taskId, studentId)] === outcome}
+                          className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border-[1.5px] px-3.5 text-[14px] font-[650] transition-colors ${
+                            selected ? "border-ink bg-ink text-background" : "border-borderMid bg-surface text-textPrimary hover:border-ink"
+                          }`}
+                        >
+                          {selected && <CheckIcon className="h-4 w-4" aria-hidden />}
+                          {HOMEWORK_OUTCOME_LABEL[outcome]}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </fieldset>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-textSecondary">Nota general (1-10, opcional)</span>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={form.generalGrade}
-                onChange={(e) => updateForm({ generalGrade: e.target.value })}
-                placeholder="Sin calificar"
-                className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-              />
-            </label>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Nota general (1-10, opcional)" htmlFor={`${uid}-grade`}>
+              <TextInput id={`${uid}-grade`} type="number" min="1" max="10" value={form.generalGrade} onChange={(e) => updateForm({ generalGrade: e.target.value })} placeholder="Sin calificar" />
+            </Field>
           </div>
 
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Notas por área (opcional)</legend>
+          <fieldset className="flex min-w-0 flex-col gap-1">
+            <legend className="mb-1 text-label font-bold uppercase text-textMuted">Notas por área (opcional)</legend>
             {SKILLS.map((skill) => (
               <SkillGradeField
                 key={skill}
@@ -284,66 +298,43 @@ function ParticipantCard({
             ))}
           </fieldset>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-textSecondary">Observaciones</span>
-            <textarea
-              value={form.individualObservation}
-              onChange={(e) => updateForm({ individualObservation: e.target.value })}
-              rows={2}
-              className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-            />
-          </label>
+          <Field label="Observaciones" htmlFor={`${uid}-obs`}>
+            <TextArea id={`${uid}-obs`} value={form.individualObservation} onChange={(e) => updateForm({ individualObservation: e.target.value })} rows={3} />
+          </Field>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-textSecondary">Fortalezas (separadas por coma)</span>
-              <input value={form.strengths} onChange={(e) => updateForm({ strengths: e.target.value })} className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-textSecondary">A mejorar (separadas por coma)</span>
-              <input value={form.areasToImprove} onChange={(e) => updateForm({ areasToImprove: e.target.value })} className="rounded-md border border-borderStrong px-2 py-1.5 text-sm" />
-            </label>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Fortalezas (separadas por coma)" htmlFor={`${uid}-str`}>
+              <TextInput id={`${uid}-str`} value={form.strengths} onChange={(e) => updateForm({ strengths: e.target.value })} />
+            </Field>
+            <Field label="A mejorar (separadas por coma)" htmlFor={`${uid}-imp`}>
+              <TextInput id={`${uid}-imp`} value={form.areasToImprove} onChange={(e) => updateForm({ areasToImprove: e.target.value })} />
+            </Field>
           </div>
 
           {activityKind === "class" && (
-            <fieldset className="flex flex-col gap-1.5 rounded-md border border-border p-3">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Tarea individual nueva (opcional)</legend>
-              <input
-                value={form.homeworkDescription}
-                onChange={(e) => updateForm({ homeworkDescription: e.target.value })}
-                aria-label="Descripción de la tarea individual"
-                placeholder="Descripción"
-                className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-              />
-              <input
-                type="date"
-                aria-label="Fecha de entrega de la tarea individual"
-                value={form.homeworkDueDate}
-                onChange={(e) => updateForm({ homeworkDueDate: e.target.value })}
-                className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-              />
+            <fieldset className="flex min-w-0 flex-col gap-3.5 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+              <legend className="px-2 text-label font-bold uppercase text-textMuted">Tarea individual nueva (opcional)</legend>
+              <TextInput value={form.homeworkDescription} onChange={(e) => updateForm({ homeworkDescription: e.target.value })} aria-label="Descripción de la tarea individual" placeholder="Descripción" />
+              <div className="sm:w-60">
+                <TextInput type="date" aria-label="Fecha de entrega de la tarea individual" value={form.homeworkDueDate} onChange={(e) => updateForm({ homeworkDueDate: e.target.value })} />
+              </div>
             </fieldset>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => save("completed")}
-              disabled={pending}
-              className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button variant="primary" onClick={() => save("completed")} busy={pending}>
               {pending ? "Guardando..." : "Completar alumno"}
-            </button>
-            <button type="button" onClick={() => save("omitted")} disabled={pending} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-textSecondary disabled:opacity-50">
+            </Button>
+            <Button variant="secondary" onClick={() => save("omitted")} disabled={pending}>
               Omitir por ahora
-            </button>
-            <button type="button" onClick={() => save(null)} disabled={pending} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-textSecondary disabled:opacity-50">
+            </Button>
+            <Button variant="ghost" onClick={() => save(null)} disabled={pending}>
               Guardar sin completar
-            </button>
+            </Button>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -481,22 +472,22 @@ export function RegistrationWorkspace({
 
   return (
     <div className="flex flex-col gap-4">
-      {isFinalized && <p className="rounded-md border border-statusVerde/30 bg-statusVerde/5 px-3 py-2 text-sm font-medium text-statusVerde">Este registro ya está finalizado — podés editar cualquier dato y guardar de nuevo.</p>}
+      {isFinalized && <Notice tone="ok">Este registro ya está finalizado — podés editar cualquier dato y guardar de nuevo.</Notice>}
 
       {!countsAsClass && (
-        <p className="rounded-md border border-border bg-background px-3 py-2.5 text-sm text-textSecondary">
-          <span className="font-semibold text-textPrimary">{ADHOC_OUTCOME_LABEL[registration.outcome]}</span> — esta actividad no se dictó, así que no
+        <Notice tone="info">
+          <span className="font-bold text-textPrimary">{ADHOC_OUTCOME_LABEL[registration.outcome]}</span> — esta actividad no se dictó, así que no
           corresponde cargar asistencia, evaluación ni tarea. Sólo hace falta confirmar el registro.
-        </p>
+        </Notice>
       )}
 
       {countsAsClass && isGroup && (
         <div>
-          <p className="text-sm font-semibold text-textPrimary">
+          <p className="text-[15px] font-bold text-textPrimary">
             Progreso: {completedCount} de {participants.length} completados
           </p>
-          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-background">
-            <div className="h-full bg-brandBlue transition-all" style={{ width: `${(completedCount / Math.max(participants.length, 1)) * 100}%` }} />
+          <div aria-hidden className="mt-2 h-2 w-full overflow-hidden rounded-pill bg-paperDeep">
+            <div className="h-full rounded-pill bg-accent transition-all" style={{ width: `${(completedCount / Math.max(participants.length, 1)) * 100}%` }} />
           </div>
         </div>
       )}
@@ -522,52 +513,32 @@ export function RegistrationWorkspace({
       )}
 
       {countsAsClass && registration.activityKind === "class" && (
-        <fieldset className="flex flex-col gap-1.5 rounded-md border border-border p-3">
-          <legend className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Tarea común para todo el grupo (opcional)</legend>
-          <input
-            value={commonHomeworkDescription}
-            onChange={(e) => setCommonHomeworkDescription(e.target.value)}
-            aria-label="Descripción de la tarea común"
-            placeholder="Descripción"
-            className="rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-          />
-          <input
-            type="date"
-            aria-label="Fecha de entrega de la tarea común"
-            value={commonHomeworkDueDate}
-            onChange={(e) => setCommonHomeworkDueDate(e.target.value)}
-            className="w-48 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-          />
+        <fieldset className="flex min-w-0 flex-col gap-3.5 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5">
+          <legend className="px-2 text-label font-bold uppercase text-textMuted">Tarea común para todo el grupo (opcional)</legend>
+          <TextInput value={commonHomeworkDescription} onChange={(e) => setCommonHomeworkDescription(e.target.value)} aria-label="Descripción de la tarea común" placeholder="Descripción" />
+          <div className="sm:w-60">
+            <TextInput type="date" aria-label="Fecha de entrega de la tarea común" value={commonHomeworkDueDate} onChange={(e) => setCommonHomeworkDueDate(e.target.value)} />
+          </div>
         </fieldset>
       )}
 
       {countsAsClass && (
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-textSecondary">Duración real (minutos)</span>
-          <input
-            type="number"
-            min="1"
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(e.target.value)}
-            className="w-40 rounded-md border border-borderStrong px-2 py-1.5 text-sm"
-          />
-        </label>
+        <div className="sm:w-60">
+          <Field label="Duración real (minutos)" htmlFor="registro-duration">
+            <TextInput id="registro-duration" type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+          </Field>
+        </div>
       )}
 
       {error && <FormErrorBox message={error} />}
 
       <div>
         {allComplete ? (
-          <button
-            type="button"
-            onClick={handleFinalize}
-            disabled={pending || (isFinalized && !editOperationId)}
-            className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card disabled:opacity-60"
-          >
+          <Button variant="primary" size="lg" onClick={handleFinalize} busy={pending} disabled={isFinalized && !editOperationId}>
             {pending ? "Guardando..." : isFinalized ? "Guardar cambios" : "Finalizar registro"}
-          </button>
+          </Button>
         ) : (
-          <p className="text-sm text-textMuted">Completá a todos los participantes para poder finalizar el registro. Mientras tanto, el progreso ya queda guardado.</p>
+          <p className="text-[15px] text-textMuted">Completá a todos los participantes para poder finalizar el registro. Mientras tanto, el progreso ya queda guardado.</p>
         )}
       </div>
     </div>

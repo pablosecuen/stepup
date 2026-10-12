@@ -6,6 +6,8 @@ import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { createSingleLessonAction, createRecurrenceSeriesAction, type FormState } from "@/lib/actions/calendar";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { Button, PrivateButtonLink } from "@/components/ui/button";
+import { Field, SelectInput, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
@@ -17,22 +19,12 @@ import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 
 const INITIAL_STATE: FormState = {};
 
-const inputClassName =
-  "rounded-md border border-borderStrong bg-surface px-3 py-2.5 text-sm text-textPrimary placeholder:text-textMuted transition-colors duration-150 ease-premium focus:outline-none focus-visible:border-brandBlue focus-visible:ring-2 focus-visible:ring-brandBlue";
-const labelClassName = "text-sm font-medium text-textSecondary";
-
 function SubmitButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending || disabled}
-      aria-busy={pending}
-      className="flex items-center justify-center gap-2 rounded-md bg-brandBlue px-5 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-    >
-      {pending && <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+    <Button type="submit" variant="primary" busy={pending} disabled={pending || disabled}>
       Guardar
-    </button>
+    </Button>
   );
 }
 
@@ -150,180 +142,113 @@ export function NewLessonForm({
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de nueva clase">
       <input type="hidden" name="operationId" value={operationId ?? ""} />
       {!isReplacement && (
-        <div className="flex rounded-pill border border-border bg-background p-1">
-          <button
-            type="button"
-            onClick={() => setMode("single")}
-            aria-pressed={mode === "single"}
-            className={`flex-1 rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${mode === "single" ? "bg-brandBlue text-white" : "text-textSecondary"}`}
-          >
-            Clase única
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("series")}
-            aria-pressed={mode === "series"}
-            className={`flex-1 rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${mode === "series" ? "bg-brandBlue text-white" : "text-textSecondary"}`}
-          >
-            Serie semanal
-          </button>
+        <div className="flex gap-1 rounded-md border-[1.5px] border-border bg-paperDeep p-1">
+          {(
+            [
+              ["single", "Clase única"],
+              ["series", "Serie semanal"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              aria-pressed={mode === value}
+              className={`min-h-11 flex-1 rounded-sm px-3 text-[14.5px] font-[650] transition-colors ${mode === value ? "bg-surface text-textPrimary shadow-subtle" : "text-textSecondary hover:text-textPrimary"}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className={labelClassName}>Alumnos (sólo activos) *</legend>
-        <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto rounded-md border border-border p-2">
-          {activeStudents.length === 0 && <p className="text-xs text-textMuted">No hay alumnos activos todavía.</p>}
+      <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
+        <legend className="px-2 text-label font-bold uppercase text-textMuted">Alumnos (sólo activos) *</legend>
+        <div className={`${choiceGroupClass} max-h-64 overflow-y-auto`}>
+          {activeStudents.length === 0 && <p className="px-3 py-2.5 text-[14px] text-textMuted">No hay alumnos activos todavía.</p>}
           {activeStudents.map((student) => (
-            <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-background">
-              <input
-                type="checkbox"
-                name="participantIds"
-                value={student.id}
-                checked={selected.has(student.id)}
-                onChange={() => toggleStudent(student.id)}
-                className="h-4 w-4 rounded border-border text-brandBlue focus:ring-brandBlue"
-              />
-              {student.name}
+            <label key={student.id} className={choiceRowClass}>
+              <input type="checkbox" name="participantIds" value={student.id} checked={selected.has(student.id)} onChange={() => toggleStudent(student.id)} className={checkClass} />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
             </label>
           ))}
         </div>
-      </fieldset>
 
-      {selected.size >= 2 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className={labelClassName}>Alumno principal *</legend>
-          <div className="flex flex-col gap-1.5 rounded-md border border-border p-2">
-            {activeStudents
-              .filter((student) => selected.has(student.id))
-              .map((student) => (
-                <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-background">
-                  <input
-                    type="radio"
-                    name="primaryStudentIdChoice"
-                    value={student.id}
-                    checked={primaryStudentId === student.id}
-                    onChange={() => setPrimaryStudentId(student.id)}
-                    className="h-4 w-4 border-border text-brandBlue focus:ring-brandBlue"
-                  />
-                  {student.name}
-                </label>
-              ))}
-          </div>
-          {!primaryStudentId && <p className="text-xs text-statusRojo">Elegí quién es el alumno principal.</p>}
-        </fieldset>
-      )}
+        {selected.size >= 2 && (
+          <fieldset className="mt-4 min-w-0">
+            <legend className="text-sm font-[650] text-textSecondary">Alumno principal *</legend>
+            <div className={`${choiceGroupClass} mt-2`}>
+              {activeStudents
+                .filter((student) => selected.has(student.id))
+                .map((student) => (
+                  <label key={student.id} className={choiceRowClass}>
+                    <input
+                      type="radio"
+                      name="primaryStudentIdChoice"
+                      value={student.id}
+                      checked={primaryStudentId === student.id}
+                      onChange={() => setPrimaryStudentId(student.id)}
+                      className={checkClass}
+                    />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
+                  </label>
+                ))}
+            </div>
+            {!primaryStudentId && <p className="mt-1.5 text-[13px] font-semibold text-bad">Elegí quién es el alumno principal.</p>}
+          </fieldset>
+        )}
+      </fieldset>
       <input type="hidden" name="primaryStudentId" value={primaryStudentId} />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="modality" className={labelClassName}>
-            Modalidad
-          </label>
-          <select id="modality" name="modality" value={modality} onChange={(e) => setModality(e.target.value)} className={inputClassName}>
+        <Field label="Modalidad" htmlFor="modality">
+          <SelectInput id="modality" name="modality" value={modality} onChange={(e) => setModality(e.target.value)}>
             {Object.entries(MODALITY_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="activityKind" className={labelClassName}>
-            Tipo de actividad
-          </label>
-          <select id="activityKind" name="activityKind" value={activityKind} onChange={(e) => setActivityKind(e.target.value)} className={inputClassName}>
+          </SelectInput>
+        </Field>
+        <Field label="Tipo de actividad" htmlFor="activityKind">
+          <SelectInput id="activityKind" name="activityKind" value={activityKind} onChange={(e) => setActivityKind(e.target.value)}>
             {Object.entries(ACTIVITY_KIND_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
-        </div>
+          </SelectInput>
+        </Field>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="classTitle" className={labelClassName}>
-          Título (opcional)
-        </label>
-        <input
-          id="classTitle"
-          name="classTitle"
-          type="text"
-          placeholder="Ej: Clase de conversación"
-          value={classTitle}
-          onChange={(e) => setClassTitle(e.target.value)}
-          className={inputClassName}
-        />
-      </div>
+      <Field label="Título (opcional)" htmlFor="classTitle">
+        <TextInput id="classTitle" name="classTitle" type="text" placeholder="Ej: Clase de conversación" value={classTitle} onChange={(e) => setClassTitle(e.target.value)} />
+      </Field>
 
       {mode === "single" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="date" className={labelClassName}>
-              Fecha *
-            </label>
-            <input id="date" name="date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={inputClassName} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="hour-single" className={labelClassName}>
-              Hora *
-            </label>
-            <div className="flex gap-1.5">
-              <input
-                id="hour-single"
-                aria-label="Hora"
-                name="hour"
-                type="number"
-                min="0"
-                max="23"
-                required
-                value={hour}
-                onChange={(e) => setHour(e.target.value)}
-                className={inputClassName}
-              />
-              <input name="minute" type="number" aria-label="Minutos" min="0" max="59" required value={minute} onChange={(e) => setMinute(e.target.value)} className={inputClassName} />
+          <Field label="Fecha *" htmlFor="date">
+            <TextInput id="date" name="date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Hora *" htmlFor="hour-single">
+            <div className="flex gap-2">
+              <TextInput id="hour-single" aria-label="Hora" name="hour" type="number" min="0" max="23" required value={hour} onChange={(e) => setHour(e.target.value)} />
+              <TextInput name="minute" type="number" aria-label="Minutos" min="0" max="59" required value={minute} onChange={(e) => setMinute(e.target.value)} />
             </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="durationMinutes" className={labelClassName}>
-              Duración (min) *
-            </label>
-            <input
-              id="durationMinutes"
-              name="durationMinutes"
-              type="number"
-              min="1"
-              required
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(e.target.value)}
-              className={inputClassName}
-            />
-          </div>
+          </Field>
+          <Field label="Duración (min) *" htmlFor="durationMinutes">
+            <TextInput id="durationMinutes" name="durationMinutes" type="number" min="1" required value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+          </Field>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="startDate" className={labelClassName}>
-                Fecha de inicio *
-              </label>
-              <input
-                id="startDate"
-                name="startDate"
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={inputClassName}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="endDate" className={labelClassName}>
-                Fecha de fin (opcional)
-              </label>
-              <input id="endDate" name="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClassName} />
-            </div>
+            <Field label="Fecha de inicio *" htmlFor="startDate">
+              <TextInput id="startDate" name="startDate" type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </Field>
+            <Field label="Fecha de fin (opcional)" htmlFor="endDate">
+              <TextInput id="endDate" name="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </Field>
           </div>
 
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
@@ -334,7 +259,12 @@ export function NewLessonForm({
       {isReplacement && <input type="hidden" name="freedByLessonId" value={presetFromReplacement?.freedByLessonId} />}
 
       {state.error && <FormErrorBox message={state.error} />}
-      <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
+        <PrivateButtonLink href="/calendario" variant="ghost">
+          Cancelar
+        </PrivateButtonLink>
+      </div>
     </form>
   );
 }

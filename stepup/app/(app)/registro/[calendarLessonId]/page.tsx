@@ -1,4 +1,3 @@
-import Link from "@/components/nav/private-link";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -8,6 +7,9 @@ import { getCalendarLesson } from "@/lib/repositories/calendar-lessons";
 import { listStudents } from "@/lib/repositories/students";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ErrorState } from "@/components/ui/states";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "./registration-workspace";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 
@@ -48,11 +50,16 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
     }
   } catch {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar este registro." />
-        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
-          Volver
-        </Link>
+      <div className={PAGE_WIDTH.medium}>
+        <PageTitle>Registrar clase</PageTitle>
+        <div className="mt-5 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No pudimos cargar este registro." />
+          </div>
+          <PrivateButtonLink href="/registro" variant="secondary">
+            Volver
+          </PrivateButtonLink>
+        </div>
       </div>
     );
   }
@@ -65,30 +72,21 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
   if (!detail || !calendarLesson) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver a Clases por registrar
-      </Link>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">{calendarLesson.classTitle?.trim() || "Registrar clase"}</h1>
-        <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[detail.registration.activityKind]}</span>
-      </div>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {formatInstantDayLongTime(calendarLesson.startAt)}
-      </p>
-
-      <div className="mt-6">
-        <RegistrationWorkspace
-          registration={detail.registration}
-          participants={participantsInfo}
-          participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}
-          attendanceByStudentId={detail.attendanceByStudentId}
-          evaluationByStudentId={detail.evaluationByStudentId}
-          pendingHomeworkByStudentId={pendingHomeworkByStudentId}
-          scheduledStartAt={calendarLesson.startAt}
-          scheduledEndAt={calendarLesson.endAt}
-        />
-      </div>
-    </div>
+    <RegistroPageFrame
+      title={calendarLesson.classTitle?.trim() || "Registrar clase"}
+      subtitle={formatInstantDayLongTime(calendarLesson.startAt)}
+      kindLabel={ACTIVITY_KIND_LABEL[detail.registration.activityKind]}
+    >
+      <RegistrationWorkspace
+        registration={detail.registration}
+        participants={participantsInfo}
+        participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}
+        attendanceByStudentId={detail.attendanceByStudentId}
+        evaluationByStudentId={detail.evaluationByStudentId}
+        pendingHomeworkByStudentId={pendingHomeworkByStudentId}
+        scheduledStartAt={calendarLesson.startAt}
+        scheduledEndAt={calendarLesson.endAt}
+      />
+    </RegistroPageFrame>
   );
 }

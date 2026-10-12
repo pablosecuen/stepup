@@ -150,7 +150,7 @@ test("formatCivilDayMonth: 12/10 para los rótulos 'desde 12/10' / 'hasta 11/10'
 });
 
 test("Series: la sucesora dice \"Desde dd/mm\" y cada tramo anterior vigente \"hasta dd/mm\" (o \"sin fecha de fin\" si los datos están incompletos) — ninguno se oculta", () => {
-  const page = source("app/(app)/calendario/series/page.tsx");
+  const page = source("components/calendar/series-list-view.tsx");
   assert.match(page, /listLineagePredecessors\(rulesForLineage/, "se listan los tramos anteriores del linaje");
   assert.match(page, /Desde \$\{formatCivilDayMonth\(rule\.effectiveFromDate\)\}/, "la sucesora rige desde su fecha efectiva");
   assert.match(page, /earlierSegments\.map\(\(segment\)/, "cada tramo anterior se dibuja");

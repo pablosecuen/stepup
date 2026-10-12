@@ -53,3 +53,13 @@ export function Field({ label, htmlFor, hint, error, children }: { label: ReactN
     </div>
   );
 }
+
+/** Casilla o botón de opción (tinta al elegirse): 20 px visibles dentro de una fila de ≥ 44 px. */
+export const checkClass = "h-5 w-5 shrink-0 accent-ink";
+
+/** Fila de una casilla/opción con su texto: toda la fila es el objetivo táctil (≥ 44 px). */
+export const choiceRowClass =
+  "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-1.5 text-[15px] text-textPrimary transition-colors hover:bg-paperDeep has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-inset";
+
+/** Grupo con borde que contiene filas de opciones (lista de alumnos, principal, días). */
+export const choiceGroupClass = "flex flex-col rounded-md border-[1.5px] border-border bg-surface p-1";

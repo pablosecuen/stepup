@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import Link from "@/components/nav/private-link";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightIcon, ClipboardDocumentCheckIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
 import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
-import { FormErrorBox } from "@/components/auth/form-boxes";
 import { formatMinutes } from "@/lib/format/number-format";
-import { useDialogA11y } from "@/lib/ui/use-dialog-a11y";
+import { Button, PrivateButtonLink } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Field, TextInput } from "@/components/ui/field";
+import { Notice } from "@/components/ui/notice";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-textSecondary">{children}</span>;
+  return (
+    <span className="inline-flex min-h-[26px] items-center rounded-pill border border-border bg-paperDeep px-2.5 text-[12.5px] font-[650] text-textSecondary [overflow-wrap:anywhere]">{children}</span>
+  );
 }
 
 interface RealLessonDetailModalProps {
@@ -23,6 +26,14 @@ interface RealLessonDetailModalProps {
   onClose: () => void;
 }
 
+const RESCHEDULE_FORM_ID = "lesson-reschedule-form";
+
+/**
+ * Detalle de una clase del calendario. Un único diálogo con pasos (acciones → reprogramar → confirmar, o acciones → cancelar):
+ * el título y los datos de la clase (día, hora, duración, modalidad, estado) quedan siempre a la vista, así cada paso dice QUÉ
+ * clase y QUÉ fecha se están modificando sin depender del fondo oscurecido. La lógica (acciones, validaciones, foco entre
+ * pasos) no cambió; sólo la presentación.
+ */
 export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLessonDetailModalProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -31,14 +42,14 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [now, setNow] = useState<number | null>(null);
-  // Foco, Escape, Tab atrapado y devolución del foco al control que abrió el detalle.
-  const dialogRef = useDialogA11y(onClose);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   // Al pasar de un paso a otro (reprogramar, confirmar, cancelar, volver) el foco va al control principal del paso nuevo
-  // (marcado con data-autofocus) o, al volver a las acciones, al propio diálogo: nunca se pierde en <body>.
+  // (marcado con data-autofocus) o, al volver a las acciones, al propio diálogo: nunca se pierde en <body>. El diálogo (con su
+  // foco atrapado, Escape y devolución del foco al control que lo abrió) es `components/ui/dialog.tsx`.
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    const dialog = dialogRef.current;
+    const dialog = bodyRef.current?.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) return;
     const target = dialog.querySelector<HTMLElement>("[data-autofocus]");
     (target ?? dialog).focus();
@@ -60,6 +71,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
   const isCancelled = item.status === "cancelled";
   const isPast = now !== null && start.getTime() <= now;
   const canEdit = item.status !== "cancelled" && item.status !== "completed";
+  const lessonTitle = item.title?.trim() || item.studentName || "Serie sin alumnos";
 
   function handleCancel() {
     setError(null);
@@ -143,33 +155,53 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
       })()
     : null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" role="presentation" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lesson-detail-title"
-        aria-busy={pending}
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-panel focus:outline-none sm:rounded-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h2 id="lesson-detail-title" className="text-lg font-bold text-textPrimary">
-            {item.title?.trim() || item.studentName || "Serie sin alumnos"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar detalle de la clase"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-textMuted transition-all duration-150 ease-premium hover:bg-background hover:text-textPrimary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue"
-          >
-            <XMarkIcon className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
+  const step: "actions" | "reschedule" | "confirm" | "cancel" = reschedulingOpen && reschedulePreview ? "confirm" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
+  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "confirm" ? `Confirmar horario · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : lessonTitle;
 
-        <div className="mt-4 flex flex-wrap gap-1.5">
+  const footer =
+    step === "confirm" ? (
+      <>
+        <Button variant="secondary" onClick={() => setReschedulePreview(null)} disabled={pending}>
+          Volver
+        </Button>
+        <Button variant="primary" onClick={confirmReschedule} busy={pending} data-autofocus>
+          {pending ? "Guardando..." : "Confirmar reprogramación"}
+        </Button>
+      </>
+    ) : step === "reschedule" ? (
+      <>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setReschedulingOpen(false);
+            setReschedulePreview(null);
+          }}
+        >
+          Cancelar
+        </Button>
+        <Button type="submit" form={RESCHEDULE_FORM_ID} variant="primary">
+          Ver vista previa
+        </Button>
+      </>
+    ) : step === "cancel" ? (
+      <>
+        <Button variant="secondary" onClick={() => setConfirmingCancel(false)} data-autofocus>
+          Volver
+        </Button>
+        <Button variant="danger" onClick={handleCancel} busy={pending}>
+          {pending ? "Cancelando..." : "Sí, cancelar clase"}
+        </Button>
+      </>
+    ) : (
+      <Button variant="secondary" onClick={onClose}>
+        Cerrar
+      </Button>
+    );
+
+  return (
+    <Dialog title={dialogTitle} onClose={onClose} size="md" footer={footer} busy={pending}>
+      <div ref={bodyRef} className="flex flex-col gap-3.5">
+        <div className="flex flex-wrap gap-1.5">
           <MetaChip>{dateLabel}</MetaChip>
           <MetaChip>{timeLabel}</MetaChip>
           <MetaChip>{formatMinutes(durationMinutes)}</MetaChip>
@@ -180,147 +212,94 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLesso
           {!item.isMaterialized && <MetaChip>Ocurrencia virtual</MetaChip>}
         </div>
 
-        {item.studentId && (
-          <section className="mt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-textSecondary">Alumno</h3>
-            <Link
-              href={`/alumnos/${item.studentId}`}
-              className="mt-2 flex min-h-11 items-center rounded-md border border-border px-3 py-2 text-sm font-medium text-brandBlue transition-colors hover:border-brandBlue/30 hover:underline"
-            >
-              {item.studentName || "Ver perfil"} →
-            </Link>
-          </section>
-        )}
-
         <p role="status" aria-live="polite" className="sr-only">
           {pending ? "Guardando el cambio…" : ""}
         </p>
 
-        {error && (
-          <div className="mt-4">
-            <FormErrorBox message={error} />
+        {error && <Notice tone="bad">{error}</Notice>}
+
+        {step === "confirm" && reschedulePreview && (
+          <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-accentLine bg-accentSoft p-3.5">
+            <p className="text-[15px] font-bold text-textPrimary">Confirmar nuevo horario</p>
+            <p className="text-[15px] text-textSecondary">
+              {formatCivilDayLabelShort(reschedulePreview.date)} de {String(reschedulePreview.hour).padStart(2, "0")}:{String(reschedulePreview.minute).padStart(2, "0")} a {previewNewEndLabel} ({durationMinutes} min)
+            </p>
+            <p className="text-[13.5px] text-textMuted">El horario original queda liberado y marcado como reprogramado — el historial se conserva.</p>
           </div>
         )}
 
-        {reschedulingOpen && reschedulePreview ? (
-          <div className="mt-5 flex flex-col gap-3 rounded-md border border-brandBlue/30 bg-brandBlue/5 p-3">
-            <p className="text-sm font-semibold text-textPrimary">Confirmar nuevo horario</p>
-            <p className="text-sm text-textSecondary">
-              {formatCivilDayLabelShort(reschedulePreview.date)} de{" "}
-              {String(reschedulePreview.hour).padStart(2, "0")}:{String(reschedulePreview.minute).padStart(2, "0")} a {previewNewEndLabel} ({durationMinutes} min)
-            </p>
-            <p className="text-xs text-textMuted">El horario original queda liberado y marcado como reprogramado — el historial se conserva.</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={confirmReschedule}
-                disabled={pending}
-                data-autofocus
-                className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {pending ? "Guardando..." : "Confirmar reprogramación"}
-              </button>
-              <button type="button" onClick={() => setReschedulePreview(null)} disabled={pending} className="rounded-md border border-border px-3 py-2 text-sm disabled:opacity-50">
-                Volver
-              </button>
-            </div>
-          </div>
-        ) : reschedulingOpen ? (
-          <form action={(fd) => openReschedulePreview(fd)} className="mt-5 flex flex-col gap-3 rounded-md border border-border p-3">
-            <p className="text-sm font-semibold text-textPrimary">Nuevo horario</p>
-            <input type="date" name="date" required aria-label="Nueva fecha" data-autofocus className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm" />
-            <input type="time" name="time" required aria-label="Nueva hora" className="rounded-md border border-borderStrong bg-background px-3 py-2 text-sm" />
-            <p className="text-xs text-textMuted">La duración ({formatMinutes(durationMinutes)}) se mantiene igual a la clase original.</p>
-            <div className="flex gap-2">
-              <button type="submit" className="flex-1 rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white">
-                Ver vista previa
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setReschedulingOpen(false);
-                  setReschedulePreview(null);
-                }}
-                className="rounded-md border border-border px-3 py-2 text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
+        {step === "reschedule" && (
+          <form id={RESCHEDULE_FORM_ID} action={(fd) => openReschedulePreview(fd)} className="flex flex-col gap-3.5">
+            <Field label="Nueva fecha" htmlFor="reschedule-date">
+              <TextInput id="reschedule-date" type="date" name="date" required aria-label="Nueva fecha" data-autofocus />
+            </Field>
+            <Field label="Nueva hora" htmlFor="reschedule-time">
+              <TextInput id="reschedule-time" type="time" name="time" required aria-label="Nueva hora" />
+            </Field>
+            <p className="text-[13.5px] text-textMuted">La duración ({formatMinutes(durationMinutes)}) se mantiene igual a la clase original.</p>
           </form>
-        ) : confirmingCancel ? (
-          <div role="alert" className="mt-5 flex flex-col gap-3 rounded-md border border-statusRojo/30 bg-statusRojo/5 p-3">
-            <p className="text-sm font-medium text-statusRojo">¿Cancelar esta clase? Esta acción queda registrada y es visible para la profesora.</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={pending}
-                className="flex-1 rounded-md bg-statusRojo px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                {pending ? "Cancelando..." : "Sí, cancelar clase"}
-              </button>
-              <button type="button" onClick={() => setConfirmingCancel(false)} data-autofocus className="rounded-md border border-border px-3 py-2 text-sm">
-                Volver
-              </button>
-            </div>
-          </div>
-        ) : (
-          <section className="mt-5">
-            <div className="flex flex-col gap-1.5">
+        )}
+
+        {step === "cancel" && (
+          <Notice tone="bad" role="alert">
+            ¿Cancelar esta clase? Esta acción queda registrada y es visible para la profesora.
+          </Notice>
+        )}
+
+        {step === "actions" && (
+          <>
+            {item.studentId && (
+              <section>
+                <h3 className="text-label font-bold uppercase text-textMuted">Alumno</h3>
+                <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" block className="mt-2 !justify-between">
+                  <span className="min-w-0 text-left [overflow-wrap:anywhere]">{item.studentName || "Ver perfil"}</span>
+                  <ArrowRightIcon className="h-4 w-4 shrink-0" aria-hidden />
+                </PrivateButtonLink>
+              </section>
+            )}
+
+            <section className="flex flex-col gap-2">
               {isPast && item.status !== "cancelled" && item.status !== "completed" && (
-                <Link
-                  href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"}
-                  className="min-h-11 flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
-                >
+                <PrivateButtonLink href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"} variant="primary" block>
+                  <ClipboardDocumentCheckIcon className="h-5 w-5" aria-hidden />
                   Registrar esta clase
-                </Link>
+                </PrivateButtonLink>
               )}
               {canReuseSlot && (
-                <Link
+                <PrivateButtonLink
                   href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
-                  className="min-h-11 flex items-center justify-between rounded-md border border-brandBlue/30 bg-brandBlue/5 px-3 py-2.5 text-left text-sm font-semibold text-brandBlueDark transition-colors hover:bg-brandBlue/10"
+                  variant="secondary"
+                  block
                 >
+                  <UserPlusIcon className="h-5 w-5" aria-hidden />
                   Reemplazar con otro alumno
-                </Link>
+                </PrivateButtonLink>
               )}
               {canEdit && !isPast && (
-                <button
-                  type="button"
-                  onClick={() => setReschedulingOpen(true)}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textPrimary transition-colors hover:border-brandBlue/30"
-                >
+                <Button variant="secondary" block onClick={() => setReschedulingOpen(true)}>
+                  <ArrowPathIcon className="h-5 w-5" aria-hidden />
                   Reprogramar esta clase
-                </button>
-              )}
-              {canEdit && !isCancelled && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmingCancel(true)}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-statusRojo transition-colors hover:border-statusRojo/30"
-                >
-                  Cancelar esta clase
-                </button>
+                </Button>
               )}
               {item.recurrenceId && (
-                <Link
-                  href={`/calendario/series`}
-                  className="min-h-11 flex items-center justify-between rounded-md border border-border px-3 py-2.5 text-left text-sm font-medium text-textPrimary transition-colors hover:border-brandBlue/30"
-                >
-                  Administrar esta serie →
-                </Link>
+                <PrivateButtonLink href="/calendario/series" variant="secondary" block>
+                  Administrar esta serie
+                  <ArrowRightIcon className="h-4 w-4" aria-hidden />
+                </PrivateButtonLink>
               )}
-            </div>
-          </section>
-        )}
+            </section>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 ease-premium hover:bg-brandBlueDark active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brandBlue focus-visible:ring-offset-2"
-        >
-          Cerrar
-        </button>
+            {canEdit && !isCancelled && (
+              <section className="border-t-[1.5px] border-border pt-3">
+                <Button variant="dangerOutline" block onClick={() => setConfirmingCancel(true)}>
+                  <XCircleIcon className="h-5 w-5" aria-hidden />
+                  Cancelar esta clase
+                </Button>
+              </section>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

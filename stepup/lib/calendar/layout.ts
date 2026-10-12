@@ -16,7 +16,7 @@ export const START_HOUR = 8;
 export const END_HOUR = 22;
 export const HOUR_HEIGHT_PX = 80;
 export const TIME_COLUMN_WIDTH_PX = 48;
-export const DAY_COLUMN_MIN_WIDTH_PX = 168;
+export const DAY_COLUMN_MIN_WIDTH_PX = 148;
 const CARD_GAP_PX = 6;
 const MIN_CARD_HEIGHT_PX = 46;
 

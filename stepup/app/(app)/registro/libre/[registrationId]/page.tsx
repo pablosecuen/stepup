@@ -1,4 +1,3 @@
-import Link from "@/components/nav/private-link";
 import { notFound } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -8,6 +7,9 @@ import { listStudents } from "@/lib/repositories/students";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ErrorState } from "@/components/ui/states";
+import { PrivateButtonLink } from "@/components/ui/button";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 
@@ -53,11 +55,16 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
     }
   } catch {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar este registro." />
-        <Link href="/registro" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brandBlue hover:underline">
-          Volver
-        </Link>
+      <div className={PAGE_WIDTH.medium}>
+        <PageTitle>Clase no programada</PageTitle>
+        <div className="mt-5 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No pudimos cargar este registro." />
+          </div>
+          <PrivateButtonLink href="/registro" variant="secondary">
+            Volver
+          </PrivateButtonLink>
+        </div>
       </div>
     );
   }
@@ -75,32 +82,26 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
   const scheduledEndAt = registration.scheduledEndAt ?? scheduledStartAt;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/registro" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver a Clases por registrar
-      </Link>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Clase no programada</h1>
-        <span className="rounded-pill bg-background px-2.5 py-1 text-xs font-semibold text-textSecondary">{ACTIVITY_KIND_LABEL[registration.activityKind]}</span>
-      </div>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {formatInstantDayLongTime(scheduledStartAt)} ·{" "}
-        {ADHOC_OUTCOME_LABEL[registration.outcome]}
-        {registration.modality ? ` · ${registration.modality === "presencial" ? "Presencial" : registration.modality === "online" ? "Online" : "Mixta"}` : ""}
-      </p>
-
-      <div className="mt-6">
-        <RegistrationWorkspace
-          registration={registration}
-          participants={participantsInfo}
-          participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}
-          attendanceByStudentId={detail.attendanceByStudentId}
-          evaluationByStudentId={detail.evaluationByStudentId}
-          pendingHomeworkByStudentId={pendingHomeworkByStudentId}
-          scheduledStartAt={scheduledStartAt}
-          scheduledEndAt={scheduledEndAt}
-        />
-      </div>
-    </div>
+    <RegistroPageFrame
+      title="Clase no programada"
+      subtitle={
+        <>
+          {formatInstantDayLongTime(scheduledStartAt)} · {ADHOC_OUTCOME_LABEL[registration.outcome]}
+          {registration.modality ? ` · ${registration.modality === "presencial" ? "Presencial" : registration.modality === "online" ? "Online" : "Mixta"}` : ""}
+        </>
+      }
+      kindLabel={ACTIVITY_KIND_LABEL[registration.activityKind]}
+    >
+      <RegistrationWorkspace
+        registration={registration}
+        participants={participantsInfo}
+        participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}
+        attendanceByStudentId={detail.attendanceByStudentId}
+        evaluationByStudentId={detail.evaluationByStudentId}
+        pendingHomeworkByStudentId={pendingHomeworkByStudentId}
+        scheduledStartAt={scheduledStartAt}
+        scheduledEndAt={scheduledEndAt}
+      />
+    </RegistroPageFrame>
   );
 }

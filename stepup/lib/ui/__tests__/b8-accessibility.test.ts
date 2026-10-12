@@ -139,9 +139,10 @@ test("todo enlace de texto o botón del área privada y pública declara 44 px d
 
 test("los botones de iconos tienen el tamaño y la medida mínimos de 44 px", () => {
   const toolbar = code("components/calendar/real-calendar-toolbar.tsx");
-  assert.equal((toolbar.match(/flex h-11 w-11 items-center justify-center rounded-full/g) ?? []).length, 2, "anterior y siguiente");
+  assert.match(toolbar, /const ROUND_BUTTON =\s*"flex h-11 w-11 items-center justify-center/);
+  assert.equal((toolbar.match(/className=\{`min-h-11 min-w-11 \$\{ROUND_BUTTON\}`\}/g) ?? []).length, 2, "anterior y siguiente");
   assert.match(toolbar, /aria-label=\{isWeek \? "Semana anterior" : "Día anterior"\}/);
-  assert.match(code("components/calendar/real-lesson-detail-modal.tsx"), /aria-label="Cerrar detalle de la clase"[\s\S]{0,200}?flex h-11 w-11/);
+  assert.match(code("components/ui/dialog.tsx"), /aria-label="Cerrar" className="[^"]*flex h-11 w-11/, "el diálogo de la clase usa este botón de cierre");
   assert.match(code("components/dashboard/home-view.tsx"), /relative flex h-11 w-11 items-center justify-center rounded-full/);
 });
 
@@ -224,10 +225,13 @@ test("el diálogo de la clase: Escape, foco atrapado, foco inicial, devolución 
   assert.match(hook, /document\.body\.style\.overflow = "hidden"/);
   assert.match(hook, /document\.body\.style\.overflow = previousOverflow/);
   const modal = code("components/calendar/real-lesson-detail-modal.tsx");
-  assert.match(modal, /useDialogA11y\(onClose\)/);
-  assert.match(modal, /role="dialog"[\s\S]{0,80}aria-modal="true"[\s\S]{0,80}aria-labelledby="lesson-detail-title"/);
-  assert.match(modal, /tabIndex=\{-1\}/);
-  assert.match(modal, /aria-busy=\{pending\}/);
+  const dialog = code("components/ui/dialog.tsx");
+  assert.match(modal, /<Dialog title=\{dialogTitle\} onClose=\{onClose\} size="md" footer=\{footer\} busy=\{pending\}>/, "el detalle es el Dialog del sistema (foco atrapado, Escape, devolución del foco)");
+  assert.match(dialog, /useDialogA11y\(onClose\)/);
+  assert.match(dialog, /role="dialog"[\s\S]{0,80}aria-modal="true"[\s\S]{0,80}aria-labelledby=\{titleId\}/);
+  assert.match(dialog, /tabIndex=\{-1\}/);
+  assert.match(dialog, /aria-busy=\{busy \|\| undefined\}/);
+  assert.match(modal, /dialogTitle = step === "reschedule" \? `Reprogramar · \$\{lessonTitle\}`/, "cada paso nombra la clase");
   assert.match(modal, /role="status" aria-live="polite"/);
   assert.match(modal, /aria-label="Nueva fecha"/);
   assert.match(modal, /aria-label="Nueva hora"/);
@@ -263,8 +267,6 @@ test("foco visible: ningún control oculta su contorno sin poner su propio anill
 test("cada campo tiene nombre accesible: etiqueta asociada o envolvente, o aria-label (las excepciones están nombradas)", () => {
   // <label> sin htmlFor que no envuelve a su campo: sólo se admite si el campo siguiente lleva aria-label.
   const ALLOWED_SIBLING_LABELS: Record<string, number> = {
-    "app/(app)/calendario/disponibilidad/availability-editor.tsx": 3,
-    "app/(app)/registro/nuevo/nuevo-registro-form.tsx": 3,
   };
   for (const file of sources(["app", "components"])) {
     const source = code(file);
@@ -277,13 +279,13 @@ test("cada campo tiene nombre accesible: etiqueta asociada o envolvente, o aria-
   for (const label of ["Modalidad", "Resultado", "Buscar alumno activo"]) assert.match(registro, new RegExp(`aria-label="${label}"`));
   // Campos del registro de clase: etiqueta envolvente.
   const workspace = code("app/(app)/registro/[calendarLessonId]/registration-workspace.tsx");
-  assert.match(workspace, /<label className="flex flex-col gap-1\.5">\s*<span className="text-xs font-medium text-textSecondary">Nota general/);
-  assert.match(workspace, /<span className="text-xs font-medium text-textSecondary">Observaciones<\/span>/);
+  assert.match(workspace, /<Field label="Nota general \(1-10, opcional\)" htmlFor=\{`\$\{uid\}-grade`\}>/);
+  assert.match(workspace, /<Field label="Observaciones" htmlFor=\{`\$\{uid\}-obs`\}>/);
 });
 
 test("los botones de selección dicen su estado (aria-pressed) y no dependen sólo del color", () => {
   const checks: Array<[string, RegExp]> = [
-    ["app/(app)/calendario/nueva/new-lesson-form.tsx", /aria-pressed=\{mode === "single"\}[\s\S]*aria-pressed=\{mode === "series"\}/],
+    ["app/(app)/calendario/nueva/new-lesson-form.tsx", /\["single", "Clase única"\][\s\S]*\["series", "Serie semanal"\][\s\S]*aria-pressed=\{mode === value\}/],
     ["app/(app)/registro/[calendarLessonId]/registration-workspace.tsx", /aria-pressed=\{form\.attendanceStatus === option\}/],
     ["app/(app)/registro/[calendarLessonId]/registration-workspace.tsx", /aria-pressed=\{form\.homeworkReviews\[/],
     ["components/calendar/weekday-schedule-editor.tsx", /aria-pressed=\{cycleLengthWeeks === option\.value\}/],
@@ -296,8 +298,8 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
   ];
   for (const [file, pattern] of checks) assert.match(code(file), pattern, file);
   const card = code("components/calendar/real-lesson-card.tsx");
-  assert.match(card, /metaParts\.push\("Reemplazo"\)/);
-  assert.match(card, /metaParts\.push\("Pasada"\)/);
+  assert.match(card, /parts\.push\("Reemplazo"\)/);
+  assert.match(card, /parts\.push\("Pasada"\)/);
   assert.match(card, /, reemplazo/);
   assert.match(card, /, ya transcurrida/);
   assert.match(card, /CARD_TEXT_COLORS\.primary/);
@@ -323,7 +325,8 @@ test("alcance: B8 no toca autenticación, B0, Inicio ni la lógica de datos", ()
 });
 
 test("los enlaces cortos de la cabecera del Calendario también miden 44 px de ancho (Series, medido en Production: 37 px)", () => {
-  const page = code("app/(app)/calendario/page.tsx");
-  assert.equal((page.match(/inline-flex min-h-11 min-w-11 items-center justify-center px-2/g) ?? []).length, 3);
-  assert.match(page, /<nav aria-label="Secciones del calendario"/);
+  const view = code("components/calendar/calendar-view.tsx");
+  const nav = view.slice(view.indexOf('<nav aria-label="Secciones del calendario"'), view.indexOf("</nav>"));
+  assert.equal((nav.match(/className=\{linkClass\(\)\}/g) ?? []).length, 3, "Series, Disponibilidad y Clases por registrar: linkClass trae min-h-11 y el ícono fija el ancho");
+  assert.match(view, /<nav aria-label="Secciones del calendario"/);
 });

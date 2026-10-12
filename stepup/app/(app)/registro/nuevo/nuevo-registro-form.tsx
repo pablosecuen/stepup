@@ -6,7 +6,10 @@ import { startAdhocRegistrationAction } from "@/lib/actions/lesson-registrations
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { ADHOC_OUTCOME_LABEL, LATE_CANCELLATION_POLICY_LABEL, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { FormErrorBox } from "@/components/auth/form-boxes";
+import { Button, PrivateButtonLink } from "@/components/ui/button";
+import { Field, SelectInput, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
 
 const OUTCOMES: AdhocOutcome[] = ["clase_dictada", "profesora_ausente", "feriado", "cancelada_con_aviso", "cancelada_tarde", "reprogramada"];
 const LATE_CANCELLATION_POLICIES: LateCancellationPolicy[] = ["cobrar_100", "cobrar_porcentaje", "descontar_del_paquete", "no_cobrar"];
@@ -89,31 +92,28 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Alumno o grupo *</label>
+    <div className="flex flex-col gap-5">
+      <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
+        <legend className="px-2 text-label font-bold uppercase text-textMuted">Alumno o grupo *</legend>
         {selectedStudents.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <ul className="mb-3 flex flex-wrap gap-2" aria-label="Alumnos elegidos">
             {selectedStudents.map((s) => (
-              <span key={s.id} className="flex items-center gap-1.5 rounded-pill bg-surface px-2.5 py-1 text-xs font-semibold text-textPrimary">
-                {s.name}
-                <button type="button" onClick={() => toggle(s.id)} aria-label={`Quitar a ${s.name}`} className="text-textMuted hover:text-textPrimary">
-                  ×
+              <li key={s.id} className="inline-flex min-h-11 items-center gap-1 rounded-pill border-[1.5px] border-ink bg-ink pl-4 pr-1 text-[14.5px] font-[650] text-background">
+                <span className="[overflow-wrap:anywhere]">{s.name}</span>
+                <button type="button" onClick={() => toggle(s.id)} aria-label={`Quitar a ${s.name}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill text-background hover:bg-white/15">
+                  <span aria-hidden>×</span>
                 </button>
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar alumno activo"
-          aria-label="Buscar alumno activo"
-          className="mt-1.5 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
-        />
-        <div className="mt-1.5 max-h-48 overflow-y-auto rounded-md border border-border">
+        <div className="relative">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-textMuted" aria-hidden />
+          <TextInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar alumno activo" aria-label="Buscar alumno activo" className="block pl-11" />
+        </div>
+        <div className={`${choiceGroupClass} mt-2 max-h-64 overflow-y-auto`}>
           {filtered.length === 0 ? (
-            <p className="px-2.5 py-2 text-sm text-textMuted">No hay alumnos activos con ese nombre.</p>
+            <p className="px-3 py-3 text-[14.5px] text-textMuted">No hay alumnos activos con ese nombre.</p>
           ) : (
             filtered.map((s) => {
               const isSelected = selectedIds.includes(s.id);
@@ -123,108 +123,96 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
                   type="button"
                   onClick={() => toggle(s.id)}
                   aria-pressed={isSelected}
-                  className="flex w-full items-center justify-between gap-2 border-b border-border px-2.5 py-2 text-left text-sm last:border-b-0 hover:bg-background"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left text-[15px] text-textPrimary transition-colors hover:bg-paperDeep"
                 >
-                  <span className="flex items-center gap-2">
-                    <span aria-hidden className={`flex h-4 w-4 items-center justify-center rounded border text-[11px] font-bold leading-none text-white ${isSelected ? "border-brandBlue bg-brandBlue" : "border-borderStrong"}`}>{isSelected ? "✓" : ""}</span>
-                    {s.name}
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span
+                      aria-hidden
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-[1.5px] text-[12px] font-bold leading-none ${isSelected ? "border-ink bg-ink text-background" : "border-borderStrong"}`}
+                    >
+                      {isSelected ? "✓" : ""}
+                    </span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{s.name}</span>
                   </span>
-                  <span className="text-xs text-textMuted">{s.level}</span>
+                  <span className="shrink-0 text-[13px] text-textMuted">{s.level}</span>
                 </button>
               );
             })
           )}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-textSecondary">Fecha *</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-textSecondary">Hora *</span>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-textSecondary">Duración (min) *</span>
-          <input
-            type="number"
-            min="1"
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(e.target.value)}
-            className="rounded-md border border-borderStrong px-2.5 py-2 text-sm"
-          />
-        </label>
-      </div>
+      <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
+        <legend className="px-2 text-label font-bold uppercase text-textMuted">Clase</legend>
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Field label="Fecha *" htmlFor="adhoc-date">
+              <TextInput id="adhoc-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Field label="Hora *" htmlFor="adhoc-time">
+              <TextInput id="adhoc-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </Field>
+            <Field label="Duración (min) *" htmlFor="adhoc-duration">
+              <TextInput id="adhoc-duration" type="number" min="1" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+            </Field>
+          </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-textSecondary">Modalidad</label>
-        <select aria-label="Modalidad" value={modality} onChange={(e) => setModality(e.target.value)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm">
-          <option value="presencial">Presencial</option>
-          <option value="online">Online</option>
-          <option value="mixta">Mixta</option>
-        </select>
-      </div>
+          <Field label="Modalidad" htmlFor="adhoc-modality">
+            <SelectInput id="adhoc-modality" aria-label="Modalidad" value={modality} onChange={(e) => setModality(e.target.value)}>
+              <option value="presencial">Presencial</option>
+              <option value="online">Online</option>
+              <option value="mixta">Mixta</option>
+            </SelectInput>
+          </Field>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-textSecondary">Resultado</label>
-        <select aria-label="Resultado" value={outcome} onChange={(e) => setOutcome(e.target.value as AdhocOutcome)} className="rounded-md border border-borderStrong px-2.5 py-2 text-sm">
-          {OUTCOMES.map((o) => (
-            <option key={o} value={o}>
-              {ADHOC_OUTCOME_LABEL[o]}
-            </option>
-          ))}
-        </select>
-        {outcome === "feriado" && (
-          <label className="mt-1 flex items-center gap-2 text-sm text-textSecondary">
-            <input type="checkbox" checked={holidayException} onChange={(e) => setHolidayException(e.target.checked)} />
-            Excepción: igual se dictó
-          </label>
-        )}
-        {outcome === "cancelada_tarde" && (
-          <div className="mt-1.5 flex flex-col gap-2 rounded-md border border-border bg-background p-3">
-            <label className="text-xs font-medium text-textSecondary">
-              Política de cancelación tardía
-              <select
-                value={lateCancellationPolicy}
-                onChange={(e) => setLateCancellationPolicy(e.target.value as LateCancellationPolicy)}
-                className="mt-1 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
-              >
-                {LATE_CANCELLATION_POLICIES.map((p) => (
-                  <option key={p} value={p}>
-                    {LATE_CANCELLATION_POLICY_LABEL[p]}
+          <div className="flex flex-col gap-3">
+            <Field label="Resultado" htmlFor="adhoc-outcome">
+              <SelectInput id="adhoc-outcome" aria-label="Resultado" value={outcome} onChange={(e) => setOutcome(e.target.value as AdhocOutcome)}>
+                {OUTCOMES.map((o) => (
+                  <option key={o} value={o}>
+                    {ADHOC_OUTCOME_LABEL[o]}
                   </option>
                 ))}
-              </select>
-            </label>
-            {lateCancellationPolicy === "cobrar_porcentaje" && (
-              <label className="text-xs font-medium text-textSecondary">
-                Porcentaje a cobrar
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={lateCancellationPercentage}
-                  onChange={(e) => setLateCancellationPercentage(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-borderStrong px-2.5 py-2 text-sm"
-                />
+              </SelectInput>
+            </Field>
+            {outcome === "feriado" && (
+              <label className={choiceRowClass}>
+                <input type="checkbox" checked={holidayException} onChange={(e) => setHolidayException(e.target.checked)} className={checkClass} />
+                Excepción: igual se dictó
               </label>
             )}
+            {outcome === "cancelada_tarde" && (
+              <div className="flex flex-col gap-4 rounded-md border-[1.5px] border-border bg-surface2 p-3.5">
+                <Field label="Política de cancelación tardía" htmlFor="adhoc-policy">
+                  <SelectInput id="adhoc-policy" value={lateCancellationPolicy} onChange={(e) => setLateCancellationPolicy(e.target.value as LateCancellationPolicy)}>
+                    {LATE_CANCELLATION_POLICIES.map((p) => (
+                      <option key={p} value={p}>
+                        {LATE_CANCELLATION_POLICY_LABEL[p]}
+                      </option>
+                    ))}
+                  </SelectInput>
+                </Field>
+                {lateCancellationPolicy === "cobrar_porcentaje" && (
+                  <Field label="Porcentaje a cobrar" htmlFor="adhoc-percentage">
+                    <TextInput id="adhoc-percentage" type="number" min="0" max="100" value={lateCancellationPercentage} onChange={(e) => setLateCancellationPercentage(e.target.value)} />
+                  </Field>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </fieldset>
 
       {error && <FormErrorBox message={error} />}
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending || !operationId}
-        className="rounded-md bg-brandBlue px-4 py-2.5 text-sm font-semibold text-white shadow-card disabled:opacity-60"
-      >
-        {pending ? "Guardando..." : "Registrar clase"}
-      </button>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <Button variant="primary" onClick={handleSubmit} busy={pending} disabled={!operationId}>
+          {pending ? "Guardando..." : "Registrar clase"}
+        </Button>
+        <PrivateButtonLink href="/registro" variant="ghost">
+          Cancelar
+        </PrivateButtonLink>
+      </div>
     </div>
   );
 }

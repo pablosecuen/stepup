@@ -167,8 +167,8 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
   assert.deepEqual(
     used.map(([file, href]) => `${file} → ${href}`).sort(),
     [
-      "app/(app)/calendario/series/page.tsx → /calendario/nueva",
       "app/(app)/configuracion/page.tsx → /configuracion",
+      "components/calendar/series-list-view.tsx → /calendario/nueva",
       "components/students/profile/clases-tab.tsx → /registro",
       "components/students/profile/progreso-tab.tsx → /registro",
       "components/students/profile/resumen-tab.tsx → /registro",

@@ -1,5 +1,8 @@
 "use client";
 
+import { ArrowDownIcon } from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/button";
+
 /**
  * Botón "Ir a la última serie" — el listado de Series puede crecer mucho
  * (muchas series activas/pausadas) y queda dentro de un contenedor con
@@ -14,12 +17,9 @@ export function ScrollToLastSeries({ lastRuleId }: { lastRuleId: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={scrollToLast}
-      className="rounded-pill border border-border px-3 py-1 text-xs font-semibold text-brandBlue transition-colors hover:border-brandBlue/30"
-    >
-      Ir a la última serie ↓
-    </button>
+    <Button variant="secondary" onClick={scrollToLast}>
+      Ir a la última serie
+      <ArrowDownIcon className="h-4 w-4" aria-hidden />
+    </Button>
   );
 }

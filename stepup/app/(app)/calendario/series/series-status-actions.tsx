@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, type FormState } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
+import { Button } from "@/components/ui/button";
+import { Field, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 import type { RecurrenceRuleStatus } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
@@ -104,130 +106,124 @@ export function SeriesStatusActions({
   const eligibleStudents = students.filter((s) => s.status !== "archivado" || selectedParticipantIds.has(s.id));
 
   return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="mt-3 flex flex-col gap-3 border-t-[1.5px] border-border pt-3">
+      <div className="flex flex-wrap items-center gap-2">
         {status === "active" && (
-          <button type="button" disabled={pending} onClick={() => applyStatus("paused")} className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textPrimary hover:border-brandBlue/30 disabled:opacity-50">
+          <Button variant="secondary" disabled={pending} onClick={() => applyStatus("paused")}>
             Pausar
-          </button>
+          </Button>
         )}
         {status === "paused" && (
-          <button type="button" disabled={pending} onClick={() => applyStatus("active")} className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-textPrimary hover:border-brandBlue/30 disabled:opacity-50">
+          <Button variant="secondary" disabled={pending} onClick={() => applyStatus("active")}>
             Reanudar
-          </button>
+          </Button>
         )}
         {status !== "ended" && (
-          <button type="button" disabled={pending} onClick={() => applyStatus("ended")} className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-statusRojo hover:border-statusRojo/30 disabled:opacity-50">
-            Finalizar
-          </button>
-        )}
-        {status !== "ended" && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            aria-expanded={editingFuture}
             onClick={() => {
               setEditingParticipants(false);
               setEditingFuture((v) => !v);
             }}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-brandBlue hover:border-brandBlue/30"
           >
             {editingFuture ? "Cerrar" : "Editar futuras"}
-          </button>
+          </Button>
         )}
         {status !== "ended" && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            aria-expanded={editingParticipants}
             onClick={() => {
               setEditingFuture(false);
               setEditingParticipants((v) => !v);
             }}
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-brandBlue hover:border-brandBlue/30"
           >
             {editingParticipants ? "Cerrar" : "Modificar participantes"}
-          </button>
+          </Button>
+        )}
+        {status !== "ended" && (
+          <Button variant="dangerGhost" disabled={pending} onClick={() => applyStatus("ended")} className="sm:ml-auto">
+            Finalizar
+          </Button>
         )}
       </div>
 
       {error && <FormErrorBox message={error} />}
 
       {editingFuture && (
-        <form action={submitEditFuture} className="mt-2 flex flex-col gap-3 rounded-md border border-border p-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`effectiveDate-${ruleId}`} className="text-xs font-medium text-textSecondary">
-              Desde qué fecha rige el nuevo patrón
-            </label>
-            <input id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required className="rounded-md border border-borderStrong px-3 py-2 text-sm" />
+        <form action={submitEditFuture} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+          <div>
+            <h3 className="font-display text-card font-semibold">Dividir: «esta y las siguientes»</h3>
+            <p className="mt-0.5 text-[13.5px] text-textMuted">El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
           </div>
+          <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`}>
+            <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required />
+          </Field>
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
-          <p className="text-xs text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
-          <button type="submit" disabled={pending} className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
-            {pending ? "Guardando..." : "Confirmar desde esa fecha"}
-          </button>
+          <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <Button type="submit" variant="primary" busy={pending}>
+              {pending ? "Guardando..." : "Confirmar desde esa fecha"}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditingFuture(false)}>
+              Cancelar
+            </Button>
+          </div>
         </form>
       )}
 
       {editingParticipants && (
-        <form action={submitChangeParticipants} className="mt-2 flex flex-col gap-3 rounded-md border border-border p-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`participantsEffectiveDate-${ruleId}`} className="text-xs font-medium text-textSecondary">
-              Desde qué fecha rige el nuevo grupo de alumnos
-            </label>
-            <input
-              id={`participantsEffectiveDate-${ruleId}`}
-              name="participantsEffectiveDate"
-              type="date"
-              required
-              className="rounded-md border border-borderStrong px-3 py-2 text-sm"
-            />
-          </div>
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="text-xs font-medium text-textSecondary">Alumnos *</legend>
-            <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2">
+        <form action={submitChangeParticipants} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+          <h3 className="font-display text-card font-semibold">Modificar participantes</h3>
+          <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`}>
+            <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required />
+          </Field>
+          <fieldset className="min-w-0">
+            <legend className="text-sm font-[650] text-textSecondary">Alumnos *</legend>
+            <div className={`${choiceGroupClass} mt-2 max-h-64 overflow-y-auto`}>
               {eligibleStudents.map((student) => (
-                <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-background">
-                  <input
-                    type="checkbox"
-                    checked={selectedParticipantIds.has(student.id)}
-                    onChange={() => toggleParticipant(student.id)}
-                    className="h-4 w-4 rounded border-border text-brandBlue focus:ring-brandBlue"
-                  />
-                  {student.name}
+                <label key={student.id} className={choiceRowClass}>
+                  <input type="checkbox" checked={selectedParticipantIds.has(student.id)} onChange={() => toggleParticipant(student.id)} className={checkClass} />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
                 </label>
               ))}
             </div>
           </fieldset>
           {selectedParticipantIds.size >= 2 && (
-            <fieldset className="flex flex-col gap-1.5">
-              <legend className="text-xs font-medium text-textSecondary">Alumno principal *</legend>
-              <div className="flex flex-col gap-1 rounded-md border border-border p-2">
+            <fieldset className="min-w-0">
+              <legend className="text-sm font-[650] text-textSecondary">Alumno principal *</legend>
+              <div className={`${choiceGroupClass} mt-2`}>
                 {eligibleStudents
                   .filter((student) => selectedParticipantIds.has(student.id))
                   .map((student) => (
-                    <label key={student.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-background">
+                    <label key={student.id} className={choiceRowClass}>
                       <input
                         type="radio"
                         name={`primaryStudentIdChoice-${ruleId}`}
                         checked={selectedPrimaryId === student.id}
                         onChange={() => setSelectedPrimaryId(student.id)}
-                        className="h-4 w-4 border-border text-brandBlue focus:ring-brandBlue"
+                        className={checkClass}
                       />
-                      {student.name}
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
                     </label>
                   ))}
               </div>
-              {!selectedPrimaryId && <p className="text-xs text-statusRojo">Elegí quién es el alumno principal.</p>}
+              {!selectedPrimaryId && <p className="mt-1.5 text-[13px] font-semibold text-bad">Elegí quién es el alumno principal.</p>}
             </fieldset>
           )}
           <FormInfoBox>
             Las clases ya pasadas o ya registradas conservan sus alumnos de siempre. Las clases entre hoy y esa fecha que todavía no se
             registraron se guardan primero con el grupo actual — nunca se reinterpreta el pasado.
           </FormInfoBox>
-          <button
-            type="submit"
-            disabled={pending || selectedParticipantIds.size === 0 || !selectedPrimaryId}
-            className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {pending ? "Guardando..." : "Confirmar desde esa fecha"}
-          </button>
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <Button type="submit" variant="primary" busy={pending} disabled={selectedParticipantIds.size === 0 || !selectedPrimaryId}>
+              {pending ? "Guardando..." : "Confirmar desde esa fecha"}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditingParticipants(false)}>
+              Cancelar
+            </Button>
+          </div>
         </form>
       )}
     </div>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { startRegistrationAction } from "@/lib/actions/lesson-registrations";
 import { guardNetwork } from "@/lib/actions/network-guard";
+import { Button, type ButtonVariant } from "@/components/ui/button";
 
 export function StartRegistrationButton({
   calendarLessonId,
@@ -11,12 +12,14 @@ export function StartRegistrationButton({
   occurrenceKey,
   recurrenceIndex,
   label,
+  variant = "secondary",
 }: {
   calendarLessonId: string | null;
   recurrenceId: string | null;
   occurrenceKey: string | null;
   recurrenceIndex: number | null;
   label: string;
+  variant?: ButtonVariant;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -35,16 +38,15 @@ export function StartRegistrationButton({
   }
 
   return (
-    <div className="flex flex-col gap-1.5 sm:items-start">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={pending}
-        className="rounded-md bg-brandBlue px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brandBlueDark disabled:opacity-60"
-      >
+    <div className="flex flex-col gap-1.5 sm:items-end">
+      <Button variant={variant} onClick={handleClick} busy={pending}>
         {pending ? "Abriendo..." : label}
-      </button>
-      {error && <p className="text-xs font-medium text-statusRojo">{error}</p>}
+      </Button>
+      {error && (
+        <p role="alert" className="text-[13px] font-semibold text-bad">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

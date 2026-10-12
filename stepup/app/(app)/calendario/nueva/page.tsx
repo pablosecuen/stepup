@@ -1,9 +1,10 @@
-import Link from "@/components/nav/private-link";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
 import { ErrorState } from "@/components/ui/states";
+import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
+import { FormPage } from "@/components/ui/form-page";
 import { NewLessonForm } from "./new-lesson-form";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +26,11 @@ export default async function NuevaClasePage({
     students = await listStudents(ctx);
   } catch {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-        <ErrorState message="No pudimos cargar el formulario. Volvé a intentarlo." />
+      <div className={PAGE_WIDTH.narrow}>
+        <PageTitle>Nueva clase</PageTitle>
+        <div className="mt-5">
+          <ErrorState message="No pudimos cargar el formulario. Volvé a intentarlo." />
+        </div>
       </div>
     );
   }
@@ -36,20 +40,17 @@ export default async function NuevaClasePage({
   const activeStudents = students.filter((student) => student.status === "activo");
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
-      <Link href="/calendario" className="inline-flex min-h-11 items-center text-sm font-medium text-brandBlue hover:underline">
-        ← Volver al Calendario
-      </Link>
-      <h1 className="mt-3 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Nueva clase</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {params.freedByLessonId
+    <FormPage
+      backHref="/calendario"
+      backLabel="Volver al Calendario"
+      title="Nueva clase"
+      subtitle={
+        params.freedByLessonId
           ? "Este horario reemplaza una clase cancelada — el horario/duración/modalidad ya vienen completados."
-          : "Elegí si es una clase única o una serie recurrente."}
-      </p>
-
-      <div className="mt-7">
-        <NewLessonForm activeStudents={activeStudents} presetFromReplacement={params} />
-      </div>
-    </div>
+          : "Elegí si es una clase única o una serie recurrente."
+      }
+    >
+      <NewLessonForm activeStudents={activeStudents} presetFromReplacement={params} />
+    </FormPage>
   );
 }
