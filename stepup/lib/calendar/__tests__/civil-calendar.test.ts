@@ -17,7 +17,7 @@ import {
 } from "../civil-calendar.ts";
 import { getLocalDateKey, getLocalTimeKey } from "../timezone.ts";
 import { formatCivilWeek } from "../../format/date-format.ts";
-import { groupItemsByDayKey, layoutDayItems, currentTimeTop } from "../layout.ts";
+import { groupItemsByDayKey, layoutDayItems, currentTimeTop, HOUR_HEIGHT_PX } from "../layout.ts";
 import type { CalendarViewItem } from "../occurrences.ts";
 
 const BA = CALENDAR_TIMEZONE;
@@ -180,13 +180,13 @@ test("agrupado por día y posición de tarjetas: domingo tarde cae en la columna
   const lunes = layoutDayItems(byDay.get("2026-09-28") ?? []);
   assert.equal(lunes[0].top, 0, "08:00 = tope de la grilla");
   const domingo = layoutDayItems(byDay.get("2026-10-04") ?? []);
-  assert.equal(domingo[0].top, ((23 * 60 + 30 - 8 * 60) / 60) * 80, "23:30 medido desde las 08:00 con 80 px/h");
+  assert.equal(domingo[0].top, ((23 * 60 + 30 - 8 * 60) / 60) * HOUR_HEIGHT_PX, "23:30 medido desde las 08:00 con la escala de la grilla");
 });
 
 test("resaltado de hoy y línea de hora actual usan la hora civil de BA", () => {
   assert.equal(currentTimeTop(new Date("2026-10-03T11:00:00.000Z")), 0, "08:00 en BA");
   assert.equal(currentTimeTop(new Date("2026-10-03T10:59:00.000Z")), null, "07:59 en BA: antes del eje");
-  assert.equal(currentTimeTop(new Date("2026-10-03T20:07:00.000Z")), ((17 * 60 + 7 - 8 * 60) / 60) * 80, "17:07 en BA");
+  assert.equal(currentTimeTop(new Date("2026-10-03T20:07:00.000Z")), ((17 * 60 + 7 - 8 * 60) / 60) * HOUR_HEIGHT_PX, "17:07 en BA");
   assert.equal(currentTimeTop(new Date("2026-10-04T01:00:00.000Z")), null, "22:00 en BA: fuera del eje (22 no incluido)");
   assert.equal(todayDateKey(new Date("2026-10-03T20:07:00.000Z")), resolveCalendarWindow({}, new Date("2026-10-03T20:07:00.000Z")).dayKeys[5], "hoy = la sexta columna (sábado)");
 });

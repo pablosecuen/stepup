@@ -5,12 +5,12 @@ import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
 import {
-  DAY_COLUMN_MIN_WIDTH_PX,
   HOURS,
   HOUR_HEIGHT_PX,
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
   currentTimeTop,
+  dayColumnMinWidth,
   groupItemsByDayKey,
   layoutDayItems,
 } from "@/lib/calendar/layout";
@@ -43,14 +43,18 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
 
   const visible = visibleCalendarItems(items);
   const isWeek = dayKeys.length > 1;
-  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${dayKeys.length}, minmax(${DAY_COLUMN_MIN_WIDTH_PX}px, 1fr))`;
-  const gridMinWidth = TIME_COLUMN_WIDTH_PX + dayKeys.length * DAY_COLUMN_MIN_WIDTH_PX;
   const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${HOUR_HEIGHT_PX}px` };
 
   const nowLineTop = now ? currentTimeTop(now) : null;
   // "Hoy" y el día de cada tarjeta se resuelven como claves civiles en la zona del calendario: igual en servidor (UTC) y navegador.
   const todayKey = now ? todayDateKey(now) : null;
   const itemsByDayKey = groupItemsByDayKey(visible);
+  // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta); un día con muchos
+  // carriles ensancha su columna en vez de comprimir las tarjetas.
+  const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [])]));
+  const columnWidths = dayKeys.map((dayKey) => dayColumnMinWidth(positionedByDay.get(dayKey) ?? []));
+  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px ${columnWidths.map((width) => `minmax(${width}px, 1fr)`).join(" ")}`;
+  const gridMinWidth = TIME_COLUMN_WIDTH_PX + columnWidths.reduce((sum, width) => sum + width, 0);
   const nowMs = (now ?? new Date()).getTime();
 
   const stateOf = (item: CalendarViewItem) => ({
@@ -91,7 +95,7 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
 
             {dayKeys.map((dayKey) => {
               const today = todayKey === dayKey;
-              const positioned = layoutDayItems(itemsByDayKey.get(dayKey) ?? []);
+              const positioned = positionedByDay.get(dayKey) ?? [];
 
               return (
                 <div key={dayKey} className={`relative border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
@@ -117,7 +121,7 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
       <div className="flex flex-col gap-6 nav:hidden">
         {dayKeys.map((dayKey) => {
           const today = todayKey === dayKey;
-          const dayItems = layoutDayItems(itemsByDayKey.get(dayKey) ?? []).map((p) => p.item);
+          const dayItems = (positionedByDay.get(dayKey) ?? []).map((p) => p.item);
           return (
             <section key={dayKey} aria-label={formatCivilDayLabelShort(dayKey)}>
               {/* En la vista de un solo día el título de la barra ya dice el día: acá sólo el recuento. */}

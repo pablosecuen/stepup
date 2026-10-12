@@ -46,11 +46,13 @@ test("Escritorio: grilla horaria; 320–819 px: agenda agrupada por día con los
   assert.match(grid, /flex flex-col gap-6 nav:hidden/, "la agenda sólo existe por debajo de 820 px");
   assert.equal([...grid.matchAll(/setSelected\(/g)].length >= 3, true, "cualquiera de las dos abre el mismo detalle");
   assert.match(grid, /<RealLessonDetailModal/);
-  assert.match(grid, /layoutDayItems\(itemsByDayKey\.get\(dayKey\) \?\? \[\]\)\.map\(\(p\) => p\.item\)/, "la agenda ordena igual que la grilla");
-  // La geometría de la grilla (alto proporcional a la duración, mínimo operable, nunca invade la próxima clase) no cambió.
+  assert.match(grid, /\(positionedByDay\.get\(dayKey\) \?\? \[\]\)\.map\(\(p\) => p\.item\)/, "la agenda ordena igual que la grilla");
+  // Geometría: alto del bloque proporcional a la duración real, zona interactiva de al menos 44 px y carriles para las que se tocan
+  // (detalle y pruebas de comportamiento en lib/calendar/__tests__/layout-lanes.test.ts).
   const layout = code("lib/calendar/layout.ts");
-  assert.match(layout, /const MIN_CARD_HEIGHT_PX = 46;/);
-  assert.match(layout, /const height = Math\.min\(availableToNextPx, Math\.max\(MIN_CARD_HEIGHT_PX, naturalHeight\)\);/);
+  assert.match(layout, /export const MIN_TARGET_PX = 44;/);
+  assert.match(layout, /const hitHeight = Math\.max\(height, MIN_TARGET_PX\);/);
+  assert.match(layout, /Math\.min\(durationPx - CARD_GAP_PX, gridBottomPx - top\)/);
 });
 
 test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sólo con color) y la fila de agenda mide ≥ 56 px sin cortar textos", () => {
@@ -65,7 +67,7 @@ test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sól
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /\btruncate\b|text-ellipsis|line-clamp/, "la agenda nunca corta los textos con «…»");
   assert.match(row, /\[overflow-wrap:anywhere\]/);
-  assert.match(card, /const tight = height < 44;/, "una clase seguida de otra sigue legible sin estirar su alto");
+  assert.match(card, /const layout = height >= 40 \? "two" : height >= 22 \? "one" : "below";/, "un bloque corto sigue legible sin estirar su alto: el texto baja a la zona de toque");
 });
 
 test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día en cada paso, separa «Cancelar esta clase» y conserva las acciones y el foco entre pasos", () => {
