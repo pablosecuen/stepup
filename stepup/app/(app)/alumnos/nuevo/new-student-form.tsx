@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button, PrivateButtonLink, buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
+import { isDuplicatePanelVisible } from "@/lib/students/duplicate-review";
 import { StudentFormFields } from "@/components/students/student-form-fields";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 
@@ -31,10 +32,19 @@ const NEW_STUDENT_OPERATION_STORAGE_KEY = "teacherflow:alumnos:nuevo:operacion";
  * mandar únicamente `claimId` + `confirmDuplicate=true`, el servidor
  * revalida todo desde cero contra lo que él mismo guardó.
  *
- * Peso visual: confirmar «es otra persona» es una acción secundaria a propósito (el botón principal del formulario sigue
- * siendo «Guardar alumno»), para que crear un duplicado nunca sea el camino más llamativo.
+ * Acciones: «Volver y editar los datos» (secundaria; sólo cierra el aviso y devuelve el foco al formulario, sin enviar nada) y
+ * «Es otra persona, crear igualmente» (de menor peso que cualquier otra, para que crear un duplicado nunca sea el camino más
+ * llamativo). El botón principal del formulario sigue siendo «Guardar alumno».
  */
-export function DuplicateReviewPanel({ candidates, changed }: { candidates: NonNullable<FormState["duplicate"]>["candidates"]; changed: boolean }) {
+export function DuplicateReviewPanel({
+  candidates,
+  changed,
+  onBack,
+}: {
+  candidates: NonNullable<FormState["duplicate"]>["candidates"];
+  changed: boolean;
+  onBack: () => void;
+}) {
   return (
     <Card tone="warn" role="status" className="flex flex-col gap-3.5">
       <p className="flex items-start gap-2.5 text-[15px] font-bold text-textPrimary">
@@ -65,9 +75,14 @@ export function DuplicateReviewPanel({ candidates, changed }: { candidates: NonN
       <p className="text-[13.5px] text-textSecondary">
         Si es otra persona, confirmá abajo para crearla de todas formas. Si es la misma, cancelá y editá los datos existentes desde su ficha.
       </p>
-      <Button type="submit" name="confirmDuplicate" value="true" variant="secondary" className="self-start">
-        Es otra persona, crear igualmente
-      </Button>
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        <Button type="button" variant="secondary" onClick={onBack}>
+          Volver y editar los datos
+        </Button>
+        <Button type="submit" name="confirmDuplicate" value="true" variant="ghost">
+          Es otra persona, crear igualmente
+        </Button>
+      </div>
     </Card>
   );
 }
@@ -88,6 +103,14 @@ export function NewStudentForm({ customLevels }: { customLevels: CustomLevelReco
   // el claim del servidor recién se crea al enviar. Hasta tenerla el envío queda bloqueado.
   const { operationId, rotate: rotateOperationId } = useDraftOperationId(NEW_STUDENT_OPERATION_STORAGE_KEY);
 
+  const formRef = useRef<HTMLFormElement>(null);
+  // Estado cuyo aviso de duplicado la persona cerró con «Volver y editar los datos» (sólo oculta; nada se envía ni se pierde).
+  const [dismissedState, setDismissedState] = useState<FormState | null>(null);
+  function backToEdit() {
+    setDismissedState(state);
+    formRef.current?.querySelector<HTMLInputElement>("#name")?.focus();
+  }
+
   // Confirmación canónica del servidor con ESTA clave (alta nueva o ya existente): rota la clave y recién ahí navega a la
   // ficha. Nunca antes: navegar con la clave vieja en sessionStorage haría que el próximo "Nuevo alumno" reencuentre al anterior.
   useEffect(() => {
@@ -98,11 +121,13 @@ export function NewStudentForm({ customLevels }: { customLevels: CustomLevelReco
   }, [state, operationId]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de alta de alumno">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-5" aria-label="Formulario de alta de alumno">
       <input type="hidden" name="operationId" value={operationId ?? ""} />
       <StudentFormFields customLevels={customLevels} />
       {state.error && <FormErrorBox message={state.error} />}
-      {state.duplicate && <DuplicateReviewPanel candidates={state.duplicate.candidates} changed={state.duplicate.changed} />}
+      {state.duplicate && isDuplicatePanelVisible(state, dismissedState) && (
+        <DuplicateReviewPanel candidates={state.duplicate.candidates} changed={state.duplicate.changed} onBack={backToEdit} />
+      )}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <SubmitButton disabled={!operationId} />
         <PrivateButtonLink href="/alumnos" variant="ghost">

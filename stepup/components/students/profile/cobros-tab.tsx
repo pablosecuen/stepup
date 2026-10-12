@@ -31,12 +31,14 @@ const ICON = "h-3.5 w-3.5";
  */
 export function CobrosTabContent({
   studentId,
+  studentName,
   charges,
   payments,
   allocations,
   todayDateKey,
 }: {
   studentId: string;
+  studentName: string;
   charges: PaymentChargeRecord[];
   payments: PaymentRecord[];
   allocations: PaymentAllocationRecord[];
@@ -116,7 +118,18 @@ export function CobrosTabContent({
                     </div>
                   )}
                   {charge.voidedAt && charge.voidReason && <p className="mt-2 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Motivo: {charge.voidReason}</p>}
-                  {!charge.voidedAt && !balance.isFullyPaid && <ChargeActions chargeId={charge.id} studentId={studentId} balance={balance.balance} />}
+                  {!charge.voidedAt && !balance.isFullyPaid && <ChargeActions
+                      chargeId={charge.id}
+                      studentId={studentId}
+                      balance={balance.balance}
+                      context={{
+                        studentName,
+                        concept: `${CHARGE_TYPE_LABEL[charge.chargeType] ?? charge.chargeType}${charge.trainingSeriesName ? ` · ${charge.trainingSeriesName}` : ""}`,
+                        dueDate: charge.dueDate,
+                        originalAmount: charge.originalAmount,
+                      }}
+                    />
+                  }
                 </li>
               );
             })}
@@ -147,7 +160,7 @@ export function CobrosTabContent({
                   {payment.notes && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">{payment.notes}</p>}
                   {payment.voidedAt && payment.voidReason && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Anulado: {payment.voidReason}</p>}
                 </div>
-                {payment.voidedAt ? <Badge icon={<NoSymbolIcon className={ICON} aria-hidden />}>Anulado</Badge> : <VoidPaymentButton paymentId={payment.id} />}
+                {payment.voidedAt ? <Badge icon={<NoSymbolIcon className={ICON} aria-hidden />}>Anulado</Badge> : <VoidPaymentButton paymentId={payment.id} context={{ studentName, amount: payment.amount, method: METHOD_LABEL[payment.method] ?? payment.method, paidAt: payment.paidAt }} />}
               </li>
             ))}
           </ul>

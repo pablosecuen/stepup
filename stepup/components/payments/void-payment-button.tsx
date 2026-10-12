@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { DialogContext, paymentContextLines, type PaymentContext } from "@/components/payments/dialog-context";
 
 /** Puerto de `VoidPaymentDialog.tsx` (móvil) — anula un pago puntual, nunca lo borra. Acción de poco peso que abre un diálogo. */
-export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
+export function VoidPaymentButton({ paymentId, context }: { paymentId: string; context?: PaymentContext }) {
   const router = useRouter();
   const reasonId = useId();
   const [open, setOpen] = useState(false);
@@ -57,6 +58,7 @@ export function VoidPaymentButton({ paymentId }: { paymentId: string }) {
             </>
           }
         >
+          <DialogContext title={context?.studentName} lines={paymentContextLines(context)} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label="Motivo de la anulación" htmlFor={reasonId}>
             <TextInput id={reasonId} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motivo de la anulación" />

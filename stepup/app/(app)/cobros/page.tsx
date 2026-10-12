@@ -91,7 +91,17 @@ export default async function CobrosPage() {
                   Saldo pendiente: <span className="font-semibold text-textPrimary">{formatMoney(entry.balance)}</span>
                   {entry.paidAmount > 0 && <span className="text-xs text-textMuted"> (de {formatMoney(entry.originalAmount)}, ya pagó {formatMoney(entry.paidAmount)})</span>}
                 </p>
-                <ChargeActions chargeId={entry.chargeId} studentId={entry.studentId} balance={entry.balance} />
+                <ChargeActions
+                  chargeId={entry.chargeId}
+                  studentId={entry.studentId}
+                  balance={entry.balance}
+                  context={{
+                    studentName: entry.studentName,
+                    concept: CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType,
+                    dueDate: entry.dueDate,
+                    originalAmount: entry.originalAmount,
+                  }}
+                />
               </li>
             );
           })}

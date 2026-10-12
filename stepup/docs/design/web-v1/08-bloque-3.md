@@ -1,4 +1,4 @@
-# 08 · Bloque 3 — Alumnos y perfil del alumno (implementado, en revisión visual)
+# 08 · Bloque 3 — Alumnos y perfil del alumno (cerrado y aprobado, con dos correcciones finales de UX)
 
 Misma rama `v1-web`, a continuación de los Bloques 1 y 2 aprobados. **Sin deploy.** La rama está publicada (sin force) separada de la rama de Production.
 
@@ -25,7 +25,7 @@ Nuevo en el sistema de componentes: variante de botón `dangerGhost` (acción de
 | Pantalla | Principal (una) | Secundarias | Destructivas |
 |---|---|---|---|
 | Lista | «Nuevo alumno» (tinta, arriba a la derecha) | «Aplicar filtros» (contorno), «Limpiar» (enlace), «Filtros» en móvil (contorno), paginación (contorno) | — |
-| Nuevo alumno | «Guardar alumno» (tinta, al final del formulario) | «Cancelar» (sin borde); en el aviso de duplicado: «Revisar alumno existente» y «Es otra persona, crear igualmente» (contorno, a propósito menos llamativos que Guardar) | — |
+| Nuevo alumno | «Guardar alumno» (tinta, al final del formulario) | «Cancelar» (sin borde); en el aviso de duplicado: «Revisar alumno existente» y «Volver y editar los datos» (contorno) y, de menor peso, «Es otra persona, crear igualmente» (sin borde) | — |
 | Editar alumno | «Guardar cambios» (tinta) | «Cancelar» (sin borde, vuelve a la ficha) | — (el cambio de estado vive en el Resumen del perfil) |
 | Perfil — encabezado | — (la pantalla informa; no hay acción dominante) | «Editar alumno» (contorno), «Volver a Alumnos» (enlace de texto) | — |
 | Perfil — Resumen | — | «Aplicar cambio de estado» (contorno) en su propia tarjeta al final | Al elegir «Archivado» el botón pasa a contorno rojo y queda bloqueado hasta elegir la agenda futura |
@@ -48,15 +48,18 @@ En móvil los botones de las filas se reparten en renglones (nunca una fila de b
 | Contador «Tareas 2» en la pestaña | Sin contador | Las tareas sólo se cargan en Resumen y Tareas; mostrarlo en las demás exigiría una consulta nueva. |
 | Fecha corta «Mié 14 oct · 09:00» | «miércoles, 14 de octubre, 09:00» | Se conserva el formato de fecha ya establecido. |
 | Etiqueta «Vence pronto» y «Pago vencido» | «Pendiente» / «Vencido» (los textos existentes) | «Vence pronto» es un estado nuevo; no cambia la lógica de vencimientos. |
-| Diálogo de pago con el alumno y la obligación como contexto | Diálogo con los mismos campos | `ChargeActions` no recibe el nombre ni el tipo de cobro; no se agregan datos. |
 | Ayudas bajo los campos («Máximo: el saldo pendiente», «No puede ser futura», «día/mes/año», precio de referencia, niveles propios) | Sin esas ayudas | Texto nuevo; las restricciones siguen aplicándose como antes. |
 | Errores por campo en Nuevo alumno | Los errores existentes (cuadro de error del servidor) | Propuesta (`04-propuestas-y-limites.md`): no se inventan validaciones. |
-| «Cancelar y editar los datos» dentro del aviso de duplicado | Texto que explica cómo seguir | El aviso lo produce el servidor; no se puede cerrar sin reenviar. |
 | Diálogo de confirmación antes de archivar | Elección explícita de la agenda futura (como antes) | Confirmaciones nuevas son «Propuesta». |
 | «Previsualizar de nuevo» | «Previsualizar» | Copy nuevo. |
 | Vacíos de la lista con título y una segunda línea («Probá con otro nombre o quitá algún filtro», «Agregá a tu primer alumno…») | Un solo mensaje existente + la acción | Copy nuevo; el vacío conserva su texto y su acción («Limpiar filtros» / «Agregar alumno»). |
 | Barra superior móvil con flecha y nombre del alumno, campana con panel, contadores y tarjeta «En curso» de la barra lateral | La barra del Bloque 1 | Pertenecen al shell (propuestas). |
 | Fila de la lista clicable en toda su superficie (escritorio) | Nombre y avatar son el enlace; en móvil, toda la tarjeta | Un enlace por fila evita tablas con filas interactivas poco accesibles. |
+
+## Correcciones finales de UX (tras la revisión del Bloque 3)
+
+1. **Contexto en los diálogos de Cobros.** «Registrar pago», «Anular cobro» y «Anular pago» muestran, dentro del propio diálogo, qué se está modificando: *alumno · concepto*, *vence …* e *importe original* y *saldo pendiente* (cobros), o *importe · método · fecha* y el alumno (pagos). Sólo se usa lo que cada llamador ya tenía (la pestaña Cobros del perfil: alumno y cobro/pago cargados; Cobros global: la entrada del centro de cobros); lo que falta se omite y no se agregó ninguna consulta (`components/payments/dialog-context.tsx`). El saldo ya no se repite como párrafo aparte. Los dos llamadores y los diálogos de Cobros global comparten los mismos componentes.
+2. **«Volver y editar los datos» en el aviso de posible duplicado.** Botón común (no envía) que cierra el aviso y devuelve el foco al campo «Nombre completo». No dispara ninguna Server Action, no crea alumno, no rota ni borra la clave por borrador y no limpia lo escrito (el formulario no se desmonta). El aviso se oculta sólo para ese estado: un envío nuevo lo vuelve a mostrar (`lib/students/duplicate-review.ts`). «Es otra persona, crear igualmente» sigue siendo una confirmación explícita y pasó a ser la acción de menor peso (sin borde).
 
 ## Verificación
 

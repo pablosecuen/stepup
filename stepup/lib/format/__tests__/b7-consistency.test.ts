@@ -91,7 +91,7 @@ test("cada pantalla de importes usa formatMoney (ya no hay un formatCurrency pro
   const files = [
     "app/(app)/cobros/page.tsx",
     "app/(app)/resumen-financiero/page.tsx",
-    "components/payments/charge-actions.tsx",
+    "components/payments/dialog-context.tsx", // el saldo y los importes de los diálogos de cobros se formatean acá
     "components/payments/training-billing-config.tsx",
     "components/students/profile/cobros-tab.tsx",
     "components/students/profile/informacion-tab.tsx",

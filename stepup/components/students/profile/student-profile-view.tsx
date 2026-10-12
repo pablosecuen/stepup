@@ -63,7 +63,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
         {tab === "progreso" && <ProgresoTabContent entries={data.evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
         {tab === "cobros" && (
-          <CobrosTabContent studentId={student.id} charges={data.charges} payments={data.payments} allocations={data.allocations} todayDateKey={data.todayDateKey} />
+          <CobrosTabContent studentId={student.id} studentName={student.name} charges={data.charges} payments={data.payments} allocations={data.allocations} todayDateKey={data.todayDateKey} />
         )}
         {tab === "reportes" && (
           <ReportesTabContent studentId={student.id} studentName={student.name} monthsWithClasses={data.monthsWithClasses} initialHistory={data.reportHistory} />

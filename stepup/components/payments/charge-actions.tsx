@@ -6,11 +6,11 @@ import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments"
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { todayInArgentina } from "@/lib/format/date-format";
-import { formatMoney } from "@/lib/format/number-format";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { DialogContext, chargeContextLines, joinContextTitle, type ChargeContext } from "@/components/payments/dialog-context";
 
 const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferencia: "Transferencia", otro: "Otro" };
 
@@ -23,7 +23,7 @@ const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferenc
  * Presentación: «Registrar pago» es la acción normal (secundaria) y «Anular cobro» queda al otro extremo, con menos peso; cada
  * una abre un diálogo (hoja inferior en móvil). La lógica (estado, clave de operación, validaciones, acciones) no cambió.
  */
-export function ChargeActions({ chargeId, studentId, balance }: { chargeId: string; studentId: string; balance: number }) {
+export function ChargeActions({ chargeId, studentId, balance, context }: { chargeId: string; studentId: string; balance: number; context?: ChargeContext }) {
   const router = useRouter();
   const uid = useId();
   const [mode, setMode] = useState<"idle" | "pay" | "void">("idle");
@@ -113,6 +113,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
             </>
           }
         >
+          <DialogContext title={joinContextTitle(context?.studentName, context?.concept)} lines={chargeContextLines(context, balance)} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label="Importe" htmlFor={`${uid}-amount`}>
             <TextInput id={`${uid}-amount`} type="number" min={1} max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -132,9 +133,6 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
           <Field label="Observación (opcional)" htmlFor={`${uid}-notes`}>
             <TextInput id={`${uid}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
-          <p className="text-[14px] text-textMuted">
-            Saldo pendiente de este cobro: <span className="font-bold tf-num text-textPrimary">{formatMoney(balance)}</span>.
-          </p>
         </Dialog>
       )}
 
@@ -154,6 +152,7 @@ export function ChargeActions({ chargeId, studentId, balance }: { chargeId: stri
             </>
           }
         >
+          <DialogContext title={joinContextTitle(context?.studentName, context?.concept)} lines={chargeContextLines(context, balance)} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Notice tone="warn">
             Se va a anular este cobro. Queda visible en el historial como anulado — nunca se borra. Si tiene un pago asignado, primero tenés que anular ese pago.

@@ -72,7 +72,7 @@ test("Nuevo alumno: conserva la idempotencia (clave por borrador), el bloqueo mi
   const form = code("app/(app)/alumnos/nuevo/new-student-form.tsx");
   assert.match(form, /useDraftOperationId\(NEW_STUDENT_OPERATION_STORAGE_KEY\)/);
   assert.match(form, /<input type="hidden" name="operationId" value=\{operationId \?\? ""\} \/>/);
-  assert.match(form, /name="confirmDuplicate"\s+value="true"\s+variant="secondary"/, "confirmar «es otra persona» es secundaria");
+  assert.match(form, /name="confirmDuplicate" value="true" variant="ghost"/, "confirmar «es otra persona» es la de menor peso");
   assert.equal([...form.matchAll(/variant="primary"/g)].length, 1, "una única acción principal: Guardar alumno");
   assert.match(form, /disabled=\{pending \|\| disabled\}/);
   assert.match(form, /href="\/alumnos" variant="ghost"/, "Cancelar es de poco peso");
@@ -153,4 +153,54 @@ test("Cambio de estado: la elección de agenda al archivar sigue siendo explíci
   assert.match(form, /destructive=\{isArchiving\}/);
   assert.match(form, /variant=\{destructive \? "dangerOutline" : "secondary"\}/);
   assert.match(form, /name="removeFromFuture"/);
+});
+
+// --- Correcciones finales de UX (Bloque 3) ------------------------------------------------------------------------------
+
+test("Duplicado: «Volver y editar los datos» sólo cierra el aviso y devuelve el foco: no envía, no crea, no rota la clave ni borra lo escrito", () => {
+  const form = code("app/(app)/alumnos/nuevo/new-student-form.tsx");
+  assert.match(form, /<Button type="button" variant="secondary" onClick=\{onBack\}>\s*Volver y editar los datos/, "botón común (no submit) y secundario");
+  const back = form.slice(form.indexOf("function backToEdit()"), form.indexOf("useEffect(() => {"));
+  assert.match(back, /setDismissedState\(state\)/);
+  assert.match(back, /querySelector<HTMLInputElement>\("#name"\)\?\.focus\(\)/, "el foco vuelve al formulario");
+  assert.doesNotMatch(back, /formAction|requestSubmit|submit\(|rotateOperationId|clear\(|reset\(|router\./, "no envía, no rota la clave, no limpia ni navega");
+  // «Es otra persona» sigue siendo una confirmación explícita (submit con confirmDuplicate) y de menor peso que «Volver y editar».
+  assert.match(form, /<Button type="submit" name="confirmDuplicate" value="true" variant="ghost">\s*Es otra persona, crear igualmente/);
+  assert.ok(form.indexOf("Volver y editar los datos") < form.indexOf("Es otra persona, crear igualmente"));
+  assert.equal([...form.matchAll(/variant="primary"/g)].length, 1, "sigue habiendo una única acción principal");
+  // El formulario es no controlado y no se desmonta: lo escrito y la clave por borrador sobreviven.
+  assert.match(form, /<StudentFormFields customLevels=\{customLevels\} \/>/);
+  assert.match(form, /useDraftOperationId\(NEW_STUDENT_OPERATION_STORAGE_KEY\)/);
+});
+
+test("Duplicado: el aviso se oculta sólo para el estado descartado; un envío nuevo (otro estado) lo vuelve a mostrar", async () => {
+  const { isDuplicatePanelVisible } = await import("../../students/duplicate-review.ts");
+  const first = { duplicate: { candidates: [], changed: false } };
+  const second = { duplicate: { candidates: [], changed: true } };
+  assert.equal(isDuplicatePanelVisible(first, null), true);
+  assert.equal(isDuplicatePanelVisible(first, first), false, "descartado: oculto");
+  assert.equal(isDuplicatePanelVisible(second, first), true, "otro envío: vuelve a mostrarse");
+  assert.equal(isDuplicatePanelVisible({}, null), false, "sin duplicado no hay aviso");
+});
+
+test("Diálogos de Cobros: identifican qué se modifica con datos que el llamador ya tiene (alumno, concepto, vencimiento, importe, saldo) y omiten lo que falta", () => {
+  // Las pruebas no pueden importar .tsx: se verifica el código fuente.
+  const source = code("components/payments/dialog-context.tsx");
+  assert.match(source, /Vence \$\{formatCivilDate\(context\.dueDate\)\}/);
+  assert.match(source, /Importe original: \$\{formatMoney\(context\.originalAmount\)\}/);
+  assert.match(source, /Saldo pendiente: \$\{formatMoney\(balance\)\}/);
+  assert.match(source, /Pago: \$\{parts\}/);
+  assert.match(source, /\.filter\(\(p\): p is string => !!p/, "lo que falta se omite, nunca se inventa");
+  const actions = code("components/payments/charge-actions.tsx");
+  assert.equal([...actions.matchAll(/<DialogContext title=\{joinContextTitle\(context\?\.studentName, context\?\.concept\)\} lines=\{chargeContextLines\(context, balance\)\} \/>/g)].length, 2, "registrar pago y anular cobro");
+  assert.match(code("components/payments/void-payment-button.tsx"), /<DialogContext title=\{context\?\.studentName\} lines=\{paymentContextLines\(context\)\} \/>/);
+  // Los dos llamadores reales pasan sólo lo que ya tenían: el perfil (alumno ya cargado) y Cobros global (entrada del centro de cobros).
+  const tab = code("components/students/profile/cobros-tab.tsx");
+  assert.match(tab, /context=\{\{\s*studentName,\s*concept:/);
+  assert.match(tab, /<VoidPaymentButton paymentId=\{payment\.id\} context=\{\{ studentName, amount: payment\.amount/);
+  const cobros = code("app/(app)/cobros/page.tsx");
+  assert.match(cobros, /studentName: entry\.studentName,\s*concept: CHARGE_TYPE_LABEL\[entry\.chargeType\] \?\? entry\.chargeType,\s*dueDate: entry\.dueDate,\s*originalAmount: entry\.originalAmount/);
+  assert.match(cobros, /<ChargeActions\s+chargeId=\{entry\.chargeId\}/, "Cobros global sigue usando los mismos diálogos");
+  // Sin consultas nuevas.
+  assert.doesNotMatch(source, /supabase|fetch\(|lib\/repositories|"use server"/);
 });
