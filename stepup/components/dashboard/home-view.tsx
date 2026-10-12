@@ -7,7 +7,6 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   ClipboardDocumentCheckIcon,
-  ExclamationCircleIcon,
   ExclamationTriangleIcon,
   PlusIcon,
   SunIcon,
@@ -17,13 +16,13 @@ import { PlayIcon } from "@heroicons/react/24/solid";
 import { FirstSteps } from "@/components/dashboard/first-steps";
 import { Avatar } from "@/components/ui/avatar";
 import { avatarToneFor } from "@/lib/ui/avatar-tone";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink, linkClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
 import { buildFirstSteps, buildGreeting, homeDateLabel, resolveHomeStage, type HomeWelcome } from "@/lib/dashboard/home-welcome";
-import type { ReminderCategoryKind } from "@/lib/dashboard/reminders-center";
+import { REMINDER_ICONS } from "@/components/reminders/reminder-icons";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 
 const MAX_VISIBLE_PENDING = 3;
@@ -48,13 +47,6 @@ function LessonAvatar({ item }: { item: HomeData["todayLessons"][number] }) {
     </span>
   );
 }
-
-const REMINDER_ICONS: Record<ReminderCategoryKind, { icon: IconComponent; tone: BadgeTone }> = {
-  clases_sin_alumnos: { icon: UserGroupIcon, tone: "warn" },
-  clases_sin_registrar: { icon: ClipboardDocumentCheckIcon, tone: "warn" },
-  pagos_por_vencer: { icon: BanknotesIcon, tone: "warn" },
-  pagos_vencidos: { icon: ExclamationCircleIcon, tone: "bad" },
-};
 
 const CARD = "rounded-lg border-[1.5px] border-border bg-surface shadow-card";
 

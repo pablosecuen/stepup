@@ -39,7 +39,8 @@ Todo lo marcado «Propuesta» en el prototipo (ver [04-propuestas-y-limites.md](
 | [06-bloque-1.md](06-bloque-1.md) | Bloque 1 implementado: alcance, diferencias con el prototipo y verificación. |
 | [07-bloque-2.md](07-bloque-2.md) | Bloque 2 (Inicio): estados, diferencias inevitables y verificación. |
 | [08-bloque-3.md](08-bloque-3.md) | Bloque 3 (Alumnos y perfil): acciones por pantalla, estados, diferencias inevitables y verificación. |
-| [09-bloque-4.md](09-bloque-4.md) | Bloque 4 (Calendario y Registro): reglas visuales, estados, diferencias inevitables, hallazgos y verificación. |
+| [09-bloque-4.md](09-bloque-4.md) | Bloque 4 (Calendario y Registro): reglas visuales, estados, diferencias inevitables, carriles de la grilla y verificación. |
+| [10-bloque-5.md](10-bloque-5.md) | Bloque 5 (Cobros, Recordatorios, Resumen financiero y Reportes): qué muestra cada pantalla, diferencias frente al prototipo y verificación. |
 
 ## Dónde está el prototipo
 

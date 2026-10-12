@@ -130,7 +130,7 @@ test("cableado: el Calendario y el Resumen financiero usan el formateador único
   const civil = source("lib/calendar/civil-calendar.ts");
   assert.doesNotMatch(civil, /formatWeekRangeLabel/, "ya no existe un segundo formateador semanal");
 
-  const summary = source("app/(app)/resumen-financiero/page.tsx");
+  const summary = source("components/finance/financial-overview-view.tsx");
   assert.match(summary, /formatCivilMonth\(month\)/, "cada mes pico se formatea");
   assert.doesNotMatch(summary, /peakMonths\.join\(/, "nunca se muestra 'YYYY-MM' en crudo");
 

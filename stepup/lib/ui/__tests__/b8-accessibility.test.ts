@@ -292,7 +292,7 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
     ["components/students/profile/reportes-tab.tsx", /aria-pressed=\{selectedMonths\.has\(month\)\}[\s\S]*<CheckIcon/],
     ["app/(app)/registro/nuevo/nuevo-registro-form.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],
     ["components/calendar/real-calendar-toolbar.tsx", /aria-current=\{isWeek \? "true" : undefined\}[\s\S]*aria-current=\{!isWeek \? "true" : undefined\}/],
-    ["app/(app)/resumen-financiero/page.tsx", /aria-current=\{p === preset \? "true" : undefined\}[\s\S]*\{p === preset && <CheckIcon/],
+    ["components/finance/financial-overview-view.tsx", /aria-current=\{selected \? "true" : undefined\}[\s\S]*\{selected && <CheckIcon/],
     ["components/students/student-form-fields.tsx", /peer sr-only[\s\S]*peer-checked:inline[\s\S]*✓/],
     ["components/calendar/real-calendar-grid.tsx", /\(hoy\)/],
   ];

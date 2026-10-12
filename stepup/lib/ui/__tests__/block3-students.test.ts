@@ -126,7 +126,7 @@ test("Cobros del alumno: «Registrar pago» abre un diálogo y «Anular» queda 
   assert.match(actions, /<Dialog\s+title="Registrar pago"/);
   assert.match(actions, /<Dialog\s+title="Anular cobro"/);
   assert.match(actions, /<Button variant="secondary" onClick=\{\(\) => setMode\("pay"\)\}>/);
-  assert.match(actions, /<Button variant="dangerGhost" onClick=\{\(\) => setMode\("void"\)\} className="sm:ml-auto">/);
+  assert.match(actions, /<Button variant="dangerGhost" onClick=\{\(\) => setMode\("void"\)\} className=\{compact \? undefined : "sm:ml-auto"\}>/);
   assert.match(actions, /disabled=\{!voidReason\.trim\(\)\}/, "el motivo sigue siendo obligatorio");
   assert.match(code("components/payments/void-payment-button.tsx"), /<Dialog\s+title="Anular pago"/);
   const tab = code("components/students/profile/cobros-tab.tsx");
@@ -198,8 +198,8 @@ test("Diálogos de Cobros: identifican qué se modifica con datos que el llamado
   const tab = code("components/students/profile/cobros-tab.tsx");
   assert.match(tab, /context=\{\{\s*studentName,\s*concept:/);
   assert.match(tab, /<VoidPaymentButton paymentId=\{payment\.id\} context=\{\{ studentName, amount: payment\.amount/);
-  const cobros = code("app/(app)/cobros/page.tsx");
-  assert.match(cobros, /studentName: entry\.studentName,\s*concept: CHARGE_TYPE_LABEL\[entry\.chargeType\] \?\? entry\.chargeType,\s*dueDate: entry\.dueDate,\s*originalAmount: entry\.originalAmount/);
+  const cobros = code("components/payments/collections-view.tsx");
+  assert.match(cobros, /studentName: entry\.studentName,\s*concept,\s*dueDate: entry\.dueDate,\s*originalAmount: entry\.originalAmount/);
   assert.match(cobros, /<ChargeActions\s+chargeId=\{entry\.chargeId\}/, "Cobros global sigue usando los mismos diálogos");
   // Sin consultas nuevas.
   assert.doesNotMatch(source, /supabase|fetch\(|lib\/repositories|"use server"/);

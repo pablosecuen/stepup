@@ -184,8 +184,8 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
 
 test("los vacíos que son un buen estado (nada pendiente) no inventan acciones", () => {
   for (const [file, message] of [
-    ["app/(app)/cobros/page.tsx", "No hay cobros pendientes."],
-    ["app/(app)/recordatorios/page.tsx", "No hay recordatorios pendientes."],
+    ["components/payments/collections-view.tsx", "No hay cobros pendientes."],
+    ["components/reminders/reminders-view.tsx", "No hay recordatorios pendientes."],
     ["components/students/profile/tareas-tab.tsx", "No hay tareas pendientes."],
   ]) {
     const source = code(file);

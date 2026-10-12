@@ -7,8 +7,8 @@ Base: remoto `815ace5` (regresión final previa al rediseño: 79/79, «LISTA par
 | **1 · Fundaciones y estructura** | Tokens, tipografías (`next/font`), fondo/bordes/sombras/foco; componentes base (botones, campos, tarjetas, avisos, insignias, tablas, menús, diálogos y hojas móviles); shell privado de escritorio; navegación móvil; menú de cuenta; landing; login; crear cuenta; recuperar contraseña; confirmación y errores de autenticación; estados globales de carga, error y no encontrado. | **Cerrado y aprobado** (rama local `v1-web`, commits 2491bb4 y 032a9ac; sin push ni deploy). Ver `06-bloque-1.md`. |
 | 2 · Inicio | `/inicio` y sus estados reales, sin información nueva que cambie consultas. | **Cerrado y aprobado** (commit 787a145 sobre 032a9ac). Ver `07-bloque-2.md`. |
 | 3 · Alumnos y perfil | Lista, alta, edición y las siete pestañas del perfil. | **Cerrado y aprobado** (con dos correcciones finales de UX). Ver `08-bloque-3.md`. |
-| 4 · Calendario y Registro | Semana/día (agenda en móvil), detalle y diálogos, nueva clase/serie, series, disponibilidad; clases por registrar y registro. **La escala de color del calendario no se toca.** | Implementado en `v1-web` (sin deploy); en revisión visual. Ver `09-bloque-4.md`. |
-| 5 · Cobros, Recordatorios, Resumen financiero | Centro de cobros, recordatorios, resumen y plan 50/30/20. | Pendiente. |
+| 4 · Calendario y Registro | Semana/día (agenda en móvil), detalle y diálogos, nueva clase/serie, series, disponibilidad; clases por registrar y registro. **La escala de color del calendario no se toca.** | **Cerrado y aprobado** (con la corrección de carriles y zonas de toque). Ver `09-bloque-4.md`. |
+| 5 · Cobros, Recordatorios, Resumen financiero y Reportes | Centro de cobros, recordatorios, resumen financiero y la pestaña Reportes del alumno (el plan 50/30/20 no existe en la web). | Implementado en `v1-web` (sin deploy); en revisión visual. Ver `10-bloque-5.md`. |
 | 6 · Configuración y cierre | Configuración, respaldo/importación, historial, deshacer, eliminar cuenta; retiro del azul heredado. | Pendiente. |
 
 El orden de 2–6 es una propuesta de trabajo, ajustable tras cada revisión.

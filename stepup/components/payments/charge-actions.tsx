@@ -23,7 +23,7 @@ const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferenc
  * Presentación: «Registrar pago» es la acción normal (secundaria) y «Anular cobro» queda al otro extremo, con menos peso; cada
  * una abre un diálogo (hoja inferior en móvil). La lógica (estado, clave de operación, validaciones, acciones) no cambió.
  */
-export function ChargeActions({ chargeId, studentId, balance, context }: { chargeId: string; studentId: string; balance: number; context?: ChargeContext }) {
+export function ChargeActions({ chargeId, studentId, balance, context, compact = false }: { chargeId: string; studentId: string; balance: number; context?: ChargeContext; /** Dentro de una fila de tabla (Cobros): sin margen superior y las dos acciones juntas, alineadas a la derecha. */ compact?: boolean }) {
   const router = useRouter();
   const uid = useId();
   const [mode, setMode] = useState<"idle" | "pay" | "void">("idle");
@@ -88,11 +88,11 @@ export function ChargeActions({ chargeId, studentId, balance, context }: { charg
 
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className={compact ? "flex flex-wrap items-center gap-2 nav:flex-nowrap nav:justify-end" : "mt-4 flex flex-wrap items-center gap-2"}>
         <Button variant="secondary" onClick={() => setMode("pay")}>
           Registrar pago
         </Button>
-        <Button variant="dangerGhost" onClick={() => setMode("void")} className="sm:ml-auto">
+        <Button variant="dangerGhost" onClick={() => setMode("void")} className={compact ? undefined : "sm:ml-auto"}>
           Anular cobro
         </Button>
       </div>

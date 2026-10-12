@@ -89,8 +89,8 @@ test("no hay formateadores paralelos de números ni de fechas: Intl.NumberFormat
 
 test("cada pantalla de importes usa formatMoney (ya no hay un formatCurrency propio por archivo)", () => {
   const files = [
-    "app/(app)/cobros/page.tsx",
-    "app/(app)/resumen-financiero/page.tsx",
+    "components/payments/collections-view.tsx",
+    "components/finance/financial-overview-view.tsx",
     "components/payments/dialog-context.tsx", // el saldo y los importes de los diálogos de cobros se formatean acá
     "components/payments/training-billing-config.tsx",
     "components/students/profile/cobros-tab.tsx",
@@ -122,7 +122,7 @@ test("horas, notas y duraciones salen del formateador único en el perfil, Repor
   assert.match(reportes, /formatGrade\(preview\.data\.generalAverageGrade\)/);
   assert.match(reportes, /formatCivilMonth\(month\)/, "los meses con el formateador de fechas, no una lista propia");
   assert.doesNotMatch(reportes, /function monthLabel/);
-  const financiero = code("app/(app)/resumen-financiero/page.tsx");
+  const financiero = code("components/finance/financial-overview-view.tsx");
   assert.match(financiero, /formatMinutesAsHours/);
   assert.doesNotMatch(financiero, /Math\.round\(\(minutes \/ 60\) \* 10\) \/ 10/);
 });
@@ -170,8 +170,8 @@ test("la narrativa del reporte usa coma decimal: «8,5», «2,5 horas», «100%�
 test("anchos: los nombres y títulos sin espacios se parten en vez de desbordar (regla global + nombres de Cobros)", () => {
   const css = read("app/globals.css");
   assert.match(css, /h1,\s*h2,\s*h3,\s*p\s*\{\s*overflow-wrap: anywhere;\s*\}/);
-  const cobros = code("app/(app)/cobros/page.tsx");
-  assert.match(cobros, /<div className="min-w-0">\s*<Link href=\{`\/alumnos\/\$\{entry\.studentId\}`\} className="[^"]*\[overflow-wrap:anywhere\]/);
+  const cobros = code("components/payments/collections-view.tsx");
+  assert.match(cobros, /<PrivateLink\s+href=\{`\/alumnos\/\$\{entry\.studentId\}`\}\s+className="[^"]*\[overflow-wrap:anywhere\]/);
   assert.match(code("components/payments/training-billing-config.tsx"), /<li key=\{c\.studentId\} className="[^"]*\[overflow-wrap:anywhere\]/);
 });
 
