@@ -187,6 +187,8 @@ export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly Execut
   const next: BillingSnapshot = {
     ...snapshot,
     status,
+    // Decisión cerrada: la cuenta existente que se suscribe (primer período pagado) pierde la condición `grandfathered` y sigue las reglas normales.
+    grandfathered: snapshot.grandfathered && fields.currentPeriodEnd === null,
     planCode: fields.planCode ?? snapshot.planCode,
     currentPeriodStart: fields.currentPeriodStart,
     currentPeriodEnd: fields.currentPeriodEnd,
@@ -196,6 +198,7 @@ export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly Execut
   };
   const changed =
     next.status !== snapshot.status ||
+    next.grandfathered !== snapshot.grandfathered ||
     next.planCode !== snapshot.planCode ||
     next.currentPeriodStart !== snapshot.currentPeriodStart ||
     next.currentPeriodEnd !== snapshot.currentPeriodEnd ||

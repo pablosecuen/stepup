@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..", "..");
-const TESTS = ["plans-money", "state-machine", "ledger", "access", "reconcile", "webhook-ingest", "mobbex-adapter", "commands", "log", "rpc-store"].map((name) => `lib/billing/__tests__/${name}.test.ts`);
+const TESTS = ["plans-money", "state-machine", "ledger", "access", "access-unknown", "reconcile", "webhook-ingest", "mobbex-adapter", "commands", "log", "rpc-store"].map((name) => `lib/billing/__tests__/${name}.test.ts`);
 
 /** [descripción, archivo, texto a buscar, reemplazo] */
 export const MUTATIONS = [
@@ -60,7 +60,23 @@ export const MUTATIONS = [
   ["el control de acceso se aplica con enforcement apagado", "lib/billing/access.ts", "if (!flags.enabled || !flags.enforcement) return access(", "if (!flags.enabled) return access("],
   ["el modo limitado deja crear datos", "lib/billing/access.ts", "const LIMITED_CAPABILITIES: AccessCapabilities = Object.freeze({\n  viewOperationalData: true,\n  createOperationalData: false,", "const LIMITED_CAPABILITIES: AccessCapabilities = Object.freeze({\n  viewOperationalData: true,\n  createOperationalData: true,"],
   ["el modo limitado no permite exportar", "lib/billing/access.ts", "  exportData: true,\n  deleteAccount: true,\n});\n\nfunction access", "  exportData: false,\n  deleteAccount: true,\n});\n\nfunction access"],
-  ["sin estado conocido se bloquea a la cuenta", "lib/billing/access.ts", 'return access("full", "billing_state_unavailable", "none", null, null);', 'return access("limited", "billing_state_unavailable", "none", null, null);'],
+  ["una cuenta existente sin estado se bloquea", "lib/billing/access.ts", 'return access("full", "state_unavailable_existing_account"', 'return access("limited", "state_unavailable_existing_account"'],
+  ["una cuenta nueva sin pago verificado obtiene acceso completo", "lib/billing/access.ts", 'return access("limited", "state_unavailable_unverified"', 'return access("full", "state_unavailable_unverified"'],
+  ["la tolerancia ante una falla propia dura un día de más", "lib/billing/access.ts", "export const OWN_FAILURE_TOLERANCE_MS = 72 * 3_600_000;", "export const OWN_FAILURE_TOLERANCE_MS = 96 * 3_600_000;"],
+  ["la tolerancia incluye el instante exacto de su fin", "lib/billing/access.ts", "now.getTime() < until;", "now.getTime() <= until;"],
+  ["la tolerancia se da a cualquier cuenta, aunque no estuviera activa", "lib/billing/access.ts", "if (lastKnown && PAID_ACCESS_STATUSES.has(lastKnown.status)) {", "if (lastKnown) {"],
+  ["la tolerancia vencida deja acceso completo", "lib/billing/access.ts", 'return access("limited", "state_unavailable_tolerance_expired"', 'return access("full", "state_unavailable_tolerance_expired"'],
+  ["la cuenta grandfathered sin estado se bloquea", "lib/billing/access.ts", 'return access("full", "state_unavailable_grandfathered"', 'return access("limited", "state_unavailable_grandfathered"'],
+  ["el estado desconocido no pide conciliación prioritaria", "lib/billing/access.ts", "const extras: Extras = { internalNotice: true, reconcilePriority: true };", "const extras: Extras = { internalNotice: true, reconcilePriority: false };"],
+  ["el estado desconocido no deja aviso interno", "lib/billing/access.ts", "const extras: Extras = { internalNotice: true, reconcilePriority: true };", "const extras: Extras = { internalNotice: false, reconcilePriority: true };"],
+  ["un estado ilegible se interpreta como activo", "lib/billing/access.ts", 'if (!(BILLING_STATUSES as readonly string[]).includes(snapshot.status)) return resolveUnknown(input, true);', ""],
+  ["sin corte configurado una cuenta se considera nueva", "lib/billing/access.ts", "if (!Number.isFinite(cutoff)) return true;", "if (!Number.isFinite(cutoff)) return false;"],
+  ["el modo limitado no permite contactar a soporte", "lib/billing/access.ts", "  deleteAccount: true,\n  contactSupport: true,\n});\n\ninterface Extras", "  deleteAccount: true,\n  contactSupport: false,\n});\n\ninterface Extras"],
+  ["el comprobante firmado no verifica la firma", "lib/billing/last-known.ts", "if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;", ""],
+  ["el comprobante no está atado a la cuenta", "lib/billing/last-known.ts", "if (o !== ownerTag(ownerId)) return null;", ""],
+  ["el comprobante acepta fechas del futuro", "lib/billing/last-known.ts", "if (Number.isFinite(now.getTime()) && t > now.getTime() + FUTURE_SKEW_MS) return null;", ""],
+  ["el comprobante acepta cualquier secreto corto", "lib/billing/last-known.ts", "const MIN_SECRET_LENGTH = 32;", "const MIN_SECRET_LENGTH = 1;"],
+  ["la cuenta existente que paga conserva la condición grandfathered", "lib/billing/ledger.ts", "grandfathered: snapshot.grandfathered && fields.currentPeriodEnd === null,", "grandfathered: snapshot.grandfathered,"],
   ["la gracia no muestra aviso", "lib/billing/access.ts", 'access("full_with_notice", "payment_failed_grace"', 'access("full", "payment_failed_grace"'],
   ["la gracia limita el acceso", "lib/billing/access.ts", 'access("full_with_notice", "payment_failed_grace"', 'access("limited", "payment_failed_grace"'],
   ["la resolución confía en el estado guardado y no en el reloj", "lib/billing/access.ts", "const status = projectStatus(snapshot, now);", "const status = snapshot.status;"],

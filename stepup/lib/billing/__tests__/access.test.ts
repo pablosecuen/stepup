@@ -90,6 +90,7 @@ test("terminada la gracia: modo LIMITADO. Puede ingresar, ver sus datos y la fac
     updatePaymentMethod: true,
     exportData: true,
     deleteAccount: true,
+    contactSupport: true,
   });
 });
 
@@ -130,15 +131,6 @@ test("la resolución usa el reloj: no confía en el estado guardado (una cuenta 
   assert.equal(resolveBillingAccess({ flags: ON, snapshot: stale, now: at("2027-03-01") }).level, "limited");
   // Y al revés: los datos del período mandan sobre la etiqueta guardada (dentro de lo pagado hay acceso completo aunque diga limited).
   assert.equal(resolveBillingAccess({ flags: ON, snapshot: snap({ status: "limited", ...PAID }), now: at("2026-10-15") }).level, "full");
-});
-
-test("sin estado conocido (sin fila, base caída o fecha inválida) con el control encendido: acceso completo con motivo seguro (nunca bloquea por una falla propia)", () => {
-  for (const [snapshot, now] of [[null, at("2026-10-15")], [snap({ status: "active", ...PAID }), new Date("invalid")]] as const) {
-    const result = resolveBillingAccess({ flags: ON, snapshot, now });
-    assert.equal(result.level, "full");
-    assert.equal(result.reason, "billing_state_unavailable");
-    assert.equal(result.status, null);
-  }
 });
 
 test("el motivo es un código seguro: nunca contiene datos de la cuenta, identificadores ni texto libre", () => {

@@ -53,9 +53,11 @@ test("los secretos de facturación son SÓLO de servidor: ningún NEXT_PUBLIC_ c
 
 test("la clave de servicio de Supabase y las credenciales de Mobbex se leen en UN solo lugar cada una", () => {
   const withService = [...BILLING_SOURCES, ...walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`)), ...APP_SOURCES].filter((f) => /SERVICE_ROLE_KEY/.test(read(f)));
-  assert.deepEqual(withService.filter((f) => !/__tests__/.test(f)), ["lib/billing/supabase-store.ts"]);
+  // `readiness.ts` sólo NOMBRA las variables para informar qué falta: recibe el entorno inyectado, jamás lee `process.env`.
+  assert.deepEqual(withService.filter((f) => !/__tests__/.test(f) && f !== "lib/billing/readiness.ts"), ["lib/billing/supabase-store.ts"]);
+  assert.doesNotMatch(code("lib/billing/readiness.ts"), /process.env/);
   const withMobbexSecrets = BILLING_SOURCES.filter((f) => /MOBBEX_API_KEY|MOBBEX_ACCESS_TOKEN/.test(code(f)));
-  assert.deepEqual(withMobbexSecrets, ["lib/billing/providers/mobbex.ts"]);
+  assert.deepEqual(withMobbexSecrets.filter((f) => f !== "lib/billing/readiness.ts"), ["lib/billing/providers/mobbex.ts"]);
   const store = read("lib/billing/supabase-store.ts");
   assert.match(store, /^import "server-only";/);
   assert.equal([...store.matchAll(/createClient\(/g)].length, 1);

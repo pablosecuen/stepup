@@ -211,6 +211,11 @@ test("grandfathered: sin cobros sigue grandfathered; al pagar es active; si deja
   const paid = reduceSnapshot(base, [approved("e1", "2026-10-01")], at("2026-10-05"));
   assert.equal(paid.next.status, "active");
   assert.equal(reduceSnapshot(paid.next, [approved("e1", "2026-10-01")], at("2026-12-01")).next.status, "limited");
+  // Decisión cerrada: al suscribirse (primer período pagado) la cuenta pierde la condición y sigue las reglas normales.
+  assert.equal(base.grandfathered, true);
+  assert.equal(paid.next.grandfathered, false);
+  assert.equal(paid.changed, true);
+  assert.equal(reduceSnapshot(base, [rejected("e1", "2026-10-01")], at("2026-10-05")).next.grandfathered, true, "un rechazo no la pierde");
 });
 
 test("expired: el proveedor terminó la suscripción; hasta el fin de lo pagado sigue active, después expired", () => {

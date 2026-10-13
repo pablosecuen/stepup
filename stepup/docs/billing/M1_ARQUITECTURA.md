@@ -250,12 +250,12 @@ Crear un suscriptor exige `customer.email`, `name` e **`identification` (DNI/CUI
 
 ## 7. Resolución de acceso (M1.6)
 
-`resolveBillingAccess({ flags, snapshot, now })` → `{ level (full | full_with_notice | limited), reason (código seguro), nextAction, endsAt, status, capabilities }`.
+`resolveBillingAccess({ flags, snapshot, now })` → `{ level (full | full_with_notice | limited), reason (código seguro), nextAction, endsAt, status, capabilities, internalNotice, reconcilePriority }`; la entrada admite además `read`, `lastKnown`, `account` y `grandfatherCutoff` para el estado desconocido.
 
 * Con `BILLING_ENABLED` o `BILLING_ENFORCEMENT_ENABLED` apagados devuelve **siempre** acceso completo (`enforcement_off`) para cualquier estado y fecha — equivalente al comportamiento actual (probado con todos los estados × tres fechas × las tres combinaciones de interruptores apagados).
 * **No confía en la etiqueta guardada:** reproyecta el estado con el reloj (una cuenta «active» vencida hace meses está limitada aunque el barrido todavía no la haya tocado).
-* Sin estado conocido (sin fila, base caída o fecha inválida) con el control encendido: **acceso completo** con motivo `billing_state_unavailable`. Una falla de Supabase nunca bloquea a una profesora que paga; sí **falla cerrado** cualquier *cambio* de facturación (§12, decisión 4).
-* Capacidades (`AccessCapabilities`): en modo limitado `viewOperationalData`, `viewBilling`, `cancelSubscription`, `updatePaymentMethod`, `exportData` y `deleteAccount` son verdaderas; `createOperationalData` y `modifyOperationalData`, falsas.
+* **Estado desconocido** (sin fila, base caída, estado ilegible o reloj inválido) con el control encendido — variantes cerradas (`M1_DECISIONES.md`, decisión 4): cuenta existente o `grandfathered` → acceso completo con aviso interno seguro y conciliación prioritaria; cuenta anteriormente activa ante una falla propia → tolerancia acotada de 72 h desde la última verificación firmada (con aviso visible); cuenta nueva sin pago verificado → modo limitado. Jamás se activa por un redirect, un parámetro del cliente ni un aviso sin conciliar. Cualquier *cambio* de facturación sigue fallando cerrado.
+* Capacidades (`AccessCapabilities`): en modo limitado `viewOperationalData`, `viewBilling`, `cancelSubscription`, `updatePaymentMethod`, `exportData`, `deleteAccount` y `contactSupport` son verdaderas; `createOperationalData` y `modifyOperationalData`, falsas.
 * Los interruptores se leen sólo del entorno del servidor (`lib/billing/flags.ts`): sólo el texto exacto `true` enciende; `BILLING_ENFORCEMENT_ENABLED` sin `BILLING_ENABLED` se trata como apagado.
 
 ## 8. Seguridad y fallos: tabla de amenazas (M1.7)
@@ -391,21 +391,9 @@ Mutaciones **equivalentes** que se descartaron a propósito (no cambian el compo
 
 Cómo reproducir (Postgres embebido fuera del repo, como en R3–R8): `mkdir %TEMP%\epg && cd %TEMP%\epg && npm i embedded-postgres@17.10.0-beta.17 pg`, `set NODE_PATH=%TEMP%\epg\node_modules` y los comandos de `supabase/tests/postgres/README.md` (sección M1).
 
-## 12. Decisiones abiertas para Joaquín
+## 12. Decisiones (cerradas)
 
-Ninguna bloquea M1 (nada está conectado), pero **deben resolverse antes de M2**:
-
-1. **Clave de servicio de Supabase.** La facturación necesita `SUPABASE_SERVICE_ROLE_KEY` (los avisos llegan sin sesión). R3 la había dejado como decisión del propietario. M1 la confina a un único módulo y a funciones `billing_*`; ¿se autoriza configurarla en Vercel (sólo Production, servidor)? Alternativa: un rol de base dedicado con un token propio.
-2. **Autenticación de avisos de Mobbex** (§6.1): hoy no hay mecanismo documentado. ¿Se consulta a Mobbex por escrito? ¿Se aprueba usar el aviso sólo como disparador de una consulta autenticada, o sólo sondeo?
-3. **DNI/CUIT del suscriptor** (§6.2): la API lo exige. ¿Se pide en TeacherFlow (qué política de privacidad) o en el formulario de Mobbex?
-4. **Estado desconocido con el control encendido = acceso completo** (§7). Alternativa más estricta: limitar. Se eligió abrir para no castigar a quien paga ante una falla propia.
-5. **Eliminación de cuenta con suscripción activa:** hay que cancelar en el proveedor **antes** de borrar; y definir qué se conserva de los cobros (obligaciones fiscales) frente al borrado en cascada actual. Requiere criterio legal/contable.
-6. **Cuenta `grandfathered` que se suscribe por su cuenta:** pierde la exención y sigue las reglas normales si luego cancela (decisión de M1). ¿Se prefiere que la conserve?
-7. **Cambio de plan:** rige en el próximo período, sin prorrateo ni crédito. ¿Es lo deseado? Falta validar en sandbox cómo reacciona Mobbex al «mover suscriptor» (agenda y cobro inmediato).
-8. **Gracia:** 5 días corridos **después** del día de vencimiento (D+1 a D+5; limitado desde las 00:00 de D+6). ¿Se cuenta distinto?
-9. **Reembolsos y contracargos:** hoy generan una anomalía de revisión (no revocan acceso solos).
-10. **Modo limitado y lectura:** se permite ver todos los datos propios. ¿Alguna restricción de lectura?
-11. **Orden «proveedor primero» al cancelar:** si el proveedor confirma y la base falla, queda suspendido allá y activo acá; se repara repitiendo (idempotente) o con el barrido de M2. Alternativa: base primero (riesgo de cobrar a quien canceló).
+Las 11 decisiones abiertas de la primera revisión quedaron **cerradas** por Joaquín; el texto vigente, con el lugar donde se implementa cada una, está en [`M1_DECISIONES.md`](./M1_DECISIONES.md). Este apartado sólo las enumeraba como preguntas.
 
 ## 13. Qué NO hace M1 y qué sigue (M2)
 
