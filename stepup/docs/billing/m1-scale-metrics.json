@@ -1,0 +1,122 @@
+{
+  "subs": 1000,
+  "setupMs": 183,
+  "deliveries": 5000,
+  "ingest": {
+    "elapsedMs": 2251,
+    "deliveries": 5000,
+    "statuses": {
+      "200": 5000
+    },
+    "p50": 8.29,
+    "p95": 13.8,
+    "max": 30.06,
+    "perSecond": 2221
+  },
+  "storedEvents": 3000,
+  "process": {
+    "elapsedMs": 778,
+    "queries": 59,
+    "queriesByFunction": {
+      "billing_claim_events": 15,
+      "billing_resolve_subscribers": 11,
+      "billing_get_subscriptions": 11,
+      "billing_owner_executions": 11,
+      "billing_commit_batch": 11
+    },
+    "workers": 4,
+    "claimed": 3983,
+    "facts": 3483,
+    "anomalies": 500,
+    "ignored": 0,
+    "retried": 0,
+    "dead": 0,
+    "conflicts": 892,
+    "providerCalls": 3607,
+    "subscriptionsWritten": 1000,
+    "peakHeapMB": 53,
+    "peakRssMB": 163,
+    "batchesApprox": 6
+  },
+  "eventStates": {
+    "ignored": 500,
+    "processed": 2500
+  },
+  "anomalies": [
+    {
+      "kind": "unknown_reference",
+      "n": 500
+    }
+  ],
+  "interruption": {
+    "claimedByDyingWorker": 500,
+    "survivors": {
+      "facts": 500,
+      "elapsedMs": 152
+    },
+    "recovered": {
+      "claimed": 500,
+      "facts": 500,
+      "elapsedMs": 290
+    }
+  },
+  "providerSweep": {
+    "pages": 20,
+    "operations": 1000,
+    "facts": 1000,
+    "anomalies": 0,
+    "elapsedMs": 276,
+    "queries": 9,
+    "peakHeapMB": 62,
+    "peakRssMB": 190
+  },
+  "clockSweep": {
+    "pastDue": {
+      "pages": 2,
+      "evaluated": 1000,
+      "subscriptionsWritten": 1000,
+      "conflicts": 0
+    },
+    "limited": {
+      "pages": 2,
+      "evaluated": 1000,
+      "subscriptionsWritten": 1000,
+      "conflicts": 0
+    },
+    "repeat": {
+      "pages": 0,
+      "evaluated": 0,
+      "subscriptionsWritten": 0,
+      "conflicts": 0
+    },
+    "elapsedMs": 344,
+    "queries": 19,
+    "peakHeapMB": 73,
+    "peakRssMB": 211
+  },
+  "queryPlans": {
+    "tableRowsEvents": 63000,
+    "scanDelta": {
+      "billing_subscriptions": {
+        "seqScans": 0,
+        "indexScans": 0
+      },
+      "billing_executions": {
+        "seqScans": 0,
+        "indexScans": 0
+      },
+      "billing_webhook_events": {
+        "seqScans": 0,
+        "indexScans": 504
+      }
+    },
+    "indexes": {
+      "claim": true,
+      "lease": true,
+      "due": true,
+      "executions": true
+    }
+  },
+  "failures": [],
+  "passed": true
+}
