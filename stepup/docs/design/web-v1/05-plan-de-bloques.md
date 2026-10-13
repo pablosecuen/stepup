@@ -9,7 +9,8 @@ Base: remoto `815ace5` (regresión final previa al rediseño: 79/79, «LISTA par
 | 3 · Alumnos y perfil | Lista, alta, edición y las siete pestañas del perfil. | **Cerrado y aprobado** (con dos correcciones finales de UX). Ver `08-bloque-3.md`. |
 | 4 · Calendario y Registro | Semana/día (agenda en móvil), detalle y diálogos, nueva clase/serie, series, disponibilidad; clases por registrar y registro. **La escala de color del calendario no se toca.** | **Cerrado y aprobado** (con la corrección de carriles y zonas de toque). Ver `09-bloque-4.md`. |
 | 5 · Cobros, Recordatorios, Resumen financiero y Reportes | Centro de cobros, recordatorios, resumen financiero y la pestaña Reportes del alumno (el plan 50/30/20 no existe en la web). | **Cerrado y aprobado.** Ver `10-bloque-5.md`. |
-| 6 · Configuración y cierre | Configuración, respaldo/importación, historial, deshacer, eliminar cuenta; retiro del azul heredado. | Implementado en `v1-web` (sin deploy); en revisión visual. Ver `11-bloque-6.md`. |
+| 6 · Configuración y cierre | Configuración, respaldo/importación, historial, deshacer, eliminar cuenta; retiro del azul heredado. | **Cerrado y aprobado** (con la corrección final de los códigos internos). Ver `11-bloque-6.md`. |
+| 7 · Integración y deploy final | Integración de los Bloques 1–6, regresión funcional, auditoría visual integrada, publicación y verificación en Production. | **Cerrado.** Ver `12-bloque-7.md`. |
 
 El orden de 2–6 es una propuesta de trabajo, ajustable tras cada revisión.
 
