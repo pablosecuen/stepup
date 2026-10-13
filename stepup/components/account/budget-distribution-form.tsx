@@ -6,16 +6,17 @@ import { useFormStatus } from "react-dom";
 import { saveBudgetDistributionAction, type FormState } from "@/lib/actions/account";
 import { adjustNeeds, adjustSavings, adjustWants, type BudgetDistribution } from "@/lib/payments/budget-distribution";
 import { FormErrorBox } from "@/components/auth/form-boxes";
-import { BUTTON_PRIMARY, LiveMessage } from "@/components/account/settings-ui";
+import { Button } from "@/components/ui/button";
+import { LiveMessage } from "@/components/account/settings-ui";
 
 const INITIAL_STATE: FormState = {};
 
 function SaveButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} aria-busy={pending} className={`self-start ${BUTTON_PRIMARY}`}>
+    <Button type="submit" variant="primary" busy={pending} className="self-start">
       {pending ? "Guardando..." : "Guardar distribución"}
-    </button>
+    </Button>
   );
 }
 
@@ -32,9 +33,9 @@ function Slider({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="flex items-center justify-between text-sm font-medium text-textSecondary">
+      <span className="flex items-center justify-between text-[14.5px] font-[650] text-textSecondary">
         <span>{label}</span>
-        <span className={`font-semibold tabular-nums ${colorClass}`}>{value}%</span>
+        <span className={`font-bold tf-num ${colorClass}`}>{value}%</span>
       </span>
       <input
         type="range"
@@ -42,7 +43,7 @@ function Slider({
         max={100}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-dataNeeds"
+        className="h-11 w-full accent-accent"
       />
     </label>
   );
@@ -56,6 +57,9 @@ function Slider({
  * antes de persistir. Lenguaje siempre orientativo: "presupuesto sugerido",
  * nunca una afirmación de gasto/ahorro real (el aviso vive en la fila que
  * contiene este formulario, en la página de Configuración).
+ *
+ * Presentación: la barra apilada de arriba es decorativa (los porcentajes ya están escritos en cada control); Necesidades,
+ * Gustos y Ahorro conservan sus colores reservados del plan 50/30/20.
  */
 export function BudgetDistributionForm({ initial }: { initial: BudgetDistribution }) {
   const [distribution, setDistribution] = useState<BudgetDistribution>(initial);
@@ -70,7 +74,13 @@ export function BudgetDistributionForm({ initial }: { initial: BudgetDistributio
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-3">
+      <div aria-hidden className="flex h-3 w-full gap-1 overflow-hidden rounded-pill">
+        <div className="min-w-[4px] rounded-pill bg-dataNeeds" style={{ flexGrow: distribution.needs }} />
+        <div className="min-w-[4px] rounded-pill bg-pastelLavenderText" style={{ flexGrow: distribution.wants }} />
+        <div className="min-w-[4px] rounded-pill bg-pastelSageText" style={{ flexGrow: distribution.savings }} />
+      </div>
+
       <Slider
         label="Necesidades"
         value={distribution.needs}
@@ -90,7 +100,7 @@ export function BudgetDistributionForm({ initial }: { initial: BudgetDistributio
         colorClass="text-pastelSageText"
       />
 
-      <p className="text-sm text-textMuted">Suma: {distribution.needs + distribution.wants + distribution.savings}%</p>
+      <p className="text-[14px] text-textMuted tf-num">Suma: {distribution.needs + distribution.wants + distribution.savings}%</p>
 
       <input type="hidden" name="needs" value={distribution.needs} />
       <input type="hidden" name="wants" value={distribution.wants} />

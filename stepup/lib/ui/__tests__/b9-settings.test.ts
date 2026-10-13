@@ -62,7 +62,7 @@ test("estructura: Cuenta → Preferencias → Sesión y datos → Acciones sensi
     found.map((s) => s.id),
     ["cuenta", "preferencias", "sesion-y-datos", "acciones-sensibles"],
   );
-  const index = [...code(VIEW).matchAll(/\{ id: "([^"]+)", label: "([^"]+)" \}/g)].map((m) => m[1]);
+  const index = [...code(VIEW).matchAll(/\{ id: "([^"]+)", label: "([^"]+)", icon: \w+ \}/g)].map((m) => m[1]);
   assert.deepEqual(index, found.map((s) => s.id), "el índice enlaza a todas las secciones, en el mismo orden");
   assert.match(code(VIEW), /<SettingsIndex items=\{SECTIONS\} \/>/);
 
@@ -70,7 +70,7 @@ test("estructura: Cuenta → Preferencias → Sesión y datos → Acciones sensi
   assert.match(ui, /<nav aria-label="Secciones de Configuración"/);
   assert.match(ui, /<section id=\{id\} aria-labelledby=\{`\$\{id\}-titulo`\} className="scroll-mt-20">/, "cada sección es una región con su título y no queda tapada por el encabezado fijo");
   assert.match(ui, /<h2 id=\{`\$\{id\}-titulo`\}/, "el título de cada sección es un h2");
-  assert.match(ui, /<h3 className="text-sm font-semibold text-textPrimary">\{title\}<\/h3>/, "el título de cada fila es un h3");
+  assert.match(ui, /<h3 className="text-\[15px\] font-\[650\] text-textPrimary">\{title\}<\/h3>/, "el título de cada fila es un h3");
 });
 
 test("las acciones sensibles están juntas, al final, con tono de peligro, y ninguna otra sección las contiene", () => {
@@ -130,7 +130,7 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
   const del = code("components/account/delete-account-button.tsx");
   assert.match(del, /const CONFIRM_WORD = "ELIMINAR"/);
   assert.match(del, /confirmText\.trim\(\) === CONFIRM_WORD/);
-  assert.match(del, /disabled=\{!canConfirm \|\| pending\}/);
+  assert.match(del, /disabled=\{!canConfirm\}\s+busy=\{pending\}/);
   assert.match(del, /deleteOwnAccountAction\(\{ password, confirmation: confirmText, captchaToken \}\)/, "R4: reautenticación con contraseña");
   assert.match(del, /Se va a eliminar tu cuenta y TODOS tus datos \(alumnos, clases, pagos, reportes y sus archivos PDF\) de forma permanente/);
 
@@ -156,33 +156,37 @@ test("los guardados devuelven `saved: true` y los errores siguen igual; la panta
   }
 });
 
-test("botones: cuatro estilos compartidos de 44 px y ningún botón de Configuración con tamaño propio", () => {
+test("botones: los cuatro estilos compartidos son los del sistema (44 px) y ningún botón de Configuración trae tamaño propio", () => {
   const ui = code("components/account/settings-ui.tsx");
-  assert.match(ui, /const BUTTON_BASE =\s*"inline-flex min-h-11 /);
-  for (const name of ["BUTTON_PRIMARY", "BUTTON_SECONDARY", "BUTTON_DANGER_OUTLINE", "BUTTON_DANGER"]) assert.match(ui, new RegExp(`export const ${name} = \`\\$\\{BUTTON_BASE\\}`));
+  assert.match(ui, /import \{ buttonClass, linkClass \} from "@\/components\/ui\/button";/);
+  assert.match(ui, /export const BUTTON_PRIMARY = buttonClass\(\{ variant: "primary" \}\);/);
+  assert.match(ui, /export const BUTTON_SECONDARY = buttonClass\(\{ variant: "secondary" \}\);/);
+  assert.match(ui, /export const BUTTON_DANGER_OUTLINE = buttonClass\(\{ variant: "dangerOutline" \}\);/);
+  assert.match(ui, /export const BUTTON_DANGER = buttonClass\(\{ variant: "danger" \}\);/);
+  assert.match(code("components/ui/button.tsx"), /inline-flex min-h-11 /, "todas las variantes llevan min-h-11");
   for (const file of ACCOUNT_FILES.filter((f) => !f.endsWith("settings-ui.tsx"))) {
     const source = code(file);
-    for (const tag of openingTags(source, "button")) {
-      assert.match(tag, /className=\{[^}]*BUTTON_/, `${file}: botón sin estilo compartido → ${tag.slice(0, 70)}`);
-      assert.doesNotMatch(tag, /className="[^"]*\b(px-\d|py-\d)/, `${file}: botón con padding propio → ${tag.slice(0, 70)}`);
-    }
+    assert.equal(openingTags(source, "button").length, 0, file + ": ningún <button> suelto; todos son <Button> del sistema");
+    for (const tag of openingTags(source, "Button")) assert.doesNotMatch(tag, /className="[^"]*\b(px-\d|py-\d)/, file + ": botón con padding propio");
   }
-  assert.match(ui, /export const FIELD_CLASS =\s*"w-full rounded-md border border-borderStrong/, "campos con borde de control (3:1)");
+  assert.match(ui, /export const FIELD_CLASS = inputClass;/, "campos con borde de control (3:1)");
 });
 
-test("teclado y foco: el foco entra al abrir una confirmación y vuelve al botón al cancelar; el resultado se anuncia", () => {
+test("teclado y foco: las confirmaciones son diálogos (foco atrapado, Escape y foco devuelto al botón); el resultado se anuncia", () => {
+  const dialog = code("components/ui/dialog.tsx");
+  assert.match(dialog, /useDialogA11y\(onClose\)/, "el diálogo atrapa el foco, cierra con Escape y devuelve el foco");
   const del = code("components/account/delete-account-button.tsx");
-  assert.match(del, /if \(open\) inputRef\.current\?\.focus\(\);[\s\S]*?triggerRef\.current\?\.focus\(\)/);
-  assert.match(del, /function cancel\(\) \{\s*restoreFocus\.current = true;\s*setOpen\(false\)/);
-  assert.match(del, /event\.key === "Escape"\) cancel\(\)/, "Escape cancela la confirmación");
+  assert.match(del, /<Dialog\s+title="Eliminar cuenta"/);
+  assert.match(del, /onClose=\{cancel\}/);
+  assert.match(del, /requestAnimationFrame\(\(\) => document\.getElementById\("delete-confirm"\)\?\.focus\(\)\)/, "el foco entra al primer campo");
+  assert.match(del, /function cancel\(\) \{\s*setOpen\(false\);/);
   assert.match(del, /onClick=\{cancel\}/);
-  assert.match(del, /<label htmlFor="delete-confirm"/);
-  assert.match(del, /aria-labelledby="delete-warning"/);
+  assert.match(del, /htmlFor="delete-confirm"/);
+  assert.match(del, /id="delete-warning"/);
 
   const session = code("components/account/active-session-card.tsx");
-  assert.match(session, /if \(confirming\) panelRef\.current\?\.focus\(\);[\s\S]*?triggerRef\.current\?\.focus\(\)/);
-  assert.match(session, /role="group"\s+aria-label="Confirmar el cierre de la sesión remota"/);
-  assert.match(session, /event\.key === "Escape"\) cancel\(\)/, "Escape cancela la confirmación");
+  assert.match(session, /<Dialog\s+title="Cerrar la sesión remota"/);
+  assert.match(session, /onClose=\{cancel\}/, "Escape cancela la confirmación");
   assert.match(session, /statusRef\.current\?\.focus\(\)/, "al terminar, el foco no queda perdido");
   assert.match(session, /role="status" aria-live="polite" tabIndex=\{-1\}/);
 
@@ -195,11 +199,11 @@ test("navegación: Respaldo muestra «Configuración / Respaldo» con la página
   const ui = code("components/account/settings-ui.tsx");
   assert.match(ui, /<nav aria-label="Ruta de navegación">/);
   assert.match(ui, /<li aria-current="page"/);
-  assert.match(ui, /href="\/configuracion" className="inline-flex min-h-11 /);
+  assert.match(ui, /<PrivateLink href="\/configuracion" className=\{linkClass\(\)\}>/);
   const page = code(BACKUP_PAGE);
   assert.match(page, /<SettingsBreadcrumb current="Respaldo" \/>/);
   assert.doesNotMatch(page, /Volver a Configuración/);
-  assert.equal((page.match(/<h1\b/g) ?? []).length, 1);
+  assert.match(page, /<PageHeader\s+title="Respaldo"/, "el único h1 sale de PageHeader");
   assert.equal((page.match(/<h2\b/g) ?? []).length, 2, "Recuperar datos e Historial de importaciones");
   assert.match(page, /<BackupImportWizard \/>/);
   assert.match(page, /<ImportHistory \/>/);
@@ -208,11 +212,11 @@ test("navegación: Respaldo muestra «Configuración / Respaldo» con la página
 
 test("historial de importaciones: estado vacío de la app y botones compartidos; la lógica de deshacer no cambia", () => {
   const history = code("components/backup/import-history.tsx");
-  assert.match(history, /<EmptyState message="Todavía no importaste ningún respaldo\." \/>/);
+  assert.match(history, /<EmptyState icon=\{ArchiveBoxIcon\} message="Todavía no importaste ningún respaldo\." \/>/);
   assert.match(history, /previewUndoImportAction\(run\.id\)/);
   assert.match(history, /applyUndoImportAction\(undoState\.undoPreviewId\)/);
   assert.match(history, /discardImportUndoAction\(run\.id\)/);
-  assert.match(history, /BUTTON_SECONDARY/);
+  assert.match(history, /<Button ref=\{reviewButtonRef\} variant="secondary"/);
   assert.match(history, /DiscardUndoControl/, "quitar la opción de deshacer pide confirmación (B10)");
   assert.doesNotMatch(history, /text-xs font-semibold text-statusRojo hover:underline/, "sin enlaces peligrosos de texto suelto");
 });

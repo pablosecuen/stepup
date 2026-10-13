@@ -65,13 +65,9 @@ const config: Config = {
         info: "#1F4D63",
         infoSoft: "#D8E8F0",
         infoLine: "#B0CDDB",
-        // Azul con significado de DATO/categoría: «Necesidades» del plan 50/30/20 (control y cifra). Se CONSERVA: no se retira con el
-        // azul heredado. Mismo valor que `brandBlue`, pero con otro nombre para que el retiro de la interfaz no lo arrastre.
+        // Azul con significado de DATO/categoría: «Necesidades» del plan 50/30/20 (control y cifra). El azul heredado de INTERFAZ se retiró
+        // en el Bloque 6: ninguna pantalla lo usa.
         dataNeeds: "#0A64D2",
-        // Heredado, estilo de INTERFAZ: el azul de marca sigue en las pantallas que todavía no migraron (botones, enlaces, foco). Cada
-        // bloque lo reemplaza al migrar su pantalla; no se reemplaza globalmente.
-        brandBlue: "#0A64D2",
-        brandBlueDark: "#004BA8",
         // Semáforo de cobro: reservado, no se usa para otra cosa.
         statusVerde: "#1B7634",
         statusAmarillo: "#7F5F00",

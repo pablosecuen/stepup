@@ -7,6 +7,8 @@ import { getActiveSession } from "@/lib/repositories/active-sessions";
 import type { ActiveSessionInfo } from "@/components/account/active-session-card";
 import { ConfigurationView } from "@/components/account/configuration-view";
 import { EmptyState } from "@/components/ui/states";
+import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { CloudIcon } from "@heroicons/react/24/outline";
 import { DEFAULT_BUDGET_DISTRIBUTION } from "@/lib/payments/budget-distribution";
 import type { ActiveSessionRow } from "@/lib/db/database.types";
 import { formatInstantDateTime } from "@/lib/format/date-format";
@@ -31,11 +33,8 @@ export default async function ConfiguracionPage() {
   const user = configured ? await createSupabaseAuthAdapter().getUser() : null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
-      <h1 className="text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Configuración</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        {user ? "Tu cuenta, preferencias y datos." : "No pudimos conectar con tu cuenta en este momento."}
-      </p>
+    <div className={PAGE_WIDTH.medium}>
+      <PageHeader title="Configuración" subtitle={user ? "Tu cuenta, preferencias y datos." : "No pudimos conectar con tu cuenta en este momento."} />
 
       {user ? <ConfiguredSections email={user.email} /> : <UnavailableState />}
     </div>
@@ -61,7 +60,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
 function UnavailableState() {
   return (
     <div className="mt-7">
-      <EmptyState message="Tus ajustes aparecen cuando tu cuenta responde. Probá de nuevo en unos minutos." action={{ label: "Reintentar", href: "/configuracion" }} />
+      <EmptyState icon={CloudIcon} message="Tus ajustes aparecen cuando tu cuenta responde. Probá de nuevo en unos minutos." action={{ label: "Reintentar", href: "/configuracion" }} />
     </div>
   );
 }

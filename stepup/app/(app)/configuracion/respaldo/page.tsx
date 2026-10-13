@@ -3,6 +3,7 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { BackupImportWizard } from "@/components/backup/import-wizard";
 import { ImportHistory } from "@/components/backup/import-history";
 import { SettingsBreadcrumb } from "@/components/account/settings-ui";
+import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 // R6: analizar (descarga de hasta 20 MB + validación + vista previa) y confirmar una importación grande llevan segundos; la base corta cualquier operación a los 8 s
@@ -16,28 +17,29 @@ export default async function RespaldoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-10">
+    <div className={PAGE_WIDTH.wide}>
       <SettingsBreadcrumb current="Respaldo" />
-      <h1 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-textPrimary">Respaldo</h1>
-      <p className="mt-1.5 text-sm text-textMuted">
-        Traé a la web los datos de la copia de seguridad que hace tu app móvil. Es opcional y manual: primero ves qué se
-        importaría y recién después confirmás. Por defecto no se reemplaza nada de lo que ya cargaste acá.
-      </p>
+      <div className="mt-1">
+        <PageHeader
+          title="Respaldo"
+          subtitle="Traé a la web los datos de la copia de seguridad que hace tu app móvil. Es opcional y manual: primero ves qué se importaría y recién después confirmás. Por defecto no se reemplaza nada de lo que ya cargaste acá."
+        />
+      </div>
 
-      <section aria-labelledby="respaldo-recuperar" className="mt-7">
-        <h2 id="respaldo-recuperar" className="text-lg font-semibold tracking-tight text-textPrimary">
+      <section aria-labelledby="respaldo-recuperar" className="mt-8">
+        <h2 id="respaldo-recuperar" className="font-display text-section font-semibold text-textPrimary">
           Recuperar datos
         </h2>
-        <div className="mt-3">
+        <div className="mt-3 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
           <BackupImportWizard />
         </div>
       </section>
 
       <section aria-labelledby="respaldo-historial" className="mt-10">
-        <h2 id="respaldo-historial" className="text-lg font-semibold tracking-tight text-textPrimary">
+        <h2 id="respaldo-historial" className="font-display text-section font-semibold text-textPrimary">
           Historial de importaciones
         </h2>
-        <p className="mt-1 text-sm text-textMuted">Tus importaciones anteriores.</p>
+        <p className="mt-0.5 text-[14.5px] text-textMuted">Tus importaciones anteriores.</p>
         <div className="mt-3">
           <ImportHistory />
         </div>

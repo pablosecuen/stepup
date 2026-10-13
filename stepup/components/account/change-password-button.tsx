@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { requestOwnPasswordChangeAction } from "@/lib/actions/account";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox } from "@/components/auth/form-boxes";
-import { BUTTON_SECONDARY } from "@/components/account/settings-ui";
+import { Button } from "@/components/ui/button";
 import { CaptchaWidget } from "@/components/auth/captcha-widget";
 
 export function ChangePasswordButton() {
@@ -25,10 +25,9 @@ export function ChangePasswordButton() {
     <div className="flex flex-col gap-2">
       {!sent && <CaptchaWidget key={captchaAttempt} onToken={setCaptchaToken} />}
       {!sent && (
-        <button
-          type="button"
-          disabled={pending}
-          aria-busy={pending}
+        <Button
+          variant="secondary"
+          busy={pending}
           onClick={() =>
             startTransition(async () => {
               setError(null);
@@ -42,13 +41,13 @@ export function ChangePasswordButton() {
               setSent(true);
             })
           }
-          className={`self-start ${BUTTON_SECONDARY}`}
+          className="self-start"
         >
           {pending ? "Enviando..." : "Cambiar contraseña"}
-        </button>
+        </Button>
       )}
       {error && <FormErrorBox message={error} />}
-      <div role="status" aria-live="polite" tabIndex={-1} className={sent ? "rounded-md border border-border bg-background px-3 py-2.5 text-sm text-textSecondary focus:outline-none" : "sr-only"} ref={statusRef}>
+      <div role="status" aria-live="polite" tabIndex={-1} className={sent ? "rounded-md border-[1.5px] border-okLine bg-okSoft px-3.5 py-3 text-[14.5px] text-textSecondary focus:outline-none" : "sr-only"} ref={statusRef}>
         {sent && "Te enviamos un enlace a tu correo para cambiar tu contraseña."}
       </div>
     </div>

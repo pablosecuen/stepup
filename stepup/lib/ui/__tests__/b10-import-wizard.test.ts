@@ -131,13 +131,14 @@ test("decisiones: cada una dice qué hace, la opción segura es la de por defect
   assert.match(wizard, /checked=\{selected\.has\(field\)\}/);
   assert.match(wizard, /Marcá solo lo que quieras reemplazar/);
   assert.match(wizard, /legend=\{c\.studentName \? `Alumno: \$\{c\.studentName\}` : "Alumno que ya tenés en la web"\}/, "se dice de qué alumno son las diferencias");
-  assert.match(wizard, /<label className="flex items-start gap-3 py-1">\s*<input type="checkbox"/, "la etiqueta envuelve la casilla (objetivo táctil de 44 px)");
+  assert.match(wizard, /<label className=\{CHOICE_ROW\}>\s*<input type="checkbox"/, "la etiqueta envuelve la casilla (objetivo táctil de 44 px)");
+  assert.match(wizard, /const CHOICE_ROW = "flex min-h-11 /);
 });
 
 test("confirmación: misma palabra reforzada, botón deshabilitado hasta escribirla, nombres de botones claros", () => {
   const wizard = code(WIZARD);
   assert.match(wizard, /summary\.requiresStrongConfirmation \|\| strongConfirmInput\.trim\(\)\.toUpperCase\(\) === STRONG_CONFIRMATION_PHRASE/);
-  assert.match(wizard, /disabled=\{pending \|\| !phraseOk\}/);
+  assert.match(wizard, /<Button variant="primary" block disabled=\{!phraseOk\} busy=\{pending\} onClick=\{props\.onConfirm\}>/);
   assert.match(wizard, /handleConfirm[\s\S]*?strongConfirmInput\.trim\(\)\.toUpperCase\(\) !== STRONG_CONFIRMATION_PHRASE\) \{\s*return;/, "el manejador sigue defendiéndose solo");
   assert.match(wizard, /aria-describedby="importar-confirmacion-ayuda"/);
   assert.match(wizard, /<label htmlFor="importar-confirmacion"/);
@@ -175,7 +176,8 @@ test("deshacer: se revisa antes, se confirma con lo que va a pasar y quitar la o
   assert.match(ui, /ya no vas a poder deshacer esta importación/);
   assert.match(ui, /Lo que importaste se queda tal\s+cual está\./);
   assert.match(ui, /Sí, quitar la opción de deshacer/);
-  assert.match(ui, /BUTTON_DANGER_OUTLINE/);
+  assert.match(ui, /<Dialog\s+title="Quitar la opción de deshacer"/, "quitar la opción de deshacer es un diálogo de confirmación");
+  assert.match(ui, /<Dialog\s+title=\{undoState\.isSafe \? "Deshacer la importación" : "No se puede deshacer ahora"\}/);
   assert.doesNotMatch(ui + code(WIZARD) + code(HISTORY), /Ya revisé los resultados, no necesito poder deshacer esto|Confirmar deshacer|Previsualizar deshacer/);
   // Wizard e historial usan las MISMAS piezas.
   for (const file of [WIZARD, HISTORY]) assert.match(code(file), /DiscardUndoControl/);
@@ -189,13 +191,13 @@ test("deshacer: se revisa antes, se confirma con lo que va a pasar y quitar la o
 test("historial: términos nuevos, estado, vencimiento y botones compartidos", () => {
   const history = code(HISTORY);
   assert.match(history, /countOf\(run\.totalRowsWritten, "elemento importado", "elementos importados"\)/);
-  assert.match(history, /app móvil \$\{run\.appVersion\}/);
+  assert.match(history, /App móvil \{run\.appVersion\}/);
   assert.match(history, /Ya no se conserva el detalle de la copia, solo este resumen\./);
   assert.match(history, /Ya no se puede deshacer: el detalle necesario se eliminó con el tiempo\./);
   assert.match(history, /El plazo para deshacerla venció\./);
   assert.match(history, /Se puede deshacer hasta el/);
   assert.match(history, /Revisar si se puede deshacer/);
-  assert.match(history, /<EmptyState message="Todavía no importaste ningún respaldo\." \/>/);
+  assert.match(history, /<EmptyState icon=\{ArchiveBoxIcon\} message="Todavía no importaste ningún respaldo\." \/>/);
   assert.match(history, /formatImportCounts\(run\.countsByTable\)/, "los conteos siguen con nombres humanos");
 });
 
@@ -223,10 +225,10 @@ test("accesibilidad: foco en el error, Escape en los paneles, foco devuelto al b
   assert.match(wizard, /reviewButtonRef\.current\?\.focus\(\)/);
   assert.match(wizard, /function FocusBox/);
   const ui = code(UI);
-  assert.equal((ui.match(/event\.key === "Escape"\) onCancel\(\)|event\.key === "Escape"\) cancel\(\)/g) ?? []).length, 2, "Escape cierra la revisión y la confirmación");
+  assert.equal((ui.match(/<Dialog\b/g) ?? []).length, 2, "la revisión y la confirmación son diálogos: Escape las cierra, el foco queda atrapado y vuelve al botón");
   assert.match(ui, /role="group"\s+aria-label="Revisión para deshacer la importación"/);
   assert.match(ui, /role="group"\s+aria-label="Confirmar que ya no se podrá deshacer"/);
-  assert.match(ui, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(code("components/ui/dialog.tsx"), /useDialogA11y\(onClose\)/);
   assert.match(code(HISTORY), /reviewButtonRef\.current\?\.focus\(\)/);
   // Botones con los estilos compartidos de 44 px; ninguno con padding propio.
   for (const file of [WIZARD, UI, HISTORY]) {
@@ -234,7 +236,7 @@ test("accesibilidad: foco en el error, Escape en los paneles, foco devuelto al b
       assert.doesNotMatch(m[1], /\b(px-\d|py-\d)\b/, `${file}: botón con padding propio`);
     }
   }
-  assert.match(code(WIZARD), /import \{ BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_CLASS \} from "@\/components\/account\/settings-ui";/);
+  assert.match(code(WIZARD), /import \{ Button \} from "@\/components\/ui\/button";/);
 });
 
 test("encabezados: h2 de la página → h3 del paso → h4 de cada sección", () => {

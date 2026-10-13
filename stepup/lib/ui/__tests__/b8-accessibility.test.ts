@@ -63,7 +63,7 @@ const colors = (config.theme!.extend as { colors: Record<string, string> }).colo
 const SURFACES = { white: "#FFFFFF", surface: "#FFFDF8", page: "#F6F0E5" };
 
 test("contraste de texto: el texto y los colores de estado llegan a 4.5:1 sobre blanco, sobre el fondo y sobre su tinte del 10%", () => {
-  const textColors = ["textPrimary", "textSecondary", "textMuted", "accent", "accentDark", "accentText", "ok", "warn", "bad", "info", "brandBlue", "brandBlueDark", "statusVerde", "statusAmarillo", "statusNaranja", "statusRojo", "statusPendiente", "pastelLavenderText", "pastelSageText"];
+  const textColors = ["textPrimary", "textSecondary", "textMuted", "accent", "accentDark", "accentText", "ok", "warn", "bad", "info", "statusVerde", "statusAmarillo", "statusNaranja", "statusRojo", "statusPendiente", "pastelLavenderText", "pastelSageText"];
   for (const name of textColors) {
     const hex = colors[name];
     for (const [surfaceName, surface] of Object.entries(SURFACES)) {
@@ -77,13 +77,13 @@ test("contraste de texto: el texto y los colores de estado llegan a 4.5:1 sobre 
 });
 
 test("contraste de controles: texto blanco sobre el azul de marca y el rojo (botones/insignias), borde de campos 3:1, anillo de foco 3:1", () => {
-  assert.ok(contrastRatio("#FFFFFF", colors.brandBlue) >= 4.5, "blanco sobre azul de marca");
-  assert.ok(contrastRatio("#FFFFFF", colors.brandBlueDark) >= 4.5, "blanco sobre azul oscuro (hover)");
+  assert.ok(contrastRatio("#FFFFFF", colors.ink) >= 4.5, "blanco sobre la tinta (botón principal)");
+  assert.ok(contrastRatio("#FFFFFF", colors.accent) >= 4.5, "blanco sobre el terracota (botón de acento)");
   assert.ok(contrastRatio("#FFFFFF", colors.statusRojo) >= 4.5, "blanco sobre el rojo de la insignia");
   assert.ok(contrastRatio(colors.borderStrong, SURFACES.white) >= 3, "borde de campos sobre blanco");
   assert.ok(contrastRatio(colors.borderStrong, SURFACES.page) >= 3, "borde de campos sobre el fondo");
-  assert.ok(contrastRatio(colors.brandBlue, SURFACES.page) >= 3, "anillo de foco sobre el fondo");
-  assert.ok(contrastRatio(colors.brandBlue, SURFACES.white) >= 3, "anillo de foco sobre blanco");
+  assert.ok(contrastRatio(colors.ink, SURFACES.page) >= 3, "anillo de foco sobre el fondo");
+  assert.ok(contrastRatio(colors.ink, SURFACES.white) >= 3, "anillo de foco sobre blanco");
   // El borde claro queda sólo para tarjetas y separadores: ningún campo lo usa.
   for (const file of sources(["app", "components"])) {
     for (const tag of openingTags(code(file), ["input", "select", "textarea"])) {

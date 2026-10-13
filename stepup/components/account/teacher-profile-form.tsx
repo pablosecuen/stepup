@@ -5,16 +5,18 @@ import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
 import { saveTeacherProfileAction, type FormState } from "@/lib/actions/account";
 import { FormErrorBox } from "@/components/auth/form-boxes";
-import { BUTTON_PRIMARY, FIELD_CLASS, LiveMessage } from "@/components/account/settings-ui";
+import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/field";
+import { LiveMessage } from "@/components/account/settings-ui";
 
 const INITIAL_STATE: FormState = {};
 
 function SaveButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} aria-busy={pending} className={BUTTON_PRIMARY}>
+    <Button type="submit" variant="primary" busy={pending}>
       {pending ? "Guardando..." : "Guardar"}
-    </button>
+    </Button>
   );
 }
 
@@ -30,14 +32,14 @@ export function TeacherProfileForm({ displayName }: { displayName: string }) {
         Nombre visible
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <TextInput
           id="displayName"
           name="displayName"
           type="text"
           defaultValue={displayName}
           placeholder="Tu nombre"
           onChange={() => setEditedAfter(state)}
-          className={`${FIELD_CLASS} min-w-[10rem] flex-1`}
+          className="min-w-[10rem] flex-1 sm:max-w-xs"
         />
         <SaveButton />
       </div>

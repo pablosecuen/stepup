@@ -34,7 +34,8 @@ import { formatImportCounts } from "@/lib/backup/import-count-labels";
 import { BUDGET_DISTRIBUTION_FIELD, BUDGET_TABLE, groupBudgetFields, groupedSelection, toggleDistribution } from "@/lib/backup/budget-distribution-fields";
 import { formatInstantTime } from "@/lib/format/date-format";
 import { LoadingState } from "@/components/ui/states";
-import { BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_CLASS } from "@/components/account/settings-ui";
+import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/field";
 import { DiscardUndoControl, Glossary, ImportErrorBox, Notice, StepIndicator, UndoReviewPanel } from "@/components/backup/import-ui";
 
 // Asistente de importación (Fase 9, textos simplificados en B10). Manual, opcional: nada corre solo.
@@ -42,6 +43,9 @@ import { DiscardUndoControl, Glossary, ImportErrorBox, Notice, StepIndicator, Un
 // el análisis técnico temporal, que vence solo sin tocar nunca datos de negocio.
 // Los pasos son: Analizar → Revisar y decidir → Resultado. La lógica (qué se envía, cuándo, con qué decisiones) es la de siempre;
 // acá cambian los textos, el orden visual y la accesibilidad. Ningún nombre de tabla, columna, id ni mensaje interno se muestra.
+
+// Fila de una casilla u opción: toda la fila es el objetivo táctil (≥ 44 px) y el texto empieza arriba.
+const CHOICE_ROW = "flex min-h-11 cursor-pointer items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paperDeep has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ink";
 
 type Stage = "idle" | "analyzing" | "preview" | "applying" | "result";
 
@@ -61,7 +65,7 @@ function StageHeading({ children, focusOnMount = true }: { children: ReactNode; 
     if (focusOnMount) ref.current?.focus();
   }, [focusOnMount]);
   return (
-    <h3 ref={ref} tabIndex={-1} className="text-base font-semibold text-textPrimary focus:outline-none">
+    <h3 ref={ref} tabIndex={-1} className="font-display text-card font-semibold text-textPrimary focus:outline-none">
       {children}
     </h3>
   );
@@ -82,11 +86,11 @@ function FocusBox({ children }: { children: ReactNode }) {
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={`${id}-titulo`} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <h4 id={`${id}-titulo`} className="text-sm font-semibold text-textPrimary">
+    <section aria-labelledby={`${id}-titulo`} className="rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5">
+      <h4 id={`${id}-titulo`} className="font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary">
         {title}
       </h4>
-      <div className="mt-2 flex flex-col gap-2.5 text-sm text-textSecondary">{children}</div>
+      <div className="mt-2.5 flex flex-col gap-2.5 text-[14.5px] text-textSecondary">{children}</div>
     </section>
   );
 }
@@ -121,14 +125,14 @@ function FieldChoices({
   const entries = Object.entries(fields);
   if (entries.length === 0) return null;
   return (
-    <fieldset className="rounded-md border border-border bg-background p-3.5">
-      <legend className="px-1 text-sm font-semibold text-textPrimary">{legend}</legend>
-      <p className="mb-1 text-sm text-textMuted">{hint ?? "Marcá solo lo que quieras reemplazar por el dato de la copia. Lo que dejes sin marcar se conserva como está en la web."}</p>
+    <fieldset className="rounded-md border-[1.5px] border-border bg-surface2 p-3.5">
+      <legend className="px-1 text-[14.5px] font-bold text-textPrimary">{legend}</legend>
+      <p className="mb-1 text-[14px] text-textMuted">{hint ?? "Marcá solo lo que quieras reemplazar por el dato de la copia. Lo que dejes sin marcar se conserva como está en la web."}</p>
       <ul className="flex flex-col">
         {entries.map(([field, diff]) => (
           <li key={field}>
-            <label className="flex items-start gap-3 py-1">
-              <input type="checkbox" className="mt-0.5 shrink-0" checked={selected.has(field)} onChange={() => onToggle(tableName, rowId, field)} />
+            <label className={CHOICE_ROW}>
+              <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={selected.has(field)} onChange={() => onToggle(tableName, rowId, field)} />
               <span className="min-w-0">
                 <span className="block font-medium text-textPrimary">Reemplazar «{fieldLabel(tableName, field)}»</span>
                 <span className="block break-words text-textMuted">
@@ -266,7 +270,7 @@ export function IdleStage({ error, errorCode, pending, focusHeading, onAnalyze }
   }, [error, errorCode]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex max-w-2xl flex-col gap-4">
       <StepIndicator current={1} />
       <StageHeading focusOnMount={focusHeading}>Qué va a pasar</StageHeading>
       <ul className="flex flex-col gap-2.5 text-sm text-textSecondary">
@@ -287,9 +291,9 @@ export function IdleStage({ error, errorCode, pending, focusHeading, onAnalyze }
         </li>
       </ul>
       {error && <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />}
-      <button type="button" disabled={pending} aria-busy={pending} onClick={onAnalyze} className={`self-start ${BUTTON_PRIMARY}`}>
+      <Button variant="primary" busy={pending} onClick={onAnalyze} className="self-start">
         Analizar la última copia
-      </button>
+      </Button>
     </div>
   );
 }
@@ -360,6 +364,8 @@ export function PreviewStage(props: PreviewStageProps) {
     <div className="flex flex-col gap-5">
       <StepIndicator current={2} />
 
+      <div className="flex flex-col gap-5 nav:grid nav:grid-cols-[minmax(0,1fr)_340px] nav:items-start nav:gap-x-6">
+      <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-col gap-2">
         <StageHeading>Revisá lo que se importaría</StageHeading>
         <p className="text-sm text-textSecondary">
@@ -408,8 +414,8 @@ export function PreviewStage(props: PreviewStageProps) {
         {preview.students.duplicates.map((d) => {
           const decision = duplicateDecisions[d.backupLegacyMobileId] ?? "skip";
           return (
-            <fieldset key={d.backupLegacyMobileId} className="rounded-md border border-statusAmarillo/40 bg-statusAmarillo/5 p-3.5">
-              <legend className="px-1 text-sm font-semibold text-textPrimary">¿Es la misma persona? {d.backupStudent.name}</legend>
+            <fieldset key={d.backupLegacyMobileId} className="rounded-md border-[1.5px] border-warnLine bg-warnSoft p-3.5">
+              <legend className="px-1 text-[14.5px] font-bold text-textPrimary">¿Es la misma persona? {d.backupStudent.name}</legend>
               <p className="mb-2 text-textMuted">En la copia hay un alumno que se parece a uno que ya tenés: coincide {describeMatchSignals(d.matchSignals)}.</p>
               <dl className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <PersonSummary heading="En la copia" person={d.backupStudent} />
@@ -417,10 +423,10 @@ export function PreviewStage(props: PreviewStageProps) {
               </dl>
               <div className="mt-3 flex flex-col">
                 {DUPLICATE_OPTIONS.map((opt) => (
-                  <label key={opt.value} className="flex items-start gap-3 py-1">
+                  <label key={opt.value} className={CHOICE_ROW}>
                     <input
                       type="radio"
-                      className="mt-0.5 shrink-0"
+                      className="mt-0.5 h-5 w-5 shrink-0"
                       name={`dup-${d.backupLegacyMobileId}`}
                       checked={decision === opt.value}
                       onChange={() => props.onDuplicateDecision(d.backupLegacyMobileId, opt.value)}
@@ -568,8 +574,10 @@ export function PreviewStage(props: PreviewStageProps) {
         </ul>
       </Section>
 
-      <section aria-labelledby="confirmar-titulo" className="rounded-lg border-2 border-borderStrong bg-surface p-4 shadow-card">
-        <h4 id="confirmar-titulo" className="text-base font-semibold text-textPrimary">
+      </div>
+
+      <section aria-labelledby="confirmar-titulo" className="rounded-lg border-[1.5px] border-borderMid bg-surface p-4 shadow-card nav:sticky nav:top-6 nav:p-5">
+        <h4 id="confirmar-titulo" className="font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary">
           Antes de confirmar
         </h4>
         <ul className="mt-2 flex flex-col gap-1.5 text-sm text-textSecondary">
@@ -635,7 +643,7 @@ export function PreviewStage(props: PreviewStageProps) {
               <label htmlFor="importar-confirmacion" className="block font-medium text-textPrimary">
                 Para confirmar, escribí <span className="font-mono font-semibold">{STRONG_CONFIRMATION_PHRASE}</span>
               </label>
-              <input
+              <TextInput
                 id="importar-confirmacion"
                 type="text"
                 autoComplete="off"
@@ -643,7 +651,6 @@ export function PreviewStage(props: PreviewStageProps) {
                 onChange={(e) => props.onStrongConfirmChange(e.target.value)}
                 aria-describedby="importar-confirmacion-ayuda"
                 placeholder={STRONG_CONFIRMATION_PHRASE}
-                className={`${FIELD_CLASS} max-w-xs`}
               />
               <p id="importar-confirmacion-ayuda" className="text-textMuted">
                 Elegiste reemplazar datos que ya tenías o crear un alumno aunque se parece a otro. El botón se habilita al escribir la palabra.
@@ -658,18 +665,19 @@ export function PreviewStage(props: PreviewStageProps) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-          <button type="button" disabled={pending || !phraseOk} aria-busy={pending} onClick={props.onConfirm} className={BUTTON_PRIMARY}>
+        <div className="mt-4 flex flex-col gap-2.5 border-t border-border pt-4">
+          <Button variant="primary" block disabled={!phraseOk} busy={pending} onClick={props.onConfirm}>
             Confirmar e importar
-          </button>
-          <button type="button" onClick={props.onCancel} className={BUTTON_SECONDARY}>
+          </Button>
+          <Button variant="secondary" block onClick={props.onCancel}>
             Cancelar (no se importa nada)
-          </button>
+          </Button>
         </div>
         <p className="mt-2 text-sm text-textMuted">
           Cancelar no cambia ningún dato. El análisis temporal se descarta solo a los {PREVIEW_VALIDITY_MINUTES} minutos.
         </p>
       </section>
+      </div>
     </div>
   );
 }
@@ -736,17 +744,17 @@ export function ResultStage(props: ResultStageProps) {
       {error && <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />}
 
       {!undoDone && !undoDiscarded && (
-        <section aria-labelledby="deshacer-titulo" className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-4 shadow-card">
-          <h4 id="deshacer-titulo" className="text-sm font-semibold text-textPrimary">
+        <section aria-labelledby="deshacer-titulo" className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5">
+          <h4 id="deshacer-titulo" className="font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary">
             ¿Algo no salió como esperabas?
           </h4>
           <p className="text-sm text-textSecondary">
             Podés deshacer esta importación por un tiempo limitado (el historial muestra hasta cuándo), siempre que nada de lo importado se haya modificado ni usado después.
           </p>
           {!undoState && (
-            <button ref={reviewButtonRef} type="button" disabled={pending} aria-busy={pending} onClick={props.onPreviewUndo} className={`self-start ${BUTTON_SECONDARY}`}>
+            <Button ref={reviewButtonRef} variant="secondary" busy={pending} onClick={props.onPreviewUndo} className="self-start" aria-haspopup="dialog">
               {pending ? "Revisando…" : "Revisar si se puede deshacer"}
-            </button>
+            </Button>
           )}
           {undoState && (
             <UndoReviewPanel
@@ -771,9 +779,9 @@ export function ResultStage(props: ResultStageProps) {
         </FocusBox>
       )}
 
-      <button type="button" onClick={props.onReset} className={`self-start ${BUTTON_SECONDARY}`}>
+      <Button variant="secondary" onClick={props.onReset} className="self-start">
         Volver al inicio
-      </button>
+      </Button>
     </div>
   );
 }
