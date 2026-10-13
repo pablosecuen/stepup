@@ -457,7 +457,7 @@ Todos los valores siguientes son literales de tipo verificados en código — no
 
 | Estado/color | Fondo | Borde | Texto |
 |---|---|---|---|
-| Cancelada | `#FFF1B8` | `#D99100` | `#7A4B00` / `#9A6200` |
+| Cancelada | `#FFF1B8` | `#D99100` | `#7A4B00` / `#7A4B00` (6,54:1 sobre el fondo; antes `#9A6200`, 4,4955:1) |
 | Transcurrida | `#D1D5DB` | `#4B5563` | `#374151` / `#4B5563` |
 | Reemplazo activo | `#FCE8E6` | `#D96C68` | — |
 | Modalidad presencial | `#FCE4D2` | `#A85A2A` | — |

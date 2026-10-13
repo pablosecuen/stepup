@@ -30,7 +30,7 @@ export const CANCELLED_COLORS = {
   bg: "#FFF1B8",
   border: "#D99100",
   textPrimary: "#7A4B00",
-  textSecondary: "#9A6200",
+  textSecondary: "#7A4B00",
 };
 
 // Transcurrida (no cancelada, hora de fin <= ahora): gris fijo, prioridad

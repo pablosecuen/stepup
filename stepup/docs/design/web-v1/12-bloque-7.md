@@ -29,7 +29,7 @@ Auditoría de la diferencia: ninguna ruta bajo `supabase/` (cero migraciones, RP
 | Azul heredado (`#0A64D2` / `#004BA8`) fuera del color de datos «Necesidades» | 0 |
 | Promesas o funciones inexistentes (próximamente, premium, suscripción, Mobbex…) | 0 |
 | Shell | Cinco destinos en escritorio y en la barra inferior móvil; entrada activa correcta en Inicio, Alumnos, Calendario, Registro y Cobros (Recordatorios, Resumen y Configuración no marcan ninguna por decisión del Bloque 1); salto al contenido en todas las páginas; `lang="es"` |
-| Contraste AA | Todo texto visible llega a 4,5:1 (3:1 en texto grande) salvo el caso de «Limitaciones» |
+| Contraste AA | Todo texto visible llega a 4,5:1 (3:1 en texto grande) (la excepción de las tarjetas «Cancelada» se corrigió; ver «Limitaciones») |
 | Teclado | Recorrido completo, foco de 2 px y diálogos con foco atrapado, Escape y foco devuelto en Cobros, Calendario (incluidos carriles de clases simultáneas), Reportes, Configuración y Respaldo, en los tres anchos |
 
 ## 7.3 Regresión funcional
@@ -38,7 +38,7 @@ Suite completa sobre copia LF: **1175 / 1175** (incluye autenticación y recuper
 
 ## Limitaciones conocidas
 
-1. **Contraste de la línea secundaria de las tarjetas «Cancelada» del calendario: 4,4955:1** (`#9A6200` sobre `#FFF1B8`; el umbral es 4,5:1). Forma parte de la escala congelada del calendario, que sólo Joaquín puede modificar. Propuesta: usar el color primario `#7A4B00` (6,54:1) también en esa línea.
+1. ~~Contraste de la línea secundaria de las tarjetas «Cancelada» del calendario: 4,4955:1~~ — **corregido** antes del cierre, con autorización de Joaquín: el texto secundario pasa de `#9A6200` a `#7A4B00` (6,5373:1 sobre `#FFF1B8`, cálculo sin redondear). Fondo, borde, significado y geometría no cambian; `lib/ui/__tests__/calendar-card-contrast.test.ts` impide volver por debajo de 4,5:1.
 2. **Vista previa sin Supabase configurado:** `AuthNotConfigured` anida un segundo `<main>` dentro del shell. Sólo aparece en un entorno sin variables de Supabase (nunca en Production).
 3. Las pantallas de carga (esqueletos) no tienen título.
 
