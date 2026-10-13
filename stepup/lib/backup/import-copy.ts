@@ -4,7 +4,7 @@
  * El análisis y la importación hablan en términos internos (filas, tablas, componentes, ids de la app móvil, nombres de
  * columnas, «preview», «invariante»). Este módulo es la única puerta entre esos términos y lo que lee la profesora: traduce
  * etiquetas, valores, motivos y errores. Nunca deja pasar un nombre de tabla/columna, un id ni un mensaje de Postgres; lo
- * único técnico que se muestra es un código corto y estable para soporte (`Código para soporte: …`).
+ * único código interno (corto y estable) NO se muestra: sólo se registra en el log seguro del servidor.
  */
 import { formatCivilDate } from "../format/date-format.ts";
 import { formatCount, formatMoney, formatPercent } from "../format/number-format.ts";
@@ -215,7 +215,7 @@ export type ImportErrorContext = "analyze" | "apply" | "undoPreview" | "undo" | 
 export interface TranslatedImportError {
   /** Frase para la persona: qué pasó, qué pasó con sus datos y qué hacer. */
   message: string;
-  /** Código corto y estable para soporte. Nunca contiene datos personales, ids ni nombres de tablas. */
+  /** Clasificación interna (corta y estable). NUNCA se muestra ni sale del servidor: sólo se registra en el log seguro. Nunca contiene datos personales, ids ni nombres de tablas. */
   code: string;
 }
 
@@ -243,35 +243,35 @@ export function translateImportTimeout(context: ImportErrorContext): TranslatedI
   if (context === "apply") {
     return {
       message:
-        "La importación tardó más de lo permitido y se detuvo; no se importó nada a medias. Mirá el historial de importaciones: si no figura ahí, podés volver a intentar (si volvés a confirmar, no se duplica nada). Si se repite, avisá a soporte con el código.",
+        "La importación tardó más de lo permitido y se detuvo; no se importó nada a medias. Mirá el historial de importaciones: si no figura ahí, podés volver a intentar (si volvés a confirmar, no se duplica nada). Contactanos si vuelve a pasar.",
       code: "operation_timeout",
     };
   }
   if (context === "undo") {
     return {
-      message: "Deshacer tardó más de lo permitido y se detuvo; no se tocó nada a medias. Mirá el historial para ver su estado antes de reintentar. Si se repite, avisá a soporte con el código.",
+      message: "Deshacer tardó más de lo permitido y se detuvo; no se tocó nada a medias. Mirá el historial para ver su estado antes de reintentar. Contactanos si vuelve a pasar.",
       code: "operation_timeout",
     };
   }
   return {
-    message: "La operación tardó más de lo permitido y se detuvo. No se cambió nada. Probá de nuevo en unos minutos; si se repite, avisá a soporte con el código.",
+    message: "La operación tardó más de lo permitido y se detuvo. No se cambió nada. Probá de nuevo en unos minutos. Contactanos si vuelve a pasar.",
     code: "operation_timeout",
   };
 }
 
 const GENERIC_BY_CONTEXT: Record<ImportErrorContext, string> = {
-  analyze: "No pudimos analizar la copia por un problema inesperado. No se cambió nada. Probá de nuevo en unos minutos.",
+  analyze: "No pudimos analizar la copia por un problema inesperado. No se cambió nada. Probá de nuevo en unos minutos. Contactanos si vuelve a pasar.",
   apply:
-    "La importación no se completó por un problema inesperado. Mirá el historial de importaciones: si no figura ahí, no se importó nada y podés volver a intentar.",
-  undoPreview: "No pudimos revisar si se puede deshacer. No se cambió nada. Probá de nuevo.",
-  undo: "No pudimos deshacer la importación. Mirá el historial para ver su estado antes de reintentar.",
-  discard: "No pudimos quitar la opción de deshacer. Sigue disponible: no se cambió nada.",
-  history: "No pudimos cargar el historial de importaciones. No se cambió nada. Probá de nuevo en unos minutos.",
+    "La importación no se completó por un problema inesperado. Mirá el historial de importaciones: si no figura ahí, no se importó nada y podés volver a intentar. Contactanos si vuelve a pasar.",
+  undoPreview: "No pudimos revisar si se puede deshacer. No se cambió nada. Probá de nuevo. Contactanos si vuelve a pasar.",
+  undo: "No pudimos deshacer la importación. Mirá el historial para ver su estado antes de reintentar. Contactanos si vuelve a pasar.",
+  discard: "No pudimos quitar la opción de deshacer. Sigue disponible: no se cambió nada. Contactanos si vuelve a pasar.",
+  history: "No pudimos cargar el historial de importaciones. No se cambió nada. Probá de nuevo en unos minutos. Contactanos si vuelve a pasar.",
 };
 
 /**
  * Traduce el mensaje que ya normalizó `domainErrorMessage` (frases de las RPC con ids y palabras internas) a una frase útil
- * más un código de soporte. Lo que no se reconoce nunca se muestra tal cual: cae en una frase genérica del paso donde ocurrió.
+ * más su clasificación interna (para el log). Lo que no se reconoce nunca se muestra tal cual: cae en una frase genérica del paso donde ocurrió.
  */
 export function translateImportError(raw: string, context: ImportErrorContext): TranslatedImportError {
   const text = raw.trim();
@@ -356,13 +356,13 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
   }
   if (/Invariante violada/i.test(text)) {
     return {
-      message: "La importación se frenó porque algunos importes o cantidades de la copia no cuadran entre sí. No se cambió nada en la web. Avisá a soporte con el código.",
+      message: "La importación se frenó porque algunos importes o cantidades de la copia no cuadran entre sí. No se cambió nada en la web. Contactanos si vuelve a pasar.",
       code: "integrity_check_failed",
     };
   }
   if (/Tabla |Campo |Decisión de duplicado|candidate_student_id|candidato de duplicado|no está clasificada|Override|no admite overrides/i.test(text)) {
     return {
-      message: "Hubo un problema con las opciones que elegiste. No se importó nada. Analizá la copia otra vez; si se repite, avisá a soporte con el código.",
+      message: "Hubo un problema con las opciones que elegiste. No se importó nada. Analizá la copia otra vez. Contactanos si vuelve a pasar.",
       code: "selection_invalid",
     };
   }
@@ -378,17 +378,17 @@ function validationMessage(code: string): TranslatedImportError {
       };
     case "backup_too_many_rows":
       return {
-        message: `Tu copia tiene más datos de los que se pueden importar de una sola vez (el límite es de ${formatCount(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS)} elementos entre alumnos, clases, registros, cobros y sus detalles). No se cambió nada y tu copia en la nube sigue intacta. Avisá a soporte con el código y la pasamos a la web por partes.`,
+        message: `Tu copia tiene más datos de los que se pueden importar de una sola vez (el límite es de ${formatCount(BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS)} elementos entre alumnos, clases, registros, cobros y sus detalles). No se cambió nada y tu copia en la nube sigue intacta. Contactanos y la pasamos a la web por partes.`,
         code,
       };
     case "backup_duplicate_items":
       return {
         message:
-          "La copia tiene datos repetidos y no se puede importar tal como está. No se cambió nada. Abrí la app móvil para que genere una copia nueva y volvé a intentar; si sigue igual, avisá a soporte con el código.",
+          "La copia tiene datos repetidos y no se puede importar tal como está. No se cambió nada. Abrí la app móvil para que genere una copia nueva y volvé a intentar. Si sigue igual, contactanos.",
         code,
       };
     case "backup_text_too_long":
-      return { message: "La copia tiene un texto demasiado largo (por ejemplo, una nota). No se cambió nada. Avisá a soporte con el código.", code };
+      return { message: "La copia tiene un texto demasiado largo (por ejemplo, una nota). No se cambió nada. Contactanos si vuelve a pasar.", code };
     case "backup_version_unknown":
       return {
         message: "La copia fue creada por una versión de la app que esta web todavía no reconoce. No se cambió nada. Actualizá la app móvil y esperá su próxima copia.",
@@ -397,7 +397,7 @@ function validationMessage(code: string): TranslatedImportError {
     default:
       return {
         message:
-          "La última copia de la nube no tiene el formato esperado, así que no se puede analizar. No se cambió nada. Abrí la app móvil para que genere una copia nueva; si sigue igual, avisá a soporte con el código.",
+          "La última copia de la nube no tiene el formato esperado, así que no se puede analizar. No se cambió nada. Abrí la app móvil para que genere una copia nueva. Si sigue igual, contactanos.",
         code: "backup_format_invalid",
       };
   }
@@ -415,11 +415,11 @@ const VALIDATION_CODE_MAP: Record<string, string> = {
 
 /**
  * Errores de la validación del respaldo (por su `code`, nunca por su texto ni su `path`, que nombra colecciones internas).
- * Varios errores se resumen en una sola frase; el código de soporte lista los distintos, separados por coma.
+ * Varios errores se resumen en una sola frase; la clasificación interna lista los distintos, separados por coma (sólo para el log).
  */
 export function translateValidationErrors(errors: ReadonlyArray<{ code: string }>): TranslatedImportError {
   const mapped = [...new Set(errors.map((e) => VALIDATION_CODE_MAP[e.code] ?? "backup_format_invalid"))];
   const first = validationMessage(mapped[0] ?? "backup_format_invalid");
-  const extra = mapped.length > 1 ? " Además hay otros problemas en la copia: el código para soporte los lista." : "";
+  const extra = mapped.length > 1 ? " Además hay otros problemas en la copia." : "";
   return { message: `${first.message}${extra}`, code: mapped.join(", ") || first.code };
 }

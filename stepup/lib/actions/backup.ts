@@ -20,7 +20,7 @@ import {
   type ApplyRunSummary,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import { translateImportError, translateImportTimeout, translateValidationErrors, type ImportErrorContext } from "@/lib/backup/import-copy";
+import { translateImportError, translateImportTimeout, translateValidationErrors, type ImportErrorContext, type TranslatedImportError } from "@/lib/backup/import-copy";
 import { describeLoadFailure } from "@/lib/errors/load-failure";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 import { actionErrorMessage } from "@/lib/errors/action-error";
@@ -38,22 +38,26 @@ import { consumeActionQuota } from "@/lib/repositories/action-quota";
 
 export interface ActionResult<T> {
   error?: string;
-  /** Código corto y estable para soporte (nunca datos personales, ids ni nombres de tablas). */
-  errorCode?: string;
+  /** El mensaje ya viene traducido por `lib/backup/import-copy.ts` (el navegador no lo vuelve a traducir). El código interno NUNCA sale del servidor. */
+  translated?: true;
   data?: T;
 }
 
-// Todo error del asistente se traduce a una frase útil + un código de soporte (`lib/backup/import-copy.ts`): el mensaje
-// interno de la RPC (ids, palabras como «preview» o «invariante») nunca llega al navegador.
-function failure(error: unknown, context: ImportErrorContext): { error: string; errorCode: string } {
+// Todo error del asistente se traduce a una frase útil (`lib/backup/import-copy.ts`): el mensaje interno de la RPC (ids, palabras
+// como «preview» o «invariante») nunca llega al navegador, y tampoco el código interno de la clasificación: éste sólo se
+// registra en el log del servidor (tipo y código, nunca datos personales, correos, tokens ni cargas).
+function reply(translated: TranslatedImportError, context: ImportErrorContext): { error: string; translated: true } {
+  console.error(`[action-error] ${JSON.stringify({ scope: "backup", kind: "import", context, code: translated.code })}`);
+  return { error: translated.message, translated: true };
+}
+
+function failure(error: unknown, context: ImportErrorContext): { error: string; translated: true } {
   // R6: la base cortó la operación por tiempo (SQLSTATE 57014): se revirtió todo y se explica sin detalles técnicos. Sólo el código, nunca el mensaje.
   if (describeLoadFailure(error).code === "57014") {
     console.error(`[action-error] ${JSON.stringify({ scope: "backup", kind: "database", code: "57014", name: null })}`);
-    const timeout = translateImportTimeout(context);
-    return { error: timeout.message, errorCode: timeout.code };
+    return reply(translateImportTimeout(context), context);
   }
-  const translated = translateImportError(actionErrorMessage("backup", error), context);
-  return { error: translated.message, errorCode: translated.code };
+  return reply(translateImportError(actionErrorMessage("backup", error), context), context);
 }
 
 export async function fetchLatestCloudBackupAction(): Promise<ActionResult<{ found: boolean; createdAt?: string; appVersion?: string | null }>> {
@@ -82,13 +86,13 @@ export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ p
     const backup = await fetchOwnLatestCloudBackup(ctx);
     if (!backup) {
       const translated = translateImportError("No encontramos ningún respaldo en la nube para tu cuenta.", "analyze");
-      return { error: translated.message, errorCode: translated.code };
+      return reply(translated, "analyze");
     }
 
     const validation = validateBackupPayload(backup.payload);
     if (!validation.ok) {
       const translated = translateValidationErrors(validation.errors);
-      return { error: translated.message, errorCode: translated.code };
+      return reply(translated, "analyze");
     }
 
     const result = await previewBackupImport(
@@ -145,7 +149,7 @@ export async function applyImportPreviewAction(
       duplicateDecisions.length > BACKUP_IMPORT_LIMITS.MAX_DUPLICATE_DECISIONS
     ) {
       const translated = translateImportError("La selección tiene demasiadas decisiones para confirmar de una vez.", "apply");
-      return { error: translated.message, errorCode: translated.code };
+      return reply(translated, "apply");
     }
     const ctx = await requireAuthenticatedDbContext();
     const result = await applyBackupImport(ctx, previewId, fieldOverrides, duplicateDecisions);

@@ -263,11 +263,11 @@ export function ProgressStage({ step, title, label }: { step: 1 | 2; title: stri
   );
 }
 
-export function IdleStage({ error, errorCode, pending, focusHeading, onAnalyze }: { error: string | null; errorCode: string | null; pending: boolean; focusHeading: boolean; onAnalyze: () => void }) {
+export function IdleStage({ error, pending, focusHeading, onAnalyze }: { error: string | null; pending: boolean; focusHeading: boolean; onAnalyze: () => void }) {
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (error) errorRef.current?.focus();
-  }, [error, errorCode]);
+  }, [error]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -290,7 +290,7 @@ export function IdleStage({ error, errorCode, pending, focusHeading, onAnalyze }
           <strong className="text-textPrimary">{IMPORT_SIZE_LIMIT_NOTICE.lead}</strong> {IMPORT_SIZE_LIMIT_NOTICE.body}
         </li>
       </ul>
-      {error && <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />}
+      {error && <ImportErrorBox message={error} onRetry={onAnalyze} boxRef={errorRef} />}
       <Button variant="primary" busy={pending} onClick={onAnalyze} className="self-start">
         Analizar la última copia
       </Button>
@@ -311,7 +311,6 @@ export interface PreviewStageProps {
   strongConfirmInput: string;
   pending: boolean;
   error: string | null;
-  errorCode: string | null;
   onToggleField: (tableName: string, rowId: string, field: string) => void;
   onDuplicateDecision: (backupLegacyMobileId: string, decision: DuplicateDecision["decision"]) => void;
   onStrongConfirmChange: (value: string) => void;
@@ -339,11 +338,11 @@ function PersonSummary({ heading, person }: { heading: string; person: { name: s
 }
 
 export function PreviewStage(props: PreviewStageProps) {
-  const { preview, backup, summary, selectedFields, duplicateDecisions, strongConfirmInput, pending, error, errorCode } = props;
+  const { preview, backup, summary, selectedFields, duplicateDecisions, strongConfirmInput, pending, error } = props;
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (error) errorRef.current?.focus();
-  }, [error, errorCode]);
+  }, [error]);
 
   const selectedFor = (tableName: string, rowId: string) => selectedFields[overrideKey(tableName, rowId)] ?? new Set<string>();
   const singletonSelected = (tableName: string, state: SingletonState) =>
@@ -661,7 +660,7 @@ export function PreviewStage(props: PreviewStageProps) {
 
         {error && (
           <div className="mt-3">
-            <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />
+            <ImportErrorBox message={error} boxRef={errorRef} />
           </div>
         )}
 
@@ -689,7 +688,6 @@ export function PreviewStage(props: PreviewStageProps) {
 export interface ResultStageProps {
   summary: ApplyRunSummary;
   error: string | null;
-  errorCode: string | null;
   undoState: UndoBlockedPreview | null;
   undoDone: boolean;
   undoDiscarded: boolean;
@@ -702,14 +700,14 @@ export interface ResultStageProps {
 }
 
 export function ResultStage(props: ResultStageProps) {
-  const { summary, error, errorCode, undoState, undoDone, undoDiscarded, pending } = props;
+  const { summary, error, undoState, undoDone, undoDiscarded, pending } = props;
   const breakdown = formatImportCounts(summary.countsByTable);
   const errorRef = useRef<HTMLDivElement>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const restoreReviewFocus = useRef(false);
   useEffect(() => {
     if (error) errorRef.current?.focus();
-  }, [error, errorCode]);
+  }, [error]);
   // Al cerrar la revisión de «deshacer», el foco vuelve al botón que la abrió.
   useEffect(() => {
     if (!undoState && restoreReviewFocus.current) {
@@ -741,7 +739,7 @@ export function ResultStage(props: ResultStageProps) {
         </>
       )}
 
-      {error && <ImportErrorBox message={error} code={errorCode} boxRef={errorRef} />}
+      {error && <ImportErrorBox message={error} boxRef={errorRef} />}
 
       {!undoDone && !undoDiscarded && (
         <section aria-labelledby="deshacer-titulo" className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5">
@@ -793,7 +791,6 @@ export function ResultStage(props: ResultStageProps) {
 export function BackupImportWizard() {
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [preview, setPreview] = useState<ImportPreviewDto | null>(null);
   const [backup, setBackup] = useState<BackupSourceInfo | null>(null);
@@ -815,17 +812,14 @@ export function BackupImportWizard() {
     return computeConfirmationSummary(preview, { fieldOverridesByRow, duplicateDecisions });
   }, [preview, selectedFields, duplicateDecisions]);
 
-  // Un error que llega ya traducido trae su código; uno que nunca salió del navegador (se cortó la red) se traduce acá, con la
-  // misma función, según el paso donde ocurrió.
-  function fail(result: { error?: string; errorCode?: string }, fallback: string, context: ImportErrorContext) {
-    const translated = result.errorCode ? null : translateImportError(result.error ?? fallback, context);
-    setError(translated ? translated.message : (result.error ?? fallback));
-    setErrorCode(translated ? translated.code : (result.errorCode ?? null));
+  // Un error que llega ya traducido (`translated`) se muestra tal cual; uno que nunca salió del navegador (se cortó la red) se
+  // traduce acá, con la misma función, según el paso donde ocurrió. Ningún código interno llega a la pantalla.
+  function fail(result: { error?: string; translated?: true }, fallback: string, context: ImportErrorContext) {
+    setError(result.translated && result.error ? result.error : translateImportError(result.error ?? fallback, context).message);
   }
 
   function clearError() {
     setError(null);
-    setErrorCode(null);
   }
 
   function handleAnalyze() {
@@ -960,7 +954,7 @@ export function BackupImportWizard() {
   }
 
   if (stage === "idle") {
-    return <IdleStage error={error} errorCode={errorCode} pending={pending} focusHeading={leftIdle} onAnalyze={handleAnalyze} />;
+    return <IdleStage error={error} pending={pending} focusHeading={leftIdle} onAnalyze={handleAnalyze} />;
   }
 
   if (stage === "analyzing") {
@@ -978,7 +972,6 @@ export function BackupImportWizard() {
         strongConfirmInput={strongConfirmInput}
         pending={pending}
         error={error}
-        errorCode={errorCode}
         onToggleField={toggleField}
         onDuplicateDecision={setDuplicateDecision}
         onStrongConfirmChange={setStrongConfirmInput}
@@ -997,7 +990,6 @@ export function BackupImportWizard() {
       <ResultStage
         summary={applyResult.summary}
         error={error}
-        errorCode={errorCode}
         undoState={undoState}
         undoDone={undoDone}
         undoDiscarded={undoDiscarded}

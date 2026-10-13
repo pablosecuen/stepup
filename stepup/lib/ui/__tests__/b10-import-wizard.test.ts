@@ -48,9 +48,9 @@ test("ningún id ni nombre interno se dibuja: ni legacyMobileId, ni nombres de t
   assert.match(wizard, /translateOmissionReason\(/);
   assert.match(wizard, /describeFinancialMembers\(/);
   assert.match(wizard, /describeMatchSignals\(d\.matchSignals\)/);
-  // La única tipografía de código es la palabra de confirmación y el código de soporte.
+  // La única tipografía de código es la palabra de confirmación: el código interno de un error ya no se muestra (ver block6-no-internal-codes).
   assert.equal((wizard.match(/font-mono/g) ?? []).length, 1);
-  assert.equal((code(UI).match(/font-mono/g) ?? []).length, 1);
+  assert.equal((code(UI).match(/font-mono/g) ?? []).length, 0);
 });
 
 test("flujo: tres pasos con indicador, y cada paso lleva el foco a su título", () => {
@@ -201,19 +201,18 @@ test("historial: términos nuevos, estado, vencimiento y botones compartidos", (
   assert.match(history, /formatImportCounts\(run\.countsByTable\)/, "los conteos siguen con nombres humanos");
 });
 
-test("errores: cada acción devuelve una frase útil y un código de soporte; ningún mensaje interno llega al navegador", () => {
+test("errores: cada acción devuelve una frase útil (sin códigos); ningún mensaje interno llega al navegador", () => {
   const actions = code(ACTIONS);
   assert.doesNotMatch(actions, /friendlyError/, "ya no se devuelve el mensaje interno tal cual");
-  assert.match(actions, /translateImportError\(actionErrorMessage\("backup", error\), context\)/);
-  assert.match(actions, /errorCode\?: string;/);
+  assert.match(actions, /reply\(translateImportError\(actionErrorMessage\("backup", error\), context\), context\)/);
+  assert.match(actions, /translated\?: true;/);
   assert.equal((actions.match(/return failure\(error, "/g) ?? []).length, 7);
   for (const context of ["analyze", "apply", "undoPreview", "undo", "discard", "history"]) assert.match(actions, new RegExp(`failure\\(error, "${context}"\\)`));
   assert.match(actions, /translateValidationErrors\(validation\.errors\)/);
   assert.doesNotMatch(actions, /validation\.errors\.map\(\(e\) => e\.message\)/, "ya no se unen los mensajes de la validación");
   const ui = code(UI);
-  assert.match(ui, /Código para soporte: /);
+  assert.doesNotMatch(ui, /Código para soporte/);
   assert.match(ui, /role="alert"/);
-  assert.match(ui, /select-all font-mono/);
   // Un fallo que nunca salió del navegador (red cortada) también se traduce, con el contexto del paso.
   for (const file of [WIZARD, HISTORY]) assert.match(code(file), /translateImportError\(result\.error \?\? fallback, context\)/);
   assert.match(code(WIZARD), /fail\(result, "Ocurrió un error inesperado\. Intentá de nuevo\.", "apply"\)/);

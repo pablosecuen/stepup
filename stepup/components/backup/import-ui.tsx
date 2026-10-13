@@ -38,8 +38,11 @@ export function Notice({ tone = "info", title, children }: { tone?: NoticeTone; 
   );
 }
 
-/** Error del asistente: la frase útil y, aparte, el código corto que soporte necesita (nunca datos ni ids). */
-export function ImportErrorBox({ message, code, boxRef }: { message: string; code?: string | null; boxRef?: Ref<HTMLDivElement> }) {
+/**
+ * Error del asistente: sólo la frase útil (qué pasó, qué pasó con los datos y qué hacer). Ningún código interno se muestra: la
+ * clasificación vive en el servidor y se registra en su log seguro. «Reintentar» aparece cuando la pantalla tiene un reintento directo.
+ */
+export function ImportErrorBox({ message, onRetry, boxRef }: { message: string; onRetry?: () => void; boxRef?: Ref<HTMLDivElement> }) {
   return (
     <div
       ref={boxRef}
@@ -48,10 +51,10 @@ export function ImportErrorBox({ message, code, boxRef }: { message: string; cod
       className="rounded-md border-[1.5px] border-badLine bg-badSoft px-4 py-3.5 text-[14.5px] text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-bad"
     >
       <p>{message}</p>
-      {code && (
-        <p className="mt-1.5 text-[13px] text-textSecondary">
-          Código para soporte: <span className="select-all font-mono font-semibold text-textPrimary">{code}</span>
-        </p>
+      {onRetry && (
+        <Button variant="secondary" onClick={onRetry} className="mt-3">
+          Reintentar
+        </Button>
       )}
     </div>
   );

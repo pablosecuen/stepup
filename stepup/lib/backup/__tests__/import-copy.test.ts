@@ -246,12 +246,13 @@ test("el alumno en conflicto trae su nombre si se pudo leer; si no, la propiedad
 // R6 — límites, datos repetidos, demasiadas decisiones y tiempo agotado
 // ---------------------------------------------------------------------------
 
-test("R6: pasar el máximo de datos explica qué hacer, con el límite, sin términos técnicos y con código de soporte", () => {
+test("R6: pasar el máximo de datos explica qué hacer, con el límite, sin términos técnicos y sin mostrar ningún código", () => {
   for (const code of ["too_many_rows", "too_many_rows_total", "too_many_nested_rows", "too_much_work"]) {
     const t = translateValidationErrors([{ code }]);
     assert.equal(t.code, "backup_too_many_rows", code);
     assert.match(t.message, /No se cambió nada/);
-    assert.match(t.message, /soporte/);
+    assert.match(t.message, /Contactanos/);
+    assert.doesNotMatch(t.message, /soporte|código/i);
     assert.match(t.message, /7\.500/, "dice el límite en lenguaje de la persona");
     assert.doesNotMatch(t.message, LEAKS);
   }

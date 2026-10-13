@@ -26,7 +26,6 @@ const STATUS_LABEL: Record<ImportRunHistoryRow["status"], string> = {
 
 export function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [undoState, setUndoState] = useState<UndoBlockedPreview | null>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
@@ -42,15 +41,12 @@ export function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onCha
     }
   }, [undoState]);
 
-  function fail(result: { error?: string; errorCode?: string }, fallback: string, context: ImportErrorContext) {
-    const translated = result.errorCode ? null : translateImportError(result.error ?? fallback, context);
-    setError(translated ? translated.message : (result.error ?? fallback));
-    setErrorCode(translated ? translated.code : (result.errorCode ?? null));
+  function fail(result: { error?: string; translated?: true }, fallback: string, context: ImportErrorContext) {
+    setError(result.translated && result.error ? result.error : translateImportError(result.error ?? fallback, context).message);
   }
 
   function clearError() {
     setError(null);
-    setErrorCode(null);
   }
 
   function handlePreviewUndo() {
@@ -116,7 +112,7 @@ export function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onCha
 
       {error && (
         <div className="mt-2">
-          <ImportErrorBox message={error} code={errorCode} />
+          <ImportErrorBox message={error} />
         </div>
       )}
 
@@ -153,18 +149,14 @@ export function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onCha
 export function ImportHistory() {
   const [runs, setRuns] = useState<ImportRunHistoryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   function load() {
     guardNetwork(() => listImportRunsAction()).then((result) => {
       if (result.error || !result.data) {
-        const translated = result.errorCode ? null : translateImportError(result.error ?? "", "history");
-        setError(translated ? translated.message : (result.error ?? "No pudimos cargar el historial de importaciones."));
-        setErrorCode(translated ? translated.code : (result.errorCode ?? null));
+        setError(result.translated && result.error ? result.error : translateImportError(result.error ?? "", "history").message);
         return;
       }
       setError(null);
-      setErrorCode(null);
       setRuns(result.data);
     });
   }
@@ -173,12 +165,12 @@ export function ImportHistory() {
     load();
   }, []);
 
-  return <ImportHistoryList runs={runs} error={error} errorCode={errorCode} onChanged={load} />;
+  return <ImportHistoryList runs={runs} error={error} onChanged={load} />;
 }
 
 /** Lista del historial (presentación): error, carga, vacío o las importaciones. Los datos y la recarga los resuelve ImportHistory. */
-export function ImportHistoryList({ runs, error, errorCode, onChanged }: { runs: ImportRunHistoryRow[] | null; error: string | null; errorCode: string | null; onChanged: () => void }) {
-  if (error) return <ImportErrorBox message={error} code={errorCode} />;
+export function ImportHistoryList({ runs, error, onChanged }: { runs: ImportRunHistoryRow[] | null; error: string | null; onChanged: () => void }) {
+  if (error) return <ImportErrorBox message={error} onRetry={onChanged} />;
   if (runs === null) return <LoadingState label="Cargando historial de importaciones…" />;
   if (runs.length === 0) return <EmptyState icon={ArchiveBoxIcon} message="Todavía no importaste ningún respaldo." />;
 
