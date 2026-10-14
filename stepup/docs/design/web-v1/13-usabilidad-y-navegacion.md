@@ -1,0 +1,51 @@
+# Bloque de usabilidad y navegación (14/10/2026)
+
+Cinco cambios pedidos por la persona usuaria, desplegados en Production (commits `6d1a87a`, `2702c06`, `4c97dc1` sobre `2859eed`). Sin cambios de base, de reglas de negocio ni de billing.
+
+## 1. Cambios
+
+| # | Cambio | Dónde |
+|---|---|---|
+| 1 | **Mostrar/ocultar contraseña**: botón de ojo dentro del campo (nombre «Mostrar contraseña»/«Ocultar contraseña», `aria-pressed`, 44 px). Es el mismo `<input>` (sólo cambia `type`): conserva valor, foco, selección, `name` y `autoComplete` (`current-password` en Iniciar sesión, `new-password` en Crear cuenta y Nueva contraseña); sin corrector ortográfico en modo visible. | `components/ui/password-input.tsx`, `lib/ui/password-visibility.ts` |
+| 2 | **Resumen financiero dentro de Cobros**: entrada secundaria indentada bajo «Cobros» en la barra lateral (siempre presente: no mueve ni ensancha nada), pestañas «Centro de cobros» · «Resumen financiero» bajo el encabezado de las dos pantallas, Cobros activo en `/cobros` y `/resumen-financiero` (`aria-current` «page» en su ruta, «true» en Resumen). La barra inferior móvil conserva sus cinco destinos. Sin «Volver a Inicio» ni botón redundante. Rutas intactas. | `lib/nav/primary-nav-items.ts`, `components/nav/primary-nav.tsx`, `components/payments/payments-section-nav.tsx` |
+| 3 | **Densidad del Calendario** (Semana y Día, escritorio): Compacta 48 · Media 64 (inicial) · Amplia 80 px por hora; control segmentado con texto y `aria-pressed`; preferencia sólo en `localStorage` de ese navegador (valor inválido o ausente → Media); oculto en móvil (la agenda por día no cambia). Sólo cambia la escala vertical: posición y alto salen de minutos × px/hora y la zona táctil de 44 px sigue separada del bloque. Media muestra 14 h en 896 px (antes 1.344). | `lib/calendar/density.ts`, `lib/calendar/layout.ts`, `components/calendar/*` |
+| 4 | **Navegación lenta**: ver §2. | `components/nav/navigation-progress.tsx`, `lib/nav/navigation-intent.ts`, `lib/auth/render-user.ts`, `lib/calendar/view.ts`, `lib/dashboard/*` |
+| 5 | **Fila completa del alumno clicable** con UN solo enlace por fila (pseudo-elemento `after:absolute after:inset-0` del enlace del nombre; `aria-label` «Abrir perfil de …»; una parada de Tab; Enter, Ctrl/Cmd+clic y botón central como cualquier enlace). Botones independientes futuros: `relative z-10`. | `components/students/student-card.tsx` |
+
+## 2. Navegación lenta: medición, causa y correcciones
+
+**Método.** Cuenta QA en Production, escritorio 1440×900, navegación del lado cliente entre Inicio, Alumnos, perfil de alumno, Calendario, Cobros, Resumen financiero y Registro (clic sobre el enlace del menú o de la fila, sin tocar datos). Se registran sólo rutas y milisegundos. «Respuesta visual» = primer cambio visible tras el clic (barra de progreso, enlace atenuado, esqueleto o cambio de URL); «URL» = la ruta cambió; «contenido» = el título real de la pantalla y ningún esqueleto; TTFB del pedido RSC por Resource Timing. El panel integrado no pinta mientras está oculto, así que el reemplazo del esqueleto se difiere hasta una captura (no es un defecto de la web).
+
+| Destino | Respuesta visual ANTES | Respuesta visual DESPUÉS | Contenido ANTES (2 muestras) | Contenido DESPUÉS (mediana de 6) |
+|---|---|---|---|---|
+| Alumnos | 218–282 ms | **5 ms** | 926 / 645 ms | 618 ms |
+| Perfil de alumno | — | 5 ms | — | 1.562 ms |
+| Calendario | 290–453 ms | **5 ms** | 1.501 / 1.333 ms | 1.149 ms |
+| Cobros | 249–355 ms | **5 ms** | 1.061 / 593 ms | 845 ms |
+| Resumen financiero | — | 5 ms | (2.321 ms tras el primer cambio) | 1.290 ms |
+| Registro | 237–300 ms | **5 ms** | 1.590 / 2.260 ms | 1.562 ms |
+| **Inicio** | **1.824–2.558 ms** | **5 ms** | 1.876 / 2.609 ms | 1.609 ms |
+
+(Antes de los cambios no se midieron Perfil ni Resumen; «ANTES» de Resumen es la medición tras el primer commit, antes de paralelizar. La URL cambia a los ~250 ms en las pantallas con `loading.tsx`; Inicio, que no tiene `loading.tsx` por la recuperación B0, cambia de URL cuando termina de responder.)
+
+**Causa concreta.**
+1. *Sin respuesta al clic.* Con la precarga apagada (a propósito, B0), el router no muestra nada hasta que el servidor responde (220–450 ms) y en Inicio —que no puede tener `loading.tsx` porque su redirect de recuperación debe seguir siendo un redirect HTTP real— hasta que termina de armar la pantalla (1,8–2,6 s). Esto es lo que se percibe como «el primer clic no se recibe».
+2. *Costo del servidor = idas y vueltas a Supabase.* Las funciones de Vercel corren en `iad1` (Washington) y la base está en `sa-east-1` (São Paulo): cada consulta cuesta ≈ 150–200 ms de red. Alumnos (3 viajes en serie: verificación en el proxy, usuario y datos) ≈ 620 ms; Inicio ≈ 8 viajes en serie ≈ 1,6 s. **Desglose:** ≈ 210–320 ms hasta el primer byte (TTFB: proxy + sesión + armado de la cabecera) y el resto del tiempo de «contenido» es el servidor esperando a Supabase; el navegador (hidratación y render) aporta ≈ 60–110 ms (diferencia entre el fin del pedido RSC y el contenido visible). **La latencia de red Vercel↔Supabase es la causa principal y no se elimina con código.**
+3. *Lecturas repetidas.* Inicio pedía series, alumnos y excepciones tres veces (una por vista del calendario) y leía en 6 olas seguidas; Resumen financiero en 6 olas; el layout y la página verificaban al usuario con Auth cada uno.
+4. *Se descartó:* que una Server Action en vuelo (`ChargeGenerationTrigger`, ≈ 1 s) frene la navegación siguiente (se midió: `inicio→alumnos` inmediato 617 ms frente a 873 ms después de esperar; no la bloquea).
+
+**Correcciones.**
+- **Respuesta inmediata** (`NavigationProgress`): un solo escucha en el documento; al clic muestra una barra fina arriba (avanza hasta el 90 % en 8 s y se queda: no es infinita), atenúa el enlace pulsado, anuncia «Cargando…» a lectores de pantalla y, pasados 6 s, lo dice con texto. Un segundo clic al MISMO destino mientras está pendiente se ignora (una sola navegación comprobada: 1 pedido RSC); otro destino reemplaza al pendiente. No interviene con Ctrl/Cmd/Shift/Alt, botón central o derecho, `target`, descargas, enlaces externos, anclas ni el mismo destino; atrás/adelante lo restablecen; al cambiar la ruta se apaga; si la navegación falla o se cuelga, se apaga sola a los 20 s.
+- **Consultas** (mismo resultado, menos lecturas): usuario verificado UNA vez por navegación (`getRenderUser`, caché de React por solicitud; la recuperación de sesión B0 y las cuentas siguen consultando cada vez); Inicio y Resumen leen series/excepciones/alumnos una sola vez y las clases de cada rango salen a la vez que esa base (`loadCalendarViewBase` + `composeCalendarView`); las lecturas independientes de ambos salen juntas; el nombre del saludo de Inicio se pide en paralelo.
+  - *Consultas lógicas por navegación (conteo estático del código):* Inicio ≈ 21 → ≈ 12 (olas en serie ≈ 10 → ≈ 5); Resumen financiero ≈ 17 → ≈ 11 (olas ≈ 9 → ≈ 4); cualquier pantalla privada: una verificación con Auth menos.
+- **Precarga: sigue apagada, por decisión.** `PrivateLink` no admite `prefetch`. Con el layout dinámico, cada precarga vuelve a ejecutar la verificación de sesión y la lectura de identidad (cinco enlaces del menú = cinco verificaciones por pantalla): es justo la ráfaga que causó B0. La respuesta inmediata resuelve la percepción sin ese riesgo. Guarda estructural (`navigation-intent.test.ts`): ninguna página privada importa más que lecturas, ninguna ejecuta Server Actions al renderizar, no hay route handlers dentro del área privada y nada reactiva `prefetch`; las escrituras que ya estaban en POST siguen en POST.
+
+**Límite externo.** Mover las funciones de Vercel a `gru1` (São Paulo) —ajuste de la región de funciones del proyecto— acercaría cada viaje a la base de ≈ 150–200 ms a unos pocos ms. Estimación (no medida): Alumnos ≈ 0,2 s e Inicio ≈ 0,4–0,5 s. No se aplicó: es configuración del proyecto y queda para decisión de Joaquín.
+
+## 3. Pruebas
+
+`lib/ui/__tests__/usability-block.test.ts` (contraseña, Cobros/Resumen, fila del alumno, consultas), `lib/nav/__tests__/navigation-intent.test.ts` (pendiente, doble clic, modificadores, fallo, precarga y páginas de sólo lectura), `lib/calendar/__tests__/density.test.ts` (densidades, persistencia, valor inválido, geometría temporal exacta, 15/30/45/60 min, consecutivas/simultáneas/superpuestas, propiedad aleatoria). Suite completa 1.452/1.452.
+
+## 4. Verificación en Production (cuenta QA, sólo lectura)
+
+Contraseña (probada contra un servidor local con un valor de prueba): valor, foco, selección y `autocomplete` se conservan; los nombres alternan. Cobros/Resumen en 1440, 390 y 320 px sin desbordes, pestañas de 44 px, barra inferior con 5 destinos y Cobros activo. Calendario 1440: tres densidades (alto de la grilla 672/896/1.120 px), valor guardado inválido → Media, zonas de 44 px sin solapes; 390 y 320: agenda por día sin selector. Alumnos: 1 enlace por fila cubriendo 1.098×60 px, clic en cualquier celda abre el perfil, Ctrl+clic y botón central sin intervención. Consola sin errores; 172 solicitudes al deployment sin 5xx (los 66 `404` son `GET /favicon.ico` del navegador, previos a este bloque). Facturación sigue oculta y webhook/cron siguen en 404.
