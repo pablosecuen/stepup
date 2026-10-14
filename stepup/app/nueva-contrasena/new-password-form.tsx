@@ -7,7 +7,8 @@ import { updatePasswordAction, type AuthFormState } from "@/lib/auth/actions";
 import { MIN_PASSWORD_LENGTH, passwordsMatch, canSubmitNewPassword } from "@/lib/auth/validation";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput, fieldErrorId } from "@/components/ui/field";
+import { Field, fieldErrorId } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -29,10 +30,9 @@ export function NewPasswordForm() {
   return (
     <form action={formAction} className="flex flex-col gap-[18px]" aria-label="Formulario para elegir una contraseña nueva">
       <Field label={`Contraseña nueva (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`} htmlFor="password">
-        <TextInput
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={MIN_PASSWORD_LENGTH}
@@ -43,10 +43,9 @@ export function NewPasswordForm() {
       </Field>
 
       <Field label="Repetir contraseña nueva" htmlFor="confirmPassword" error={showMismatchError ? "Las contraseñas no coinciden." : undefined}>
-        <TextInput
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           required
           placeholder="••••••••"

@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { linkClass } from "@/components/ui/button";
-import { BackLink, PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { ErrorState } from "@/components/ui/states";
 import type { FinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
@@ -83,10 +84,8 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
 
   return (
     <div className={PAGE_WIDTH.wide}>
-      <BackLink href="/inicio">Volver a Inicio</BackLink>
-      <div className="mt-3">
-        <PageHeader title="Resumen financiero" subtitle="Sólo montos agregados — nunca nombres de alumnos ni información pedagógica." />
-      </div>
+      <PageHeader title="Resumen financiero" subtitle="Sólo montos agregados — nunca nombres de alumnos ni información pedagógica." />
+      <PaymentsSectionNav current="overview" />
 
       <nav aria-label="Período" className="mt-5">
         <ul className="flex flex-wrap gap-2">
@@ -186,10 +185,8 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
 export function FinancialOverviewErrorView() {
   return (
     <div className={PAGE_WIDTH.wide}>
-      <BackLink href="/inicio">Volver a Inicio</BackLink>
-      <div className="mt-3">
-        <PageHeader title="Resumen financiero" />
-      </div>
+      <PageHeader title="Resumen financiero" />
+      <PaymentsSectionNav current="overview" />
       <div className="mt-6 flex flex-col items-start gap-2">
         <div className="w-full">
           <ErrorState message="No pudimos cargar el resumen financiero." />

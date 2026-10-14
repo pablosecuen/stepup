@@ -13,6 +13,7 @@ import { StatusCircle } from "@/components/ui/status-circle";
 import { Button } from "@/components/ui/button";
 import { TextLink } from "@/components/auth/public-links";
 import { Field, TextInput, fieldErrorId } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ResendConfirmationForm } from "./resend-confirmation-form";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 
@@ -67,10 +68,9 @@ export function SignUpForm() {
       </Field>
 
       <Field label={`Contraseña (mínimo ${MIN_PASSWORD_LENGTH} caracteres)`} htmlFor="password">
-        <TextInput
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={MIN_PASSWORD_LENGTH}
@@ -81,10 +81,9 @@ export function SignUpForm() {
       </Field>
 
       <Field label="Repetir contraseña" htmlFor="confirmPassword" error={showMismatchError ? "Las contraseñas no coinciden." : undefined}>
-        <TextInput
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           required
           placeholder="••••••••"

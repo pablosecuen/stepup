@@ -1,21 +1,31 @@
 /**
  * Destinos de la navegación principal del área privada (escritorio y móvil: los MISMOS cinco).
  * Configuración NO es un destino principal: vive en el menú de cuenta (ver `account-menu.tsx`).
- * Recordatorios y Resumen financiero no tienen destino propio: se llegan desde Inicio y Cobros, como hasta ahora.
+ * Recordatorios no tiene destino propio (se llega desde Inicio). Resumen financiero PERTENECE a Cobros: no es un sexto destino,
+ * es una entrada secundaria de Cobros (`secondary`) y mantiene activa a Cobros (`related`).
  */
 export type PrimaryNavIconKey = "home" | "students" | "calendar" | "payments" | "registry";
+
+export interface SecondaryNavItem {
+  href: string;
+  label: string;
+}
 
 export interface PrimaryNavItem {
   href: string;
   label: string;
   icon: PrimaryNavIconKey;
+  /** Otras rutas de la MISMA sección: mientras se está en ellas este destino sigue siendo el activo. */
+  related?: readonly string[];
+  /** Entradas secundarias (barra lateral de escritorio): nunca un destino principal más. */
+  secondary?: readonly SecondaryNavItem[];
 }
 
 export const PRIMARY_NAV_ITEMS: readonly PrimaryNavItem[] = [
   { href: "/inicio", label: "Inicio", icon: "home" },
   { href: "/alumnos", label: "Alumnos", icon: "students" },
   { href: "/calendario", label: "Calendario", icon: "calendar" },
-  { href: "/cobros", label: "Cobros", icon: "payments" },
+  { href: "/cobros", label: "Cobros", icon: "payments", related: ["/resumen-financiero"], secondary: [{ href: "/resumen-financiero", label: "Resumen financiero" }] },
   { href: "/registro", label: "Registro", icon: "registry" },
 ];
 
@@ -36,7 +46,12 @@ export function isPrimaryNavActive(pathname: string | null | undefined, href: st
   return path === href || path.startsWith(`${href}/`);
 }
 
-/** Destino activo para una ruta, o `null` si ninguno corresponde (Configuración, Recordatorios, Resumen financiero…). */
+/** ¿La ruta pertenece a la sección de este destino (su ruta, sus subrutas o una ruta relacionada)? */
+export function isPrimarySectionActive(pathname: string | null | undefined, item: PrimaryNavItem): boolean {
+  return isPrimaryNavActive(pathname, item.href) || (item.related ?? []).some((related) => isPrimaryNavActive(pathname, related));
+}
+
+/** Destino activo para una ruta, o `null` si ninguno corresponde (Configuración, Recordatorios…). */
 export function activePrimaryNavHref(pathname: string | null | undefined): string | null {
-  return PRIMARY_NAV_ITEMS.find((item) => isPrimaryNavActive(pathname, item.href))?.href ?? null;
+  return PRIMARY_NAV_ITEMS.find((item) => isPrimarySectionActive(pathname, item))?.href ?? null;
 }

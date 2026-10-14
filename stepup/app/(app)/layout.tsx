@@ -1,9 +1,10 @@
 import type { Viewport } from "next";
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/nav/primary-nav";
+import { NavigationProgress } from "@/components/nav/navigation-progress";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { isSupabaseConfigured, shouldFailClosed } from "@/lib/auth/config";
-import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
+import { getRenderUser } from "@/lib/auth/render-user";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { loadAccountIdentity } from "@/lib/nav/load-account-identity";
 import { resolveAccountIdentity } from "@/lib/nav/account-identity";
@@ -35,8 +36,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let user: AuthUser | null = null;
 
   if (configured) {
-    const adapter = createSupabaseAuthAdapter();
-    user = await adapter.getUser();
+    // Misma verificación que hará la página (`requireAuthenticatedDbContext`): una sola ida y vuelta a Auth por navegación.
+    user = await getRenderUser();
     hasSession = !!user;
   }
 
@@ -56,6 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen nav:pl-[236px]">
+      <NavigationProgress />
       <PrimaryNav account={account} billingEnabled={readBillingFlags(process.env).enabled} />
       <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
     </div>

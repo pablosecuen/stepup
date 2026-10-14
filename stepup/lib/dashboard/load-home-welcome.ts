@@ -14,12 +14,14 @@ import type { HomeWelcome } from "@/lib/dashboard/home-welcome";
  * Las lecturas de existencia (una fila cada una) sólo se hacen si lo ya cargado por `loadHomeData` no muestra ninguna
  * clase: una cuenta con actividad no paga ninguna consulta extra.
  */
-export async function loadHomeWelcome(ctx: AuthenticatedDbContext, data: HomeData): Promise<HomeWelcome> {
+export async function loadHomeWelcome(ctx: AuthenticatedDbContext, data: HomeData, startedDisplayName?: Promise<string | null>): Promise<HomeWelcome> {
   const [displayName, hasAnyClass] = await Promise.all([
-    getTeacherProfile(ctx).then(
-      (profile) => profile.displayName || null,
-      () => null,
-    ),
+    // `startedDisplayName`: la página ya pidió el nombre en paralelo con `loadHomeData` (nunca rechaza: ante un fallo es `null`).
+    startedDisplayName ??
+      getTeacherProfile(ctx).then(
+        (profile) => profile.displayName || null,
+        () => null,
+      ),
     data.hasClassSignal
       ? Promise.resolve<boolean | null>(true)
       : Promise.all([hasAnyCalendarLesson(ctx), hasAnyLessonRegistration(ctx)]).then(

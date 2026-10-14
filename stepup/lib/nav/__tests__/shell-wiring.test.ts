@@ -121,7 +121,9 @@ test("ningún cambio en autenticación ni datos: el shell sólo LEE el nombre y 
   assert.match(loader, /getTeacherProfile\(\{ supabase, ownerId: user\.id \}\)/, "reusa el usuario ya verificado (no pide otro getUser)");
 
   // El layout conserva EXACTAMENTE su verificación de sesión: una sola llamada a getUser y la misma regla de acceso.
-  assert.equal((layout.match(/adapter\.getUser\(\)/g) ?? []).length, 1);
+  // (desde el bloque de usabilidad: la misma verificación con Auth, compartida con la página por solicitud — `getRenderUser`).
+  assert.equal((layout.match(/getRenderUser\(\)/g) ?? []).length, 1);
+  assert.doesNotMatch(layout, /adapter\.getUser\(\)/);
   assert.match(layout, /resolvePrivateAreaAccess\(\{ configured, hasSession, pathname: "\/inicio" \}\)/);
   assert.match(layout, /if \(decision\.kind === "redirect"\) redirect\(decision\.to\);\n  \}\n\n  const account = /, "la identidad se carga DESPUÉS de la verificación de sesión");
 
@@ -136,7 +138,9 @@ test("ningún cambio en autenticación ni datos: el shell sólo LEE el nombre y 
 
 test("Recordatorios y Resumen financiero siguen accesibles desde sus puntos actuales", () => {
   assert.match(read("components/dashboard/home-view.tsx"), /href="\/recordatorios"/);
-  assert.match(read("components/payments/collections-view.tsx"), /href="\/resumen-financiero"/);
+  // Resumen financiero se llega desde la navegación secundaria de Cobros (barra lateral y pestañas de la pantalla), con la misma ruta de siempre.
+  assert.match(read("components/payments/payments-section-nav.tsx"), /href: "\/resumen-financiero"/);
+  assert.match(read("lib/nav/primary-nav-items.ts"), /secondary: \[\{ href: "\/resumen-financiero", label: "Resumen financiero" \}\]/);
 });
 
 test("el shell no incluye alcance ajeno (textos de fase, pestañas del perfil, safe redirect)", () => {

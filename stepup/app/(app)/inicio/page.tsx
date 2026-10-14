@@ -5,6 +5,7 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { logLoadFailure } from "@/lib/errors/load-failure";
 import { loadHomeData } from "@/lib/dashboard/load-home-data";
 import { loadHomeWelcome } from "@/lib/dashboard/load-home-welcome";
+import { getTeacherProfile } from "@/lib/repositories/teacher-profile";
 import { HomeView } from "@/components/dashboard/home-view";
 import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { HomeLoadError } from "@/components/dashboard/home-error";
@@ -24,8 +25,13 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
   let welcome: HomeWelcome;
   try {
     const ctx = await requireAuthenticatedDbContext();
+    // El nombre del saludo se pide en paralelo con los datos de Inicio (no depende de ellos); un fallo lo deja en `null`.
+    const displayName = getTeacherProfile(ctx).then(
+      (profile) => profile.displayName || null,
+      () => null,
+    );
     data = await loadHomeData(ctx);
-    welcome = await loadHomeWelcome(ctx, data);
+    welcome = await loadHomeWelcome(ctx, data, displayName);
   } catch (error) {
     // Ya no se oculta la causa: queda registrada (tipo/código, nunca datos) y la sesión vencida se distingue.
     const failure = logLoadFailure("inicio", error);

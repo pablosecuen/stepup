@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getRenderUser } from "@/lib/auth/render-user";
 
 /**
  * Contexto autenticado real para los repositorios (Server Components/
@@ -42,9 +43,8 @@ export async function requireAuthenticatedDbContext(): Promise<AuthenticatedDbCo
   const supabase = await createSupabaseServerClient();
   if (!supabase) throw new DbNotConfiguredError();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Compartido con el layout privado dentro de la misma solicitud (una sola verificación con Auth por navegación).
+  const user = await getRenderUser();
   if (!user) throw new DbUnauthenticatedError();
 
   return { supabase, ownerId: user.id };

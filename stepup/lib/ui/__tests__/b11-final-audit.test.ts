@@ -55,9 +55,10 @@ test("todo campo de formulario tiene un nombre accesible propio: aria-label, eti
   const offenders: string[] = [];
   for (const file of sources(["app", "components"])) {
     // components/ui/field.tsx DEFINE los envoltorios (reciben id/aria-* por props): lo que se verifica es cada USO.
-    if (file === "components/ui/field.tsx") continue;
+    // components/ui/password-input.tsx es otro envoltorio del mismo tipo (recibe el id por props); sus usos sí se verifican.
+    if (file === "components/ui/field.tsx" || file === "components/ui/password-input.tsx") continue;
     const source = code(file);
-    for (const name of ["input", "select", "textarea", "TextInput", "SelectInput", "TextArea"]) {
+    for (const name of ["input", "select", "textarea", "TextInput", "SelectInput", "TextArea", "PasswordInput"]) {
       for (const tag of openingTags(source, name)) {
         if (/type="hidden"/.test(tag.text)) continue;
         if (/aria-label=|aria-labelledby=/.test(tag.text)) continue;

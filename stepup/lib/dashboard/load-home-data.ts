@@ -77,14 +77,27 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const dayEndExclusive = new Date(new Date(dayStartIso).getTime() + 24 * 60 * 60 * 1000 - 1);
   const horizonEnd = new Date(now.getTime() + DEFAULT_RECURRENCE_HORIZON_DAYS * 24 * 60 * 60 * 1000);
 
-  const [rules, students, todayItems, horizonLessons] = await Promise.all([
+  const pendingLookbackStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+  // Ola 1: todo lo que no depende de otra lectura sale junto (antes eran seis esperas seguidas, cada una con su ida y vuelta a la
+  // base). El resultado es exactamente el mismo.
+  // R2: esta lectura NO genera cargos (un GET nunca escribe): la generación del período la dispara `ChargeGenerationTrigger`
+  // (Server Action) y la pantalla se refresca si se creó algo. Sólo los cargos con saldo pendiente (calculados en la base).
+  const [rules, students, todayItems, horizonLessons, pendingItems, balances] = await Promise.all([
     listRecurrenceRules(ctx),
     listStudents(ctx),
     loadCalendarViewForRange(ctx, new Date(dayStartIso), dayEndExclusive),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
+    loadCalendarViewForRange(ctx, pendingLookbackStart, now),
+    listOpenChargeBalances(ctx),
   ]);
 
-  const exceptions = await listRecurrenceExceptionsForRules(ctx, rules.map((rule) => rule.id));
+  // Ola 2: las dos que dependen de la ola 1.
+  const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);
+  const [exceptions, registrations] = await Promise.all([
+    listRecurrenceExceptionsForRules(ctx, rules.map((rule) => rule.id)),
+    listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds),
+  ]);
 
   const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
   const nextClassSelection = selectCurrentOrNextOccurrence(todayLessons, now);
@@ -111,16 +124,8 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     now,
   });
 
-  const pendingLookbackStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-  const pendingItems = await loadCalendarViewForRange(ctx, pendingLookbackStart, now);
-  const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);
-  const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds);
   const pendingLessons = buildPendingLessons({ calendarItems: pendingItems, now, registrations });
 
-  // R2: esta lectura NO genera cargos (un GET nunca escribe): la generación del período la dispara `ChargeGenerationTrigger`
-  // (Server Action) y la pantalla se refresca si se creó algo.
-  // R2: sólo los cargos con saldo pendiente (calculados en la base), no toda la historia de cargos/asignaciones/pagos.
-  const balances = await listOpenChargeBalances(ctx);
   const collectionEntries = buildCollectionsCenterEntriesFromBalances({
     balances,
     students: students.map((s) => ({ id: s.id, name: s.name, status: s.status })),

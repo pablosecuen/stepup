@@ -34,7 +34,13 @@ export function StudentCard({ student }: { student: StudentRecord }) {
   );
 }
 
-/** Tabla de la lista en escritorio (desde 820 px). La celda del nombre es el enlace al perfil. */
+/**
+ * Tabla de la lista en escritorio (desde 820 px). TODA la fila abre el perfil con UN solo enlace (el del nombre): un pseudo-elemento
+ * `after:absolute after:inset-0` del enlace cubre la fila entera (`<tr class="relative">`). Un único enlace = una sola parada de Tab y
+ * un solo nombre accesible por fila («Abrir perfil de …»); Enter, Ctrl/Cmd+clic y botón central funcionan como en cualquier enlace.
+ * Si en el futuro una fila suma botones independientes, deben llevar `relative z-10` para quedar por encima de la superficie
+ * clicable y no disparar la navegación.
+ */
 export function StudentsTable({ students }: { students: StudentRecord[] }) {
   return (
     <Table caption="Alumnos">
@@ -49,9 +55,13 @@ export function StudentsTable({ students }: { students: StudentRecord[] }) {
       </thead>
       <tbody>
         {students.map((student) => (
-          <Tr key={student.id}>
+          <Tr key={student.id} className="relative cursor-pointer">
             <Td className="min-w-[220px]">
-              <PrivateLink href={`/alumnos/${student.id}`} className="-my-1 flex min-h-11 items-center gap-3 rounded-md hover:underline hover:decoration-borderMid hover:underline-offset-[3px]">
+              <PrivateLink
+                href={`/alumnos/${student.id}`}
+                aria-label={`Abrir perfil de ${student.name}`}
+                className="-my-1 flex min-h-11 items-center gap-3 rounded-md after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-[2.5px] focus-visible:after:-outline-offset-2 focus-visible:after:outline-ink group-hover:underline group-hover:decoration-borderMid group-hover:underline-offset-[3px]"
+              >
                 <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="m" />
                 <span className="font-[650] text-textPrimary [overflow-wrap:anywhere]">{student.name}</span>
               </PrivateLink>

@@ -2,10 +2,11 @@ import { BanknotesIcon, CalendarDaysIcon, ClockIcon, ExclamationCircleIcon } fro
 import PrivateLink from "@/components/nav/private-link";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { PrivateButtonLink, linkClass } from "@/components/ui/button";
+import { linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
+import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import type { CollectionsCenterEntry } from "@/lib/payments/collections-center";
@@ -39,12 +40,8 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
             {entries.length} obligaci{entries.length === 1 ? "ón" : "ones"} pendiente{entries.length === 1 ? "" : "s"}.
           </>
         }
-        action={
-          <PrivateButtonLink href="/resumen-financiero" variant="secondary">
-            Ver resumen financiero
-          </PrivateButtonLink>
-        }
       />
+      <PaymentsSectionNav current="collections" />
 
       {entries.length === 0 ? (
         <div className="mt-6">
@@ -134,6 +131,7 @@ export function CollectionsErrorView() {
   return (
     <div className={PAGE_WIDTH.wide}>
       <PageHeader title="Cobros" />
+      <PaymentsSectionNav current="collections" />
       <div className="mt-6 flex flex-col items-start gap-2">
         <div className="w-full">
           <ErrorState message="No pudimos cargar Cobros." />

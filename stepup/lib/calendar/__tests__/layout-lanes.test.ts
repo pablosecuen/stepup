@@ -100,8 +100,9 @@ test("duraciones de 15, 30, 45 y 60 minutos: bloque exacto y zona interactiva de
   }
 });
 
-test("dos clases consecutivas de 30 minutos: las dos en el mismo carril, con zonas de 44 px que no se tocan", () => {
-  const out = layout([lesson("b", "10:30", 30), lesson("a", "10:00", 30)]);
+test("dos clases consecutivas de 30 minutos con 96 px por hora (o más): las dos en el mismo carril, con zonas de 44 px que no se tocan", () => {
+  // Con las densidades de la grilla (48/64/80 px por hora) 30 minutos miden menos de 44 px y se reparten en carriles: ver density.test.ts.
+  const out = layoutDayItems([lesson("b", "10:30", 30), lesson("a", "10:00", 30)], 96);
   assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 1], ["b", 0, 1]]);
   assert.ok(out[0].hitHeight >= 44 && out[1].hitHeight >= 44);
   assert.ok(out[0].hitTop + out[0].hitHeight <= out[1].hitTop, "la zona de la primera no invade a la segunda");

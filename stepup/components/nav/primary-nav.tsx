@@ -20,7 +20,7 @@ import PrivateLink from "@/components/nav/private-link";
 import { AccountMenu } from "@/components/nav/account-menu";
 import { BrandMark } from "@/components/ui/brand";
 import type { AccountIdentity } from "@/lib/nav/account-identity";
-import { PRIMARY_NAV_ITEMS, isPrimaryNavActive, type PrimaryNavIconKey } from "@/lib/nav/primary-nav-items";
+import { PRIMARY_NAV_ITEMS, isPrimaryNavActive, isPrimarySectionActive, type PrimaryNavIconKey } from "@/lib/nav/primary-nav-items";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -71,13 +71,13 @@ export function PrimaryNav({ account, billingEnabled = false }: { account: Accou
       >
         <ul className="grid grid-cols-5 px-1 pt-1.5">
           {PRIMARY_NAV_ITEMS.map((item) => {
-            const isActive = isPrimaryNavActive(pathname, item.href);
+            const isActive = isPrimarySectionActive(pathname, item);
             const Icon = isActive ? ICONS[item.icon].solid : ICONS[item.icon].outline;
             return (
               <li key={item.href} className="min-w-0">
                 <PrivateLink
                   href={item.href}
-                  aria-current={isActive ? "page" : undefined}
+                  aria-current={isActive ? (isPrimaryNavActive(pathname, item.href) ? "page" : "true") : undefined}
                   className={`group flex min-h-16 flex-col items-center justify-center gap-[3px] px-0.5 text-[11.5px] leading-none transition-transform duration-150 ease-premium active:scale-95 max-[360px]:text-[10.5px] ${
                     isActive ? "font-bold text-textPrimary" : "font-semibold text-textMuted"
                   }`}
@@ -104,13 +104,13 @@ export function PrimaryNav({ account, billingEnabled = false }: { account: Accou
         <nav aria-label="Navegación principal" className="-mx-3 flex-1 overflow-y-auto overflow-x-hidden px-3">
           <ul className="flex flex-col gap-[3px]">
             {PRIMARY_NAV_ITEMS.map((item) => {
-              const isActive = isPrimaryNavActive(pathname, item.href);
+              const isActive = isPrimarySectionActive(pathname, item);
               const Icon = isActive ? ICONS[item.icon].solid : ICONS[item.icon].outline;
               return (
                 <li key={item.href}>
                   <PrivateLink
                     href={item.href}
-                    aria-current={isActive ? "page" : undefined}
+                    aria-current={isActive ? (isPrimaryNavActive(pathname, item.href) ? "page" : "true") : undefined}
                     className={`relative flex min-h-[46px] items-center gap-3 rounded-[12px] px-3 text-[15px] transition-colors duration-150 ${
                       isActive
                         ? "bg-sideActive font-bold text-white before:absolute before:-left-3 before:bottom-[11px] before:top-[11px] before:w-1 before:rounded-r before:bg-sideAccent"
@@ -120,6 +120,27 @@ export function PrimaryNav({ account, billingEnabled = false }: { account: Accou
                     <Icon className="h-5 w-5 shrink-0" aria-hidden />
                     {item.label}
                   </PrivateLink>
+                  {/* Entradas secundarias de la sección (siempre presentes: ni ensanchan la barra ni mueven a las demás secciones). */}
+                  {item.secondary && (
+                    <ul className="mt-[3px] flex flex-col gap-[3px]">
+                      {item.secondary.map((child) => {
+                        const childActive = isPrimaryNavActive(pathname, child.href);
+                        return (
+                          <li key={child.href}>
+                            <PrivateLink
+                              href={child.href}
+                              aria-current={childActive ? "page" : undefined}
+                              className={`relative flex min-h-11 items-center truncate rounded-[10px] pl-11 pr-3 text-[14px] transition-colors duration-150 ${
+                                childActive ? "bg-side2 font-bold text-white" : "font-medium text-sideText hover:bg-side2 hover:text-white"
+                              }`}
+                            >
+                              {child.label}
+                            </PrivateLink>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}

@@ -9,6 +9,7 @@ import { CaptchaWidget } from "@/components/auth/captcha-widget";
 import { Button } from "@/components/ui/button";
 import { TextLink } from "@/components/auth/public-links";
 import { Field, TextInput } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -34,7 +35,7 @@ export function LoginForm({ next }: { next: string }) {
       </Field>
 
       <Field label="Contraseña" htmlFor="password">
-        <TextInput id="password" name="password" type="password" autoComplete="current-password" required placeholder="••••••••" />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required placeholder="••••••••" />
       </Field>
 
       <CaptchaWidget />

@@ -38,7 +38,31 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   const evaluationDate = localDateKeyInTimeZone(now, ARGENTINA_TIME_ZONE);
   const range = resolveFinancialPeriodRange(preset, evaluationDate);
 
-  const [students, charges, allocations, payments] = await Promise.all([listStudents(ctx), listAllCharges(ctx), listAllAllocations(ctx), listAllPayments(ctx)]);
+  const rangeStartIso = localDateTimeToInstantIso({ date: range.rangeStart, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
+  const rangeEndIso = localDateTimeToInstantIso({ date: range.rangeEnd, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
+  // Demanda: SIEMPRE últimos 90 días fijos, no configurable (mismo criterio real del móvil) — independiente del preset elegido.
+  const demandStart = new Date(now.getTime() - DEMAND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const currentYear = Number(evaluationDate.slice(0, 4));
+  // `studentYear`/`newStudentsPerMonth` necesitan el AÑO completo, no sólo el rango del preset — si el preset elegido ya es
+  // exactamente el año actual, reutiliza lo ya consultado; si no, hace su propia consulta anual real (nunca infiere el año a
+  // partir de un rango más angosto).
+  const yearStartIso = localDateTimeToInstantIso({ date: `${currentYear}-01-01`, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
+  const yearEndIso = localDateTimeToInstantIso({ date: `${currentYear}-12-31`, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
+  const rangeIsCurrentYear = range.rangeStart === `${currentYear}-01-01` && range.rangeEnd === `${currentYear}-12-31`;
+
+  // Todas las lecturas que NO dependen unas de otras salen juntas (antes eran seis esperas seguidas, cada una con su ida y vuelta
+  // a la base): el resultado es exactamente el mismo.
+  const [students, charges, allocations, payments, registrationsInRange, demandItems, hourlyRangeItems, ownYearRegistrations] = await Promise.all([
+    listStudents(ctx),
+    listAllCharges(ctx),
+    listAllAllocations(ctx),
+    listAllPayments(ctx),
+    listLessonRegistrationsInRange(ctx, rangeStartIso, rangeEndIso),
+    loadCalendarViewForRange(ctx, demandStart, now),
+    // Valor programado de la hora: TODA la agenda real del rango del preset (materializada + virtual).
+    loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso)),
+    rangeIsCurrentYear ? Promise.resolve(null) : listLessonRegistrationsInRange(ctx, yearStartIso, yearEndIso),
+  ]);
 
   const summary = buildPeriodFinancialSummary({
     charges,
@@ -66,10 +90,6 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     };
   }
 
-  const rangeStartIso = localDateTimeToInstantIso({ date: range.rangeStart, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
-  const rangeEndIso = localDateTimeToInstantIso({ date: range.rangeEnd, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
-  const registrationsInRange = await listLessonRegistrationsInRange(ctx, rangeStartIso, rangeEndIso);
-
   const activityInput = registrationsInRange.map((r) => ({
     countsAsClass: r.countsAsClass,
     scheduledStartAt: r.scheduledStartAt,
@@ -84,18 +104,11 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   const activity = buildAnnualActivitySummary(activityInput, range);
   const modality = buildModalitySummary(activityInput, range);
 
-  // Demanda: SIEMPRE últimos 90 días fijos, no configurable (mismo
-  // criterio real del móvil) — independiente del preset elegido.
-  const demandStart = new Date(now.getTime() - DEMAND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
-  const demandItems = await loadCalendarViewForRange(ctx, demandStart, now);
   const demand = buildCalendarDemandSummary(
     demandItems.filter((item) => item.status !== "cancelled").map((item) => ({ startAt: item.start, timeZone: ARGENTINA_TIME_ZONE }))
   );
 
-  // Valor programado de la hora: TODA la agenda real del rango del preset
-  // (materializada + virtual), cruzada con los registros ya completados
-  // para saber qué ocurrencias ya tienen ingreso real atribuido.
-  const hourlyRangeItems = await loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso));
+  // Cruza la agenda del rango con los registros ya completados para saber qué ocurrencias ya tienen ingreso real atribuido.
   const registrationByCalendarLessonId = new Map(registrationsInRange.filter((r) => r.calendarLessonId).map((r) => [r.calendarLessonId as string, r]));
   const hourlyRate = buildProgrammedHourlyRateSummary(
     hourlyRangeItems
@@ -115,17 +128,9 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     evaluationDate
   );
 
-  const currentYear = Number(evaluationDate.slice(0, 4));
   const studentsForYear = students.map((s) => ({ id: s.id, status: s.status, dateJoined: s.dateJoined }));
 
-  // `studentYear`/`newStudentsPerMonth` necesitan el AÑO completo, no sólo
-  // el rango del preset — si el preset elegido ya es exactamente el año
-  // actual, reutiliza lo ya consultado; si no, hace su propia consulta
-  // anual real (nunca infiere el año a partir de un rango más angosto).
-  const yearStartIso = localDateTimeToInstantIso({ date: `${currentYear}-01-01`, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
-  const yearEndIso = localDateTimeToInstantIso({ date: `${currentYear}-12-31`, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
-  const yearRegistrationsFull =
-    range.rangeStart === `${currentYear}-01-01` && range.rangeEnd === `${currentYear}-12-31` ? registrationsInRange : await listLessonRegistrationsInRange(ctx, yearStartIso, yearEndIso);
+  const yearRegistrationsFull = rangeIsCurrentYear || !ownYearRegistrations ? registrationsInRange : ownYearRegistrations;
 
   const heldRegistrationIds = yearRegistrationsFull.filter((r) => r.countsAsClass).map((r) => r.id);
   const roster = await listRosterForRegistrationIds(ctx, heldRegistrationIds);

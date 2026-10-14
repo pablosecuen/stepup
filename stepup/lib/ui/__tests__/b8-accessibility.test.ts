@@ -194,7 +194,8 @@ test("«Saltar al contenido»: primer elemento enfocable de toda página y cada 
 test("estructura: el shell privado tiene encabezado, dos navegaciones con nombre, un solo <main> y las pantallas un solo h1", () => {
   const nav = code("components/nav/primary-nav.tsx");
   assert.equal((nav.match(/aria-label="Navegación principal"/g) ?? []).length, 2, "barra inferior (móvil) y lateral (escritorio)");
-  assert.match(nav, /aria-current=\{isActive \? "page" : undefined\}/);
+  // La sección activa es «page» en su ruta y «true» en una ruta relacionada (Cobros mientras se está en Resumen financiero).
+  assert.match(nav, /aria-current=\{isActive \? \(isPrimaryNavActive\(pathname, item\.href\) \? "page" : "true"\) : undefined\}/);
   for (const file of sources(["app"]).filter((f) => f.endsWith("page.tsx"))) {
     const source = code(file);
     const h1Count = (source.match(/<h1\b/g) ?? []).length;

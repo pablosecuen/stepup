@@ -23,7 +23,8 @@ import { instantDateKey, instantMinutesOfDay } from "./civil-calendar.ts";
  */
 export const START_HOUR = 8;
 export const END_HOUR = 22;
-export const HOUR_HEIGHT_PX = 96;
+/** Alto por hora de la densidad «Media» (la de partida; ver `density.ts`): las funciones de abajo reciben el de la densidad elegida. */
+export const HOUR_HEIGHT_PX = 64;
 export const TIME_COLUMN_WIDTH_PX = 48;
 export const DAY_COLUMN_MIN_WIDTH_PX = 148;
 /** Lado mínimo de todo objetivo táctil. */
@@ -80,16 +81,16 @@ function compareItems(a: { startMs: number; endMs: number; item: CalendarViewIte
  * Posiciona TODAS las clases de un día — ninguna se oculta ni se descarta. Las que se tocan (mismo inicio, superpuestas o
  * demasiado seguidas para que sus zonas de 44 px no se pisen) se reparten en carriles.
  */
-export function layoutDayItems(items: CalendarViewItem[]): PositionedItem[] {
-  const gridBottomPx = (END_HOUR - START_HOUR) * HOUR_HEIGHT_PX;
+export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number = HOUR_HEIGHT_PX): PositionedItem[] {
+  const gridBottomPx = (END_HOUR - START_HOUR) * hourHeightPx;
 
   const sorted = items
     .map((item) => ({ item, startMs: new Date(item.start).getTime(), endMs: new Date(item.end).getTime() }))
     .sort(compareItems);
 
   const boxes = sorted.map(({ item, startMs, endMs }) => {
-    const top = Math.max(0, (minutesFromDayStart(item.start) / 60) * HOUR_HEIGHT_PX);
-    const durationPx = ((endMs - startMs) / 3_600_000) * HOUR_HEIGHT_PX;
+    const top = Math.max(0, (minutesFromDayStart(item.start) / 60) * hourHeightPx);
+    const durationPx = ((endMs - startMs) / 3_600_000) * hourHeightPx;
     const height = Math.max(MIN_VISUAL_HEIGHT_PX, Math.min(durationPx - CARD_GAP_PX, gridBottomPx - top));
     const hitHeight = Math.max(height, MIN_TARGET_PX);
     const displayTop = Math.max(0, Math.min(top, gridBottomPx - height));
@@ -126,8 +127,8 @@ export function dayColumnMinWidth(positioned: PositionedItem[]): number {
   return Math.max(DAY_COLUMN_MIN_WIDTH_PX, lanes * LANE_MIN_WIDTH_PX);
 }
 
-export function currentTimeTop(now: Date): number | null {
+export function currentTimeTop(now: Date, hourHeightPx: number = HOUR_HEIGHT_PX): number | null {
   const minutesOfDay = instantMinutesOfDay(now.toISOString());
   if (minutesOfDay < START_HOUR * 60 || minutesOfDay >= END_HOUR * 60) return null;
-  return ((minutesOfDay - START_HOUR * 60) / 60) * HOUR_HEIGHT_PX;
+  return ((minutesOfDay - START_HOUR * 60) / 60) * hourHeightPx;
 }

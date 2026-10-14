@@ -36,7 +36,7 @@ const EXPECTED_BY_FIRST_SEGMENT: Record<string, string | null> = {
   configuracion: null, // vive en el menú de cuenta
   facturacion: null, // vive en el menú de cuenta (sólo con la facturación encendida)
   recordatorios: null, // se llega desde Inicio
-  "resumen-financiero": null, // se llega desde Cobros
+  "resumen-financiero": "/cobros", // pertenece a Cobros: mantiene activa la sección (entrada secundaria, no un sexto destino)
 };
 
 test("navegación principal: exactamente Inicio, Alumnos, Calendario, Cobros y Registro, en ese orden (Configuración fuera)", () => {
@@ -89,7 +89,7 @@ test("sin falsos positivos: sólo segmentos completos, nunca prefijos de texto",
   assert.equal(isPrimaryNavActive(null, "/inicio"), false);
   assert.equal(isPrimaryNavActive(undefined, "/inicio"), false);
   // Rutas hermanas fuera de los cinco destinos no activan ninguno.
-  for (const path of ["/configuracion", "/configuracion/respaldo", "/recordatorios", "/resumen-financiero", "/login"]) {
+  for (const path of ["/configuracion", "/configuracion/respaldo", "/recordatorios", "/login"]) {
     assert.equal(activePrimaryNavHref(path), null, path);
   }
 });

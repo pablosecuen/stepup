@@ -6,7 +6,6 @@ import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurr
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
 import {
   HOURS,
-  HOUR_HEIGHT_PX,
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
   currentTimeTop,
@@ -16,6 +15,8 @@ import {
 } from "@/lib/calendar/layout";
 import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
+import { DEFAULT_CALENDAR_DENSITY, hourHeightFor, readStoredCalendarDensity, writeStoredCalendarDensity, type CalendarDensityKey } from "@/lib/calendar/density";
+import { CalendarDensityPicker } from "./calendar-density-picker";
 import { RealLessonAgendaRow, RealLessonCard } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 
@@ -32,6 +33,8 @@ interface RealCalendarGridProps {
 export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
+  // Densidad de la grilla: «Media» al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
+  const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -39,19 +42,38 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
     const interval = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    let storage: Storage | null = null;
+    try {
+      storage = window.localStorage;
+    } catch {
+      storage = null;
+    }
+    setDensity(readStoredCalendarDensity(storage));
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  function chooseDensity(next: CalendarDensityKey) {
+    setDensity(next);
+    try {
+      writeStoredCalendarDensity(window.localStorage, next);
+    } catch {
+      // almacenamiento no disponible: la elección vale para esta pantalla
+    }
+  }
+  const hourHeightPx = hourHeightFor(density);
 
   const visible = visibleCalendarItems(items);
   const isWeek = dayKeys.length > 1;
-  const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${HOUR_HEIGHT_PX}px` };
+  const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${hourHeightPx}px` };
 
-  const nowLineTop = now ? currentTimeTop(now) : null;
+  const nowLineTop = now ? currentTimeTop(now, hourHeightPx) : null;
   // "Hoy" y el día de cada tarjeta se resuelven como claves civiles en la zona del calendario: igual en servidor (UTC) y navegador.
   const todayKey = now ? todayDateKey(now) : null;
   const itemsByDayKey = groupItemsByDayKey(visible);
   // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta); un día con muchos
   // carriles ensancha su columna en vez de comprimir las tarjetas.
-  const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [])]));
+  const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [], hourHeightPx)]));
   const columnWidths = dayKeys.map((dayKey) => dayColumnMinWidth(positionedByDay.get(dayKey) ?? []));
   const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px ${columnWidths.map((width) => `minmax(${width}px, 1fr)`).join(" ")}`;
   const gridMinWidth = TIME_COLUMN_WIDTH_PX + columnWidths.reduce((sum, width) => sum + width, 0);
@@ -65,7 +87,8 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
 
   return (
     <div>
-      {/* Escritorio: grilla horaria */}
+      {/* Escritorio: selector de densidad + grilla horaria */}
+      <CalendarDensityPicker value={density} onChange={chooseDensity} />
       <div className="hidden overflow-x-auto pb-2 nav:block">
         <div className="rounded-lg border-[1.5px] border-border bg-surface shadow-card" style={{ minWidth: gridMinWidth }}>
           <div className="grid rounded-t-lg border-b-[1.5px] border-border" style={{ gridTemplateColumns }}>
@@ -84,10 +107,10 @@ export function RealCalendarGrid({ dayKeys, items }: RealCalendarGridProps) {
             })}
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns, height: HOURS.length * HOUR_HEIGHT_PX }}>
+          <div className="grid" style={{ gridTemplateColumns, height: HOURS.length * hourHeightPx }}>
             <div className="relative">
               {HOURS.map((hour) => (
-                <div key={hour} className="relative" style={{ height: HOUR_HEIGHT_PX }}>
+                <div key={hour} className="relative" style={{ height: hourHeightPx }}>
                   <span className="absolute -top-2 right-1.5 text-[11px] font-medium text-textMuted tf-num">{String(hour).padStart(2, "0")}:00</span>
                 </div>
               ))}

@@ -178,3 +178,23 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Respuesta inmediata al clic en una navegación (components/nav/navigation-progress.tsx): barra fina que avanza hasta el 90 % y se
+   queda ahí (no es una animación infinita: si la carga tarda, la barra no finge progreso). Con «reducir movimiento» (regla de
+   arriba) aparece ya en su posición final, sin moverse. El enlace pulsado se atenúa mientras su navegación está pendiente. */
+@keyframes tf-nav-progress {
+  from {
+    transform: scaleX(0.04);
+  }
+  to {
+    transform: scaleX(0.9);
+  }
+}
+.tf-nav-progress {
+  transform-origin: left;
+  animation: tf-nav-progress 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+}
+a[data-nav-pending] {
+  opacity: 0.7;
+  cursor: progress;
+}
