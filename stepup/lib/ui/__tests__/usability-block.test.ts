@@ -132,3 +132,26 @@ test("la fila completa del alumno abre el perfil con UN solo enlace por fila (un
   assert.match(table, /<Th>Alumno<\/Th>[\s\S]*<Th align="right">Estado<\/Th>/);
   assert.match(table, /<StudentStatusBadge status=\{student\.status\} \/>/);
 });
+
+// ------------------------------------------------------------------------------------------------ 4. consultas
+test("Inicio y Resumen financiero leen series, excepciones y alumnos UNA vez y arman todas sus vistas del calendario sobre esa base; las lecturas independientes salen juntas", () => {
+  const home = code("lib/dashboard/load-home-data.ts");
+  assert.equal((home.match(/loadCalendarViewBase\(ctx\)/g) ?? []).length, 1, "una sola base");
+  assert.doesNotMatch(home, /listRecurrenceRules\(|listRecurrenceExceptionsForRules\(|listStudents\(/, "Inicio ya no repite esas lecturas");
+  assert.match(home, /base\.then\(\(loaded\) => loadCalendarViewForRange\(ctx, new Date\(dayStartIso\), dayEndExclusive, loaded\)\)/);
+  assert.match(home, /base\.then\(\(loaded\) => loadCalendarViewForRange\(ctx, pendingLookbackStart, now, loaded\)\)/);
+  assert.match(home, /listOpenChargeBalances\(ctx\),\n  \]\);/, "los cobros salen en la misma ola");
+  const overview = code("lib/dashboard/load-financial-overview.ts");
+  assert.equal((overview.match(/loadCalendarViewBase\(ctx\)/g) ?? []).length, 1);
+  assert.equal((overview.match(/, loaded\)\)/g) ?? []).length, 2, "demanda y valor de la hora comparten la base");
+  assert.doesNotMatch(overview, /await loadCalendarViewForRange|await listLessonRegistrationsInRange\(ctx, rangeStartIso/, "sin esperas seguidas por lecturas independientes");
+  const view = code("lib/calendar/view.ts");
+  assert.match(view, /export async function loadCalendarViewBase\(/);
+  assert.match(view, /base\?: CalendarViewBase/);
+  // Una sola verificación con Auth por navegación: el layout y la página comparten `getRenderUser` (React cache, por solicitud).
+  assert.match(code("lib/auth/render-user.ts"), /export const getRenderUser = cache\(/);
+  assert.match(code("lib/db/server-context.ts"), /const user = await getRenderUser\(\);/);
+  assert.doesNotMatch(code("lib/db/server-context.ts"), /supabase\.auth\.getUser\(\)/);
+  // La recuperación de sesión (B0) y las cuentas siguen consultando de nuevo: nunca usan la copia de la solicitud.
+  for (const file of ["lib/auth/recovery-session.ts", "lib/auth/session-recovery-action.ts", "lib/auth/supabase-auth-adapter.ts"]) assert.doesNotMatch(code(file), /getRenderUser/, file);
+});

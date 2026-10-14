@@ -13,7 +13,31 @@ import type { RecurrenceRuleForEngine } from "./types";
  * rango — Server Component/Action llama esto, nunca arma la consulta
  * dispersa por su cuenta.
  */
-export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date): Promise<CalendarViewItem[]> {
+/**
+ * Lo que NO depende del rango: series, excepciones y alumnos. Una pantalla que arma varias vistas del calendario (Inicio, Resumen
+ * financiero) lo pide UNA vez y se lo pasa a cada `loadCalendarViewForRange` en vez de repetir las tres lecturas por rango.
+ */
+export interface CalendarViewBase {
+  readonly rules: Awaited<ReturnType<typeof listRecurrenceRules>>;
+  readonly exceptions: Awaited<ReturnType<typeof listRecurrenceExceptionsForRules>>;
+  readonly students: Awaited<ReturnType<typeof listStudents>>;
+}
+
+export async function loadCalendarViewBase(ctx: AuthenticatedDbContext): Promise<CalendarViewBase> {
+  const [rules, students] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx)]);
+  const exceptions = await listRecurrenceExceptionsForRules(
+    ctx,
+    rules.map((rule) => rule.id)
+  );
+  return { rules, exceptions, students };
+}
+
+export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date, base?: CalendarViewBase): Promise<CalendarViewItem[]> {
+  if (base) {
+    // Con la base ya cargada sólo se lee lo propio del rango: las clases materializadas.
+    const lessons = await listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString());
+    return composeCalendarView(base, lessons, rangeStart, rangeEnd);
+  }
   const rules = await listRecurrenceRules(ctx);
   const [lessons, exceptions, students] = await Promise.all([
     listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString()),
@@ -23,7 +47,15 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     ),
     listStudents(ctx),
   ]);
+  return composeCalendarView({ rules, exceptions, students }, lessons, rangeStart, rangeEnd);
+}
 
+function composeCalendarView(
+  { rules, exceptions, students }: CalendarViewBase,
+  lessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
+  rangeStart: Date,
+  rangeEnd: Date,
+): CalendarViewItem[] {
   const engineRules: RecurrenceRuleForEngine[] = rules.map((rule) => ({
     recurrenceId: rule.id,
     studentId: rule.primaryStudentId,

@@ -1,12 +1,10 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
-import { listRecurrenceRules, type RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
+import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
-import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
-import { listStudents } from "@/lib/repositories/students";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
-import { loadCalendarViewForRange } from "@/lib/calendar/view";
+import { loadCalendarViewBase, loadCalendarViewForRange } from "@/lib/calendar/view";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { selectCurrentOrNextOccurrence, type LessonTimingStatus } from "@/lib/calendar/next-class";
@@ -83,21 +81,20 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // base). El resultado es exactamente el mismo.
   // R2: esta lectura NO genera cargos (un GET nunca escribe): la generación del período la dispara `ChargeGenerationTrigger`
   // (Server Action) y la pantalla se refresca si se creó algo. Sólo los cargos con saldo pendiente (calculados en la base).
-  const [rules, students, todayItems, horizonLessons, pendingItems, balances] = await Promise.all([
-    listRecurrenceRules(ctx),
-    listStudents(ctx),
-    loadCalendarViewForRange(ctx, new Date(dayStartIso), dayEndExclusive),
+  // Series, excepciones y alumnos se leen UNA vez y alimentan las dos vistas del calendario (hoy y los últimos 90 días) y el resumen
+  // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
+  const base = loadCalendarViewBase(ctx);
+  const [{ rules, students, exceptions }, todayItems, horizonLessons, pendingItems, balances] = await Promise.all([
+    base,
+    base.then((loaded) => loadCalendarViewForRange(ctx, new Date(dayStartIso), dayEndExclusive, loaded)),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
-    loadCalendarViewForRange(ctx, pendingLookbackStart, now),
+    base.then((loaded) => loadCalendarViewForRange(ctx, pendingLookbackStart, now, loaded)),
     listOpenChargeBalances(ctx),
   ]);
 
-  // Ola 2: las dos que dependen de la ola 1.
+  // Ola 2: lo que depende de las clases pendientes.
   const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);
-  const [exceptions, registrations] = await Promise.all([
-    listRecurrenceExceptionsForRules(ctx, rules.map((rule) => rule.id)),
-    listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds),
-  ]);
+  const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds);
 
   const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
   const nextClassSelection = selectCurrentOrNextOccurrence(todayLessons, now);
