@@ -9,6 +9,8 @@ const FAKE_TOKEN = "unit-test-access-token-NOT-REAL";
 const PLAN = getPlan("tf_monthly_ars_v1")!;
 const CUSTOMER = { email: "qa@example.com", name: "QA Test", identification: "20111222" };
 
+const VALIDATED_ENV = { MOBBEX_VALIDATED_CAPABILITIES: "changePlan,paymentMethodUpdate" } as const;
+
 const ENV = {
   MOBBEX_API_KEY: FAKE_KEY,
   MOBBEX_ACCESS_TOKEN: FAKE_TOKEN,
@@ -36,9 +38,9 @@ function stubFetch(respond: (call: Call) => Response | Promise<Response>): { fet
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const NOW = () => new Date("2026-10-13T23:30:00.000Z"); // 20:30 del 13/10 en Argentina
 
-function configured(respond: (call: Call) => Response | Promise<Response>) {
+function configured(respond: (call: Call) => Response | Promise<Response>, extraEnv: Record<string, string> = {}) {
   const stub = stubFetch(respond);
-  const config = readMobbexConfig(ENV, { fetchImpl: stub.fetchImpl, now: NOW });
+  const config = readMobbexConfig({ ...ENV, ...extraEnv }, { fetchImpl: stub.fetchImpl, now: NOW });
   assert.ok(config);
   return { adapter: new MobbexAdapter(config), calls: stub.calls };
 }
@@ -54,6 +56,8 @@ test("SIN credenciales el adaptador queda CERRADO: ningún método hace una llam
     adapter.cancelSubscriber({ subscriberUid: "s", planCode: PLAN.code }),
     adapter.reactivateSubscriber({ subscriberUid: "s", planCode: PLAN.code }),
     adapter.changePlan({ subscriberUid: "s", fromPlanCode: PLAN.code, toPlanCode: "tf_annual_ars_v1" }),
+    adapter.getSubscriber({ subscriberUid: "s", planCode: PLAN.code }),
+    adapter.getPaymentMethodUpdateUrl({ subscriberUid: "s", planCode: PLAN.code }),
   ]);
   for (const result of results) assert.deepEqual(result, { ok: false, error: { kind: "not_configured", retryable: false } });
   assert.equal(stub.calls.length, 0);
@@ -215,21 +219,32 @@ test("la consulta de una operación sigue la forma documentada y no extrae datos
 });
 
 test("la tabla de estados de Mobbex se traduce de forma conservadora (sólo 200 y su liquidación cuentan como cobro aprobado)", () => {
-  for (const code of ["200", "299", "300", "301", "302", "303"]) assert.equal(mapStatusCode(code), "approved", code);
-  for (const code of ["0", "1", "2", "3", "100", "210"]) assert.equal(mapStatusCode(code), "pending", code);
-  for (const code of ["400", "401", "402", "403", "410", "411", "412", "413", "414", "415", "416", "417", "418", "419", "500", "604"]) assert.equal(mapStatusCode(code), "rejected", code);
-  for (const code of ["600", "601", "602", "605", "610"]) assert.equal(mapStatusCode(code), "refunded", code);
-  for (const code of ["201", "4000", "800", "603", "abc", "", "-1", "2e2"]) assert.equal(mapStatusCode(code), "other", code);
+  for (const code of ["200", "299", "300", "301", "302", "303"]) assert.deepEqual(mapStatusCode(code), { outcome: "approved", refundScope: null }, code);
+  for (const code of ["0", "1", "2", "3", "100", "210", "600"]) assert.deepEqual(mapStatusCode(code), { outcome: "pending", refundScope: null }, code);
+  for (const code of ["400", "401", "402", "403", "410", "411", "412", "413", "414", "415", "416", "417", "418", "419", "500", "604"]) assert.deepEqual(mapStatusCode(code), { outcome: "rejected", refundScope: null }, code);
+  // Devoluciones: sólo «602 Devuelta» es total; «605 Parcialmente devuelta» es parcial; «601 Cancelada» y «610 Cancelada por operatoria inválida» no definen alcance.
+  assert.deepEqual(mapStatusCode("602"), { outcome: "refunded", refundScope: "full" });
+  assert.deepEqual(mapStatusCode("605"), { outcome: "refunded", refundScope: "partial" });
+  for (const code of ["601", "610"]) assert.deepEqual(mapStatusCode(code), { outcome: "refunded", refundScope: "unknown" }, code);
+  for (const code of ["201", "4000", "800", "603", "abc", "", "-1", "2e2"]) assert.deepEqual(mapStatusCode(code), { outcome: "other", refundScope: null }, code);
 });
 
-test("operaciones sin forma documentada devuelven «unsupported» y los avisos NUNCA se verifican", async () => {
+test("el listado global de operaciones no tiene forma documentada: «unsupported»; los avisos se reducen a una pista y NO se autentican", async () => {
   const { adapter } = configured(() => json({}));
   assert.deepEqual(await adapter.listOperations(), { ok: false, error: { kind: "unsupported", retryable: false } });
-  assert.deepEqual(adapter.verifyWebhook(), { verified: false, reason: "mechanism_not_documented" });
+  assert.equal((adapter as unknown as Record<string, unknown>).verifyWebhook, undefined, "no existe un «verificar»: ningún aviso gana autoridad");
+  const notice = adapter.parseNotice({ rawBody: JSON.stringify({ type: "subscription:execution", data: { payment: { id: "P1", status: { code: "200" } }, subscriber: { uid: "S1" } } }), contentType: "application/json", now: new Date(0) });
+  assert.equal(notice.ok, true);
+  assert.deepEqual(notice.ok ? Object.keys(notice.notices[0].hint).sort() : [], ["executionUid", "providerPaymentId", "subscriberReference", "subscriberUid"]);
 });
 
-test("cancelar suspende al suscriptor y cambiar de plan lo mueve a la suscripción del otro plan (rutas documentadas)", async () => {
-  const { adapter, calls } = configured(() => json({ result: true }));
+test("cancelar suspende al suscriptor y cambiar de plan lo mueve a la suscripción del otro plan (rutas documentadas) — el cambio sólo con la capacidad declarada VALIDADA", async () => {
+  const closed = configured(() => json({ result: true }));
+  assert.deepEqual(closed.adapter.capabilities, { changePlan: false, paymentMethodUpdate: false });
+  assert.deepEqual(await closed.adapter.changePlan({ subscriberUid: "S1", fromPlanCode: "tf_monthly_ars_v1", toPlanCode: "tf_annual_ars_v1" }), { ok: false, error: { kind: "unsupported", retryable: false } });
+  assert.equal(closed.calls.length, 0, "sin validar en sandbox no sale ningún pedido de cambio de plan");
+  const { adapter, calls } = configured(() => json({ result: true }), VALIDATED_ENV);
+  assert.deepEqual(adapter.capabilities, { changePlan: true, paymentMethodUpdate: true });
   assert.deepEqual(await adapter.cancelSubscriber({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: true, data: { canceled: true } });
   assert.deepEqual(await adapter.reactivateSubscriber({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: true, data: { reactivated: true } });
   assert.deepEqual(await adapter.changePlan({ subscriberUid: "S1", fromPlanCode: "tf_monthly_ars_v1", toPlanCode: "tf_annual_ars_v1" }), { ok: true, data: { changed: true } });
@@ -239,4 +254,44 @@ test("cancelar suspende al suscriptor y cambiar de plan lo mueve a la suscripci�
     ["POST", "/p/subscriptions/uid_m/subscriber/S1/action/move"],
   ]);
   assert.deepEqual(JSON.parse(String(calls[2].init.body)), { sid: "uid_a" });
+});
+
+test("sondeo de un suscriptor (GET …/subscriber/{sid}): sólo se interpretan las formas que la documentación MUESTRA; todo lo demás es «unknown» o ilegible, nunca se inventa", async () => {
+  const { parseSubscriberState, buildGetSubscriberRequest } = await import("../providers/mobbex.ts");
+  assert.deepEqual(buildGetSubscriberRequest("uid_m", "S1"), { method: "GET", path: "/p/subscriptions/uid_m/subscriber/S1" });
+  const shown = parseSubscriberState({ result: true, data: { subscriber: { uid: "S1", status: "active", executions: [] }, url: "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1" } });
+  assert.deepEqual(shown?.state, { status: "active", operations: [], executionsReadable: true });
+  assert.equal(shown?.controlUrl, "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1");
+  assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status: "finished", executions: [] } } })?.state.status, "finished");
+  // El valor de un suscriptor suspendido NO está documentado: no se adivina.
+  for (const status of ["suspended", "paused", "cancelled", "ACTIVE", "", undefined, 1]) assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status, executions: [] } } })?.state.status, "unknown", String(status));
+  // Ejecuciones con contenido: forma no documentada → ilegibles (y NO significa «sin cobros»).
+  assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status: "active", executions: [{ uid: "E1", status: "paid" }] } } })?.state.executionsReadable, false);
+  assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status: "active" } } })?.state.executionsReadable, false);
+  // Destinos de control: sólo HTTPS de mobbex.com.
+  for (const evil of ["http://mobbex.com/x", "https://mobbex.com.evil.example/x", "https://evil.example/x", "javascript:alert(1)", "//evil.example", 5, null]) {
+    assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status: "active", executions: [] }, url: evil } })?.controlUrl, null, String(evil));
+  }
+  for (const bad of [null, {}, { result: false }, { result: true }, { result: true, data: {} }, { result: true, data: { subscriber: "x" } }]) assert.equal(parseSubscriberState(bad), null, JSON.stringify(bad));
+});
+
+test("getSubscriber y el cambio de medio de pago contra el adaptador: con capacidad validada devuelven sólo el destino HTTPS de mobbex.com; sin validar, «unsupported» y NINGÚN pedido", async () => {
+  const good = { result: true, data: { subscriber: { uid: "S1", status: "active", executions: [] }, url: "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1" } };
+  const closed = configured(() => json(good));
+  const state = await closed.adapter.getSubscriber({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" });
+  assert.deepEqual(state, { ok: true, data: { status: "active", operations: [], executionsReadable: true } });
+  assert.deepEqual(await closed.adapter.getPaymentMethodUpdateUrl({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: false, error: { kind: "unsupported", retryable: false } });
+  assert.equal(closed.calls.length, 1, "sólo la consulta del estado: el cambio de medio de pago sin validar no sale a la red");
+  const open = configured(() => json(good), VALIDATED_ENV);
+  assert.deepEqual(await open.adapter.getPaymentMethodUpdateUrl({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: true, data: { redirectUrl: "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1" } });
+  const evil = configured(() => json({ ...good, data: { ...good.data, url: "https://evil.example/x" } }), VALIDATED_ENV);
+  assert.deepEqual(await evil.adapter.getPaymentMethodUpdateUrl({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: false, error: { kind: "invalid_response", retryable: false } }, "un destino fuera de mobbex.com se descarta");
+  const garbage = configured(() => json({ result: true, data: { nothing: 1 } }));
+  assert.deepEqual(await garbage.adapter.getSubscriber({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: false, error: { kind: "invalid_response", retryable: false } });
+});
+
+test("el vencimiento del enlace de carga del medio de pago (expiresAt) viaja al crear el suscriptor: 24 horas", async () => {
+  const { adapter, calls } = configured(() => json({ result: true, data: { uid: "SUBR1", sourceUrl: "https://mobbex.com/p/subscriptions/uid_m/subscriber/SUBR1/source" } }));
+  await adapter.createCheckout({ subscriberReference: "tfs_" + "a".repeat(32), plan: PLAN, customer: CUSTOMER, returnUrl: "https://teacherflowapp.com/x", idempotencyKey: "k".repeat(10) });
+  assert.equal(JSON.parse(String(calls[0].init.body)).expiresAt, NOW().getTime() + 24 * 3_600_000);
 });

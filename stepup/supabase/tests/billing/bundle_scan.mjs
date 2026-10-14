@@ -1,23 +1,33 @@
-// M1 — «Ninguna credencial en el bundle»: recorre el resultado de `next build` (.next/static = lo que llega al NAVEGADOR y .next/server) y falla
-// si aparece cualquier nombre de credencial, de interruptor o de función de facturación, o un importe/plan del catálogo.
+// M1/M2 — «Ninguna credencial en el bundle»: recorre el resultado de `next build`.
+//
+//   · NAVEGADOR (.next/static, lo único que se sirve al navegador): no puede aparecer NADA de facturación sensible: ni nombres de
+//     credenciales, interruptores, funciones o tablas, ni códigos de plan, ni importes del catálogo en centavos, ni referencias de
+//     suscriptor, ni el host de la API del proveedor. Los precios que ve la persona llegan renderizados por el servidor.
+//   · SERVIDOR (.next/server, manifiestos y trazas): puede nombrar las variables de entorno (nunca sus VALORES), pero jamás un valor secreto (JWT), una
+//     referencia de suscriptor real ni el secreto de los trabajos programados.
 //
 //   npm run build && node supabase/tests/billing/bundle_scan.mjs [ruta-a-.next]
-//
-// Mientras la facturación NO esté conectada (M1) no debe aparecer NADA de esto ni en el servidor; cuando se conecte (M2), sólo
-// el servidor podrá contener los nombres de las variables (nunca sus valores) y el navegador seguirá sin nada de esto.
 import fs from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(process.argv[2] ?? ".next");
-const PATTERNS = [
-  ["credenciales de Mobbex", /MOBBEX_API_KEY|MOBBEX_ACCESS_TOKEN|x-access-token|x-api-key/],
+
+const BROWSER_PATTERNS = [
+  ["credenciales de Mobbex", /MOBBEX_API_KEY|MOBBEX_ACCESS_TOKEN|MOBBEX_VALIDATED_CAPABILITIES|x-access-token|x-api-key/],
   ["clave de servicio de Supabase (nombre de la variable o un JWT)", /SUPABASE_SERVICE_ROLE_KEY|eyJ[A-Za-z0-9_-]{15,}\.eyJ[A-Za-z0-9_-]{15,}\./],
-  ["interruptores de facturación", /BILLING_ENABLED|BILLING_ENFORCEMENT_ENABLED/],
-  ["funciones y tablas de facturación", /billing_(plans|subscriptions|executions|periods|checkout_attempts|plan_changes|webhook_events|reconciliations|sweep_cursors|settings|ensure_account|commit_batch|claim_events|get_subscriptions|resolve_subscribers|owner_executions|due_subscriptions|open_checkout_attempt|ingest_webhook_events|purge_retention)/],
+  ["interruptores y secretos de facturación", /BILLING_ENABLED|BILLING_ENFORCEMENT_ENABLED|BILLING_PROVIDER|BILLING_STATE_COOKIE_SECRET|BILLING_GRANDFATHER_CUTOFF|CRON_SECRET/],
+  ["funciones y tablas de facturación", /billing_(plans|subscriptions|executions|periods|checkout_attempts|plan_changes|webhook_events|reconciliations|sweep_cursors|settings|poll_schedule|fiscal_records|ensure_account|commit_batch|claim_events|claim_polls|mark_polled|prioritize_polls|get_subscriptions|resolve_subscribers|owner_executions|owner_history|due_subscriptions|open_checkout_attempt|complete_checkout_attempt|ingest_webhook_events|purge_retention|queue_stats|record_manual_outcome)/],
   ["códigos de plan", /tf_(monthly|quarterly|semiannual|annual)_ars_v\d/],
   ["importes del catálogo en centavos", /\b(2490000|6990000|13390000|24900000)\b/],
   ["referencias de suscriptor", /\btfs_[0-9a-f]{32}\b/],
   ["host del proveedor", /api\.mobbex\.com/],
+  ["rutas internas de facturación del servidor", /api\/billing\/(webhooks|cron)/],
+];
+
+const SERVER_PATTERNS = [
+  ["un JWT o clave de servicio con su valor", /eyJ[A-Za-z0-9_-]{15,}\.eyJ[A-Za-z0-9_-]{15,}\./],
+  ["una referencia de suscriptor real", /\btfs_[0-9a-f]{32}\b/],
+  ["un secreto con valor asignado", /(CRON_SECRET|MOBBEX_API_KEY|MOBBEX_ACCESS_TOKEN|SUPABASE_SERVICE_ROLE_KEY|BILLING_STATE_COOKIE_SECRET)\s*[:=]\s*["'`][A-Za-z0-9_\-+/=]{16,}["'`]/],
 ];
 
 const findings = [];
@@ -26,12 +36,15 @@ function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === "cache" || entry.name === "node_modules") continue;
+      if (entry.name === "cache" || entry.name === "node_modules" || (dir === root && entry.name === "dev")) continue; // `.next/dev` es la caché del servidor de desarrollo, no el build
       walk(full);
     } else if (/\.(js|mjs|cjs|html|json|css|map|rsc|txt|body)$/.test(entry.name) || !path.extname(entry.name)) {
       files += 1;
+      const relative = path.relative(root, full).split(path.sep).join("/");
+      // Sólo `static/` llega al NAVEGADOR; todo lo demás (server/, manifiestos, trazas) es del servidor.
+      const isServer = !relative.startsWith("static/");
       const text = fs.readFileSync(full, "utf8");
-      for (const [label, pattern] of PATTERNS) if (pattern.test(text)) findings.push(`${label}: ${path.relative(root, full)}`);
+      for (const [label, pattern] of isServer ? SERVER_PATTERNS : BROWSER_PATTERNS) if (pattern.test(text)) findings.push(`${isServer ? "servidor" : "navegador"} — ${label}: ${relative}`);
     }
   }
 }
@@ -43,7 +56,7 @@ if (!fs.existsSync(root)) {
 walk(root);
 console.log(`${files} archivos revisados en ${root}`);
 if (findings.length === 0) {
-  console.log("✔ Sin credenciales, interruptores, funciones, planes ni importes de facturación en el build (navegador ni servidor).");
+  console.log("✔ Navegador sin credenciales, interruptores, funciones, planes, importes ni rutas de facturación; servidor sin valores secretos.");
   process.exit(0);
 }
 console.log(`✖ ${findings.length} hallazgo(s):`);

@@ -1,0 +1,7 @@
+{
+  "_comment": "EJEMPLO, NO ACTIVO. Se copia a vercel.json recién al activar la facturación (junto con CRON_SECRET en Vercel). Con BILLING_ENABLED=false las dos rutas responden 404. Hobby sólo admite cron diario; con Pro: cada minuto/5 minutos. El sondeo y los avisos son idempotentes: la frecuencia sólo cambia la demora.",
+  "crons": [
+    { "path": "/api/billing/cron/process", "schedule": "*/5 * * * *" },
+    { "path": "/api/billing/cron/reconcile", "schedule": "17 * * * *" }
+  ]
+}

@@ -1,7 +1,7 @@
 import { getPlan } from "../plans.ts";
 import type { BillingSnapshot, ExecutionFact } from "../ledger.ts";
 import type { SubscriberRecord } from "../reconcile.ts";
-import type { BillingStore, ChangeRow, CheckoutAttempt, CommitBatch, CommitResult, DuePage, IngestRow, OpenCheckoutResult, StoredEvent } from "../store.ts";
+import type { BillingHistory, BillingStore, ChangeRow, CheckoutAttempt, CommitBatch, CommitResult, DuePage, IngestRow, OpenCheckoutResult, PollResult, QueueStats, StoredEvent } from "../store.ts";
 import { snap } from "./helpers.ts";
 
 /**
@@ -14,7 +14,7 @@ export class MemoryStore implements BillingStore {
   readonly subscriptions = new Map<string, BillingSnapshot>();
   readonly ingested = new Map<string, IngestRow>();
   readonly changes: ChangeRow[] = [];
-  readonly attempts = new Map<string, CheckoutAttempt & { idempotencyKey: string }>();
+  readonly attempts = new Map<string, CheckoutAttempt & { idempotencyKey: string; subscriberUid?: string | null }>();
   failWith: Error | null = null;
   /** Se ejecuta antes de cada `commitBatch` (permite simular a «otra pestaña» que cambia la cuenta en el medio). */
   beforeCommit: (() => void) | null = null;
@@ -52,9 +52,29 @@ export class MemoryStore implements BillingStore {
     this.record("claimEvents");
     return [];
   }
-  async resolveSubscribers(): Promise<Map<string, SubscriberRecord>> {
+  async resolveSubscribers(): Promise<SubscriberRecord[]> {
     this.record("resolveSubscribers");
-    return new Map();
+    return [];
+  }
+  async claimPolls(): Promise<string[]> {
+    this.record("claimPolls");
+    return [];
+  }
+  async markPolled(_results: readonly PollResult[]): Promise<void> {
+    this.record("markPolled");
+  }
+  async prioritizePolls(ownerIds: readonly string[]): Promise<number> {
+    this.record("prioritizePolls");
+    return ownerIds.length;
+  }
+  readonly history = new Map<string, BillingHistory>();
+  async getHistory(ownerId: string): Promise<BillingHistory> {
+    this.record("getHistory");
+    return this.history.get(ownerId) ?? { periods: [], charges: [] };
+  }
+  async queueStats(): Promise<QueueStats> {
+    this.record("queueStats");
+    return { pendingEvents: 0, processingEvents: 0, oldestPendingAt: null, duePolls: 0, dueClock: 0, openReviews: 0 };
   }
   async loadSubscriptions(ownerIds: readonly string[]): Promise<Map<string, BillingSnapshot>> {
     this.record("loadSubscriptions");
@@ -111,20 +131,20 @@ export class MemoryStore implements BillingStore {
     if (!plan) return { ok: false, reason: "plan_invalid" };
     if (!["grandfathered", "pending", "canceled", "expired"].includes(sub.status)) return { ok: false, reason: "not_allowed" };
     const same = [...this.attempts.values()].find((a) => a.ownerId === input.ownerId && a.idempotencyKey === input.idempotencyKey);
-    if (same) return { ok: true, attempt: same, created: false, superseded: false };
+    if (same) return { ok: true, attempt: same, created: false, superseded: false, stale: [] };
     const open = [...this.attempts.values()].find((a) => a.ownerId === input.ownerId && (a.status === "open" || a.status === "completed"));
-    if (open && open.planCode === plan.code) return { ok: true, attempt: open, created: false, superseded: false };
+    if (open && open.planCode === plan.code) return { ok: true, attempt: open, created: false, superseded: false, stale: [] };
     if (open) this.attempts.set(open.id, { ...open, status: "superseded" });
-    const attempt = { id: `attempt-${this.attempts.size + 1}`, ownerId: input.ownerId, planCode: plan.code, priceVersion: plan.priceVersion, amountMinor: plan.amountMinor, currency: "ARS" as const, subscriberReference: sub.providerReference, status: "open" as const, idempotencyKey: input.idempotencyKey };
+    const attempt = { id: `attempt-${this.attempts.size + 1}`, ownerId: input.ownerId, planCode: plan.code, priceVersion: plan.priceVersion, amountMinor: plan.amountMinor, currency: "ARS" as const, subscriberReference: sub.providerReference, status: "open" as const, idempotencyKey: input.idempotencyKey, redirectUrl: null as string | null };
     this.attempts.set(attempt.id, attempt);
-    return { ok: true, attempt, created: true, superseded: Boolean(open) };
+    return { ok: true, attempt, created: true, superseded: Boolean(open), stale: open?.subscriberUid ? [{ uid: open.subscriberUid, planCode: open.planCode }] : [] };
   }
 
-  async completeCheckoutAttempt(input: { attemptId: string }): Promise<boolean> {
+  async completeCheckoutAttempt(input: { attemptId: string; providerSubscriberUid: string | null; redirectUrl: string }): Promise<boolean> {
     this.record("completeCheckoutAttempt");
     const attempt = this.attempts.get(input.attemptId);
     if (!attempt || (attempt.status !== "open" && attempt.status !== "completed")) return false;
-    this.attempts.set(attempt.id, { ...attempt, status: "completed" });
+    this.attempts.set(attempt.id, { ...attempt, status: "completed", redirectUrl: input.redirectUrl, subscriberUid: input.providerSubscriberUid });
     return true;
   }
 

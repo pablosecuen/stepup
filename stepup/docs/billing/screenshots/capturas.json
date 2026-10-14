@@ -1,0 +1,466 @@
+{
+  "base": "servidor de desarrollo local con adaptador falso",
+  "widths": [
+    1440,
+    390,
+    320
+  ],
+  "pages": [
+    {
+      "name": "facturacion-activa",
+      "width": 1440,
+      "height": 1500,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-activa",
+      "width": 390,
+      "height": 2223,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-activa",
+      "width": 320,
+      "height": 2554,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-activa-anual-cambio-programado",
+      "width": 1440,
+      "height": 1274,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-activa-anual-cambio-programado",
+      "width": 390,
+      "height": 1945,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-activa-anual-cambio-programado",
+      "width": 320,
+      "height": 2259,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-renovando",
+      "width": 1440,
+      "height": 1524,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-renovando",
+      "width": 390,
+      "height": 2192,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-renovando",
+      "width": 320,
+      "height": 2493,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-pago-rechazado-gracia",
+      "width": 1440,
+      "height": 1500,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-pago-rechazado-gracia",
+      "width": 390,
+      "height": 2277,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-pago-rechazado-gracia",
+      "width": 320,
+      "height": 2549,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-modo-limitado",
+      "width": 1440,
+      "height": 1524,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-modo-limitado",
+      "width": 390,
+      "height": 2191,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-modo-limitado",
+      "width": 320,
+      "height": 2518,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-contracargo",
+      "width": 1440,
+      "height": 1638,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-contracargo",
+      "width": 390,
+      "height": 2370,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-contracargo",
+      "width": 320,
+      "height": 2740,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelacion-al-final-del-periodo",
+      "width": 1440,
+      "height": 1500,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelacion-al-final-del-periodo",
+      "width": 390,
+      "height": 2143,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelacion-al-final-del-periodo",
+      "width": 320,
+      "height": 2445,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelada",
+      "width": 1440,
+      "height": 1500,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelada",
+      "width": 390,
+      "height": 2113,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-cancelada",
+      "width": 320,
+      "height": 2415,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-finalizada",
+      "width": 1440,
+      "height": 1440,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-finalizada",
+      "width": 390,
+      "height": 2023,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-finalizada",
+      "width": 320,
+      "height": 2355,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-confirmando-pago",
+      "width": 1440,
+      "height": 959,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-confirmando-pago",
+      "width": 390,
+      "height": 1490,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-confirmando-pago",
+      "width": 320,
+      "height": 1749,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-sin-suscripcion",
+      "width": 1440,
+      "height": 934,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-sin-suscripcion",
+      "width": 390,
+      "height": 1466,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-sin-suscripcion",
+      "width": 320,
+      "height": 1670,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-acceso-sin-cargo",
+      "width": 1440,
+      "height": 959,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-acceso-sin-cargo",
+      "width": 390,
+      "height": 1466,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-acceso-sin-cargo",
+      "width": 320,
+      "height": 1670,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-no-disponible",
+      "width": 1440,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-no-disponible",
+      "width": 390,
+      "height": 1240,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "facturacion-no-disponible",
+      "width": 320,
+      "height": 1453,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Facturación"
+    },
+    {
+      "name": "planes-nueva-suscripcion",
+      "width": 1440,
+      "height": 1265,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-nueva-suscripcion",
+      "width": 390,
+      "height": 2448,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-nueva-suscripcion",
+      "width": 320,
+      "height": 2648,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-acceso-sin-cargo",
+      "width": 1440,
+      "height": 1386,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-acceso-sin-cargo",
+      "width": 390,
+      "height": 2635,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-acceso-sin-cargo",
+      "width": 320,
+      "height": 2857,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-cambio-de-plan",
+      "width": 1440,
+      "height": 1072,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Cambiar de plan"
+    },
+    {
+      "name": "planes-cambio-de-plan",
+      "width": 390,
+      "height": 2112,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Cambiar de plan"
+    },
+    {
+      "name": "planes-cambio-de-plan",
+      "width": 320,
+      "height": 2290,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Cambiar de plan"
+    },
+    {
+      "name": "planes-ya-suscripta",
+      "width": 1440,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-ya-suscripta",
+      "width": 390,
+      "height": 1285,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "planes-ya-suscripta",
+      "width": 320,
+      "height": 1464,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Planes"
+    },
+    {
+      "name": "resultado-confirmando",
+      "width": 1440,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    },
+    {
+      "name": "resultado-confirmando",
+      "width": 390,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    },
+    {
+      "name": "resultado-confirmando",
+      "width": 320,
+      "height": 968,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    },
+    {
+      "name": "resultado-activa",
+      "width": 1440,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    },
+    {
+      "name": "resultado-activa",
+      "width": 390,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    },
+    {
+      "name": "resultado-activa",
+      "width": 320,
+      "height": 900,
+      "overflow": false,
+      "errors": 0,
+      "h1": "Resultado del pago"
+    }
+  ]
+}

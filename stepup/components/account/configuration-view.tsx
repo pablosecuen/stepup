@@ -23,11 +23,14 @@ export function ConfigurationView({
   displayName,
   budget,
   session,
+  billingEnabled = false,
 }: {
   email: string | null;
   displayName: string;
   budget: BudgetDistribution;
   session: ActiveSessionInfo | null;
+  /** Sólo con la facturación encendida: el diálogo de eliminar cuenta explica qué pasa con la suscripción. */
+  billingEnabled?: boolean;
 }) {
   const who = displayName.trim() || email || "";
   return (
@@ -91,7 +94,7 @@ export function ConfigurationView({
             <EndActiveSessionControl session={session} />
           </SettingsRow>
           <SettingsRow title="Eliminar cuenta" description="Borra tu cuenta y todos tus datos de forma permanente.">
-            <DeleteAccountButton />
+            <DeleteAccountButton billingEnabled={billingEnabled} />
           </SettingsRow>
         </SettingsSection>
       </div>

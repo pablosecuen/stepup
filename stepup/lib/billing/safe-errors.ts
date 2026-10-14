@@ -15,6 +15,8 @@ export type BillingFailure =
   | "conflict"
   | "provider_unavailable"
   | "provider_rejected"
+  | "feature_unavailable"
+  | "deletion_unconfirmed"
   | "unknown";
 
 const MESSAGES: Readonly<Record<BillingFailure, string>> = {
@@ -26,6 +28,8 @@ const MESSAGES: Readonly<Record<BillingFailure, string>> = {
   conflict: "Tu suscripción cambió mientras hacías esta acción. Revisá el estado actual y, si hace falta, volvé a intentar.",
   provider_unavailable: "No pudimos comunicarnos con el servicio de cobro. No se hizo ningún cambio ni ningún cobro; probá de nuevo en unos minutos.",
   provider_rejected: "El servicio de cobro no pudo completar la acción. No se hizo ningún cobro. Si vuelve a pasar, contactanos.",
+  feature_unavailable: "Esta opción todavía no está disponible. No se hizo ningún cambio ni ningún cobro.",
+  deletion_unconfirmed: "No pudimos confirmar que tu suscripción quedó cancelada en el servicio de cobro, así que tu cuenta NO se eliminó. Probá de nuevo en unos minutos; si sigue pasando, contactanos.",
   unknown: "No pudimos completar la acción y no se hizo ningún cambio. Probá de nuevo; si vuelve a pasar, contactanos.",
 };
 

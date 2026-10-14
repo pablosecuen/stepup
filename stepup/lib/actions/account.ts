@@ -13,6 +13,9 @@ import { runDeleteAccount } from "@/lib/account/delete-account-flow";
 import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 import { consumeActionQuota } from "@/lib/repositories/action-quota";
+import { getBillingFlags, getBillingRuntime } from "@/lib/billing/runtime";
+import { prepareAccountDeletion } from "@/lib/billing/account-deletion";
+import { billingErrorMessage } from "@/lib/billing/safe-errors";
 
 // Server Actions — Cuenta/Configuración (Fase 8). Mismo patrón que
 // `lib/actions/students.ts`: nunca reciben `ownerId` del navegador,
@@ -161,6 +164,15 @@ export async function deleteOwnAccountAction(input: DeleteAccountInput): Promise
       getEmail: async () => (await ctx.supabase.auth.getUser()).data.user?.email ?? null,
       consumeReauthQuota: () => consumeActionQuota(ctx, "account_reauth"),
       verifyPassword: verifyOwnPassword,
+      // Con la facturación apagada no existe ese paso: el flujo de eliminación es exactamente el de siempre.
+      cancelBilling: getBillingFlags().enabled
+        ? async () => {
+            const runtime = getBillingRuntime();
+            if (!runtime.store) return { ok: false, error: billingErrorMessage("deletion_unconfirmed") };
+            const prepared = await prepareAccountDeletion({ store: runtime.store, provider: runtime.provider, flags: runtime.flags, now: runtime.now }, ctx.ownerId);
+            return prepared.ok ? { ok: true } : { ok: false, error: prepared.message };
+          }
+        : undefined,
       removePdfs: () => removeOwnReportPdfs(ctx),
       deleteAccount: () => deleteOwnAccount(ctx),
       errorMessage: friendlyErrorMessage,

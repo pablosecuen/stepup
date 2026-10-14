@@ -45,6 +45,7 @@ const SAMPLES: Record<string, string[]> = {
   "/calendario": ["/calendario", "/calendario?week=2026-10-05", "/calendario/series", "/calendario/nueva", "/calendario/disponibilidad"],
   "/cobros": ["/cobros", "/cobros?mes=2026-10"],
   "/configuracion": ["/configuracion", "/configuracion/respaldo"],
+  "/facturacion": ["/facturacion", "/facturacion/planes", "/facturacion/resultado"],
   "/recordatorios": ["/recordatorios"],
   "/registro": ["/registro", "/registro/nuevo", "/registro/libre/abc"],
   "/resumen-financiero": ["/resumen-financiero", "/resumen-financiero?periodo=3m"],

@@ -36,13 +36,15 @@ móvil `active_sessions`/`cloud_backups`). Sirven para lo que PGlite no puede pr
 varias conexiones por pocas unidades, dos propietarias en paralelo, ON CONFLICT DO NOTHING, categorías con filtro, límites por hora,
 tamaño de fila, acciones costosas por ventana, `anon`/sin sesión y configuración sin acceso desde la API.
 
-## M1 — Facturación / suscripciones (docs/billing/M1_ARQUITECTURA.md)
+## M1 + M2 — Facturación / suscripciones (docs/billing/M1_ARQUITECTURA.md y M2_ARQUITECTURA.md)
 
-    # Usar embedded-postgres 17.x. Son módulos ESM (.mjs): ejecutan lib/billing/*.ts TAL CUAL contra las funciones SQL reales, por conexiones directas como service_role.
-    node supabase/tests/postgres/m1_billing.mjs                     (batería: esquema, RLS y privilegios, integridad, checkout atómico, avisos, arrendamientos, tubería completa y concurrencia)
+    # Usar embedded-postgres 17.x (npm i embedded-postgres@17.10.0-beta.17 pg fuera del repo; NODE_PATH apunta a su node_modules).
+    # Son módulos ESM (.mjs): ejecutan lib/billing/*.ts TAL CUAL contra las funciones SQL reales, por conexiones directas como service_role.
+    node supabase/tests/postgres/m1_billing.mjs                     (66 comprobaciones sobre las TRES migraciones de facturación: esquema, RLS y privilegios, integridad, checkout atómico, avisos no confiables, arrendamientos, tubería completa, concurrencia, registro fiscal, devoluciones y contracargos, sondeo por suscriptor, reparación, eliminación, cambio de plan, trabajos)
     node supabase/tests/postgres/m1_billing.mjs --mutations         (rompe a propósito cada garantía de las MIGRACIONES; todas deben detectarse)
-    node supabase/tests/postgres/m1_billing.mjs --lib-mutations     (rompe a propósito el procesador y el almacén de aplicación contra Postgres real)
-    node --expose-gc supabase/tests/postgres/m1_billing_scale.mjs --subs 1000 --out docs/billing/m1-scale-metrics.json
-                                                                    (1.000 cuentas con renovaciones a la misma hora, 5.000 avisos duplicados/desordenados, trabajador que muere, conciliación paginada, barrido del reloj y planes de consulta; mide tiempo, consultas y memoria)
+    node supabase/tests/postgres/m1_billing.mjs --lib-mutations     (rompe a propósito el procesador, el almacén y los comandos contra Postgres real)
+    node supabase/tests/postgres/m2_migration_rehearsal.cjs         (ensayo BEGIN…ROLLBACK de las migraciones de facturación: cuerpos, privilegios, RLS, índices, huellas, dos propietarias, rollback reproducible; SIN db push)
+    node --expose-gc supabase/tests/postgres/m2_billing_scale.mjs --subs 1000 --out docs/billing/m2-scale-metrics.json
+                                                                    (1.000 cuentas con renovaciones a la misma hora, 5.000 avisos duplicados/desordenados, trabajador que muere, conciliación paginada, sondeo por suscriptor con 3 trabajadores, registro fiscal, barrido del reloj y planes de consulta; mide tiempo, consultas y memoria)
     node supabase/tests/billing/domain_mutations.mjs                (mutaciones del dominio puro lib/billing contra la batería unitaria)
-    node supabase/tests/billing/bundle_scan.mjs .next               (tras «npm run build»: ninguna credencial, interruptor, plan ni función de facturación en el bundle)
+    node supabase/tests/billing/bundle_scan.mjs .next               (tras «npm run build»: navegador sin credenciales, interruptores, planes ni funciones de facturación; servidor sin valores secretos)

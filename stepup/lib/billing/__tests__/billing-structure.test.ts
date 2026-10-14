@@ -28,18 +28,59 @@ const code = (path: string) => read(path).replace(/\/\*[\s\S]*?\*\//g, "").repla
 const BILLING_SOURCES = walk("lib/billing", (f) => f.endsWith(".ts") && !f.includes(`${sep}__tests__${sep}`));
 const APP_SOURCES = [...walk("app", (f) => /\.(ts|tsx)$/.test(f)), ...walk("components", (f) => /\.(ts|tsx)$/.test(f)), "proxy.ts"];
 
-test("M1 NO conecta la facturación: ningún archivo de app/, components/ ni proxy.ts importa lib/billing", () => {
+/**
+ * M2 conecta la facturación ÚNICAMENTE por estos puntos (nada más importa lib/billing). Con los interruptores apagados ninguno de
+ * ellos cambia el comportamiento actual: ver `m2-structure.test.ts`.
+ */
+const BILLING_IMPORT = /from\s+["']((?:@\/)?lib\/billing\/[^"']*|@\/lib\/actions\/billing|(?:\.\.?\/)+billing\/[^"']*)["']/g;
+const importsOf = (file: string): string[] => [...read(file).matchAll(BILLING_IMPORT)].map((match) => match[1]);
+const moduleOf = (specifier: string): string => specifier.replace(/^.*lib\/billing\//, "").replace(/\.ts$/, "");
+
+const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modules: ReadonlySet<string> }> = [
+  { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["flags"]) },
+  { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["flags"]) },
+  { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },
+  { match: /^app\/api\/billing\/.+\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "jobs", "log"]) },
+  { match: /^components\/billing\/[a-z-]+\.tsx$/, modules: new Set(["view", "redirect", "@/lib/actions/billing"]) },
+];
+
+test("M2 conecta la facturación SÓLO por los puntos aprobados (rutas de API, pantallas de facturación, acciones y los interruptores del layout); nada más importa lib/billing", () => {
   assert.ok(APP_SOURCES.length > 100);
-  for (const file of APP_SOURCES) assert.doesNotMatch(read(file), /lib\/billing|@\/lib\/billing|\.\/billing|billing\/(access|flags|commands|processor)/, file);
-  // El resto de lib/ tampoco (fuera de lib/billing y de sus pruebas): el control de acceso no está en ningún flujo.
-  for (const file of walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`))) assert.doesNotMatch(read(file), /from "(\.\.?\/)+billing\/|@\/lib\/billing/, file);
+  const connected = new Set<string>();
+  for (const file of APP_SOURCES) {
+    const imports = importsOf(file);
+    if (imports.length === 0) continue;
+    const rule = ALLOWED_CONNECTIONS.find((entry) => entry.match.test(file));
+    assert.ok(rule, `${file} importa facturación y no figura entre los puntos aprobados: ${imports.join(", ")}`);
+    for (const specifier of imports) {
+      const name = specifier.startsWith("@/lib/actions/") ? specifier : moduleOf(specifier);
+      assert.ok(rule.modules.has(name), `${file} importa «${name}», que no está permitido`);
+    }
+    connected.add(file);
+  }
+  assert.ok(connected.size >= 8, `puntos conectados: ${[...connected].join(", ")}`);
+  // proxy.ts y la navegación NO importan facturación: reciben un booleano por propiedad.
+  for (const file of ["proxy.ts", "components/nav/primary-nav.tsx", "components/nav/account-menu.tsx", "components/account/configuration-view.tsx", "components/account/delete-account-button.tsx"]) assert.deepEqual(importsOf(file), [], file);
+  // El resto de lib/: sólo las acciones de facturación y de cuenta (eliminación) usan lib/billing.
+  const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts"]);
+  for (const file of walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`) && !f.includes("__tests__"))) {
+    if (allowedLib.has(file)) continue;
+    assert.doesNotMatch(read(file), /from "(\.\.?\/)+billing\/|@\/lib\/billing/, file);
+  }
+  assert.deepEqual([...new Set(importsOf("lib/actions/account.ts").map(moduleOf))].sort(), ["account-deletion", "runtime", "safe-errors"]);
 });
 
-test("ningún componente cliente puede importar facturación (los precios y estados llegan del servidor)", () => {
+test("ningún componente cliente puede importar el servidor de facturación: sólo funciones puras (vista, redirección) y las acciones; los precios y estados llegan del servidor", () => {
   for (const file of APP_SOURCES) {
     const source = read(file);
-    if (/^["']use client["']/m.test(source)) assert.doesNotMatch(source, /from\s+["'][^"']*\/billing(\/[^"']*)?["']/, file);
+    if (!/^["']use client["']/m.test(source)) continue;
+    for (const specifier of importsOf(file)) {
+      const name = specifier.startsWith("@/lib/actions/") ? specifier : moduleOf(specifier);
+      assert.ok(["view", "redirect", "@/lib/actions/billing"].includes(name), `${file} (cliente) importa «${name}»`);
+    }
   }
+  // Y los módulos puros que sí pueden viajar al navegador no arrastran nada del servidor.
+  for (const file of ["lib/billing/view.ts", "lib/billing/redirect.ts"]) assert.doesNotMatch(code(file), /server-only|node:|process\.env|@supabase|supabase-store|runtime/, file);
 });
 
 test("los secretos de facturación son SÓLO de servidor: ningún NEXT_PUBLIC_ con claves, tokens ni facturación, en ningún archivo", () => {
@@ -50,6 +91,9 @@ test("los secretos de facturación son SÓLO de servidor: ningún NEXT_PUBLIC_ c
   }
   assert.doesNotMatch(read("next.config.mjs"), /MOBBEX|SERVICE_ROLE|BILLING|\benv\s*:/, "next.config.mjs no expone variables al navegador");
 });
+
+/** Módulos de composición del servidor (leen el entorno y arman almacén y adaptador): server-only por diseño. */
+const SERVER_COMPOSITION: ReadonlySet<string> = new Set(["lib/billing/runtime.ts", "lib/billing/page-data.ts"]);
 
 test("la clave de servicio de Supabase y las credenciales de Mobbex se leen en UN solo lugar cada una", () => {
   const withService = [...BILLING_SOURCES, ...walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`)), ...APP_SOURCES].filter((f) => /SERVICE_ROLE_KEY/.test(read(f)));
@@ -64,6 +108,7 @@ test("la clave de servicio de Supabase y las credenciales de Mobbex se leen en U
   // Sólo el almacén con clave de servicio importa supabase-js dentro de lib/billing; el resto es puro y se prueba sin servidor.
   for (const file of BILLING_SOURCES) {
     if (file === "lib/billing/supabase-store.ts") continue;
+    if (SERVER_COMPOSITION.has(file)) continue; // raíz de composición y datos de pantallas: son del servidor (server-only) por diseño
     assert.doesNotMatch(code(file), /@supabase|server-only|next\/|from "react/, file);
   }
 });
@@ -190,12 +235,12 @@ test("hay un script de rollback que elimina SÓLO objetos billing_* y no toca na
   assert.doesNotMatch(rollback, /auth\.users|drop schema|truncate|delete from/i);
 });
 
-test("la migración M1 es posterior a la última existente y no hay marcas de tiempo repetidas", () => {
+test("las migraciones de facturación son posteriores a las existentes, van en orden y no hay marcas de tiempo repetidas", () => {
   const files = readdirSync(join(ROOT, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
-  const m1 = files.filter((f) => f.includes("m1_billing"));
-  assert.equal(m1.length, 2);
-  const previous = files.filter((f) => !f.includes("m1_billing"));
-  assert.ok(previous[previous.length - 1] < m1[0], "M1 va después de todo lo existente");
+  const billing = files.filter((f) => /_m[12]_billing/.test(f));
+  assert.deepEqual(billing.map((f) => f.replace(/^[0-9]+_/, "")), ["m1_billing_core.sql", "m1_billing_functions.sql", "m2_billing_ops.sql"]);
+  const previous = files.filter((f) => !/_m[12]_billing/.test(f));
+  assert.ok(previous[previous.length - 1] < billing[0], "la facturación va después de todo lo existente");
   const stamps = files.map((f) => f.split("_")[0]);
   assert.equal(new Set(stamps).size, stamps.length);
 });

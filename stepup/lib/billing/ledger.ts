@@ -15,10 +15,16 @@ import { DERIVATION_TRIGGERS, isReachable, type BillingStatus } from "./state-ma
  * es, no se aplica y se registra una anomalía para conciliación (nunca se «arregla» saltando una transición imposible).
  */
 
+export type ExecutionOutcome = "approved" | "rejected" | "refunded" | "chargeback";
+
+/** Prioridad entre resultados de la MISMA ejecución con el mismo instante: un cobro confirmado no se anula por empate, pero una devolución posterior sí. */
+const OUTCOME_RANK: Readonly<Record<ExecutionOutcome, number>> = { rejected: 0, approved: 1, refunded: 2, chargeback: 3 };
+
 export interface ExecutionFact {
   /** Identificador de la ejecución en el proveedor. Un reintento del mismo cobro conserva el mismo identificador. */
   readonly executionId: string;
-  readonly outcome: "approved" | "rejected";
+  /** `refunded` = devolución TOTAL confirmada; `chargeback` = contracargo conciliado. Una devolución parcial o ambigua nunca llega acá (va a revisión). */
+  readonly outcome: ExecutionOutcome;
   readonly planCode: PlanCode;
   readonly amountMinor: number;
   /** Fecha de vencimiento del cobro (la que agendó el proveedor). */
@@ -34,6 +40,8 @@ export interface BillingSnapshot {
   readonly providerSubscriberUid: string | null;
   readonly status: BillingStatus;
   readonly planCode: PlanCode | null;
+  /** Plan de la suscripción del proveedor a la que pertenece el suscriptor (con la que se lo consulta, cancela o mueve). */
+  readonly providerPlanCode: PlanCode | null;
   /** Cuenta existente al lanzar la facturación y sin decisión posterior que la saque de ese régimen. */
   readonly grandfathered: boolean;
   readonly currentPeriodStart: string | null;
@@ -45,6 +53,8 @@ export interface BillingSnapshot {
   readonly providerEndedAt: string | null;
   /** Instante en que la cuenta volvió a empezar tras cancelar o expirar: los períodos que terminaron antes ya no cuentan. */
   readonly restartedAt: string | null;
+  /** Instante de un contracargo conciliado que sigue vigente (ningún cobro aprobado posterior): modo limitado inmediato. */
+  readonly chargebackAt: string | null;
   /** Próxima revisión por reloj guardada (`next_check_at`): el barrido la corrige si ya no coincide con lo que corresponde. */
   readonly nextCheckAt: string | null;
   readonly pendingPlanCode: PlanCode | null;
@@ -59,6 +69,7 @@ export interface DerivedFields {
   readonly currentPeriodEnd: string | null;
   readonly renewalRejectedDueAt: string | null;
   readonly graceEndsAt: string | null;
+  readonly chargebackAt: string | null;
 }
 
 function byDueThenId(a: ExecutionFact, b: ExecutionFact): number {
@@ -70,7 +81,7 @@ export function finalOutcomes(facts: readonly ExecutionFact[]): ExecutionFact[] 
   const latest = new Map<string, ExecutionFact>();
   for (const fact of facts) {
     const current = latest.get(fact.executionId);
-    if (!current || fact.occurredAt > current.occurredAt || (fact.occurredAt === current.occurredAt && fact.outcome === "approved" && current.outcome !== "approved")) {
+    if (!current || fact.occurredAt > current.occurredAt || (fact.occurredAt === current.occurredAt && OUTCOME_RANK[fact.outcome] > OUTCOME_RANK[current.outcome])) {
       latest.set(fact.executionId, fact);
     }
   }
@@ -105,19 +116,35 @@ export function deriveFields(facts: readonly ExecutionFact[]): DerivedFields {
   const last = chain[chain.length - 1] ?? null;
   const currentPeriodEnd = last?.endIso ?? null;
   let renewalRejectedDueAt: string | null = null;
+  let revocationAt: string | null = null;
   if (currentPeriodEnd) {
     const endDay = civilDayOf(currentPeriodEnd);
     for (const fact of finals) {
       if (fact.outcome !== "rejected" || civilDayOf(fact.dueAt) < endDay) continue;
       if (!renewalRejectedDueAt || fact.dueAt > renewalRejectedDueAt) renewalRejectedDueAt = fact.dueAt;
     }
+    // Una renovación DEVUELTA (total) o contracargada no extiende el período ni da gracia: el acceso termina al confirmarse la devolución.
+    for (const fact of finals) {
+      if ((fact.outcome !== "refunded" && fact.outcome !== "chargeback") || civilDayOf(fact.dueAt) < endDay) continue;
+      if (!revocationAt || fact.occurredAt > revocationAt) revocationAt = fact.occurredAt;
+    }
   }
+  // Contracargo vigente: el más reciente, salvo que un cobro aprobado posterior lo supere (la persona volvió a pagar).
+  let chargebackAt: string | null = null;
+  for (const fact of finals) if (fact.outcome === "chargeback" && (!chargebackAt || fact.occurredAt > chargebackAt)) chargebackAt = fact.occurredAt;
+  if (chargebackAt) {
+    const cleared = finals.some((fact) => fact.outcome === "approved" && fact.occurredAt > (chargebackAt as string));
+    if (cleared) chargebackAt = null;
+  }
+  const normalGraceEnd = currentPeriodEnd ? graceEndsAtFor(renewalRejectedDueAt ?? currentPeriodEnd) : null;
+  const graceEndsAt = normalGraceEnd && currentPeriodEnd && revocationAt ? [normalGraceEnd, revocationAt > currentPeriodEnd ? revocationAt : currentPeriodEnd].sort()[0] : normalGraceEnd;
   return {
     planCode: last?.planCode ?? null,
     currentPeriodStart: last?.startIso ?? null,
     currentPeriodEnd,
     renewalRejectedDueAt,
-    graceEndsAt: currentPeriodEnd ? graceEndsAtFor(renewalRejectedDueAt ?? currentPeriodEnd) : null,
+    graceEndsAt,
+    chargebackAt,
   };
 }
 
@@ -140,10 +167,20 @@ interface Projectable {
   readonly cancelRequestedAt: string | null;
   readonly providerEndedAt: string | null;
   readonly restartedAt?: string | null;
+  readonly chargebackAt?: string | null;
 }
+
+const ACCESS_GRANTING: ReadonlySet<BillingStatus> = new Set<BillingStatus>(["active", "past_due", "grace_period", "cancel_at_period_end"]);
 
 /** Estado que corresponde a unos datos de período en un instante (sólo reloj y datos guardados; sin consultar nada más). */
 export function projectStatus(fields: Projectable, now: Date): BillingStatus {
+  const status = projectBaseStatus(fields, now);
+  // Contracargo conciliado vigente: modo limitado inmediato, aunque quede período pagado por delante.
+  if (fields.chargebackAt && now.toISOString() >= fields.chargebackAt && ACCESS_GRANTING.has(status)) return "limited";
+  return status;
+}
+
+function projectBaseStatus(fields: Projectable, now: Date): BillingStatus {
   // Un período que terminó antes de que la cuenta volviera a empezar ya no cuenta (la cuenta vuelve a pending).
   const end = fields.currentPeriodEnd && (!fields.restartedAt || fields.currentPeriodEnd > fields.restartedAt) ? fields.currentPeriodEnd : null;
   if (!end) {
@@ -179,7 +216,7 @@ export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly Execut
       if (fact.outcome === "approved" && fact.dueAt > snapshot.cancelRequestedAt) anomalies.push({ code: "paid_after_cancel", executionId: fact.executionId });
     }
   }
-  const status = projectStatus({ ...fields, grandfathered: snapshot.grandfathered, cancelRequestedAt: snapshot.cancelRequestedAt, providerEndedAt: snapshot.providerEndedAt, restartedAt: snapshot.restartedAt }, now);
+  const status = projectStatus({ ...fields, grandfathered: snapshot.grandfathered, cancelRequestedAt: snapshot.cancelRequestedAt, providerEndedAt: snapshot.providerEndedAt, restartedAt: snapshot.restartedAt, chargebackAt: fields.chargebackAt }, now);
   if (status !== snapshot.status && !isReachable(snapshot.status, status, DERIVATION_TRIGGERS)) {
     return { next: snapshot, changed: false, anomalies: [...anomalies, { code: "impossible_transition", from: snapshot.status, to: status }] };
   }
@@ -194,6 +231,7 @@ export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly Execut
     currentPeriodEnd: fields.currentPeriodEnd,
     renewalRejectedDueAt: fields.renewalRejectedDueAt,
     graceEndsAt: fields.graceEndsAt,
+    chargebackAt: fields.chargebackAt,
     pendingPlanCode: pendingResolved ? null : snapshot.pendingPlanCode,
   };
   const changed =
@@ -204,6 +242,7 @@ export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly Execut
     next.currentPeriodEnd !== snapshot.currentPeriodEnd ||
     next.renewalRejectedDueAt !== snapshot.renewalRejectedDueAt ||
     next.graceEndsAt !== snapshot.graceEndsAt ||
+    next.chargebackAt !== snapshot.chargebackAt ||
     next.pendingPlanCode !== snapshot.pendingPlanCode;
   return { next, changed, anomalies };
 }

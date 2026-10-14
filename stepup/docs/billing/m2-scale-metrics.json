@@ -1,0 +1,150 @@
+{
+  "subs": 1000,
+  "setupMs": 340,
+  "deliveries": 5000,
+  "ingest": {
+    "elapsedMs": 2819,
+    "deliveries": 5000,
+    "statuses": {
+      "200": 5000
+    },
+    "p50": 10.36,
+    "p95": 17.16,
+    "max": 67.12,
+    "perSecond": 1774
+  },
+  "storedEvents": 1500,
+  "process": {
+    "elapsedMs": 392,
+    "queries": 24,
+    "queriesByFunction": {
+      "billing_claim_events": 8,
+      "billing_resolve_subscribers": 4,
+      "billing_get_subscriptions": 4,
+      "billing_owner_executions": 4,
+      "billing_commit_batch": 4
+    },
+    "workers": 4,
+    "claimed": 1500,
+    "facts": 1000,
+    "anomalies": 500,
+    "ignored": 0,
+    "retried": 0,
+    "dead": 0,
+    "conflicts": 0,
+    "providerCalls": 1500,
+    "subscriptionsWritten": 1000,
+    "peakHeapMB": 30,
+    "peakRssMB": 132,
+    "batchesApprox": 3
+  },
+  "eventStates": {
+    "ignored": 500,
+    "processed": 1000
+  },
+  "anomalies": [
+    {
+      "kind": "unknown_reference",
+      "n": 500
+    }
+  ],
+  "interruption": {
+    "claimedByDyingWorker": 500,
+    "survivors": {
+      "facts": 500,
+      "elapsedMs": 234
+    },
+    "recovered": {
+      "claimed": 500,
+      "facts": 500,
+      "elapsedMs": 340
+    }
+  },
+  "providerSweep": {
+    "pages": 20,
+    "operations": 1000,
+    "facts": 1000,
+    "anomalies": 0,
+    "skipped": false,
+    "elapsedMs": 512,
+    "queries": 9,
+    "peakHeapMB": 42,
+    "peakRssMB": 381
+  },
+  "clockSweep": {
+    "pastDue": {
+      "pages": 2,
+      "evaluated": 1000,
+      "subscriptionsWritten": 1000,
+      "conflicts": 0
+    },
+    "limited": {
+      "pages": 2,
+      "evaluated": 1000,
+      "subscriptionsWritten": 1000,
+      "conflicts": 0
+    },
+    "repeat": {
+      "pages": 0,
+      "evaluated": 0,
+      "subscriptionsWritten": 0,
+      "conflicts": 0
+    },
+    "elapsedMs": 391,
+    "queries": 19,
+    "peakHeapMB": 47,
+    "peakRssMB": 166
+  },
+  "poll": {
+    "workers": 3,
+    "claimed": 1000,
+    "polled": 1000,
+    "providerCalls": 1000,
+    "batches": 5,
+    "queries": 33,
+    "queriesByFunction": {
+      "billing_claim_polls": 8,
+      "billing_get_subscriptions": 10,
+      "billing_owner_executions": 5,
+      "billing_commit_batch": 5,
+      "billing_mark_polled": 5
+    },
+    "elapsedMs": 478,
+    "subscriptionsWritten": 1000,
+    "conflicts": 0,
+    "peakHeapMB": 77,
+    "peakRssMB": 471
+  },
+  "fiscal": {
+    "n": 5000,
+    "u": 5000
+  },
+  "queryPlans": {
+    "tableRowsEvents": 61500,
+    "scanDelta": {
+      "billing_subscriptions": {
+        "seqScans": 0,
+        "indexScans": 0
+      },
+      "billing_executions": {
+        "seqScans": 0,
+        "indexScans": 0
+      },
+      "billing_webhook_events": {
+        "seqScans": 0,
+        "indexScans": 504
+      }
+    },
+    "indexes": {
+      "claim": true,
+      "lease": true,
+      "due": true,
+      "executions": true,
+      "poll": true,
+      "dedup": true,
+      "fiscal": true
+    }
+  },
+  "failures": [],
+  "passed": true
+}

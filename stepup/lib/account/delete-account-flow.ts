@@ -10,8 +10,10 @@ import { AUTH_ERROR_MESSAGES } from "../auth/error-messages.ts";
  *   2. se consume el límite por hora de reautenticación (la base, por cuenta) ANTES de verificar la contraseña: una sesión robada no
  *      puede probar contraseñas sin fin a través de la web;
  *   3. se verifica la contraseña contra Supabase Auth (reautenticación);
- *   4. se borran TODOS los PDF de la cuenta en Storage y se comprueba que no quede ninguno;
- *   5. recién entonces se elimina la cuenta (`delete_own_account`).
+ *   4. SI HAY FACTURACIÓN: se cancela la suscripción en el servicio de cobro y se CONFIRMA allá (nunca se elimina una cuenta que
+ *      podría seguir cobrándose); el registro fiscal mínimo y seudonimizado se conserva 10 años (ver `lib/billing/account-deletion.ts`);
+ *   5. se borran TODOS los PDF de la cuenta en Storage y se comprueba que no quede ninguno;
+ *   6. recién entonces se elimina la cuenta (`delete_own_account`).
  *
  * Si cualquier paso anterior falla, los siguientes NO se ejecutan y la cuenta queda intacta. Si el borrado de la cuenta falla después
  * de borrar los PDF, la cuenta sigue existiendo (los PDF se pueden volver a generar desde Reportes). Sin registrar datos personales.
@@ -22,6 +24,8 @@ export interface DeleteAccountDeps {
   getEmail(): Promise<string | null>;
   consumeReauthQuota(): Promise<void>;
   verifyPassword(email: string, password: string, captchaToken?: string): Promise<PasswordCheck>;
+  /** Sólo con la facturación encendida: cancela y confirma el cobro en el proveedor. Si falla, la cuenta NO se elimina. */
+  cancelBilling?(): Promise<{ ok: true } | { ok: false; error: string }>;
   removePdfs(): Promise<void>;
   deleteAccount(): Promise<void>;
   /** Traduce un error inesperado a un texto para la persona (nunca el error crudo). */
@@ -76,6 +80,15 @@ export async function runDeleteAccount(input: { password: unknown; confirmation:
         return { ok: false, error: AUTH_ERROR_MESSAGES.rate_limited };
       default:
         return { ok: false, error: DELETE_ACCOUNT_MESSAGES.unavailable };
+    }
+  }
+
+  if (deps.cancelBilling) {
+    try {
+      const billing = await deps.cancelBilling();
+      if (!billing.ok) return { ok: false, error: billing.error };
+    } catch (error) {
+      return { ok: false, error: deps.errorMessage(error) };
     }
   }
 

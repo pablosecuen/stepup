@@ -30,7 +30,7 @@ const layout = read("app/(app)/layout.tsx");
 test("escritorio: barra lateral con logo, los cinco destinos y el bloque de cuenta abajo; Configuración fuera de la navegación", () => {
   assert.match(nav, /fixed inset-y-0 left-0[^"]*hidden[^"]*nav:flex/, "sidebar sólo desde 820 px (breakpoint nav)");
   assert.match(nav, /<Logo className="text-background" \/>/);
-  assert.match(nav, /<AccountMenu identity=\{account\} variant="sidebar" \/>/, "bloque de cuenta en la barra lateral");
+  assert.match(nav, /<AccountMenu identity=\{account\} variant="sidebar" billingEnabled=\{billingEnabled\} \/>/, "bloque de cuenta en la barra lateral");
   assert.match(nav, /PRIMARY_NAV_ITEMS\.map/, "los destinos salen de la lista única");
   assert.doesNotMatch(nav, /Configuraci|Cog6Tooth/, "Configuración ya no está en la navegación principal");
   assert.match(menu, /href="\/configuracion"[\s\S]*Configuración/, "Configuración está en el menú de cuenta");
@@ -38,7 +38,7 @@ test("escritorio: barra lateral con logo, los cinco destinos y el bloque de cuen
 
 test("móvil: encabezado con logo y botón de cuenta + barra inferior con los mismos destinos", () => {
   assert.match(nav, /<header[^>]*nav:hidden/, "encabezado sólo en móvil (< 820 px)");
-  assert.match(nav, /<AccountMenu identity=\{account\} variant="header" \/>/);
+  assert.match(nav, /<AccountMenu identity=\{account\} variant="header" billingEnabled=\{billingEnabled\} \/>/);
   const bottom = nav.slice(nav.indexOf("fixed inset-x-0 bottom-0"));
   assert.match(bottom, /nav:hidden/, "barra inferior sólo en móvil (< 820 px)");
   assert.equal((nav.match(/PRIMARY_NAV_ITEMS\.map/g) ?? []).length, 2, "móvil y escritorio recorren la MISMA lista de destinos");
@@ -69,7 +69,7 @@ test("menú de cuenta: ARIA, teclado, Escape, clic exterior, devolución de foco
   assert.match(menu, /aria-haspopup="menu"/);
   assert.match(menu, /aria-expanded=\{open\}/);
   assert.match(menu, /role="menu"/);
-  assert.equal((menu.match(/\srole="menuitem"/g) ?? []).length, 2, "dos elementos: Configuración y Cerrar sesión");
+  assert.equal((menu.match(/\srole="menuitem"/g) ?? []).length, 3, "Configuración, Facturación (sólo con la facturación encendida) y Cerrar sesión");
   assert.match(menu, /menuKeyAction\(/, "teclado vía lógica pura probada");
   assert.match(menu, /triggerKeyAction\(/);
   assert.match(menu, /if \(restoreFocus\) triggerRef\.current\?\.focus\(\)/, "devuelve el foco al botón");

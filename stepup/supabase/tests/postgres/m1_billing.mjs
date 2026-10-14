@@ -1,4 +1,4 @@
-// M1 — Facturación sobre Postgres REAL (embedded-postgres 17, TODAS las migraciones reales + las de M1, varias conexiones simultáneas).
+// M1 + M2 — Facturación sobre Postgres REAL (embedded-postgres 17, TODAS las migraciones reales + las de facturación, varias conexiones simultáneas).
 //
 //   mkdir %TEMP%\epg && cd %TEMP%\epg && npm i embedded-postgres@17.10.0-beta.17 pg
 //   set NODE_PATH=%TEMP%\epg\node_modules
@@ -20,21 +20,24 @@ const require = createRequire(import.meta.url);
 const { start } = require("./load.cjs");
 
 const PRE_M1 = "20261012100000_r8_retire_legacy_student_claims_and_enddate.sql";
-const M1_FILES = ["20261014100000_m1_billing_core.sql", "20261014110000_m1_billing_functions.sql"];
+const M1_FILES = ["20261014100000_m1_billing_core.sql", "20261014110000_m1_billing_functions.sql", "20261015100000_m2_billing_ops.sql"];
 
 console.info = () => {}; // el registro seguro de la facturación no ensucia la salida de la batería
 console.warn = () => {};
+console.error = () => {};
 const plansLib = await importLib("billing/plans.ts");
 const smLib = await importLib("billing/state-machine.ts");
 const { RpcBillingStore } = await importLib("billing/rpc-store.ts");
-const { FakeProviderAdapter, FAKE_SIGNATURE_HEADER, signFakeWebhook } = await importLib("billing/providers/fake.ts");
-const { ingestWebhook } = await importLib("billing/webhook-ingest.ts");
-const { processEventBatch, drainEvents, runClockSweep, runProviderSweep } = await importLib("billing/processor.ts");
-const { cancelSubscription, changePlan, startCheckout } = await importLib("billing/commands.ts");
+const { FakeProviderAdapter } = await importLib("billing/providers/fake.ts");
+const { ingestNotice } = await importLib("billing/webhook-ingest.ts");
+const { createNoticeLimiter } = await importLib("billing/rate-limit.ts");
+const { processEventBatch, drainEvents, runClockSweep, runProviderSweep, runSubscriberPoll } = await importLib("billing/processor.ts");
+const { cancelSubscription, reactivateSubscription, changePlan, startCheckout, updatePaymentMethod } = await importLib("billing/commands.ts");
+const { prepareAccountDeletion } = await importLib("billing/account-deletion.ts");
+const { runProcessJob, runReconcileJob } = await importLib("billing/jobs.ts");
 const { localDateTimeToInstantIso } = await importLib("calendar/timezone.ts");
 
 const ar = (date, hour = 0, minute = 0) => localDateTimeToInstantIso({ date, hour, minute, timeZone: "America/Argentina/Buenos_Aires" });
-const SECRET = "db-test-webhook-secret";
 const MONTHLY = plansLib.getPlan("tf_monthly_ars_v1");
 const ANNUAL = plansLib.getPlan("tf_annual_ars_v1");
 
@@ -70,7 +73,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
       }
       assert.equal(new Set(rows.map((row) => row.provider_reference)).size, 3, "referencias únicas");
       const after = await pg0.admin.query("select count(*)::int n from pg_tables where schemaname = 'public'");
-      assert.equal(after.rows[0].n - before.rows[0].n, 10, "sólo se crearon las 10 tablas billing_*");
+      assert.equal(after.rows[0].n - before.rows[0].n, 12, "sólo se crearon las 12 tablas billing_*");
     });
     await check("0.3 aplicar M1 DOS veces es idempotente (sin errores, sin duplicar el catálogo ni las cuentas)", async () => {
       const snapshot = JSON.stringify((await pg0.admin.query("select owner_id, status, provider_reference from public.billing_subscriptions order by owner_id")).rows);
@@ -111,7 +114,8 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
 
   const svcConn = await pg.session("", "service_role");
   const store = new RpcBillingStore(await makeRpcCaller(svcConn));
-  const provider = new FakeProviderAdapter(SECRET);
+  const provider = new FakeProviderAdapter();
+  const limiter = createNoticeLimiter();
   const NOW = new Date(ar("2026-10-20", 12));
   const deps = (overrides = {}) => ({ store, provider, now: () => NOW, expectLive: true, worker: "test-worker", ...overrides });
 
@@ -122,7 +126,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     const plan = plansLib.getPlan(planCode);
     const opened = await store.openCheckoutAttempt({ ownerId: owner, plan, provider: "fake", idempotencyKey: `key-${owner.slice(-6)}-aaaaaaaa`, expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString() });
     assert.equal(opened.ok, true);
-    await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: `chk_${owner.slice(-6)}`, providerSubscriberUid: `sub_${owner.slice(-6)}` });
+    await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: `chk_${owner.slice(-6)}`, providerSubscriberUid: `sub_${owner.slice(-6)}`, redirectUrl: `https://mobbex.com/p/${owner.slice(-6)}` });
     return { owner, ref: snapshot.providerReference, subscriberUid: `sub_${owner.slice(-6)}` };
   };
 
@@ -154,23 +158,29 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
       },
     });
 
-  const deliver = async (o, { sign = true } = {}) => {
-    const body = webhookBody(o);
-    return ingestWebhook({ adapter: provider, store, flags: { enabled: true, enforcement: false }, now: () => NOW }, { rawBody: body, headers: sign ? { [FAKE_SIGNATURE_HEADER]: signFakeWebhook(SECRET, body), "content-type": "application/json" } : {} });
+  /** Entrega un aviso por la recepción real (sin autenticación: es una señal no confiable). `raw` permite mandar un cuerpo cualquiera. */
+  const deliver = async (o, { raw = null, flags = { enabled: true, enforcement: false }, contentType = "application/json" } = {}) => {
+    const body = raw ?? webhookBody(o);
+    return ingestNotice(
+      { adapter: provider, store, flags, now: () => NOW, limiter },
+      { method: "POST", contentType, declaredLength: Buffer.byteLength(body), readBody: async () => body, clientKey: "db-test" },
+    );
   };
+  /** Los avisos repetidos dentro de los 60 s de enfriamiento se descartan: las pruebas que quieren un aviso NUEVO del mismo pago "envejecen" el anterior. */
+  const ageNotices = () => admin.query("update public.billing_webhook_events set received_at = now() - interval '10 minutes'");
 
   const drain = async (overrides = {}) => drainEvents(deps(overrides), 20);
 
   // =============================================================== Parte 1: esquema, RLS y privilegios
-  await check("1.1 las diez tablas billing_* existen con RLS habilitada", async () => {
+  await check("1.1 las doce tablas billing_* existen con RLS habilitada", async () => {
     const rows = (await admin.query("select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' and relname like 'billing\\_%' order by 1")).rows;
-    assert.equal(rows.length, 10, rows.map((r) => r.relname).join());
+    assert.equal(rows.length, 12, rows.map((r) => r.relname).join());
     for (const row of rows) assert.equal(row.relrowsecurity, true, row.relname);
   });
 
   const TABLES = (await admin.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' and relname like 'billing\\_%' order by 1")).rows.map((r) => r.relname);
   const FUNCTIONS = (await admin.query("select p.oid, p.proname, pg_get_function_identity_arguments(p.oid) args, p.prosecdef, p.proconfig from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like 'billing\\_%' order by 2")).rows;
-  const TRIGGER_FUNCTIONS = new Set(["billing_check_amount_vs_catalog", "billing_check_subscription_backed_by_payment", "billing_enforce_version_bump", "billing_forbid_owner_change"]);
+  const TRIGGER_FUNCTIONS = new Set(["billing_check_amount_vs_catalog", "billing_check_subscription_backed_by_payment", "billing_enforce_version_bump", "billing_forbid_owner_change", "billing_capture_fiscal_record"]);
 
   await check("1.2 `anon` no puede leer, escribir ni ejecutar NADA de facturación (ni tablas ni funciones)", async () => {
     const anon = await pg.session("", "anon");
@@ -246,7 +256,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
       assert.ok((fn.proconfig ?? []).some((c) => /^search_path=("")?$/.test(c) || c === 'search_path=""'), `${fn.proname}: search_path vacío (${JSON.stringify(fn.proconfig)})`);
       if (!TRIGGER_FUNCTIONS.has(fn.proname)) assert.equal((await admin.query("select has_function_privilege('service_role', $1, 'execute') ok", [fn.oid])).rows[0].ok, true, fn.proname);
     }
-    assert.ok(FUNCTIONS.length >= 18);
+    assert.ok(FUNCTIONS.length >= 25, String(FUNCTIONS.length));
   });
 
   await check("1.7 el espejo SQL del catálogo coincide EXACTAMENTE con el catálogo del servidor (lib/billing/plans.ts)", async () => {
@@ -451,16 +461,16 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
   await check("3.4 completar un intento es idempotente, fija el suscriptor UNA vez y no activa la suscripción", async () => {
     const owner = await accountIn("pending");
     const opened = await store.openCheckoutAttempt({ ownerId: owner, plan: MONTHLY, provider: "fake", idempotencyKey: "complete-key-aa", expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString() });
-    assert.equal(await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: "c1", providerSubscriberUid: "SUBR_X" }), true);
-    assert.equal(await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: "c1", providerSubscriberUid: "SUBR_X" }), true);
-    assert.equal(await store.completeCheckoutAttempt({ attemptId: "00000000-0000-4000-8000-0000000000ff", providerCheckoutUid: "c", providerSubscriberUid: null }), false);
+    assert.equal(await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: "c1", providerSubscriberUid: "SUBR_X", redirectUrl: "https://mobbex.com/p/x" }), true);
+    assert.equal(await store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: "c1", providerSubscriberUid: "SUBR_X", redirectUrl: "https://mobbex.com/p/x" }), true);
+    assert.equal(await store.completeCheckoutAttempt({ attemptId: "00000000-0000-4000-8000-0000000000ff", providerCheckoutUid: "c", providerSubscriberUid: null, redirectUrl: "https://mobbex.com/p/y" }), false);
     const row = await sub(owner);
     assert.equal(row.provider_subscriber_uid, "SUBR_X");
     assert.equal(row.status, "pending", "volver del proveedor no activa nada");
     // Un suscriptor del proveedor sólo puede pertenecer a UNA cuenta.
     const other = await accountIn("pending");
     const attempt = await store.openCheckoutAttempt({ ownerId: other, plan: MONTHLY, provider: "fake", idempotencyKey: "complete-key-bb", expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString() });
-    await assert.rejects(store.completeCheckoutAttempt({ attemptId: attempt.attempt.id, providerCheckoutUid: "c2", providerSubscriberUid: "SUBR_X" }), /unique|duplicate/);
+    await assert.rejects(store.completeCheckoutAttempt({ attemptId: attempt.attempt.id, providerCheckoutUid: "c2", providerSubscriberUid: "SUBR_X", redirectUrl: "https://mobbex.com/p/z" }), /unique|duplicate/);
   });
 
   await check("3.5 volver a suscribirse desde canceled o expired: la cuenta vuelve a pending y el período anterior deja de contar", async () => {
@@ -476,7 +486,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
   });
 
   // =============================================================== Parte 4: avisos (ingesta, reclamo, arrendamiento, concurrencia)
-  const eventRows = (n, prefix) => Array.from({ length: n }, (_, i) => ({ dedupKey: crypto.createHash("sha256").update(`${prefix}-${i}`).digest("hex"), provider: "fake", eventType: "other", payloadHash: "a".repeat(64), normalized: { operation: null, subscriberUid: null, subscriberReference: null }, receivedAt: NOW.toISOString() }));
+  const eventRows = (n, prefix) => Array.from({ length: n }, (_, i) => ({ dedupKey: crypto.createHash("sha256").update(`${prefix}-${i}`).digest("hex"), provider: "fake", eventType: "other", payloadHash: "a".repeat(64), hint: { providerPaymentId: null, executionUid: null, subscriberUid: null, subscriberReference: null }, receivedAt: NOW.toISOString() }));
 
   await check("4.1 ingesta idempotente: los duplicados se descartan y se cuentan", async () => {
     const rows = eventRows(5, "ingest");
@@ -514,7 +524,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     const workers = await Promise.all(Array.from({ length: 6 }, async () => new RpcBillingStore(await makeRpcCaller(await pg.session("", "service_role")))));
     const claimed = await Promise.all(workers.map(async (worker, index) => {
       const mine = [];
-      for (;;) {
+      for (let guard = 0; guard < 60; guard += 1) {
         const batch = await worker.claimEvents({ limit: 100, leaseSeconds: 60, worker: `cw-${index}`, maxAttempts: 5 });
         if (batch.length === 0) break;
         mine.push(...batch.map((event) => event.id));
@@ -543,7 +553,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     assert.equal(Number(row.version), 3, "ensure(1) → complete checkout (2) → pago (3)");
     assert.equal((await admin.query("select count(*)::int n from public.billing_periods where owner_id = $1", [acct.owner])).rows[0].n, 1);
     assert.equal((await admin.query("select count(*)::int n from public.billing_executions where owner_id = $1 and outcome = 'approved'", [acct.owner])).rows[0].n, 1);
-    assert.equal((await admin.query("select status, result from public.billing_webhook_events where normalized->'operation'->>'providerPaymentId' = $1", [o.providerPaymentId])).rows[0].status, "processed");
+    assert.equal((await admin.query("select status, result from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [o.providerPaymentId])).rows[0].status, "processed");
   });
 
   await check("5.2 webhook DUPLICADO ×5 y reproceso: un solo cobro, un solo período, la versión no sube de nuevo", async () => {
@@ -551,12 +561,13 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     const o = op(acct, 1);
     provider.seedOperation(o);
     for (let i = 0; i < 5; i += 1) await deliver(o);
-    assert.equal((await admin.query("select count(*)::int n from public.billing_webhook_events where normalized->'operation'->>'providerPaymentId' = $1", [o.providerPaymentId])).rows[0].n, 1);
+    assert.equal((await admin.query("select count(*)::int n from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [o.providerPaymentId])).rows[0].n, 1);
     await drain();
     const version = (await sub(acct.owner)).version;
     // Un aviso NUEVO del mismo pago (liquidación posterior, estado 300) se procesa pero no duplica ni cambia nada.
     const later = { ...o, statusCode: "300", occurredAt: ar("2026-10-02", 9) };
     provider.seedOperation(later);
+    await ageNotices();
     await deliver(later);
     await drain();
     assert.equal((await admin.query("select count(*)::int n from public.billing_periods where owner_id = $1", [acct.owner])).rows[0].n, 1);
@@ -594,19 +605,24 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     assert.deepEqual(await periods(shuffled.owner), await periods(ordered.owner));
   });
 
-  await check("5.4 aviso FALSO (firma inválida) → 401 y no entra nada; aviso verificado de un pago que el proveedor NO conoce → anomalía, la cuenta no cambia", async () => {
+  await check("5.4 aviso FALSO / de un suscriptor AJENO → 200 uniforme y se descarta SIN consultar al proveedor; pago inexistente de un suscriptor nuestro → anomalía; la cuenta no cambia", async () => {
     const acct = await accountWithSubscriber();
     const o = op(acct, 1);
-    const before = (await admin.query("select count(*)::int n from public.billing_webhook_events")).rows[0].n;
-    assert.equal((await deliver(o, { sign: false })).status, 401);
-    assert.equal((await admin.query("select count(*)::int n from public.billing_webhook_events")).rows[0].n, before);
-    // Firmado (el aviso es auténtico) pero el proveedor no conoce ese pago: se descarta como anomalía.
+    const stranger = op({ owner: acct.owner, ref: "tfs_" + "e".repeat(32), subscriberUid: "NOBODY" }, 9, { subscriberReference: "tfs_" + "e".repeat(32), subscriberUid: "NOBODY" });
+    const lookupsBefore = provider.calls.getOperation;
+    assert.equal((await deliver(stranger)).status, 200, "respuesta uniforme: no se revela que el suscriptor no existe");
+    assert.equal((await deliver(o, { raw: "{ no es json" })).status, 400);
+    await drain();
+    assert.equal(provider.calls.getOperation, lookupsBefore, "un identificador inventado NO provoca ninguna consulta al proveedor");
+    assert.equal((await admin.query("select status, result from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [stranger.providerPaymentId])).rows[0].result, "ignored:unknown_subscriber");
+    // Un suscriptor nuestro con un pago que el proveedor no conoce: se consulta una vez y queda como anomalía.
     assert.equal((await deliver(o)).status, 200);
     await drain();
     assert.equal((await sub(acct.owner)).status, "pending");
     const rec = (await admin.query("select kind, owner_id from public.billing_reconciliations where dedupe_key = $1 and status = 'open'", [`unknown_reference:${o.providerPaymentId}`])).rows;
     assert.equal(rec.length, 1);
     assert.equal(rec[0].kind, "unknown_reference");
+    assert.equal(rec[0].owner_id, acct.owner);
   });
 
   await check("5.5 IMPORTE, MONEDA y PLAN manipulados: la cuenta no cambia y queda UNA anomalía por pago (aunque el aviso se repita)", async () => {
@@ -636,7 +652,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     const real = op(a, 1);
     provider.seedOperation(real); // el proveedor dice: este pago es del suscriptor de A
     const forgedBody = webhookBody({ ...real, subscriberReference: b.ref, subscriberUid: b.subscriberUid }); // el aviso dice que es de B
-    await ingestWebhook({ adapter: provider, store, flags: { enabled: true, enforcement: false }, now: () => NOW }, { rawBody: forgedBody, headers: { [FAKE_SIGNATURE_HEADER]: signFakeWebhook(SECRET, forgedBody) } });
+    await deliver(null, { raw: forgedBody });
     await drain();
     assert.equal((await sub(a.owner)).status, "pending");
     assert.equal((await sub(b.owner)).status, "pending");
@@ -673,13 +689,13 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     provider.injectFailure("getOperation", "timeout", 2);
     const s1 = await drain();
     assert.equal(s1.retried, 1);
-    const ev = () => admin.query("select status, attempts, result, next_attempt_at > now() as waiting from public.billing_webhook_events where normalized->'operation'->>'providerPaymentId' = $1", [o.providerPaymentId]).then((r) => r.rows[0]);
+    const ev = () => admin.query("select status, attempts, result, next_attempt_at > now() as waiting from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [o.providerPaymentId]).then((r) => r.rows[0]);
     assert.deepEqual([(await ev()).status, (await ev()).attempts, (await ev()).waiting], ["failed", 1, true]);
     assert.equal((await drain()).claimed, 0, "todavía está esperando su turno");
-    await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->'operation'->>'providerPaymentId' = $1", [o.providerPaymentId]);
+    await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->>'providerPaymentId' = $1", [o.providerPaymentId]);
     await drain();
     assert.equal((await ev()).attempts, 2);
-    await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->'operation'->>'providerPaymentId' = $1", [o.providerPaymentId]);
+    await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->>'providerPaymentId' = $1", [o.providerPaymentId]);
     await drain();
     assert.equal((await ev()).status, "processed");
     assert.equal((await sub(acct.owner)).status, "active");
@@ -690,10 +706,10 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     await deliver(o2);
     provider.injectFailure("getOperation", "unavailable", 50);
     for (let i = 0; i < 4; i += 1) {
-      await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->'operation'->>'providerPaymentId' = $1", [o2.providerPaymentId]);
+      await admin.query("update public.billing_webhook_events set next_attempt_at = now() where normalized->>'providerPaymentId' = $1", [o2.providerPaymentId]);
       await drain({ maxAttempts: 3 });
     }
-    assert.equal((await admin.query("select status from public.billing_webhook_events where normalized->'operation'->>'providerPaymentId' = $1", [o2.providerPaymentId])).rows[0].status, "dead");
+    assert.equal((await admin.query("select status from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [o2.providerPaymentId])).rows[0].status, "dead");
     assert.equal((await admin.query("select count(*)::int n from public.billing_reconciliations where dedupe_key = $1", [`provider_unreachable:${o2.providerPaymentId}`])).rows[0].n, 1);
     assert.equal((await sub(acct2.owner)).status, "pending");
     provider.failures = [];
@@ -736,7 +752,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     provider.seedOperation(o);
     await deliver(o);
     await drain();
-    const mk = async () => ({ store: new RpcBillingStore(await makeRpcCaller(await pg.session("", "service_role"))), provider: new FakeProviderAdapter(null), flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) });
+    const mk = async () => ({ store: new RpcBillingStore(await makeRpcCaller(await pg.session("", "service_role"))), provider: new FakeProviderAdapter(), flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) });
     const [d1, d2, d3, d4] = await Promise.all([mk(), mk(), mk(), mk()]);
     const cancels = await Promise.all([cancelSubscription(d1, acct.owner), cancelSubscription(d2, acct.owner), cancelSubscription(d3, acct.owner)]);
     assert.ok(cancels.every((r) => r.ok), JSON.stringify(cancels));
@@ -869,7 +885,7 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     });
     await drainEvents(deps({ store: racing, worker: "racing" }), 6);
     assert.equal((await sub(keep.owner)).status, "active", "la otra cuenta se procesó en el mismo lote");
-    const pending = (await admin.query("select count(*)::int n from public.billing_webhook_events where status in ('received','processing','failed') and normalized->'operation'->>'providerPaymentId' = any($1)", [[okOp.providerPaymentId, doomedOp.providerPaymentId]])).rows[0].n;
+    const pending = (await admin.query("select count(*)::int n from public.billing_webhook_events where status in ('received','processing','failed') and normalized->>'providerPaymentId' = any($1)", [[okOp.providerPaymentId, doomedOp.providerPaymentId]])).rows[0].n;
     assert.equal(pending, 0, "ningún aviso queda colgado");
     assert.equal((await admin.query("select count(*)::int n from public.billing_executions where owner_id = $1", [doomed.owner])).rows[0].n, 0);
   });
@@ -926,11 +942,487 @@ export async function runChecks({ migrationsDir = null, label = "", failFast = f
     provider.seedOperation(o);
     const body = webhookBody(o);
     const mid = (await admin.query("select (select count(*) from public.billing_webhook_events) e, (select count(*) from public.billing_executions) x")).rows[0];
-    const response = await ingestWebhook({ adapter: provider, store, flags: { enabled: false, enforcement: true }, now: () => NOW }, { rawBody: body, headers: { [FAKE_SIGNATURE_HEADER]: signFakeWebhook(SECRET, body) } });
+    const response = await deliver(null, { raw: body, flags: { enabled: false, enforcement: true } });
     assert.equal(response.status, 404);
     const after = (await admin.query("select (select count(*) from public.billing_webhook_events) e, (select count(*) from public.billing_executions) x")).rows[0];
     assert.deepEqual(after, mid);
     assert.ok(Number(before.s) >= 0);
+  });
+
+  // =============================================================== Parte 6 (M2): registro fiscal, devoluciones y contracargos, sondeo, reparación, checkout, eliminación, operación
+  const payment = (acct, n, overrides = {}) => op(acct, n, overrides);
+  const withNow = (iso) => () => new Date(iso);
+  /** Deja en el sondeo SÓLO a las cuentas dadas (las demás pruebas dejan cuentas programadas que meterían ruido). */
+  const isolatePolls = (owners) => admin.query("delete from public.billing_poll_schedule where owner_id <> all($1::uuid[])", [owners]);
+  const executionOf = async (acct, n) => (await admin.query("select * from public.billing_executions where owner_id = $1 and execution_uid = $2", [acct.owner, `exe_${acct.owner.slice(-6)}_${n}`])).rows[0];
+  const reviews = async (owner) => (await admin.query("select kind, status from public.billing_reconciliations where owner_id = $1 order by id", [owner])).rows;
+  /** Cuenta ACTIVA con su suscriptor también creado en el proveedor falso (para sondeo, cancelación y reparación). */
+  const paidAccount = async (planCode = "tf_monthly_ars_v1") => {
+    const acct = await accountWithSubscriber(planCode);
+    provider.seedSubscriber(acct.subscriberUid, { status: "active" });
+    const o = payment(acct, 1);
+    provider.seedOperation(o);
+    await deliver(o);
+    await drain();
+    assert.equal((await sub(acct.owner)).status, "active");
+    return { ...acct, first: o };
+  };
+
+  await check("6.1 REGISTRO FISCAL: mínimo y seudonimizado, sin propietaria ni datos personales; sobrevive a la eliminación de la cuenta; sólo se purga vencido el plazo; ni anon ni authenticated lo tocan", async () => {
+    const acct = await paidAccount();
+    const rows = (await admin.query("select * from public.billing_fiscal_records where operation_ref = $1", [`exe_${acct.owner.slice(-6)}_1`])).rows;
+    assert.equal(rows.length, 1);
+    const fiscal = rows[0];
+    assert.deepEqual(Object.keys(fiscal).sort(), ["amount_minor", "created_at", "currency", "id", "occurred_at", "operation_ref", "owner_hash", "provider", "receipt_ref", "reconciliation_hash", "retain_until", "status", "updated_at"].sort());
+    assert.equal(fiscal.status, "approved");
+    assert.equal(Number(fiscal.amount_minor), 2_490_000);
+    assert.equal(fiscal.currency, "ARS");
+    assert.match(fiscal.owner_hash, /^[0-9a-f]{64}$/);
+    assert.match(fiscal.reconciliation_hash, /^[0-9a-f]{64}$/);
+    assert.equal(fiscal.receipt_ref, `pay_${acct.owner.slice(-6)}_1`);
+    assert.notEqual(fiscal.owner_hash, crypto.createHash("sha256").update(acct.owner).digest("hex"), "la huella lleva una sal: no se reconstruye a partir del identificador");
+    const years = (await admin.query("select (retain_until - (occurred_at at time zone 'UTC')::date) as days from public.billing_fiscal_records where id = $1", [fiscal.id])).rows[0].days;
+    assert.ok(years >= 3650 && years <= 3653, `10 años de conservación (${years} días)`);
+    const text = JSON.stringify(fiscal);
+    for (const forbidden of [acct.owner, acct.owner.replace(/-/g, ""), acct.ref, acct.subscriberUid, "@"]) assert.equal(text.includes(forbidden), false, forbidden);
+    assert.ok(!fiscal.owner_hash.includes(acct.owner.replace(/-/g, "")), "la huella no contiene el identificador");
+    assert.notEqual(fiscal.owner_hash, crypto.createHash("sha256").update(`:${acct.owner}`).digest("hex"), "ni siquiera sin sal se reconstruye");
+    // Un cobro rechazado no es una operación fiscal.
+    const rej = payment(acct, 2, { outcome: "rejected", statusCode: "410", dueAt: ar("2026-11-01", 10), occurredAt: ar("2026-11-01", 10, 5) });
+    provider.seedOperation(rej);
+    await deliver(rej);
+    await drain({ now: withNow(ar("2026-11-02", 12)) });
+    assert.equal((await admin.query("select count(*)::int n from public.billing_fiscal_records where operation_ref = $1", [`exe_${acct.owner.slice(-6)}_2`])).rows[0].n, 0);
+    // Repetir el mismo hecho no duplica ni cambia la huella.
+    const hashBefore = (await admin.query("select reconciliation_hash h from public.billing_fiscal_records where id = $1", [fiscal.id])).rows[0].h;
+    await admin.query("update public.billing_executions set provider_payment_id = provider_payment_id where owner_id = $1 and execution_uid = $2", [acct.owner, `exe_${acct.owner.slice(-6)}_1`]);
+    assert.equal((await admin.query("select reconciliation_hash h from public.billing_fiscal_records where id = $1", [fiscal.id])).rows[0].h, hashBefore);
+    // Privilegios.
+    const anon = await pg.session("", "anon");
+    const auth = await pg.session(acct.owner, "authenticated");
+    try {
+      await assert.rejects(anon.query("select 1 from public.billing_fiscal_records"), /permission denied/);
+      await assert.rejects(auth.query("select 1 from public.billing_fiscal_records"), /permission denied/);
+      await assert.rejects(auth.query("delete from public.billing_fiscal_records"), /permission denied/);
+    } finally {
+      await anon.end();
+      await auth.end();
+    }
+    // Eliminar la cuenta: lo operativo desaparece, el registro fiscal queda.
+    await admin.query("delete from auth.users where id = $1", [acct.owner]);
+    for (const table of ["billing_subscriptions", "billing_executions", "billing_periods", "billing_poll_schedule"]) assert.equal((await admin.query(`select count(*)::int n from public.${table} where owner_id = $1`, [acct.owner])).rows[0].n, 0, table);
+    assert.equal((await admin.query("select count(*)::int n from public.billing_fiscal_records where id = $1", [fiscal.id])).rows[0].n, 1, "el registro fiscal se conserva");
+    // Sólo se purga lo que ya cumplió su plazo.
+    assert.equal(await svcConn.query("select public.billing_purge_fiscal_records(100) v").then((r) => r.rows[0].v), 0);
+    await admin.query("update public.billing_fiscal_records set retain_until = current_date - 1 where id = $1", [fiscal.id]);
+    assert.equal(await svcConn.query("select public.billing_purge_fiscal_records(100) v").then((r) => r.rows[0].v), 1);
+  });
+
+  await check("6.2 DEVOLUCIÓN TOTAL confirmada por la consulta autenticada: el período se anula (se conserva en el historial), la cuenta queda sin período, el registro fiscal pasa a «refunded» y queda auditada", async () => {
+    const acct = await paidAccount();
+    const refund = { ...acct.first, outcome: "refunded", statusCode: "602", refundScope: "full", occurredAt: ar("2026-10-10", 9) };
+    provider.seedOperation(refund);
+    await ageNotices();
+    await deliver(refund);
+    await drain();
+    const row = await sub(acct.owner);
+    assert.equal(row.status, "pending");
+    assert.equal(row.current_period_end, null);
+    assert.equal((await executionOf(acct, 1)).outcome, "refunded");
+    const period = (await admin.query("select voided_at from public.billing_periods where owner_id = $1", [acct.owner])).rows;
+    assert.equal(period.length, 1, "el período no se borra");
+    assert.ok(period[0].voided_at, "pero queda anulado");
+    assert.equal((await admin.query("select status from public.billing_fiscal_records where operation_ref = $1", [`exe_${acct.owner.slice(-6)}_1`])).rows[0].status, "refunded");
+    assert.ok((await reviews(acct.owner)).some((r) => r.kind === "refund_applied" && r.status === "open"));
+    // Un período anulado deja de respaldar el estado: no se puede volver a «activar» a mano apoyándose en él.
+    await assert.rejects(admin.query("update public.billing_subscriptions set status = 'active', plan_code = 'tf_monthly_ars_v1', current_period_start = $2, current_period_end = $3, version = version + 1 where owner_id = $1", [acct.owner, ar("2026-10-01"), ar("2026-11-01")]), /billing_period_not_backed_by_payment/);
+    // Y un aprobado VIEJO que llega tarde no revive el período.
+    await ageNotices();
+    provider.seedOperation(acct.first);
+    await deliver(acct.first);
+    await drain();
+    assert.equal((await executionOf(acct, 1)).outcome, "refunded", "un «aprobado» VIEJO que llega tarde no revive el cobro devuelto");
+    assert.equal((await sub(acct.owner)).status, "pending");
+  });
+
+  await check("6.3 DEVOLUCIÓN PARCIAL o AMBIGUA → revisión manual y la cuenta NO cambia; CONTRACARGO → modo limitado inmediato y revisión", async () => {
+    for (const scope of ["partial", "unknown"]) {
+      const acct = await paidAccount();
+      const refund = { ...acct.first, outcome: "refunded", statusCode: scope === "partial" ? "605" : "601", refundScope: scope, occurredAt: ar("2026-10-10", 9) };
+      provider.seedOperation(refund);
+      await ageNotices();
+      await deliver(refund);
+      await drain();
+      assert.equal((await sub(acct.owner)).status, "active", scope);
+      assert.equal((await executionOf(acct, 1)).outcome, "approved", scope);
+      assert.ok((await reviews(acct.owner)).some((r) => r.kind === "refund_review"), scope);
+    }
+    const acct = await paidAccount();
+    const chargeback = { ...acct.first, outcome: "chargeback", statusCode: "cb", refundScope: null, occurredAt: ar("2026-10-15", 12) };
+    provider.seedOperation(chargeback);
+    await ageNotices();
+    await deliver(chargeback);
+    await drain();
+    const row = await sub(acct.owner);
+    assert.equal(row.status, "pending", "el único cobro fue contracargado: la cuenta queda sin período");
+    assert.equal(iso(row.chargeback_at), ar("2026-10-15", 12));
+    assert.ok((await reviews(acct.owner)).some((r) => r.kind === "chargeback_review" && r.status === "open"));
+    assert.equal((await admin.query("select status from public.billing_fiscal_records where operation_ref = $1", [`exe_${acct.owner.slice(-6)}_1`])).rows[0].status, "chargeback");
+  });
+
+  await check("6.4 CONTRACARGO con otro período pagado por delante: limitado AL INSTANTE (no se borra ni se acorta lo pagado); un cobro posterior lo supera; el resultado manual conciliado hace lo mismo", async () => {
+    const acct = await paidAccount();
+    // Segundo cobro (renovación del 1/11) ya pagado.
+    const second = payment(acct, 2, { dueAt: ar("2026-11-01", 10), occurredAt: ar("2026-11-01", 10, 5) });
+    provider.seedOperation(second);
+    await deliver(second);
+    await drain({ now: withNow(ar("2026-11-02", 12)) });
+    assert.equal((await sub(acct.owner)).status, "active");
+    const chargeback = { ...acct.first, outcome: "chargeback", statusCode: "cb", refundScope: null, occurredAt: ar("2026-11-10", 12) };
+    provider.seedOperation(chargeback);
+    await ageNotices();
+    await deliver(chargeback);
+    await drain({ now: withNow(ar("2026-11-12", 12)) });
+    const row = await sub(acct.owner);
+    assert.equal(row.status, "limited");
+    assert.equal(iso(row.current_period_end), ar("2026-12-01"), "el período que sigue pagado se conserva");
+    // Un cobro aprobado posterior supera el contracargo.
+    const third = payment(acct, 3, { dueAt: ar("2026-11-20", 10), occurredAt: ar("2026-11-20", 10, 5) });
+    provider.seedOperation(third);
+    await deliver(third);
+    await drain({ now: withNow(ar("2026-11-21", 12)) });
+    assert.equal((await sub(acct.owner)).chargeback_at, null);
+    assert.equal((await sub(acct.owner)).status, "active");
+    // Resultado manual conciliado (el contracargo no tiene código en la API de Mobbex).
+    const manual = await paidAccount();
+    assert.deepEqual(await svcConn.query("select public.billing_record_manual_outcome($1, $2, 'chargeback', $3) v", [manual.owner, `exe_${manual.owner.slice(-6)}_1`, ar("2026-10-15", 12)]).then((r) => r.rows[0].v), { ok: true, changed: true });
+    assert.deepEqual(await svcConn.query("select public.billing_record_manual_outcome($1, $2, 'chargeback', $3) v", [manual.owner, `exe_${manual.owner.slice(-6)}_1`, ar("2026-10-15", 12)]).then((r) => r.rows[0].v), { ok: true, changed: false }, "repetirlo no cambia nada");
+    assert.equal((await svcConn.query("select public.billing_record_manual_outcome($1, 'no_existe', 'chargeback', now()) v", [manual.owner])).rows[0].v.ok, false);
+    assert.equal((await svcConn.query("select public.billing_record_manual_outcome($1, $2, 'approved', now()) v", [manual.owner, `exe_${manual.owner.slice(-6)}_1`])).rows[0].v.ok, false, "sólo sube a devuelto o contracargo");
+    await runClockSweep(deps({ now: withNow(ar("2026-10-20", 12)) }));
+    const after = await sub(manual.owner);
+    assert.notEqual(after.status, "active");
+    assert.equal(iso(after.chargeback_at), ar("2026-10-15", 12));
+    assert.ok((await reviews(manual.owner)).some((r) => r.kind === "manual_outcome"));
+  });
+
+  await check("6.5 SONDEO POR SUSCRIPTOR: recupera un aviso que NUNCA llegó (cobro visible sólo por la consulta autenticada del suscriptor), una sola vez", async () => {
+    const acct = await accountWithSubscriber();
+    provider.seedSubscriber(acct.subscriberUid, { status: "active" });
+    const lost = payment(acct, 1);
+    provider.seedOperation(lost); // el proveedor lo tiene, pero ningún aviso llegó
+    await isolatePolls([acct.owner]);
+    assert.equal((await store.prioritizePolls([acct.owner])), 1);
+    const stats = await runSubscriberPoll(deps());
+    assert.ok(stats.polled >= 1 && stats.facts >= 1, JSON.stringify(stats));
+    assert.equal((await sub(acct.owner)).status, "active");
+    assert.equal((await admin.query("select count(*)::int n from public.billing_periods where owner_id = $1", [acct.owner])).rows[0].n, 1);
+    const due = (await admin.query("select due_at, failures from public.billing_poll_schedule where owner_id = $1", [acct.owner])).rows[0];
+    assert.ok(new Date(due.due_at) > NOW, "reprogramado hacia adelante (cuenta estable: una vez por semana)");
+    assert.equal(due.failures, 0);
+    await store.prioritizePolls([acct.owner]);
+    const again = await runSubscriberPoll(deps());
+    assert.equal(again.subscriptionsWritten, 0, "repetir el sondeo no cambia nada");
+    assert.equal((await admin.query("select count(*)::int n from public.billing_executions where owner_id = $1", [acct.owner])).rows[0].n, 1);
+  });
+
+  await check("6.6 el sondeo respeta el ARRENDAMIENTO: dos trabajadores simultáneos jamás reciben al mismo suscriptor; si el trabajador muere, vencido el arrendamiento vuelve a ser elegible", async () => {
+    const owners = [];
+    for (let i = 0; i < 40; i += 1) owners.push((await accountWithSubscriber()).owner);
+    await isolatePolls(owners);
+    await store.prioritizePolls(owners);
+    const workers = await Promise.all(Array.from({ length: 4 }, async () => new RpcBillingStore(await makeRpcCaller(await pg.session("", "service_role")))));
+    const claimed = await Promise.all(workers.map(async (worker) => {
+      const mine = [];
+      for (let guard = 0; guard < 30; guard += 1) {
+        const batch = await worker.claimPolls({ nowIso: NOW.toISOString(), limit: 7, leaseSeconds: 300 });
+        if (batch.length === 0) break;
+        mine.push(...batch);
+      }
+      return mine;
+    }));
+    const all = claimed.flat().filter((id) => owners.includes(id));
+    assert.equal(all.length, 40);
+    assert.equal(new Set(all).size, 40, "ninguno entregado dos veces");
+    // El trabajador «muere» sin marcar: vencido el arrendamiento, vuelven.
+    assert.equal((await store.claimPolls({ nowIso: NOW.toISOString(), limit: 100, leaseSeconds: 300 })).filter((id) => owners.includes(id)).length, 0);
+    const later = new Date(NOW.getTime() + 6 * 60_000).toISOString();
+    assert.equal((await store.claimPolls({ nowIso: later, limit: 100, leaseSeconds: 300 })).filter((id) => owners.includes(id)).length, 40, "recuperados tras el vencimiento");
+  });
+
+  await check("6.7 PROVEEDOR CAÍDO durante el sondeo: espera exponencial acotada, nada se pierde ni se activa, y tras 8 fallas seguidas queda UNA revisión abierta", async () => {
+    const acct = await accountWithSubscriber();
+    provider.seedSubscriber(acct.subscriberUid, { status: "active" });
+    await isolatePolls([acct.owner]);
+    provider.injectFailure("getSubscriber", "unavailable", 20);
+    let lastDue = null;
+    for (let i = 0; i < 9; i += 1) {
+      await admin.query("update public.billing_poll_schedule set due_at = now() - interval '1 minute' where owner_id = $1", [acct.owner]);
+      const stats = await runSubscriberPoll(deps());
+      assert.ok(stats.failed >= 1);
+      const row = (await admin.query("select due_at > now() as waiting, failures, due_at from public.billing_poll_schedule where owner_id = $1", [acct.owner])).rows[0];
+      assert.equal(row.waiting, true);
+      assert.equal(row.failures, i + 1);
+      if (lastDue) assert.ok(new Date(row.due_at) - Date.now() <= 6 * 3_600_000 + 5_000, "la espera nunca pasa de 6 horas");
+      lastDue = row.due_at;
+    }
+    assert.equal((await sub(acct.owner)).status, "pending", "una caída no activa ni cambia nada");
+    assert.equal((await admin.query("select count(*)::int n from public.billing_reconciliations where dedupe_key = $1 and status = 'open'", [`poll_stuck:${acct.owner}`])).rows[0].n, 1);
+    provider.failures = [];
+    await admin.query("update public.billing_poll_schedule set due_at = now() - interval '1 minute' where owner_id = $1", [acct.owner]);
+    const ok = await runSubscriberPoll(deps());
+    assert.equal(ok.failed, 0);
+    assert.equal((await admin.query("select failures from public.billing_poll_schedule where owner_id = $1", [acct.owner])).rows[0].failures, 0, "al responder, las fallas vuelven a cero");
+  });
+
+  await check("6.8 un aviso de registro o de cambio de medio de pago NO cambia nada: sólo pide un sondeo prioritario del suscriptor; los suscriptores ajenos se descartan sin consultar y quedan en UNA anotación por hora", async () => {
+    const acct = await accountWithSubscriber();
+    provider.seedSubscriber(acct.subscriberUid, { status: "active" });
+    await admin.query("update public.billing_poll_schedule set due_at = now() + interval '3 days' where owner_id = $1", [acct.owner]);
+    const body = JSON.stringify({ type: "subscription:change_source", data: { payment: { id: "REG1" }, subscriber: { uid: acct.subscriberUid, reference: acct.ref } } });
+    assert.equal((await deliver(null, { raw: body })).status, 200);
+    const stats = await drain();
+    assert.equal(stats.pollsRequested, 1);
+    assert.equal((await sub(acct.owner)).status, "pending");
+    assert.equal((await admin.query("select due_at <= now() + interval '1 minute' as soon from public.billing_poll_schedule where owner_id = $1", [acct.owner])).rows[0].soon, true);
+    const lookups = provider.calls.getOperation;
+    // Un aviso que trae SÓLO el uid del suscriptor (sin nuestra referencia) también se resuelve.
+    const onlyUid = JSON.stringify({ type: "subscription:registration", data: { payment: { id: "REG2" }, subscriber: { uid: acct.subscriberUid } } });
+    await ageNotices();
+    await deliver(null, { raw: onlyUid });
+    assert.equal((await drain()).pollsRequested, 1, "resuelto por el uid del proveedor");
+    for (let i = 0; i < 25; i += 1) await deliver(null, { raw: JSON.stringify({ type: "subscription:execution", data: { payment: { id: `FAKE${i}` }, subscriber: { uid: `GHOST${i}`, reference: `tfs_${String(i).padStart(32, "0")}` } } }) });
+    const ghostStats = await drain();
+    assert.equal(ghostStats.unknownSubscriber, 25);
+    assert.equal(provider.calls.getOperation, lookups, "ni una consulta al proveedor por identificadores inventados");
+    const notes = (await admin.query("select count(*)::int n from public.billing_reconciliations where dedupe_key like 'unknown_reference:notice:%' and status = 'open'")).rows[0].n;
+    assert.equal(notes, 1, "una sola anotación por hora, no una por aviso");
+  });
+
+  await check("6.9 REPARACIÓN: el proveedor ya canceló y la base no se enteró (falló después de confirmar allá) → el sondeo la repara; y al revés, si la base dice «cancelada» y el proveedor sigue cobrando, se vuelve a suspender", async () => {
+    // (a) cancelación «proveedor primero» con la base caída justo al escribir.
+    const acct = await paidAccount();
+    const flaky = new Proxy(store, { get: (target, property) => (property === "commitBatch" ? async () => { throw new Error("connection terminated unexpectedly"); } : typeof target[property] === "function" ? target[property].bind(target) : target[property]) });
+    const cmd = (overrides = {}) => ({ store, provider, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)), ...overrides });
+    const failed = await cancelSubscription(cmd({ store: flaky }), acct.owner);
+    assert.equal(failed.ok, false);
+    assert.ok(provider.canceled.has(acct.subscriberUid), "el proveedor ya dejó de cobrar");
+    assert.equal((await sub(acct.owner)).status, "active", "la base todavía no lo sabe");
+    // Reintentar el comando es idempotente (no vuelve a fallar el proveedor ni duplica nada) y también repara.
+    await isolatePolls([acct.owner]);
+    await store.prioritizePolls([acct.owner]);
+    const stats = await runSubscriberPoll(deps());
+    assert.ok(stats.repaired >= 1, JSON.stringify(stats));
+    const repaired = await sub(acct.owner);
+    assert.equal(repaired.status, "cancel_at_period_end");
+    assert.ok(repaired.cancel_requested_at);
+    assert.equal((await admin.query("select count(*)::int n from public.billing_plan_changes where owner_id = $1 and kind = 'cancel'", [acct.owner])).rows[0].n, 1);
+    assert.deepEqual(await cancelSubscription(cmd(), acct.owner), { ok: true, changed: false });
+    // (b) la base dice «cancelada» pero el proveedor sigue activo (p. ej. alguien lo reactivó allá): se vuelve a suspender y queda registrado.
+    const other = await paidAccount();
+    assert.deepEqual(await cancelSubscription(cmd(), other.owner), { ok: true, changed: true });
+    provider.canceled.delete(other.subscriberUid);
+    provider.subscribers.get(other.subscriberUid).status = "active";
+    const callsBefore = provider.calls.cancelSubscriber;
+    await store.prioritizePolls([other.owner]);
+    const re = await runSubscriberPoll(deps());
+    assert.ok(re.resuspended >= 1, JSON.stringify(re));
+    assert.ok(provider.calls.cancelSubscriber > callsBefore);
+    assert.ok(provider.canceled.has(other.subscriberUid));
+    assert.ok((await reviews(other.owner)).some((r) => r.kind === "provider_state_mismatch"));
+    // (c) el proveedor dio por terminada la suscripción: se registra.
+    const ended = await paidAccount();
+    provider.subscribers.get(ended.subscriberUid).status = "finished";
+    await store.prioritizePolls([ended.owner]);
+    await runSubscriberPoll(deps());
+    assert.ok((await sub(ended.owner)).provider_ended_at);
+  });
+
+  await check("6.10 CHECKOUT: doble envío / dos pestañas devuelven el MISMO enlace sin crear un segundo suscriptor; cambiar de plan cancela el suscriptor anterior; el DNI y el nombre no quedan en NINGUNA tabla ni registro", async () => {
+    const owner = await newUser();
+    await store.ensureAccount(owner);
+    const customer = { email: "profe@example.test", name: "Ana Pérez Única", identification: "29876543" };
+    const lines = [];
+    const originals = { info: console.info, warn: console.warn, error: console.error, log: console.log };
+    console.info = console.warn = console.error = console.log = (...args) => void lines.push(args.map(String).join(" "));
+    let first, second, third;
+    try {
+      const d = { store, provider, flags: { enabled: true, enforcement: false }, now: () => NOW };
+      const make = (planCode, key) => startCheckout(d, { ownerId: owner, planCode, idempotencyKey: key, returnUrl: "https://teacherflowapp.com/facturacion/resultado", customer });
+      const before = provider.calls.createCheckout;
+      [first, second] = await Promise.all([make("tf_monthly_ars_v1", "tab-a-aaaaaaaa"), make("tf_monthly_ars_v1", "tab-b-aaaaaaaa")]);
+      assert.ok(first.ok && second.ok);
+      assert.equal(first.redirectUrl, second.redirectUrl, "mismo enlace");
+      assert.ok(provider.calls.createCheckout - before <= 2);
+      const afterFirst = provider.calls.createCheckout;
+      const again = await make("tf_monthly_ars_v1", "tab-c-aaaaaaaa");
+      assert.ok(again.ok);
+      assert.equal(provider.calls.createCheckout, afterFirst, "con el intento ya completado NO se vuelve a llamar al proveedor");
+      assert.equal(again.redirectUrl, first.redirectUrl);
+      const firstUid = (await sub(owner)).provider_subscriber_uid;
+      assert.ok(firstUid);
+      third = await make("tf_annual_ars_v1", "tab-d-aaaaaaaa");
+      assert.ok(third.ok);
+      assert.ok(provider.canceled.has(firstUid), "el suscriptor del plan anterior se canceló en el proveedor");
+      const row = await sub(owner);
+      assert.notEqual(row.provider_subscriber_uid, firstUid);
+      assert.equal(row.provider_plan_code, "tf_annual_ars_v1");
+      assert.equal(row.status, "pending", "volver del proveedor no activa nada");
+    } finally {
+      Object.assign(console, originals);
+    }
+    assert.ok(provider.receivedCustomers.some((c) => c.identification === "29876543"), "el documento sí viajó al proveedor");
+    // Ninguna tabla de facturación contiene el documento ni el nombre.
+    for (const table of TABLES) {
+      const dump = JSON.stringify((await admin.query(`select * from public.${table}`)).rows);
+      for (const secret of ["29876543", "Ana Pérez", "profe@example.test"]) assert.equal(dump.includes(secret), false, `${table} contiene ${secret}`);
+    }
+    assert.equal(lines.join("\n").includes("29876543"), false);
+    assert.equal(lines.join("\n").includes("Ana"), false);
+    const fiscal = JSON.stringify((await admin.query("select * from public.billing_fiscal_records")).rows);
+    assert.equal(fiscal.includes("29876543"), false);
+  });
+
+  await check("6.11 volver a suscribirse tras cancelar usa el suscriptor NUEVO (la cancelación posterior apunta al correcto, nunca al viejo)", async () => {
+    const acct = await paidAccount();
+    const d = { store, provider, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) };
+    assert.deepEqual(await cancelSubscription(d, acct.owner), { ok: true, changed: true });
+    const later = { ...d, now: () => new Date(ar("2026-11-15", 12)) };
+    await runClockSweep(deps({ now: later.now }));
+    assert.equal((await sub(acct.owner)).status, "canceled");
+    const customer = { email: "profe@example.test", name: "Ana Pérez", identification: "29876543" };
+    const restarted = await startCheckout(later, { ownerId: acct.owner, planCode: "tf_quarterly_ars_v1", idempotencyKey: "restart-aaaaaaaa", returnUrl: "https://teacherflowapp.com/facturacion/resultado", customer });
+    assert.ok(restarted.ok);
+    const row = await sub(acct.owner);
+    assert.notEqual(row.provider_subscriber_uid, acct.subscriberUid);
+    assert.equal(row.status, "pending");
+    assert.equal(row.provider_plan_code, "tf_quarterly_ars_v1");
+  });
+
+  await check("6.12 ELIMINACIÓN con suscripción activa: se cancela y CONFIRMA en el proveedor ANTES de borrar nada; si no se puede confirmar no se elimina; el registro fiscal queda", async () => {
+    const acct = await paidAccount();
+    const d = { store, provider, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) };
+    // Proveedor caído: bloqueado.
+    provider.injectFailure("cancelSubscriber", "unavailable", 5);
+    const blocked = await prepareAccountDeletion(d, acct.owner);
+    assert.equal(blocked.ok, false);
+    assert.equal((await sub(acct.owner)).status, "active", "no se tocó nada");
+    provider.failures = [];
+    // Estado ilegible: no se puede confirmar.
+    const unreadable = await paidAccount();
+    provider.subscribers.get(unreadable.subscriberUid).status = "unknown";
+    assert.deepEqual((await prepareAccountDeletion(d, unreadable.owner)).ok, false);
+    assert.ok((await sub(unreadable.owner)), "la cuenta sigue existiendo");
+    // Camino feliz.
+    assert.deepEqual(await prepareAccountDeletion(d, acct.owner), { ok: true });
+    assert.ok(provider.canceled.has(acct.subscriberUid));
+    assert.equal(provider.subscribers.get(acct.subscriberUid).status, "suspended");
+    assert.equal((await sub(acct.owner)).status, "cancel_at_period_end");
+    await admin.query("delete from auth.users where id = $1", [acct.owner]);
+    assert.equal((await admin.query("select count(*)::int n from public.billing_fiscal_records where operation_ref = $1", [`exe_${acct.owner.slice(-6)}_1`])).rows[0].n, 1);
+    // Sin suscripción en el proveedor no hay nada que cancelar; con la facturación apagada ni se consulta.
+    const plain = await newUser();
+    await store.ensureAccount(plain);
+    assert.deepEqual(await prepareAccountDeletion(d, plain), { ok: true });
+    const callsBefore = provider.calls.cancelSubscriber;
+    assert.deepEqual(await prepareAccountDeletion({ ...d, flags: { enabled: false, enforcement: false } }, unreadable.owner), { ok: true });
+    assert.equal(provider.calls.cancelSubscriber, callsBefore);
+  });
+
+  await check("6.13 CAMBIO DE PLAN (capacidad validada del adaptador falso): rige en el PRÓXIMO período, sin prorrateo; el cobro siguiente con el plan nuevo lo resuelve; el proveedor real sin validar no lo ofrece", async () => {
+    const acct = await paidAccount();
+    const d = { store, provider, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) };
+    assert.deepEqual(await changePlan(d, acct.owner, "tf_annual_ars_v1"), { ok: true, changed: true });
+    const row = await sub(acct.owner);
+    assert.equal(row.pending_plan_code, "tf_annual_ars_v1");
+    assert.equal(row.plan_code, "tf_monthly_ars_v1", "hasta la renovación sigue el plan actual");
+    assert.equal(iso(row.current_period_end), ar("2026-11-01"), "no se toca el período pagado");
+    assert.equal(provider.planChanges.at(-1).toPlanCode, "tf_annual_ars_v1");
+    const renewal = payment(acct, 2, { planReference: "tf_annual_ars_v1", amountMinor: 24_900_000, dueAt: ar("2026-11-01", 10), occurredAt: ar("2026-11-01", 10, 5) });
+    provider.seedOperation(renewal);
+    await deliver(renewal);
+    await drain({ now: withNow(ar("2026-11-02", 12)) });
+    const after = await sub(acct.owner);
+    assert.equal(after.plan_code, "tf_annual_ars_v1");
+    assert.equal(after.pending_plan_code, null);
+    assert.equal(iso(after.current_period_end), ar("2027-11-01"));
+    const { MobbexAdapter } = await importLib("billing/providers/mobbex.ts");
+    const closed = { store, provider: new MobbexAdapter(null), flags: { enabled: true, enforcement: false }, now: d.now };
+    const refused = await changePlan(closed, acct.owner, "tf_quarterly_ars_v1");
+    assert.equal(refused.ok, false);
+    assert.equal(refused.failure, "feature_unavailable");
+  });
+
+  await check("6.14 HISTORIAL de la propietaria: períodos y cobros SIN identificadores del proveedor; y las funciones de operación (cola, reintento de muertos, resolución de revisiones)", async () => {
+    const acct = await paidAccount();
+    const history = await store.getHistory(acct.owner, 24);
+    assert.equal(history.periods.length, 1);
+    assert.equal(history.charges.length, 1);
+    const text = JSON.stringify(history);
+    for (const forbidden of ["exe_", "pay_", acct.subscriberUid, acct.ref, acct.owner]) assert.equal(text.includes(forbidden), false, forbidden);
+    const stats = await store.queueStats();
+    for (const key of ["pendingEvents", "processingEvents", "duePolls", "dueClock", "openReviews"]) assert.equal(typeof stats[key], "number", key);
+    // Aviso muerto → se puede reencolar.
+    await admin.query("delete from public.billing_webhook_events");
+    await store.ingestEvents(eventRows(2, "dead"));
+    await admin.query("update public.billing_webhook_events set status = 'dead', attempts = 8");
+    const ids = (await admin.query("select id from public.billing_webhook_events")).rows.map((r) => Number(r.id));
+    assert.equal((await svcConn.query("select public.billing_requeue_dead_events($1::bigint[]) v", [ids])).rows[0].v, 2);
+    assert.equal((await svcConn.query("select public.billing_requeue_dead_events($1::bigint[]) v", [ids])).rows[0].v, 0, "repetirlo no hace nada");
+    assert.equal((await admin.query("select count(*)::int n from public.billing_webhook_events where status = 'received' and attempts = 0")).rows[0].n, 2);
+    const open = (await admin.query("select id from public.billing_reconciliations where status = 'open' limit 3")).rows.map((r) => Number(r.id));
+    assert.equal((await svcConn.query("select public.billing_resolve_reconciliations($1::bigint[]) v", [open])).rows[0].v, open.length);
+    await admin.query("delete from public.billing_webhook_events");
+  });
+
+  await check("6.15 TRABAJOS programados: el de proceso vacía la cola y sondea; el de conciliación aplica el reloj y purga; las métricas son sólo números y fechas (sin identificadores ni datos)", async () => {
+    const acct = await accountWithSubscriber();
+    provider.seedSubscriber(acct.subscriberUid, { status: "active" });
+    const o = payment(acct, 1);
+    provider.seedOperation(o);
+    await deliver(o);
+    const processed = await runProcessJob(deps(), { budgetMs: 20_000 });
+    assert.equal(processed.kind, "process");
+    assert.equal((await sub(acct.owner)).status, "active");
+    const reconciled = await runReconcileJob(deps({ now: withNow(ar("2026-11-03", 12)) }), { budgetMs: 20_000 });
+    assert.equal(reconciled.kind, "reconcile");
+    assert.ok(reconciled.clock.evaluated >= 1);
+    for (const metrics of [processed, reconciled]) {
+      const text = JSON.stringify(metrics);
+      for (const forbidden of [acct.owner, acct.ref, acct.subscriberUid, o.providerPaymentId, "@"]) assert.equal(text.includes(forbidden), false, forbidden);
+    }
+  });
+
+  await check("6.16 el cambio de medio de pago NO cambia ningún estado y sólo existe con la capacidad validada; con el proveedor cerrado no sale nada", async () => {
+    const acct = await paidAccount();
+    const d = { store, provider, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-10-10", 12)) };
+    const before = await sub(acct.owner);
+    const result = await updatePaymentMethod(d, acct.owner);
+    assert.ok(result.ok && result.redirectUrl.startsWith("https://"));
+    assert.deepEqual(await sub(acct.owner), before, "pedir el enlace no toca la suscripción");
+    const { MobbexAdapter } = await importLib("billing/providers/mobbex.ts");
+    const refused = await updatePaymentMethod({ ...d, provider: new MobbexAdapter(null) }, acct.owner);
+    assert.deepEqual([refused.ok, refused.failure], [false, "feature_unavailable"]);
+    assert.equal((await updatePaymentMethod({ ...d, flags: { enabled: false, enforcement: false } }, acct.owner)).ok, false);
+  });
+
+  await check("6.17 deduplicación con ENFRIAMIENTO: un aviso repetido mientras el anterior sigue pendiente —o dentro de los 60 s— se descarta; pasado ese tiempo y ya procesado, un aviso NUEVO del mismo pago vuelve a encolar", async () => {
+    await admin.query("delete from public.billing_webhook_events");
+    const acct = await accountWithSubscriber();
+    const o = payment(acct, 1);
+    provider.seedOperation(o);
+    const count = async () => (await admin.query("select count(*)::int n from public.billing_webhook_events where normalized->>'providerPaymentId' = $1", [o.providerPaymentId])).rows[0].n;
+    await deliver(o);
+    await deliver(o);
+    assert.equal(await count(), 1, "pendiente: duplicado descartado");
+    await drain();
+    await deliver(o);
+    assert.equal(await count(), 1, "procesado hace menos de 60 s: sigue en enfriamiento");
+    await ageNotices();
+    await deliver(o);
+    assert.equal(await count(), 2, "pasado el enfriamiento un aviso nuevo vuelve a encolar (p. ej. una devolución posterior)");
+    await deliver(o);
+    assert.equal(await count(), 2, "y mientras ése siga pendiente, no se duplica");
   });
 
   const failed = results.filter((r) => !r.ok);
@@ -959,20 +1451,42 @@ const MUTATIONS = [
   ["se elimina el índice de un solo cambio programado", M1_FILES[0], "create unique index if not exists billing_plan_changes_one_scheduled_idx on public.billing_plan_changes (owner_id) where kind = 'plan_change' and status = 'scheduled';", ""],
   ["los avisos pueden guardar cualquier tamaño", M1_FILES[0], "check (octet_length(normalized::text) <= 4096)", ""],
   ["un precio del catálogo SQL difiere del servidor", M1_FILES[0], "('tf_annual_ars_v1',     'Anual',      'ARS', 24900000,", "('tf_annual_ars_v1',     'Anual',      'ARS', 24900001,"],
-  ["una función de servidor se vuelve ejecutable por authenticated", M1_FILES[1], "grant execute on function public.billing_commit_batch(jsonb) to service_role;", "grant execute on function public.billing_commit_batch(jsonb) to service_role, authenticated;"],
+  ["una función de servidor se vuelve ejecutable por authenticated", M1_FILES[2], "grant execute on function public.billing_commit_batch(jsonb) to service_role;", "grant execute on function public.billing_commit_batch(jsonb) to service_role, authenticated;"],
   ["una función de servidor se vuelve ejecutable por anon", M1_FILES[1], "grant execute on function public.billing_claim_events(int, int, text, int) to service_role;", "grant execute on function public.billing_claim_events(int, int, text, int) to service_role, anon;"],
-  ["una función pierde el search_path vacío", M1_FILES[1], "returns jsonb\nlanguage plpgsql\nset search_path = ''\nas $$\ndeclare\n  v_conflicts uuid[];", "returns jsonb\nlanguage plpgsql\nas $$\ndeclare\n  v_conflicts uuid[];"],
+  ["una función pierde el search_path vacío", M1_FILES[2], "returns jsonb\nlanguage plpgsql\nset search_path = ''\nas $$\ndeclare\n  v_conflicts uuid[];", "returns jsonb\nlanguage plpgsql\nas $$\ndeclare\n  v_conflicts uuid[];"],
   ["el reclamo deja de saltear filas bloqueadas", M1_FILES[1], "       for update skip locked", ""],
   ["se rompe la recuperación de arrendamientos vencidos", M1_FILES[1], "where e.status = 'processing' and e.locked_until < now();", "where e.status = 'processing' and e.locked_until < now() - interval '100 years';"],
-  ["el control optimista de versión se ignora", M1_FILES[1], "where t.owner_id = i.owner_id and t.version = i.expected_version", "where t.owner_id = i.owner_id"],
-  ["un resultado viejo pisa al nuevo", M1_FILES[1], "(excluded.occurred_at > public.billing_executions.occurred_at\n          or", "(true\n          or"],
-  ["un cobro puede cambiar de propietaria", M1_FILES[1], "where public.billing_executions.owner_id = excluded.owner_id\n     and (", "where (true) and ("],
-  ["el checkout permite cualquier estado", M1_FILES[1], "if v_sub.status not in ('grandfathered', 'pending', 'canceled', 'expired') then", "if false then"],
-  ["el checkout toma el precio del llamador (ignora el catálogo)", M1_FILES[1], "values (p_owner, v_plan.code, v_plan.price_version, v_plan.amount_minor, v_plan.currency, p_provider, p_idempotency_key, p_expires_at)", "values (p_owner, v_plan.code, v_plan.price_version, 1, v_plan.currency, p_provider, p_idempotency_key, p_expires_at)"],
-  ["el checkout no reutiliza el intento vivo (crea uno nuevo siempre)", M1_FILES[1], "where a.owner_id = p_owner and a.status in ('open', 'completed') and a.expires_at > now()\n     order by a.created_at desc limit 1;\n    if found and v_attempt.plan_code = v_plan.code then", "where a.owner_id = p_owner and a.status in ('open', 'completed') and a.expires_at > now()\n     order by a.created_at desc limit 1;\n    if found and false then"],
-  ["el checkout no bloquea la fila de la suscripción", M1_FILES[1], "select * into v_sub from public.billing_subscriptions s where s.owner_id = p_owner for update;", "select * into v_sub from public.billing_subscriptions s where s.owner_id = p_owner;"],
+  ["el control optimista de versión se ignora", M1_FILES[2], "where t.owner_id = i.owner_id and t.version = i.expected_version", "where t.owner_id = i.owner_id"],
+  ["un resultado viejo pisa al nuevo", M1_FILES[2], "(excluded.occurred_at > public.billing_executions.occurred_at\n          or", "(true\n          or"],
+  ["un cobro puede cambiar de propietaria", M1_FILES[2], "where public.billing_executions.owner_id = excluded.owner_id\n     and (", "where (true) and ("],
+  ["el checkout permite cualquier estado", M1_FILES[2], "if v_sub.status not in ('grandfathered', 'pending', 'canceled', 'expired') then", "if false then"],
+  ["el checkout toma el precio del llamador (ignora el catálogo)", M1_FILES[2], "values (p_owner, v_plan.code, v_plan.price_version, v_plan.amount_minor, v_plan.currency, p_provider, p_idempotency_key, p_expires_at)", "values (p_owner, v_plan.code, v_plan.price_version, 1, v_plan.currency, p_provider, p_idempotency_key, p_expires_at)"],
+  ["el checkout no reutiliza el intento vivo (crea uno nuevo siempre)", M1_FILES[2], "where a.owner_id = p_owner and a.status in ('open', 'completed') and a.expires_at > now()\n     order by a.created_at desc limit 1;\n    if found and v_attempt.plan_code = v_plan.code then", "where a.owner_id = p_owner and a.status in ('open', 'completed') and a.expires_at > now()\n     order by a.created_at desc limit 1;\n    if found and false then"],
+  ["el checkout no bloquea la fila de la suscripción", M1_FILES[2], "select * into v_sub from public.billing_subscriptions s where s.owner_id = p_owner for update;", "select * into v_sub from public.billing_subscriptions s where s.owner_id = p_owner;"],
   ["la retención borra avisos pendientes", M1_FILES[1], "where e.purge_after < now() and e.status in ('processed', 'ignored', 'dead')", "where e.purge_after < now()"],
-  ["la ingesta no descarta duplicados", M1_FILES[1], "on conflict (dedup_key) do nothing\n    returning 1", "on conflict (dedup_key) do update set provider = excluded.provider\n    returning 1"],
+  ["la ingesta no respeta el enfriamiento de 60 segundos", M1_FILES[2], "e.received_at > now() - interval '60 seconds'", "false"],
+  ["la ingesta pierde el filtro de duplicados pendientes", M1_FILES[2], "from fresh f\n    on conflict", "from input f\n    on conflict"],
+  // --- M2
+  ["el registro fiscal guarda la propietaria sin seudonimizar", M1_FILES[2], "encode(sha256(convert_to(coalesce(v_salt, '') || ':' || new.owner_id::text, 'UTF8')), 'hex'),", "replace(new.owner_id::text, '-', '') || repeat('0', 32),"],
+  ["el registro fiscal se conserva sólo 1 año", M1_FILES[2], "+ interval '10 years')::date)", "+ interval '1 year')::date)"],
+  ["un cobro rechazado entra al registro fiscal", M1_FILES[2], "if new.outcome = 'rejected' then return new; end if;", ""],
+  ["la purga fiscal borra también lo que no venció", M1_FILES[2], "where f.retain_until < current_date order by", "where true order by"],
+  ["el registro fiscal deja de tener RLS", M1_FILES[2], "alter table public.billing_fiscal_records enable row level security;", ""],
+  ["el registro fiscal queda legible por anon", M1_FILES[2], "revoke all on table public.billing_fiscal_records from public, anon, authenticated;", "revoke all on table public.billing_fiscal_records from public;"],
+  ["la agenda de sondeos deja de tener RLS", M1_FILES[2], "alter table public.billing_poll_schedule enable row level security;", ""],
+  ["una función de sondeo se vuelve ejecutable por anon", M1_FILES[2], "grant execute on function public.billing_claim_polls(timestamptz, int, int) to service_role;", "grant execute on function public.billing_claim_polls(timestamptz, int, int) to service_role, anon;"],
+  ["el sondeo reclamado no queda arrendado", M1_FILES[2], "set due_at = p_now + pg_catalog.make_interval(secs => greatest(p_lease_seconds, 30)), updated_at = now()", "set due_at = p_now, updated_at = now()"],
+  ["una falla del proveedor se reintenta sin espera", M1_FILES[2], "least(21600, 300 * (2 ^ least(ps.failures, 7))::int)", "0"],
+  ["tras muchas fallas nunca queda una revisión abierta", M1_FILES[2], "where u.failed and u.failures >= 8", "where u.failed and u.failures >= 100000"],
+  ["los suscriptores no se resuelven por uid del proveedor", M1_FILES[2], "or s.provider_subscriber_uid = any (coalesce(p_uids, '{}'::text[]))", "or false"],
+  ["un suscriptor nuevo no reemplaza al anterior", M1_FILES[2], "and s.provider_subscriber_uid is distinct from p_subscriber_uid;", "and s.provider_subscriber_uid is null;"],
+  ["el checkout no informa los suscriptores reemplazados", M1_FILES[2], "'superseded', v_superseded, 'stale', v_stale,", "'superseded', v_superseded, 'stale', '[]'::jsonb,"],
+  ["el checkout no devuelve el enlace ya creado", M1_FILES[2], "'redirect_url', v_attempt.redirect_url,", "'redirect_url', null,"],
+  ["los períodos anulados no se marcan", M1_FILES[2], "set voided_at = now()\n    from jsonb_to_recordset", "set voided_at = null\n    from jsonb_to_recordset"],
+  ["un período anulado sigue respaldando el estado", M1_FILES[2], "p.period_end = new.current_period_end and p.voided_at is null", "p.period_end = new.current_period_end"],
+  ["el resultado manual permite bajar la jerarquía", M1_FILES[2], "if public.billing_outcome_rank(p_outcome) <= public.billing_outcome_rank(v_exec.outcome) then", "if false then"],
+  ["los cobros ya no admiten devoluciones ni contracargos", M1_FILES[2], "check (outcome in ('approved', 'rejected', 'refunded', 'chargeback'))", "check (outcome in ('approved', 'rejected'))"],
+  ["la jerarquía de resultados trata el contracargo como un rechazo", M1_FILES[2], "when 'chargeback' then 3 else -1 end;", "when 'chargeback' then 0 else -1 end;"],
 ];
 
 /** Mutaciones del CÓDIGO DE APLICACIÓN (procesador y almacén) que sólo se detectan contra Postgres real. */
@@ -980,11 +1494,18 @@ const LIB_MUTATIONS = [
   ["el almacén escribe con versión esperada 0 (nunca coincide)", "lib/billing/rpc-store.ts", "expected_version: expectedVersion,", "expected_version: 0,"],
   ["un aviso nunca pasa a dead aunque el proveedor siga caído", "lib/billing/processor.ts", "} else if (event.attempts + 1 >= maxAttempts) {", "} else if (false) {"],
   ["un pago que el proveedor no conoce se reintenta eternamente (en lugar de quedar como anomalía)", "lib/billing/processor.ts", 'if (kind === "rejected") {', "if (false) {"],
-  ["se concilia con el cuerpo del aviso en lugar de la consulta autenticada al proveedor", "lib/billing/processor.ts", "const reconciled = reconcileOperation(result.data,", "const reconciled = reconcileOperation(operation,"],
-  ["el procesamiento nunca escribe la suscripción", "lib/billing/processor.ts", "const subscription = reduced.changed || nextCheck !== snapshot.nextCheckAt ?", "const subscription = false ?"],
-  ["el barrido no repara la próxima revisión guardada de una cuenta que no cambió de estado", "lib/billing/processor.ts", "reduced.changed || nextCheck !== snapshot.nextCheckAt ?", "reduced.changed ?"],
+  ["el procesamiento nunca escribe la suscripción", "lib/billing/processor.ts", "const subscription = reduced.changed || patch !== undefined || nextCheck !== loaded.nextCheckAt ?", "const subscription = false ?"],
+  ["el barrido no repara la próxima revisión guardada de una cuenta que no cambió de estado", "lib/billing/processor.ts", "reduced.changed || patch !== undefined || nextCheck !== loaded.nextCheckAt ?", "reduced.changed || patch !== undefined ?"],
   ["un cobro rechazado se registra como aprobado", "lib/billing/processor.ts", "outcome: fact.outcome,\n      planCode: fact.planCode,", 'outcome: "approved",\n      planCode: fact.planCode,'],
   ["el barrido del reloj nunca avanza el cursor (reprocesa siempre las mismas cuentas)", "lib/billing/processor.ts", "    after = due.nextCursor;\n    if (!after) break;", "    after = null;\n    if (stats.pages >= 3) break;"],
+  ["los períodos devueltos o contracargados no se anulan", "lib/billing/processor.ts", 'incomingFinals.filter((fact) => fact.outcome === "refunded" || fact.outcome === "chargeback")', "incomingFinals.filter(() => false)"],
+  ["una devolución parcial o ambigua se aplica como total", "lib/billing/reconcile.ts", 'if (operation.outcome === "refunded" && operation.refundScope !== "full") return anomaly("refund_review", ownerId);', ""],
+  ["el sondeo no repara una cancelación hecha en el proveedor", "lib/billing/processor.ts", 'if (state.status === "suspended" && open && !snapshot.cancelRequestedAt) {', "if (false) {"],
+  ["el sondeo no vuelve a suspender a quien canceló", "lib/billing/processor.ts", 'else if (state.status === "active" && snapshot.cancelRequestedAt && snapshot.providerSubscriberUid && polled.planCode) {', "else if (false) {"],
+  ["una falla del proveedor en el sondeo no se registra como falla", "lib/billing/processor.ts", "        results.push({ ownerId, nextAt: null, failed: true });", "        results.push({ ownerId, nextAt: new Date(now.getTime() + 60_000).toISOString(), failed: false });"],
+  ["el checkout vuelve a crear un suscriptor aunque el intento ya tiene enlace", "lib/billing/commands.ts", 'if (opened.attempt.status === "completed" && opened.attempt.redirectUrl) return', "if (false) return"],
+  ["el checkout no cancela al suscriptor del intento reemplazado", "lib/billing/commands.ts", "for (const stale of opened.stale) {", "for (const stale of []) {"],
+  ["la eliminación sigue aunque no se pueda confirmar la cancelación", "lib/billing/account-deletion.ts", "    break; // «unknown»: el proveedor devolvió algo que no se interpreta → no se puede confirmar", "    return { ok: true };"],
 ];
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"))) {
@@ -1030,7 +1551,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   } else {
     const original = path.join(REPO, "supabase", "migrations");
     let undetected = 0;
-    for (const [description, file, find, replacement] of MUTATIONS) {
+    const skip = process.argv.includes("--skip") ? Number(process.argv[process.argv.indexOf("--skip") + 1]) : 0; // --skip N: retoma una corrida interrumpida
+    for (const [description, file, find, replacement] of MUTATIONS.slice(skip)) {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "m1-mut-"));
       for (const name of fs.readdirSync(original)) fs.copyFileSync(path.join(original, name), path.join(dir, name));
       const source = fs.readFileSync(path.join(dir, file), "utf8").replace(/\r\n/g, "\n");
@@ -1048,7 +1570,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
         why = failed[0]?.name ?? "";
       } catch (error) {
         detected = true;
-        why = `error: ${String(error.message).slice(0, 80)}`;
+        why = `error: ${String(error?.message ?? error ?? "rechazo sin mensaje").slice(0, 80)}`;
       }
       console.log(`${detected ? "✔ detectada " : "✖ NO DETECTADA"}  ${description}${detected ? `  ← ${why.slice(0, 70)}` : ""}`);
       if (!detected) undetected += 1;

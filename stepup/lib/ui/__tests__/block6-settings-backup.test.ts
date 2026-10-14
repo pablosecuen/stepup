@@ -46,7 +46,7 @@ test("el azul heredado de interfaz se retiró: el token no existe y ninguna pant
 test("Las páginas sólo resuelven los datos como antes y delegan el dibujo; Respaldo conserva el asistente y el historial", () => {
   const page = code("app/(app)/configuracion/page.tsx");
   for (const loader of ["getTeacherProfile(ctx)", "getBudgetDistributionSettings(ctx)", "getActiveSession(ctx)"]) assert.ok(page.includes(loader), loader);
-  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} budget=\{budget\} session=\{session\} \/>;/);
+  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} budget=\{budget\} session=\{session\} billingEnabled=\{readBillingFlags\(process\.env\)\.enabled\} \/>;/);
   assert.match(page, /<PageHeader title="Configuración"/);
   assert.match(page, /export const maxDuration = 60;/);
   const view = code("components/account/configuration-view.tsx");

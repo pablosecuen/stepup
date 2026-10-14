@@ -27,7 +27,7 @@ const CONFIRM_WORD = "ELIMINAR";
  * Teclado: la confirmación es un diálogo (hoja inferior en móvil) con el foco atrapado; entra al primer campo, Escape o
  * «Cancelar» lo cierran y el foco vuelve al botón «Eliminar cuenta».
  */
-export function DeleteAccountButton() {
+export function DeleteAccountButton({ billingEnabled = false }: { billingEnabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [password, setPassword] = useState("");
@@ -101,6 +101,11 @@ export function DeleteAccountButton() {
                 acción no se puede deshacer.
               </span>
             </Notice>
+            {billingEnabled && (
+              <Notice tone="info" role="status">
+                Si tenés una suscripción, la cancelamos primero en el servicio de cobro y confirmamos que no se te vuelva a cobrar; recién después se borran tus datos. De tus pagos sólo se conserva, por obligación fiscal, un registro mínimo y seudonimizado (referencia, fecha, importe y estado): sin tus datos personales, alumnos ni tarjeta.
+              </Notice>
+            )}
             <Field label={<>Escribí <span className="font-bold">{CONFIRM_WORD}</span> para confirmar</>} htmlFor="delete-confirm">
               <TextInput
                 id="delete-confirm"

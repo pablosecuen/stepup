@@ -52,7 +52,7 @@ function Logo({ className = "" }: { className?: string }) {
  *    44 px como mínimo; respeta las safe areas (muesca, barra de inicio, bordes laterales).
  * Activo por segmento completo (destino o subruta). Ningún enlace precarga (`PrivateLink`).
  */
-export function PrimaryNav({ account }: { account: AccountIdentity }) {
+export function PrimaryNav({ account, billingEnabled = false }: { account: AccountIdentity; billingEnabled?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -61,7 +61,7 @@ export function PrimaryNav({ account }: { account: AccountIdentity }) {
       <header className="sticky top-0 z-30 border-b-[1.5px] border-border bg-background/95 pt-[env(safe-area-inset-top)] nav:hidden">
         <div className="flex min-h-[58px] items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <Logo className="text-textPrimary" />
-          <AccountMenu identity={account} variant="header" />
+          <AccountMenu identity={account} variant="header" billingEnabled={billingEnabled} />
         </div>
       </header>
 
@@ -125,7 +125,7 @@ export function PrimaryNav({ account }: { account: AccountIdentity }) {
             })}
           </ul>
         </nav>
-        <AccountMenu identity={account} variant="sidebar" />
+        <AccountMenu identity={account} variant="sidebar" billingEnabled={billingEnabled} />
       </div>
     </>
   );

@@ -32,6 +32,34 @@ test("camino feliz: cuota → contraseña → PDF → cuenta, en ese orden exact
   assert.deepEqual(calls, ["email", "quota", "verify:profe@ejemplo.test:mi-clave-123:tok-1", "pdfs", "delete"]);
 });
 
+test("con facturación: la suscripción se cancela y confirma ANTES de borrar PDF y cuenta; si falla, la cuenta queda intacta", async () => {
+  const ok = setup({ cancelBilling: async () => ({ ok: true }) });
+  assert.deepEqual(await runDeleteAccount(GOOD, ok.deps), { ok: true });
+  const order = ["email", "quota", "verify:profe@ejemplo.test:mi-clave-123:-", "pdfs", "delete"];
+  assert.deepEqual(ok.calls, order);
+  const calls: string[] = [];
+  const failing = setup({
+    cancelBilling: async () => {
+      calls.push("billing");
+      return { ok: false, error: "No pudimos confirmar la cancelación." };
+    },
+    removePdfs: async () => void calls.push("pdfs"),
+    deleteAccount: async () => void calls.push("delete"),
+  });
+  assert.deepEqual(await runDeleteAccount(GOOD, failing.deps), { ok: false, error: "No pudimos confirmar la cancelación." });
+  assert.deepEqual(calls, ["billing"], "ni PDF ni cuenta: nada se borra si el cobro no quedó cancelado");
+  const throwing = setup({ cancelBilling: async () => { throw new Error("boom"); } });
+  assert.deepEqual(await runDeleteAccount(GOOD, throwing.deps), { ok: false, error: "ERR:boom" });
+  assert.ok(!throwing.calls.includes("pdfs") && !throwing.calls.includes("delete"));
+});
+
+test("sin facturación (paso ausente) el flujo es exactamente el de siempre", async () => {
+  const { calls, deps } = setup();
+  assert.equal(deps.cancelBilling, undefined);
+  await runDeleteAccount(GOOD, deps);
+  assert.ok(!calls.includes("billing"));
+});
+
 test("sin la palabra de confirmación (validada en el SERVIDOR) no pasa nada: ni cuota, ni contraseña, ni borrado", async () => {
   for (const confirmation of ["", "eliminar", "ELIMINAR ahora", "ELIMINA", undefined, null, 42, {}]) {
     const { calls, deps } = setup();

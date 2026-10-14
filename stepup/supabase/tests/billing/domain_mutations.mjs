@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..", "..");
-const TESTS = ["plans-money", "state-machine", "ledger", "access", "access-unknown", "reconcile", "webhook-ingest", "mobbex-adapter", "commands", "log", "rpc-store"].map((name) => `lib/billing/__tests__/${name}.test.ts`);
+const TESTS = ["plans-money", "state-machine", "ledger", "access", "access-unknown", "reconcile", "refunds-chargebacks", "notice-ingest", "http-redirect", "view", "mobbex-adapter", "commands", "commands-m2", "account-deletion", "log", "rpc-store"].map((name) => `lib/billing/__tests__/${name}.test.ts`);
 
 /** [descripción, archivo, texto a buscar, reemplazo] */
 export const MUTATIONS = [
@@ -59,7 +59,6 @@ export const MUTATIONS = [
   // Acceso
   ["el control de acceso se aplica con enforcement apagado", "lib/billing/access.ts", "if (!flags.enabled || !flags.enforcement) return access(", "if (!flags.enabled) return access("],
   ["el modo limitado deja crear datos", "lib/billing/access.ts", "const LIMITED_CAPABILITIES: AccessCapabilities = Object.freeze({\n  viewOperationalData: true,\n  createOperationalData: false,", "const LIMITED_CAPABILITIES: AccessCapabilities = Object.freeze({\n  viewOperationalData: true,\n  createOperationalData: true,"],
-  ["el modo limitado no permite exportar", "lib/billing/access.ts", "  exportData: true,\n  deleteAccount: true,\n});\n\nfunction access", "  exportData: false,\n  deleteAccount: true,\n});\n\nfunction access"],
   ["una cuenta existente sin estado se bloquea", "lib/billing/access.ts", 'return access("full", "state_unavailable_existing_account"', 'return access("limited", "state_unavailable_existing_account"'],
   ["una cuenta nueva sin pago verificado obtiene acceso completo", "lib/billing/access.ts", 'return access("limited", "state_unavailable_unverified"', 'return access("full", "state_unavailable_unverified"'],
   ["la tolerancia ante una falla propia dura un día de más", "lib/billing/access.ts", "export const OWN_FAILURE_TOLERANCE_MS = 72 * 3_600_000;", "export const OWN_FAILURE_TOLERANCE_MS = 96 * 3_600_000;"],
@@ -82,24 +81,16 @@ export const MUTATIONS = [
   ["la resolución confía en el estado guardado y no en el reloj", "lib/billing/access.ts", "const status = projectStatus(snapshot, now);", "const status = snapshot.status;"],
   // Conciliación
   ["se acepta un aviso que mezcla la propietaria", "lib/billing/reconcile.ts", 'if (context.hintedReference && operation.subscriberReference && context.hintedReference !== operation.subscriberReference) return anomaly("owner_mismatch", null);', ""],
-  ["se acepta un plan que la cuenta no tiene", "lib/billing/reconcile.ts", 'if (!record.acceptablePlans.includes(validation.plan.code)) return anomaly("plan_not_expected", ownerId);', ""],
   ["una operación de prueba activa la cuenta", "lib/billing/reconcile.ts", 'if (context.expectLive && !operation.livemode) return { kind: "ignore", reason: "test_operation" };', ""],
   ["la conciliación usa el plan del aviso sin validarlo contra el catálogo", "lib/billing/reconcile.ts", "if (!validation.ok) {", "if (false) {"],
   ["un pago pendiente cuenta como cobro", "lib/billing/reconcile.ts", 'if (operation.outcome === "pending") return { kind: "ignore", reason: "non_final_status" };', ""],
   ["un suscriptor ajeno se acepta", "lib/billing/reconcile.ts", 'if (record.subscriberUid && operation.subscriberUid && record.subscriberUid !== operation.subscriberUid) return anomaly("subscriber_mismatch", ownerId);', ""],
-  ["un reembolso se ignora sin revisión", "lib/billing/reconcile.ts", 'if (operation.outcome === "refunded") return anomaly("refund_review", ownerId);', 'if (operation.outcome === "refunded") return { kind: "ignore", reason: "unsupported_status" };'],
   // Recepción de avisos
-  ["se acepta un aviso sin verificar", "lib/billing/webhook-ingest.ts", "if (!verification.verified) {", "if (false) {"],
-  ["la recepción ignora el interruptor de facturación", "lib/billing/webhook-ingest.ts", "if (!deps.flags.enabled) return { status: 404, body: { ok: false } };", ""],
-  ["la recepción no limita el tamaño del cuerpo", "lib/billing/webhook-ingest.ts", "if (Buffer.byteLength(request.rawBody, \"utf8\") > MAX_BODY_BYTES) return { status: 413, body: { ok: false } };", ""],
   ["la recepción devuelve 200 aunque la base falle", "lib/billing/webhook-ingest.ts", "return { status: 503, body: { ok: false } };", "return { status: 200, body: { ok: true } };"],
-  ["el aviso guarda el cuerpo completo", "lib/billing/webhook-ingest.ts", "normalized: { operation: event.operation, subscriberUid: event.subscriberUid, subscriberReference: event.subscriberReference },", "normalized: { operation: event.operation, subscriberUid: event.subscriberUid, subscriberReference: event.subscriberReference, rawBody: request.rawBody } as never,"],
-  ["la identidad del aviso incluye la fecha de recepción (los duplicados dejan de serlo)", "lib/billing/providers/mobbex-normalize.ts", 'operation?.occurredAt ?? "", operation?.executionUid ?? "", subscriberUid ?? ""', 'operation?.occurredAt ?? "", operation?.executionUid ?? "", subscriberUid ?? "", receivedAt'],
   ["el estado 201 (validada) cuenta como cobro aprobado", "lib/billing/providers/mobbex-normalize.ts", 'const APPROVED_CODES = new Set(["200", "299", "300", "301", "302", "303"]);', 'const APPROVED_CODES = new Set(["200", "201", "299", "300", "301", "302", "303"]);'],
   ["el importe ambiguo se acepta", "lib/billing/providers/mobbex-normalize.ts", "paymentAmount !== null && (executionAmount === null || executionAmount === paymentAmount) ? paymentAmount : null", "paymentAmount"],
   ["el análisis de formularios admite __proto__", "lib/billing/providers/mobbex-normalize.ts", 'path.some((part) => part === "__proto__" || part === "constructor" || part === "prototype")', "false"],
   // Adaptador de Mobbex
-  ["el adaptador de Mobbex verifica avisos", "lib/billing/providers/mobbex.ts", 'return { verified: false, reason: "mechanism_not_documented" };', "return { verified: true, events: [] };"],
   ["la redirección acepta cualquier host", "lib/billing/providers/mobbex.ts", 'url.protocol !== "https:" || !(url.hostname === "mobbex.com" || url.hostname.endsWith(".mobbex.com"))', "false"],
   ["el adaptador llama a la red sin credenciales", "lib/billing/providers/mobbex.ts", 'if (!config) return providerFail("not_configured"); // sin credenciales: nunca se llega a la red', ""],
   ["el total se envía en centavos", "lib/billing/providers/mobbex.ts", "total: minorToProviderDecimal(plan.amountMinor), // «XXX.xx», con punto decimal", "total: plan.amountMinor,"],
@@ -128,6 +119,78 @@ export const MUTATIONS = [
   ["las fechas con huso se interpretan sin normalizar", "lib/billing/rpc-store.ts", "return date.toISOString();\n}", "return String(value);\n}"],
   ["un estado desconocido de la base se acepta", "lib/billing/rpc-store.ts", "throw new TypeError(\"Estado de facturación desconocido.\");", "return value as BillingStatus;"],
   ["el cursor de vencimientos se informa aunque la página no esté llena", "lib/billing/rpc-store.ts", "result.length >= input.limit", "result.length >= 0"],
+  ["el modo limitado no permite exportar", "lib/billing/access.ts", "modifyOperationalData: false,\n  viewBilling: true,\n  cancelSubscription: true,\n  updatePaymentMethod: true,\n  exportData: true,", "modifyOperationalData: false,\n  viewBilling: true,\n  cancelSubscription: true,\n  updatePaymentMethod: true,\n  exportData: false,"],
+  ["se acepta un plan que la cuenta no tiene", "lib/billing/reconcile.ts", "if (!settled && !record.acceptablePlans.includes(validation.plan.code)) return anomaly(\"plan_not_expected\", ownerId);", ""],
+  ["un reembolso parcial se aplica como total", "lib/billing/reconcile.ts", "if (operation.outcome === \"refunded\" && operation.refundScope !== \"full\") return anomaly(\"refund_review\", ownerId);", ""],
+  ["un reembolso parcial se ignora sin revisión", "lib/billing/reconcile.ts", "return anomaly(\"refund_review\", ownerId);", "return { kind: \"ignore\", reason: \"unsupported_status\" };"],
+  ["una devolución o un contracargo exigen el plan vigente", "lib/billing/reconcile.ts", "const settled = operation.outcome === \"refunded\" || operation.outcome === \"chargeback\";", "const settled = false;"],
+  ["una devolución total no queda auditada", "lib/billing/reconcile.ts", "audit: operation.outcome === \"refunded\" ? \"refund_applied\"", "audit: operation.outcome === \"refunded\" ? null"],
+  ["la recepción acepta cualquier Content-Type", "lib/billing/webhook-ingest.ts", "if (declared !== \"application/x-www-form-urlencoded\" && declared !== \"application/json\") return { status: 415, body: { ok: false } };", ""],
+  ["la recepción ignora el interruptor de facturación", "lib/billing/webhook-ingest.ts", "if (!deps.flags.enabled) return NOT_FOUND;", ""],
+  ["la recepción acepta cualquier método", "lib/billing/webhook-ingest.ts", "if (request.method !== \"POST\") return { status: 405, body: { ok: false }, headers: { allow: \"POST\" } };", ""],
+  ["la recepción no mira el tamaño declarado", "lib/billing/webhook-ingest.ts", "if (request.declaredLength !== null && request.declaredLength > MAX_BODY_BYTES) return { status: 413, body: { ok: false } };", ""],
+  ["la recepción no corta un cuerpo que supera el tope", "lib/billing/webhook-ingest.ts", "if (rawBody === \"too_large\") return { status: 413, body: { ok: false } };", ""],
+  ["la recepción ignora el límite de frecuencia", "lib/billing/webhook-ingest.ts", "const decision = deps.limiter.check(request.clientKey);", "const decision = { allowed: true, retryAfterSeconds: 1 };"],
+  ["el aviso guarda el cuerpo completo", "lib/billing/webhook-ingest.ts", "    hint: notice.hint,\n", "    hint: { ...notice.hint, rawBody } as never,\n"],
+  ["la respuesta de un aviso mal formado deja de ser 400", "lib/billing/webhook-ingest.ts", ": { status: 400, body: { ok: false } };\n  }\n  if (parsed.notices.length === 0)", ": { status: 200, body: { ok: true } };\n  }\n  if (parsed.notices.length === 0)"],
+  ["un aviso sin identidad de suscriptor se acepta", "lib/billing/providers/mobbex-normalize.ts", "if (!hasIdentity || (eventType === \"subscription:execution\" && hint.providerPaymentId === null)) return { ok: false, reason: \"malformed\" };", ""],
+  ["los identificadores de un aviso admiten cualquier carácter", "lib/billing/providers/mobbex-normalize.ts", "const ID_PATTERN = /^[A-Za-z0-9_.:~-]{1,128}$/;", "const ID_PATTERN = /^.{1,128}$/;"],
+  ["el formulario admite claves de prototipo", "lib/billing/providers/mobbex-normalize.ts", "path.some((part) => part === \"__proto__\" ||", "path.some((part) => false ||"],
+  ["el formulario no limita la cantidad de campos", "lib/billing/providers/mobbex-normalize.ts", "if (fields > MAX_FORM_FIELDS) return null;", ""],
+  ["la identidad del aviso incluye la fecha de recepción (los duplicados dejan de serlo)", "lib/billing/providers/mobbex-normalize.ts", "hint.subscriberUid ?? \"\", hint.subscriberReference ?? \"\"].join(\"|\")", "hint.subscriberUid ?? \"\", hint.subscriberReference ?? \"\", input.now.toISOString()].join(\"|\")"],
+  ["el aviso toma el estado del cuerpo", "lib/billing/providers/mobbex-normalize.ts", "    providerPaymentId: id(payment?.id),", "    providerPaymentId: id(payment?.id), outcome: payment?.status,"],
+  ["el adaptador de Mobbex no reduce los avisos", "lib/billing/providers/mobbex.ts", "    return parseNoticeBody(input);", "    return { ok: true, notices: [] };"],
+  ["el cambio de plan de Mobbex sale a la red sin validar", "lib/billing/providers/mobbex.ts", "if (!this.capabilities.changePlan) return providerFail(\"unsupported\");", ""],
+  ["el cambio de medio de pago de Mobbex sale a la red sin validar", "lib/billing/providers/mobbex.ts", "if (!this.capabilities.paymentMethodUpdate) return providerFail(\"unsupported\");", ""],
+  ["el destino de control del suscriptor acepta cualquier dominio", "lib/billing/providers/mobbex.ts", "if (url.protocol === \"https:\" && (url.hostname === \"mobbex.com\" || url.hostname.endsWith(\".mobbex.com\"))) controlUrl = url.toString();", "controlUrl = url.toString();"],
+  ["un suscriptor «suspended» se interpreta sin estar documentado", "lib/billing/providers/mobbex.ts", "const SUBSCRIBER_STATUSES: Readonly<Record<string, ProviderSubscriberStatus>> = { active: \"active\", finished: \"finished\" };", "const SUBSCRIBER_STATUSES: Readonly<Record<string, ProviderSubscriberStatus>> = { active: \"active\", finished: \"finished\", suspended: \"suspended\" };"],
+  ["las ejecuciones con contenido se tratan como legibles", "lib/billing/providers/mobbex.ts", "const readable = Array.isArray(executions) && executions.length === 0;", "const readable = Array.isArray(executions);"],
+  ["la expiración del enlace de pago no viaja", "lib/billing/providers/mobbex.ts", "...(input.expiresAtMs ? { expiresAt: input.expiresAtMs } : {}),", ""],
+  ["el código 605 (parcial) se trata como devolución total", "lib/billing/providers/mobbex-normalize.ts", "if (code === \"605\") return { outcome: \"refunded\", refundScope: \"partial\" };", "if (code === \"605\") return { outcome: \"refunded\", refundScope: \"full\" };"],
+  ["el código 602 (devuelta) deja de ser total", "lib/billing/providers/mobbex-normalize.ts", "if (code === \"602\") return { outcome: \"refunded\", refundScope: \"full\" };", "if (code === \"602\") return { outcome: \"refunded\", refundScope: \"unknown\" };"],
+  ["«cancelación en proceso» (600) se trata como final", "lib/billing/providers/mobbex-normalize.ts", "const PENDING_CODES = new Set([\"0\", \"1\", \"2\", \"3\", \"100\", \"210\", \"600\"]);", "const PENDING_CODES = new Set([\"0\", \"1\", \"2\", \"3\", \"100\", \"210\"]);"],
+  ["una devolución no pesa más que un cobro a igual instante", "lib/billing/ledger.ts", "{ rejected: 0, approved: 1, refunded: 2, chargeback: 3 }", "{ rejected: 0, approved: 1, refunded: 0, chargeback: 3 }"],
+  ["una renovación devuelta conserva su gracia completa", "lib/billing/ledger.ts", "revocationAt > currentPeriodEnd ? revocationAt : currentPeriodEnd", "normalGraceEnd"],
+  ["un cobro aprobado posterior no supera al contracargo", "lib/billing/ledger.ts", "const cleared = finals.some((fact) => fact.outcome === \"approved\" && fact.occurredAt > (chargebackAt as string));", "const cleared = false;"],
+  ["el contracargo no limita el acceso", "lib/billing/ledger.ts", "if (fields.chargebackAt && now.toISOString() >= fields.chargebackAt && ACCESS_GRANTING.has(status)) return \"limited\";", ""],
+  ["el contracargo limita también antes de ocurrir", "lib/billing/ledger.ts", "now.toISOString() >= fields.chargebackAt &&", "true &&"],
+  ["el período devuelto sigue contando en la cadena", "lib/billing/ledger.ts", "const chain = buildCoverage(finals.filter((fact) => fact.outcome === \"approved\"));\n  const last", "const chain = buildCoverage(finals.filter((fact) => fact.outcome !== \"rejected\"));\n  const last"],
+  ["la transición por devolución total no existe", "lib/billing/state-machine.ts", "    payment_voided: [\"pending\"], // devolución total del único período pagado: la cuenta vuelve a no tener período\n", ""],
+  ["el contracargo no lleva a limited desde active", "lib/billing/state-machine.ts", "    chargeback_confirmed: [\"limited\"], // contracargo conciliado: modo limitado inmediato (y revisión)\n", ""],
+  ["el cambio de medio de pago se ofrece sin validar", "lib/billing/commands.ts", "if (!deps.provider.capabilities.paymentMethodUpdate) return failure(\"feature_unavailable\");", ""],
+  ["el cambio de plan se programa sin validar", "lib/billing/commands.ts", "if (!deps.provider.capabilities.changePlan) return fail(\"feature_unavailable\");", ""],
+  ["cancelar apunta al plan vigente en lugar de al de la suscripción del proveedor", "lib/billing/commands.ts", "return snapshot.providerPlanCode ?? snapshot.planCode;", "return snapshot.planCode;"],
+  ["cancelar a medias cuando se ignora el plan del suscriptor", "lib/billing/commands.ts", "if (!planCode) return \"provider_rejected\";", "if (!planCode) return null;"],
+  ["la eliminación no confirma la cancelación", "lib/billing/account-deletion.ts", "    break; // «unknown»: el proveedor devolvió algo que no se interpreta → no se puede confirmar", "    return { ok: true };"],
+  ["la eliminación sigue aunque el proveedor no responda", "lib/billing/account-deletion.ts", "if (!state.ok) return blocked(\"deletion_unconfirmed\");", "if (!state.ok) return { ok: true };"],
+  ["la eliminación sigue sin plan del proveedor", "lib/billing/account-deletion.ts", "if (!planCode) return blocked(\"deletion_unconfirmed\");", "if (!planCode) return { ok: true };"],
+  ["la eliminación sigue si no se pudo cancelar", "lib/billing/account-deletion.ts", "if (!first.ok && first.failure !== \"not_allowed\") return blocked(first.failure);", ""],
+  ["la eliminación ignora el interruptor", "lib/billing/account-deletion.ts", "if (!deps.flags.enabled) return { ok: true };", ""],
+  ["el límite de frecuencia deja pasar todo", "lib/billing/rate-limit.ts", "return { allowed: entry.count <= limit, retryAfterSeconds };", "return { allowed: true, retryAfterSeconds };"],
+  ["el límite de frecuencia crece sin tope", "lib/billing/rate-limit.ts", "if (!entry && this.windows.size >= maxKeys) this.evict(now);", ""],
+  ["el límite global no se aplica", "lib/billing/rate-limit.ts", "return this.global.check(\"*\");", "return client;"],
+  ["la lectura de cuerpo no corta al superar el tope", "lib/billing/http.ts", "if (total > maxBytes) {", "if (total > maxBytes * 1000) {"],
+  ["el secreto del cron admite secretos cortos", "lib/billing/http.ts", "secret.length < 32 || typeof header !== \"string\"", "typeof header !== \"string\""],
+  ["el secreto del cron no se compara", "lib/billing/http.ts", "return timingSafeEqual(given, expected);", "return true;"],
+  ["la clave del cliente es la IP en claro", "lib/billing/http.ts", "return createHash(\"sha256\").update(`tf-notice-client:${raw.slice(0, 64)}`).digest(\"hex\").slice(0, 24);", "return raw;"],
+  ["la redirección acepta dominios parecidos a mobbex.com", "lib/billing/redirect.ts", "if (url.hostname === \"mobbex.com\" || url.hostname.endsWith(\".mobbex.com\")) return url.toString();", "if (url.hostname.endsWith(\"mobbex.com\")) return url.toString();"],
+  ["la redirección acepta http", "lib/billing/redirect.ts", "if (url.protocol !== \"https:\" || url.username || url.password || url.port) return null;", "if (url.username || url.password || url.port) return null;"],
+  ["un resultado sin «ok» se toma como éxito", "lib/billing/redirect.ts", "if (record.ok === true) return null;", "if (record.ok !== false) return null;"],
+  ["el adaptador falso se usa en Production", "lib/billing/provider-selection.ts", "if (requested === \"fake\" && env.VERCEL_ENV !== \"production\") return \"fake\";", "if (requested === \"fake\") return \"fake\";"],
+  ["los escenarios de demostración se honran en cualquier entorno", "lib/billing/provider-selection.ts", "return env.NODE_ENV === \"development\" && env.VERCEL_ENV === undefined &&", "return true &&"],
+  ["se acepta cualquier documento", "lib/billing/customer.ts", "return /^[0-9]{7,8}$/.test(digits) || /^[0-9]{11}$/.test(digits) ? digits : null;", "return digits.length > 0 ? digits : null;"],
+  ["el correo del pago sale del formulario", "lib/billing/customer.ts", "const cleanEmail = typeof email === \"string\" ? email.trim() : \"\";", "const cleanEmail = typeof (input as { email?: unknown }).email === \"string\" ? ((input as { email: string }).email).trim() : \"\";"],
+  ["se acepta cualquier nombre", "lib/billing/customer.ts", "if (name.length < 3 || name.length > 80 || !NAME_PATTERN.test(name)) return", "if (false) return"],
+  ["la gracia se muestra un día de más", "lib/billing/view.ts", "hasta el ${lastDay(snapshot.graceEndsAt)} inclusive", "hasta el ${firstDayOf(snapshot.graceEndsAt)} inclusive"],
+  ["el ahorro frente al mensual se calcula mal", "lib/billing/view.ts", "monthly.amountMinor * plan.monthsOfAccess - plan.amountMinor : 0;", "monthly.amountMinor * plan.monthsOfAccess - plan.amountMinor + 100 : 0;"],
+  ["se ofrece el cambio de plan sin validar", "lib/billing/view.ts", "changePlan: capabilities.changePlan, updatePaymentMethod: paymentAction },\n      };\n    }\n    case \"past_due\"", "changePlan: true, updatePaymentMethod: paymentAction },\n      };\n    }\n    case \"past_due\""],
+  ["se ofrece el cambio de medio de pago sin suscriptor", "lib/billing/view.ts", "const paymentAction = capabilities.paymentMethodUpdate && hasSubscriber;", "const paymentAction = capabilities.paymentMethodUpdate;"],
+  ["un contracargo futuro se muestra ya", "lib/billing/view.ts", "const chargeback = snapshot.chargebackAt !== null && now.toISOString() >= snapshot.chargebackAt;", "const chargeback = snapshot.chargebackAt !== null;"],
+  ["una cuenta sin estado muestra acciones", "lib/billing/view.ts", "if (!input.available || !snapshot) return UNAVAILABLE;", "if (!snapshot) return UNAVAILABLE;"],
+  ["la ventana de renovación no acorta el sondeo", "lib/billing/poll-policy.ts", "if (Number.isFinite(end) && end - input.now.getTime() <= 2 * DAY) return 6 * HOUR; // ventana de renovación", "if (false) return 6 * HOUR;"],
+  ["una cuenta terminada se sondea para siempre", "lib/billing/poll-policy.ts", "return providerStatus === \"suspended\" || providerStatus === \"finished\" ? null : 7 * DAY;", "return 7 * DAY;"],
+  ["una cuenta terminada que el proveedor sigue cobrando deja de sondearse", "lib/billing/poll-policy.ts", "return providerStatus === \"suspended\" || providerStatus === \"finished\" ? null : 7 * DAY;", "return null;"],
+  ["la dispersión del sondeo es siempre cero", "lib/billing/poll-policy.ts", "const fraction = (hash % 2001) / 1000 - 1; // [-1, 1]", "const fraction = 0;"],
 ];
 
 function copyDir(from, to) {
@@ -145,6 +208,7 @@ export function runMutation([description, file, find, replacement]) {
   try {
     copyDir(path.join(REPO, "lib", "billing"), path.join(dir, "lib", "billing"));
     copyDir(path.join(REPO, "lib", "calendar"), path.join(dir, "lib", "calendar"));
+    copyDir(path.join(REPO, "lib", "format"), path.join(dir, "lib", "format"));
     fs.mkdirSync(path.join(dir, "supabase", "migrations"), { recursive: true });
     fs.copyFileSync(path.join(REPO, "supabase/migrations/20261014100000_m1_billing_core.sql"), path.join(dir, "supabase/migrations/20261014100000_m1_billing_core.sql"));
     const target = path.join(dir, file);

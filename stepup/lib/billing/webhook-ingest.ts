@@ -1,18 +1,20 @@
 import type { BillingFlags } from "./flags.ts";
 import { logBilling } from "./log.ts";
 import type { ProviderAdapter } from "./provider.ts";
+import type { RateLimiter } from "./rate-limit.ts";
 import type { BillingStore, IngestRow } from "./store.ts";
 
 /**
- * Recepción de avisos del proveedor (M1) — independiente del framework: recibe el cuerpo crudo y los encabezados, y devuelve el
- * estado HTTP y un cuerpo mínimo. La ruta HTTP real (M2) sólo delega acá.
+ * Recepción de avisos del proveedor — independiente del framework. Los avisos son SEÑALES NO CONFIABLES (decisión cerrada 2):
  *
- * Reglas:
- *  - con la facturación apagada responde como si la ruta no existiera (404) y no guarda nada;
- *  - NUNCA se acepta un aviso sin verificar: lo decide el adaptador (`verifyWebhook`). Si el mecanismo no está documentado o no
- *    está configurado (Mobbex hoy) responde 401 sin guardar nada;
- *  - responde RÁPIDO: sólo verifica y guarda los campos normalizados (una escritura por lote); la conciliación y el resto del
- *    trabajo pesado se hacen después, por lotes (`processor.ts`);
+ *  - con la facturación apagada responde 404 como si la ruta no existiera, sin leer el cuerpo ni guardar nada;
+ *  - sólo POST (`405` con `Allow: POST`), sólo `Content-Type` esperado (`415`), cuerpo pequeño (`413` ANTES de interpretarlo),
+ *    límite de frecuencia por cliente y global (`429`);
+ *  - el cuerpo se reduce a una pista mínima (identificadores): ningún estado, importe ni plan se toma de él. No hay forma de que un
+ *    aviso falso active nada: lo único que produce es una consulta autenticada posterior;
+ *  - RESPUESTA UNIFORME: un aviso bien formado recibe siempre `200 {"ok":true}`, exista o no la referencia, esté repetido o no.
+ *    Nada de la respuesta (estado, tiempo o texto) permite saber si un suscriptor existe;
+ *  - responde RÁPIDO: sólo reduce y guarda (una escritura por lote); la conciliación se hace después, por lotes (`processor.ts`);
  *  - la respuesta nunca incluye motivos, datos del aviso ni errores internos.
  */
 export interface IngestDeps {
@@ -20,40 +22,70 @@ export interface IngestDeps {
   readonly store: BillingStore;
   readonly flags: BillingFlags;
   readonly now: () => Date;
+  readonly limiter: RateLimiter;
+}
+
+export interface IngestRequest {
+  readonly method: string;
+  readonly contentType: string | undefined;
+  /** `Content-Length` declarado, si vino. */
+  readonly declaredLength: number | null;
+  /** Lee el cuerpo con un tope: devuelve `"too_large"` apenas lo supera (sin leer el resto). */
+  readonly readBody: (maxBytes: number) => Promise<string | "too_large">;
+  /** Identidad del cliente para el límite de frecuencia (ya anonimizada: nunca una IP en claro). */
+  readonly clientKey: string;
 }
 
 export interface IngestResponse {
-  readonly status: 200 | 400 | 401 | 404 | 413 | 503;
+  readonly status: 200 | 400 | 404 | 405 | 413 | 415 | 429 | 503;
   readonly body: { readonly ok: boolean };
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
-export const MAX_BODY_BYTES = 64 * 1024;
+/** Los avisos reales pesan unos pocos KB; 16 KB es holgado y corta el abuso. */
+export const MAX_BODY_BYTES = 16 * 1024;
 
-export async function ingestWebhook(deps: IngestDeps, request: { rawBody: string; headers: Readonly<Record<string, string | undefined>> }): Promise<IngestResponse> {
-  if (!deps.flags.enabled) return { status: 404, body: { ok: false } };
-  if (Buffer.byteLength(request.rawBody, "utf8") > MAX_BODY_BYTES) return { status: 413, body: { ok: false } };
+const NOT_FOUND: IngestResponse = { status: 404, body: { ok: false } };
 
-  const verification = deps.adapter.verifyWebhook({ rawBody: request.rawBody, headers: request.headers, now: deps.now() });
-  if (!verification.verified) {
-    logBilling("webhook", "rejected", { reason: verification.reason, provider: deps.adapter.name }, "warn");
-    return verification.reason === "malformed" ? { status: 400, body: { ok: false } } : verification.reason === "too_large" ? { status: 413, body: { ok: false } } : { status: 401, body: { ok: false } };
+export async function ingestNotice(deps: IngestDeps, request: IngestRequest): Promise<IngestResponse> {
+  if (!deps.flags.enabled) return NOT_FOUND;
+  if (request.method !== "POST") return { status: 405, body: { ok: false }, headers: { allow: "POST" } };
+
+  const decision = deps.limiter.check(request.clientKey);
+  if (!decision.allowed) {
+    logBilling("notice", "rate_limited", { provider: deps.adapter.name });
+    return { status: 429, body: { ok: false }, headers: { "retry-after": String(decision.retryAfterSeconds) } };
   }
 
-  const rows: IngestRow[] = verification.events.map((event) => ({
-    dedupKey: event.dedupKey,
+  const declared = (request.contentType ?? "").toLowerCase().split(";")[0].trim();
+  if (declared !== "application/x-www-form-urlencoded" && declared !== "application/json") return { status: 415, body: { ok: false } };
+  if (request.declaredLength !== null && request.declaredLength > MAX_BODY_BYTES) return { status: 413, body: { ok: false } };
+
+  const rawBody = await request.readBody(MAX_BODY_BYTES);
+  if (rawBody === "too_large") return { status: 413, body: { ok: false } };
+
+  const parsed = deps.adapter.parseNotice({ rawBody, contentType: request.contentType, now: deps.now() });
+  if (!parsed.ok) {
+    logBilling("notice", "rejected", { reason: parsed.reason, provider: deps.adapter.name }, "warn");
+    return parsed.reason === "too_large" ? { status: 413, body: { ok: false } } : parsed.reason === "unsupported_content_type" ? { status: 415, body: { ok: false } } : { status: 400, body: { ok: false } };
+  }
+  if (parsed.notices.length === 0) return { status: 200, body: { ok: true } }; // tipo de aviso que no nos interesa: se reconoce y se ignora
+
+  const rows: IngestRow[] = parsed.notices.map((notice) => ({
+    dedupKey: notice.dedupKey,
     provider: deps.adapter.name,
-    eventType: event.eventType,
-    payloadHash: event.payloadHash,
-    normalized: { operation: event.operation, subscriberUid: event.subscriberUid, subscriberReference: event.subscriberReference },
-    receivedAt: event.receivedAt,
+    eventType: notice.eventType,
+    payloadHash: notice.payloadHash,
+    hint: notice.hint,
+    receivedAt: notice.receivedAt,
   }));
   try {
     const result = await deps.store.ingestEvents(rows);
-    logBilling("webhook", "stored", { count: result.inserted, provider: deps.adapter.name });
+    logBilling("notice", "stored", { count: result.inserted, provider: deps.adapter.name });
     return { status: 200, body: { ok: true } };
   } catch {
-    // Base caída: se responde 503 para que el proveedor reintente; no se pierde nada porque todavía no se confirmó nada.
-    logBilling("webhook", "store_failed", { provider: deps.adapter.name }, "error");
+    // Base caída: 503 para que el proveedor reintente; no se pierde nada porque todavía no se confirmó nada (y el sondeo recupera el resto).
+    logBilling("notice", "store_failed", { provider: deps.adapter.name }, "error");
     return { status: 503, body: { ok: false } };
   }
 }

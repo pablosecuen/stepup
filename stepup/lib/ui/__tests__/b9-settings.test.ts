@@ -79,7 +79,7 @@ test("las acciones sensibles están juntas, al final, con tono de peligro, y nin
   assert.equal(danger.id, "acciones-sensibles");
   assert.equal(danger.tone, "danger");
   assert.match(danger.body, /<EndActiveSessionControl session=\{session\} \/>/);
-  assert.match(danger.body, /<DeleteAccountButton \/>/);
+  assert.match(danger.body, /<DeleteAccountButton billingEnabled=\{billingEnabled\} \/>/);
   for (const normal of found.slice(0, -1)) {
     assert.doesNotMatch(normal.body, /EndActiveSessionControl|DeleteAccountButton|BUTTON_DANGER/, `${normal.id} no mezcla acciones sensibles`);
   }

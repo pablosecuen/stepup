@@ -1,6 +1,6 @@
-import type { BillingSnapshot, ExecutionFact } from "./ledger.ts";
+import type { BillingSnapshot, ExecutionFact, ExecutionOutcome } from "./ledger.ts";
 import type { BillingPlan, PlanCode } from "./plans.ts";
-import type { NormalizedWebhookEvent, WebhookEventType } from "./provider.ts";
+import type { NoticeHint, WebhookEventType } from "./provider.ts";
 import type { AnomalyKind, SubscriberRecord } from "./reconcile.ts";
 
 /**
@@ -15,7 +15,8 @@ export interface IngestRow {
   readonly provider: "mobbex" | "fake";
   readonly eventType: WebhookEventType;
   readonly payloadHash: string;
-  readonly normalized: Pick<NormalizedWebhookEvent, "operation" | "subscriberUid" | "subscriberReference">;
+  /** Sólo la pista mínima (identificadores): nunca estado, importe ni plan. */
+  readonly hint: NoticeHint;
   readonly receivedAt: string;
 }
 
@@ -23,7 +24,7 @@ export interface StoredEvent {
   readonly id: number;
   readonly eventType: WebhookEventType;
   readonly attempts: number;
-  readonly normalized: IngestRow["normalized"];
+  readonly hint: NoticeHint;
 }
 
 export interface ExecutionRow {
@@ -31,7 +32,7 @@ export interface ExecutionRow {
   readonly provider: "mobbex" | "fake";
   readonly executionUid: string;
   readonly providerPaymentId: string | null;
-  readonly outcome: "approved" | "rejected";
+  readonly outcome: ExecutionOutcome;
   readonly planCode: PlanCode;
   readonly amountMinor: number;
   readonly currency: "ARS";
@@ -49,6 +50,13 @@ export interface PeriodRow {
   readonly currency: "ARS";
   readonly periodStart: string;
   readonly periodEnd: string;
+}
+
+/** Un período pagado que dejó de valer (devolución total o contracargo): se conserva en el historial pero ya no respalda el estado. */
+export interface VoidedPeriod {
+  readonly ownerId: string;
+  readonly provider: "mobbex" | "fake";
+  readonly executionUid: string;
 }
 
 export interface SubscriptionWrite {
@@ -104,10 +112,18 @@ export interface CheckoutAttempt {
   /** Clave con la que se creó el intento: al reutilizarlo, el proveedor recibe SIEMPRE esta clave (misma clave = mismo checkout). */
   readonly idempotencyKey: string;
   readonly status: "open" | "completed" | "expired" | "failed" | "superseded";
+  /** Enlace del proveedor donde se carga el medio de pago (ya creado): permite reutilizar el intento sin crear otro suscriptor. */
+  readonly redirectUrl: string | null;
+}
+
+/** Suscriptor ya creado en el proveedor por un intento que se reemplazó: hay que cancelarlo allá. */
+export interface StaleSubscriber {
+  readonly uid: string;
+  readonly planCode: PlanCode;
 }
 
 export type OpenCheckoutResult =
-  | { readonly ok: true; readonly attempt: CheckoutAttempt; readonly created: boolean; readonly superseded: boolean }
+  | { readonly ok: true; readonly attempt: CheckoutAttempt; readonly created: boolean; readonly superseded: boolean; readonly stale: readonly StaleSubscriber[] }
   | { readonly ok: false; readonly reason: "not_allowed" | "plan_invalid" | "no_account" };
 
 export interface CommitBatch {
@@ -117,6 +133,47 @@ export interface CommitBatch {
   readonly reconciliations: readonly ReconciliationRow[];
   readonly events: readonly EventOutcome[];
   readonly changes?: readonly ChangeRow[];
+  readonly voidedPeriods?: readonly VoidedPeriod[];
+}
+
+/** Resultado del sondeo de UN suscriptor: `nextAt` null = ya no hace falta sondearlo; `failed` = el proveedor no respondió. */
+export interface PollResult {
+  readonly ownerId: string;
+  readonly nextAt: string | null;
+  readonly failed: boolean;
+}
+
+/** Historial visible para la persona: nunca lleva identificadores del proveedor. */
+export interface HistoryPeriod {
+  readonly planCode: PlanCode;
+  readonly amountMinor: number;
+  readonly periodStart: string;
+  readonly periodEnd: string;
+  /** Instante en que el período dejó de valer (devolución total o contracargo), o `null`. */
+  readonly voidedAt: string | null;
+}
+
+export interface HistoryCharge {
+  readonly outcome: ExecutionOutcome;
+  readonly planCode: PlanCode;
+  readonly amountMinor: number;
+  readonly dueAt: string;
+  readonly occurredAt: string;
+}
+
+export interface BillingHistory {
+  readonly periods: readonly HistoryPeriod[];
+  readonly charges: readonly HistoryCharge[];
+}
+
+/** Métricas de las colas (conteos acotados, sin datos de ninguna persona). */
+export interface QueueStats {
+  readonly pendingEvents: number;
+  readonly processingEvents: number;
+  readonly oldestPendingAt: string | null;
+  readonly duePolls: number;
+  readonly dueClock: number;
+  readonly openReviews: number;
 }
 
 export interface CommitResult {
@@ -135,11 +192,20 @@ export interface BillingStore {
   ensureAccount(ownerId: string): Promise<BillingSnapshot>;
   ingestEvents(rows: readonly IngestRow[]): Promise<{ inserted: number; duplicates: number }>;
   claimEvents(input: { limit: number; leaseSeconds: number; worker: string; maxAttempts: number }): Promise<StoredEvent[]>;
-  resolveSubscribers(references: readonly string[]): Promise<Map<string, SubscriberRecord>>;
+  /** Propietarias de las referencias y/o uids del proveedor dados (una consulta por lote). */
+  resolveSubscribers(keys: { readonly references: readonly string[]; readonly uids: readonly string[] }): Promise<SubscriberRecord[]>;
   loadSubscriptions(ownerIds: readonly string[]): Promise<Map<string, BillingSnapshot>>;
   loadExecutions(ownerIds: readonly string[], perOwner: number): Promise<Map<string, ExecutionFact[]>>;
   commitBatch(batch: CommitBatch): Promise<CommitResult>;
   dueSubscriptions(input: { nowIso: string; after: { at: string; ownerId: string } | null; limit: number }): Promise<DuePage>;
+  /** Reclama suscriptores para sondear con arrendamiento (nunca el mismo a dos trabajadores). */
+  claimPolls(input: { readonly nowIso: string; readonly limit: number; readonly leaseSeconds: number }): Promise<string[]>;
+  markPolled(results: readonly PollResult[]): Promise<void>;
+  /** Conciliación prioritaria: los sondea en la próxima corrida. */
+  prioritizePolls(ownerIds: readonly string[]): Promise<number>;
+  queueStats(): Promise<QueueStats>;
+  /** Períodos y cobros recientes de la propietaria (para la pantalla de facturación). */
+  getHistory(ownerId: string, limit: number): Promise<BillingHistory>;
   getSweepCursor(name: string): Promise<string | null>;
   setSweepCursor(name: string, atIso: string): Promise<void>;
   /**
@@ -147,7 +213,7 @@ export interface BillingStore {
    * suscripción, uno solo abierto por cuenta (dos pestañas = el mismo intento) y con el precio releído del catálogo de la base.
    */
   openCheckoutAttempt(input: CheckoutAttemptInput): Promise<OpenCheckoutResult>;
-  completeCheckoutAttempt(input: { readonly attemptId: string; readonly providerCheckoutUid: string; readonly providerSubscriberUid: string | null }): Promise<boolean>;
+  completeCheckoutAttempt(input: { readonly attemptId: string; readonly providerCheckoutUid: string; readonly providerSubscriberUid: string | null; readonly redirectUrl: string }): Promise<boolean>;
   failCheckoutAttempt(attemptId: string): Promise<void>;
   purgeRetention(input: { limit: number }): Promise<{ events: number; reconciliations: number }>;
 }

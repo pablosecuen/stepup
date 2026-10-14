@@ -1,9 +1,10 @@
-// M1 — Escala: 1.000 suscripciones activas con renovaciones concentradas en la MISMA hora y el MISMO día, 5.000 avisos (duplicados,
-// desordenados y de pagos desconocidos), reintentos concurrentes, conciliación paginada, recuperación tras una interrupción parcial
+// M2 — Escala: 1.000 suscripciones activas con renovaciones concentradas en la MISMA hora y el MISMO día, 5.000 avisos NO CONFIABLES
+// (duplicados, desordenados y de pagos desconocidos), reintentos concurrentes, conciliación paginada, SONDEO POR SUSCRIPTOR de 1.000
+// suscriptores con avisos perdidos (3 trabajadores concurrentes), registro fiscal, recuperación tras una interrupción parcial
 // y planes de consulta sin recorridos completos. Postgres REAL (embedded-postgres 17), varias conexiones simultáneas.
 //
 //   set NODE_PATH=%TEMP%\epg\node_modules
-//   node --expose-gc supabase/tests/postgres/m1_billing_scale.mjs [--subs 1000] [--out docs/billing/m1-scale-metrics.json]
+//   node --expose-gc supabase/tests/postgres/m2_billing_scale.mjs [--subs 1000] [--out docs/billing/m2-scale-metrics.json]
 //
 // Mide: tiempo, cantidad de consultas (por trabajador y por lote), memoria (pico del heap y RSS) y latencia de la recepción de avisos.
 import assert from "node:assert/strict";
@@ -28,14 +29,14 @@ const EXTRA_EVENT_ROWS = Number(arg("--plan-rows", "60000"));
 
 const plansLib = await importLib("billing/plans.ts");
 const { RpcBillingStore } = await importLib("billing/rpc-store.ts");
-const { FakeProviderAdapter, FAKE_SIGNATURE_HEADER, signFakeWebhook } = await importLib("billing/providers/fake.ts");
-const { ingestWebhook } = await importLib("billing/webhook-ingest.ts");
-const { drainEvents, runClockSweep, runProviderSweep } = await importLib("billing/processor.ts");
+const { FakeProviderAdapter } = await importLib("billing/providers/fake.ts");
+const { ingestNotice } = await importLib("billing/webhook-ingest.ts");
+const { drainEvents, runClockSweep, runProviderSweep, runSubscriberPoll } = await importLib("billing/processor.ts");
 const { localDateTimeToInstantIso } = await importLib("calendar/timezone.ts");
 
 const ar = (date, hour = 0, minute = 0) => localDateTimeToInstantIso({ date, hour, minute, timeZone: "America/Argentina/Buenos_Aires" });
 const MONTHLY = plansLib.getPlan("tf_monthly_ars_v1");
-const SECRET = "scale-test-secret";
+const ALLOW_ALL = { check: () => ({ allowed: true, retryAfterSeconds: 1 }) }; // el límite de frecuencia se prueba aparte (notice-ingest.test.ts)
 const failures = [];
 const metrics = { subs: SUBS };
 const ok = (cond, message) => {
@@ -72,7 +73,7 @@ console.log(`Creando ${SUBS} cuentas activas (todas con el período anterior ven
 const setupStarted = performance.now();
 const ownerExpr = "('00000000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid";
 await admin.query(`insert into auth.users (id, email, created_at) select ${ownerExpr}, 'scale' || g || '@example.test', now() - interval '1 day' from generate_series(1, $1) g`, [SUBS]);
-await admin.query(`insert into public.billing_subscriptions (owner_id, status, grandfathered, provider_reference, provider_subscriber_uid) select ${ownerExpr}, 'pending', false, 'tfs_' || md5(g::text), 'sub_' || g from generate_series(1, $1) g`, [SUBS]);
+await admin.query(`insert into public.billing_subscriptions (owner_id, status, grandfathered, provider_reference, provider_subscriber_uid, provider_plan_code) select ${ownerExpr}, 'pending', false, 'tfs_' || md5(g::text), 'sub_' || g, 'tf_monthly_ars_v1' from generate_series(1, $1) g`, [SUBS]);
 await admin.query(`insert into public.billing_executions (owner_id, provider, execution_uid, provider_payment_id, outcome, plan_code, amount_minor, currency, due_at, occurred_at) select ${ownerExpr}, 'fake', 'prev_' || g, 'prevpay_' || g, 'approved', 'tf_monthly_ars_v1', 2490000, 'ARS', $2::timestamptz, $2::timestamptz + interval '5 minutes' from generate_series(1, $1) g`, [SUBS, ar("2026-10-01", 10)]);
 await admin.query(`insert into public.billing_periods (owner_id, provider, execution_uid, plan_code, price_version, amount_minor, currency, period_start, period_end) select ${ownerExpr}, 'fake', 'prev_' || g, 'tf_monthly_ars_v1', 1, 2490000, 'ARS', $2::timestamptz, $3::timestamptz from generate_series(1, $1) g`, [SUBS, ar("2026-10-01"), ar("2026-11-01")]);
 await admin.query("update public.billing_subscriptions set status = 'active', plan_code = 'tf_monthly_ars_v1', current_period_start = $1, current_period_end = $2, next_check_at = $2, version = version + 1", [ar("2026-10-01"), ar("2026-11-01")]);
@@ -80,7 +81,7 @@ metrics.setupMs = Math.round(performance.now() - setupStarted);
 
 const ref = (g) => `tfs_${crypto.createHash("md5").update(String(g)).digest("hex")}`;
 const owner = (g) => uuidFor(g);
-const provider = new FakeProviderAdapter(SECRET);
+const provider = new FakeProviderAdapter();
 
 async function newStore() {
   const client = await pg.session("", "service_role");
@@ -147,7 +148,7 @@ async function ingestAll(deliveries, concurrency) {
         const mine = deliveries[cursor];
         cursor += 1;
         const t0 = performance.now();
-        const response = await ingestWebhook({ adapter: provider, store, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-11-01", 12, 30)) }, { rawBody: mine, headers: { [FAKE_SIGNATURE_HEADER]: signFakeWebhook(SECRET, mine), "content-type": "application/json" } });
+        const response = await ingestNotice({ adapter: provider, store, flags: { enabled: true, enforcement: false }, now: () => new Date(ar("2026-11-01", 12, 30)), limiter: ALLOW_ALL }, { method: "POST", contentType: "application/json", declaredLength: Buffer.byteLength(mine), readBody: async () => mine, clientKey: "scale" });
         latencies.push(performance.now() - t0);
         statuses[response.status] = (statuses[response.status] ?? 0) + 1;
       }
@@ -204,7 +205,8 @@ metrics.storedEvents = events.rows[0].n;
 console.log("  recepción:", JSON.stringify(metrics.ingest), "avisos guardados:", metrics.storedEvents);
 ok(metrics.ingest.statuses[200] === shuffled.length, "todas las recepciones respondieron 200");
 ok(metrics.ingest.p95 < 250, `p95 de recepción ${metrics.ingest.p95} ms < 250 ms`);
-const expectedUnique = nRenewals * 2 + Math.floor(nRenewals / 2) + (shuffled.length - (nRenewals * 4 + Math.floor(nRenewals / 2)));
+// La clave de un aviso es la pista (tipo + pago + ejecución + suscriptor), NO el estado ni la fecha: todos los avisos del mismo cobro son UN aviso.
+const expectedUnique = nRenewals + unknownCount;
 ok(metrics.storedEvents === expectedUnique, `avisos únicos esperados ${expectedUnique}, guardados ${metrics.storedEvents}`);
 
 // ------------------------------------------------------------------------------- Fase B: procesamiento concurrente
@@ -255,7 +257,7 @@ await admin.query("update public.billing_webhook_events set locked_until = now()
 const recovered = await runWorkers(2, { ...baseDeps, now: () => new Date(ar("2026-12-01", 12, 30)) }, "rc");
 metrics.interruption = { claimedByDyingWorker: claimedByDying.length, survivors: { facts: survivors.facts, elapsedMs: survivors.elapsedMs }, recovered: { claimed: recovered.claimed, facts: recovered.facts, elapsedMs: recovered.elapsedMs } };
 console.log("  interrupción:", JSON.stringify(metrics.interruption));
-const wave2States = (await admin.query("select status, count(*)::int n from public.billing_webhook_events where normalized->'operation'->>'providerPaymentId' like 'w2_pay_%' group by 1")).rows;
+const wave2States = (await admin.query("select status, count(*)::int n from public.billing_webhook_events where normalized->>'providerPaymentId' like 'w2_pay_%' group by 1")).rows;
 ok(wave2States.length === 1 && wave2States[0].status === "processed" && wave2States[0].n === SUBS, `todos los avisos de la segunda ola procesados: ${JSON.stringify(wave2States)}`);
 const perOwner3 = (await admin.query("select c, count(*)::int owners from (select owner_id, count(*) c from public.billing_periods group by owner_id) t group by c")).rows;
 ok(perOwner3.length === 1 && Number(perOwner3[0].c) === 3, `cada cuenta tiene exactamente 3 períodos (sin doble activación tras la interrupción): ${JSON.stringify(perOwner3)}`);
@@ -299,6 +301,56 @@ ok(clockQ1 <= 4 * Math.ceil(SUBS / 500) + 2, `consultas del barrido por PÁGINA,
 await clock.client.end();
 ok((await admin.query("select count(*)::int n from public.billing_subscriptions where next_check_at is not null")).rows[0].n === 0, "ninguna cuenta limitada queda con revisión pendiente");
 
+// ------------------------------------------------------------------------------- Fase G: SONDEO POR SUSCRIPTOR (avisos perdidos)
+console.log("Sondeo por suscriptor: 1.000 cobros cuyos avisos NUNCA llegaron (las cuentas estaban limitadas), con 3 trabajadores concurrentes…");
+const wave4 = { key: "w4", due: "2027-02-09" };
+for (let g = 1; g <= SUBS; g += 1) {
+  provider.seedSubscriber(`sub_${g}`, { status: "active" });
+  provider.seedOperation(op(g, wave4, { occurredAt: ar("2027-02-09", 10, 5), dueAt: ar("2027-02-09", 10) }));
+}
+await admin.query("delete from public.billing_poll_schedule");
+await admin.query(`insert into public.billing_poll_schedule (owner_id, due_at) select ${ownerExpr}, now() - interval '1 minute' from generate_series(1, $1) g`, [SUBS]);
+const pollers = await Promise.all(Array.from({ length: 3 }, () => newStore()));
+const pollNow = () => new Date(ar("2027-02-10", 12, 30));
+const pollMem = memorySampler();
+if (global.gc) global.gc();
+const callsBefore = provider.calls.getSubscriber;
+const pollStarted = performance.now();
+const pollStats = await Promise.all(pollers.map((w, index) => runSubscriberPoll({ ...baseDeps, store: w.store, now: pollNow, worker: `poll-${index}` }, { limit: 200, maxBatches: 20 })));
+const pollElapsed = performance.now() - pollStarted;
+const pollQueries = pollers.reduce((n, w) => n + w.counter.queries, 0);
+const pollByName = {};
+for (const w of pollers) for (const [name, n] of Object.entries(w.counter.byName)) pollByName[name] = (pollByName[name] ?? 0) + n;
+const polledTotal = pollStats.reduce((n, st) => n + st.polled, 0);
+const factsTotal = pollStats.reduce((n, st) => n + st.facts, 0);
+const claimedTotal = pollStats.reduce((n, st) => n + st.claimed, 0);
+const batchesTotal = pollStats.reduce((n, st) => n + st.batches, 0);
+metrics.poll = { workers: 3, claimed: claimedTotal, polled: polledTotal, providerCalls: provider.calls.getSubscriber - callsBefore, batches: batchesTotal, queries: pollQueries, queriesByFunction: pollByName, elapsedMs: Math.round(pollElapsed), subscriptionsWritten: pollStats.reduce((n, st) => n + st.subscriptionsWritten, 0), conflicts: pollStats.reduce((n, st) => n + st.conflicts, 0), ...pollMem.stop() };
+console.log("  sondeo:", JSON.stringify(metrics.poll));
+ok(polledTotal === SUBS && claimedTotal === SUBS, `cada suscriptor se sondea EXACTAMENTE una vez (reclamados ${claimedTotal}, sondeados ${polledTotal})`);
+ok(metrics.poll.providerCalls === SUBS, `una consulta al proveedor por suscriptor (${metrics.poll.providerCalls}) — es la llamada EXTERNA, no una consulta a la base`);
+ok(factsTotal >= SUBS, `el sondeo concilió los cobros de cada suscriptor (${factsTotal} hechos: los repetidos son idempotentes)`);
+ok((await admin.query("select count(*)::int n from public.billing_executions where execution_uid like 'w4_exe_%'")).rows[0].n === SUBS, `los ${SUBS} cobros PERDIDOS (sin aviso) se recuperaron: exactamente uno por cuenta`);
+const afterPoll = await stateCounts("billing_subscriptions", "status");
+ok(afterPoll.active === SUBS && Object.keys(afterPoll).length === 1, `tras el sondeo las ${SUBS} cuentas vuelven a estar activas: ${JSON.stringify(afterPoll)}`);
+ok((await admin.query("select count(*)::int n from (select owner_id from public.billing_periods group by owner_id having count(*) <> 5) t")).rows[0].n === 0, "5 períodos por cuenta, ninguno duplicado");
+ok(pollQueries <= (5 * batchesTotal) + 10, `CERO consultas por suscriptor: ${pollQueries} consultas a la base para ${SUBS} suscriptores en ${batchesTotal} lotes (reclamar, cuentas, cobros, escribir, reprogramar)`);
+ok(pollQueries < SUBS / 10, `menos de una consulta a la base cada 10 suscriptores (${pollQueries})`);
+ok((await admin.query("select count(*)::int n from public.billing_poll_schedule where due_at <= now()")).rows[0].n === 0, "todos quedan reprogramados hacia adelante");
+const ownerOne = (await admin.query("select due_at from public.billing_poll_schedule limit 1")).rows[0];
+ok(new Date(ownerOne.due_at) > new Date(ar("2027-02-10")), "la próxima consulta es futura");
+ok(metrics.poll.peakHeapMB < 400, `memoria acotada en el sondeo (${metrics.poll.peakHeapMB} MB)`);
+// Repetirlo no hace nada.
+const repeat = await runSubscriberPoll({ ...baseDeps, store: pollers[0].store, now: pollNow, worker: "poll-again" }, { limit: 200, maxBatches: 20 });
+ok(repeat.claimed === 0, "una segunda corrida inmediata no encuentra nada vencido");
+await Promise.all(pollers.map((w) => w.client.end()));
+
+// ------------------------------------------------------------------------------- Fase H: registro fiscal
+const fiscal = (await admin.query("select count(*)::int n, count(distinct (provider, operation_ref))::int u from public.billing_fiscal_records")).rows[0];
+metrics.fiscal = fiscal;
+ok(fiscal.n === fiscal.u && fiscal.n === SUBS * 5, `un registro fiscal por cobro aprobado (5 por cuenta = ${SUBS * 5}), sin duplicados: ${JSON.stringify(fiscal)}`);
+ok((await admin.query("select count(*)::int n from public.billing_fiscal_records where owner_hash !~ '^[0-9a-f]{64}$'")).rows[0].n === 0, "todas con huella seudonimizada");
+
 // ------------------------------------------------------------------------------- Fase F: planes de consulta
 console.log(`Planes de consulta con ${EXTRA_EVENT_ROWS.toLocaleString("es-AR")} avisos en la tabla…`);
 await admin.query(
@@ -318,7 +370,7 @@ const statsBefore = (await admin.query("select relname, seq_scan, idx_scan from 
 await svc.store.claimEvents({ limit: 500, leaseSeconds: 60, worker: "plan", maxAttempts: 8 });
 await svc.store.dueSubscriptions({ nowIso: ar("2030-01-01"), after: null, limit: 500 });
 await svc.store.loadExecutions(Array.from({ length: 500 }, (_, i) => owner(i + 1)), 24);
-await svc.store.resolveSubscribers(Array.from({ length: 500 }, (_, i) => ref(i + 1)));
+await svc.store.resolveSubscribers({ references: Array.from({ length: 500 }, (_, i) => ref(i + 1)), uids: Array.from({ length: 500 }, (_, i) => `sub_${i + 1}`) });
 await svc.store.loadSubscriptions(Array.from({ length: 500 }, (_, i) => owner(i + 1)));
 await admin.query("update public.billing_webhook_events set locked_until = now() - interval '1 minute' where locked_by = 'plan'");
 await svc.store.claimEvents({ limit: 500, leaseSeconds: 60, worker: "plan2", maxAttempts: 8 });
@@ -348,6 +400,15 @@ ok(metrics.queryPlans.indexes.claim, "plan del reclamo: usa billing_webhook_even
 ok(metrics.queryPlans.indexes.lease, "plan de la recuperación de arrendamientos: usa billing_webhook_events_lease_idx");
 ok(metrics.queryPlans.indexes.due, "plan del barrido del reloj: usa billing_subscriptions_next_check_idx");
 ok(metrics.queryPlans.indexes.executions, "plan de cobros por cuenta: usa billing_executions_owner_due_idx");
+const pollPlan = await plan("select ps.owner_id from public.billing_poll_schedule ps where ps.due_at <= now() order by ps.due_at, ps.owner_id limit 200");
+const dedupPlan = await plan("select 1 from public.billing_webhook_events e where e.dedup_key = repeat('a', 64) and (e.status in ('received','processing','failed') or e.received_at > now() - interval '60 seconds')");
+const fiscalPlan = await plan("select f.id from public.billing_fiscal_records f where f.retain_until < current_date order by f.retain_until limit 100");
+metrics.queryPlans.indexes.poll = /billing_poll_schedule_due_idx/.test(pollPlan);
+metrics.queryPlans.indexes.dedup = /billing_webhook_events_(open_dedup|dedup_recent)_idx/.test(dedupPlan);
+metrics.queryPlans.indexes.fiscal = /billing_fiscal_records_retain_idx/.test(fiscalPlan);
+ok(metrics.queryPlans.indexes.poll, "plan del reclamo de sondeos: usa billing_poll_schedule_due_idx");
+ok(metrics.queryPlans.indexes.dedup, "plan de la deduplicación de avisos: usa un índice de dedup_key (no recorre la tabla)");
+ok(metrics.queryPlans.indexes.fiscal, "plan de la purga fiscal: usa billing_fiscal_records_retain_idx");
 await svc.client.end();
 
 // ------------------------------------------------------------------------------- Resumen

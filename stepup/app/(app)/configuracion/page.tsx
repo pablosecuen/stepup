@@ -12,6 +12,7 @@ import { CloudIcon } from "@heroicons/react/24/outline";
 import { DEFAULT_BUDGET_DISTRIBUTION } from "@/lib/payments/budget-distribution";
 import type { ActiveSessionRow } from "@/lib/db/database.types";
 import { formatInstantDateTime } from "@/lib/format/date-format";
+import { readBillingFlags } from "@/lib/billing/flags";
 
 export const dynamic = "force-dynamic";
 // R4: eliminar la cuenta borra antes todos los PDF de reportes de Storage (puede llevar un rato en cuentas con muchos): tiempo máximo explícito.
@@ -54,7 +55,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
   const budget = budgetResult.status === "fulfilled" ? budgetResult.value.distribution : DEFAULT_BUDGET_DISTRIBUTION;
   const session = sessionResult.status === "fulfilled" && sessionResult.value ? toSessionInfo(sessionResult.value) : null;
 
-  return <ConfigurationView email={email} displayName={profile.displayName} budget={budget} session={session} />;
+  return <ConfigurationView email={email} displayName={profile.displayName} budget={budget} session={session} billingEnabled={readBillingFlags(process.env).enabled} />;
 }
 
 function UnavailableState() {

@@ -8,6 +8,7 @@ import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { loadAccountIdentity } from "@/lib/nav/load-account-identity";
 import { resolveAccountIdentity } from "@/lib/nav/account-identity";
 import type { AuthUser } from "@/lib/auth/auth-adapter";
+import { readBillingFlags } from "@/lib/billing/flags";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
 // CDN — se recalcula en cada request.
@@ -55,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen nav:pl-[236px]">
-      <PrimaryNav account={account} />
+      <PrimaryNav account={account} billingEnabled={readBillingFlags(process.env).enabled} />
       <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
     </div>
   );

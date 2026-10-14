@@ -237,7 +237,7 @@ test("cambio de plan: el plan programado se resuelve cuando llega el cobro del p
 });
 
 test("deriveFields no usa más que el conjunto de cobros (sin cobros: todo en null)", () => {
-  assert.deepEqual(deriveFields([]), { planCode: null, currentPeriodStart: null, currentPeriodEnd: null, renewalRejectedDueAt: null, graceEndsAt: null });
+  assert.deepEqual(deriveFields([]), { planCode: null, currentPeriodStart: null, currentPeriodEnd: null, renewalRejectedDueAt: null, graceEndsAt: null, chargebackAt: null });
   const rejectedOnly = deriveFields([rejected("e1", "2026-10-01")]);
   assert.equal(rejectedOnly.currentPeriodEnd, null);
   assert.equal(rejectedOnly.renewalRejectedDueAt, null);

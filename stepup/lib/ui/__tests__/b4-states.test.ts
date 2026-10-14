@@ -43,7 +43,7 @@ const SECTIONS = readdirSync(PRIVATE).filter((entry) => statSync(join(PRIVATE, e
 test("cada sección privada (salvo Inicio) tiene su loading.tsx con el esqueleto accesible dentro del shell", () => {
   assert.deepEqual(
     [...SECTIONS].sort(),
-    ["alumnos", "calendario", "cobros", "configuracion", "inicio", "recordatorios", "registro", "resumen-financiero"],
+    ["alumnos", "calendario", "cobros", "configuracion", "facturacion", "inicio", "recordatorios", "registro", "resumen-financiero"],
     "sección nueva sin decisión de carga: agregar su loading.tsx (o justificar la excepción como Inicio)",
   );
   for (const section of SECTIONS.filter((s) => s !== "inicio")) {

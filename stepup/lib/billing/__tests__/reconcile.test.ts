@@ -19,6 +19,7 @@ function operation(overrides: Partial<ProviderOperation> = {}): ProviderOperatio
     planReference: "tf_monthly_ars_v1",
     outcome: "approved",
     statusCode: "200",
+    refundScope: null,
     amountMinor: 2_490_000,
     currency: "ARS",
     dueAt: ar("2026-10-01", 10),

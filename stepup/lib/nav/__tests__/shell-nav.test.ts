@@ -34,6 +34,7 @@ const EXPECTED_BY_FIRST_SEGMENT: Record<string, string | null> = {
   cobros: "/cobros",
   registro: "/registro",
   configuracion: null, // vive en el menú de cuenta
+  facturacion: null, // vive en el menú de cuenta (sólo con la facturación encendida)
   recordatorios: null, // se llega desde Inicio
   "resumen-financiero": null, // se llega desde Cobros
 };

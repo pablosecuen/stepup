@@ -15,6 +15,7 @@ export const PRIVATE_ROUTE_PREFIXES = [
   "/calendario",
   "/cobros",
   "/configuracion",
+  "/facturacion",
   "/recordatorios",
   "/registro",
   "/resumen-financiero",

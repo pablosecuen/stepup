@@ -6,6 +6,7 @@ import type { ProviderAdapter } from "./provider.ts";
 import { billingErrorMessage, type BillingFailure } from "./safe-errors.ts";
 import { applyTrigger, canApplyTrigger, type BillingStatus } from "./state-machine.ts";
 import type { BillingStore, ChangeRow, CheckoutAttempt } from "./store.ts";
+import type { ProviderCustomer } from "./provider.ts";
 
 /**
  * Comandos de la persona sobre su suscripción (M1): cancelar, reactivar, cambiar de plan y abrir un checkout. El navegador sólo
@@ -45,6 +46,11 @@ export function decideReactivate(snapshot: BillingSnapshot, now: Date): Decision
  * suscripción nueva. Pedir el plan que ya se tiene (o el que ya está programado) no hace nada; pedir el vigente cuando hay otro
  * programado descarta el cambio programado.
  */
+/** Plan con el que se habla con el proveedor de esta cuenta: el de su suscripción allá (aunque todavía no haya pagado) o, si no, el vigente. */
+export function providerPlanOf(snapshot: Pick<BillingSnapshot, "providerPlanCode" | "planCode">) {
+  return snapshot.providerPlanCode ?? snapshot.planCode;
+}
+
 export function decidePlanChange(snapshot: BillingSnapshot, toPlanCode: unknown, now: Date): Decision {
   const target = getPlan(toPlanCode);
   if (!target || !target.active) return REJECT("plan_invalid");
@@ -53,9 +59,9 @@ export function decidePlanChange(snapshot: BillingSnapshot, toPlanCode: unknown,
   if (target.code === snapshot.pendingPlanCode) return { ok: true, kind: "noop" };
   if (target.code === snapshot.planCode) {
     if (snapshot.pendingPlanCode === null) return { ok: true, kind: "noop" };
-    return { ok: true, kind: "apply", next: { ...snapshot, pendingPlanCode: null }, change: { kind: "plan_change", fromPlanCode: snapshot.planCode, toPlanCode: target.code, effectiveAt: snapshot.currentPeriodEnd } };
+    return { ok: true, kind: "apply", next: { ...snapshot, pendingPlanCode: null, providerPlanCode: snapshot.planCode }, change: { kind: "plan_change", fromPlanCode: snapshot.planCode, toPlanCode: target.code, effectiveAt: snapshot.currentPeriodEnd } };
   }
-  return { ok: true, kind: "apply", next: { ...snapshot, pendingPlanCode: target.code }, change: { kind: "plan_change", fromPlanCode: snapshot.planCode, toPlanCode: target.code, effectiveAt: snapshot.currentPeriodEnd } };
+  return { ok: true, kind: "apply", next: { ...snapshot, pendingPlanCode: target.code, providerPlanCode: target.code }, change: { kind: "plan_change", fromPlanCode: snapshot.planCode, toPlanCode: target.code, effectiveAt: snapshot.currentPeriodEnd } };
 }
 
 /** ¿Puede esta cuenta empezar un checkout ahora? (La validación atómica real vive en la base; esto sólo informa a la pantalla.) */
@@ -118,22 +124,68 @@ async function run(deps: CommandDeps, ownerId: string, decide: (snapshot: Billin
 
 export async function cancelSubscription(deps: CommandDeps, ownerId: string): Promise<CommandResult> {
   return run(deps, ownerId, decideCancel, async (snapshot) => {
-    if (!snapshot.providerSubscriberUid || !snapshot.planCode) return null; // sin suscriptor en el proveedor (nunca pagó): sólo se registra la decisión
-    const result = await deps.provider.cancelSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode: snapshot.planCode });
+    const planCode = providerPlanOf(snapshot);
+    if (!snapshot.providerSubscriberUid) return null; // sin suscriptor en el proveedor: sólo se registra la decisión
+    if (!planCode) return "provider_rejected"; // hay suscriptor pero se ignora su plan: no se puede garantizar que no cobre → no se cancela a medias
+    const result = await deps.provider.cancelSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode });
     return result.ok ? null : result.error.retryable ? "provider_unavailable" : "provider_rejected";
   });
 }
 
 export async function reactivateSubscription(deps: CommandDeps, ownerId: string): Promise<CommandResult> {
   return run(deps, ownerId, decideReactivate, async (snapshot) => {
-    if (!snapshot.providerSubscriberUid || !snapshot.planCode) return null;
-    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode: snapshot.planCode });
+    const planCode = providerPlanOf(snapshot);
+    if (!snapshot.providerSubscriberUid || !planCode) return null;
+    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode });
     return result.ok ? null : result.error.retryable ? "provider_unavailable" : "provider_rejected";
   });
 }
 
+/**
+ * Cambio de plan: efectivo en el PRÓXIMO período, sin prorrateo ni crédito automático (decisión cerrada 7). Sólo se ofrece si el
+ * proveedor tiene la operación VALIDADA (`capabilities.changePlan`): con Mobbex hoy no lo está (falta validar en sandbox cómo se
+ * comporta «mover suscriptor»), así que no se programa nada y no sale ningún pedido. Proveedor primero, después la base.
+ */
 export async function changePlan(deps: CommandDeps, ownerId: string, toPlanCode: unknown): Promise<CommandResult> {
-  return run(deps, ownerId, (snapshot, now) => decidePlanChange(snapshot, toPlanCode, now));
+  if (!deps.provider.capabilities.changePlan) return fail("feature_unavailable");
+  return run(
+    deps,
+    ownerId,
+    (snapshot, now) => decidePlanChange(snapshot, toPlanCode, now),
+    async (snapshot) => {
+      const target = getPlan(toPlanCode);
+      const from = providerPlanOf(snapshot);
+      if (!snapshot.providerSubscriberUid || !from || !target) return null;
+      if (target.code === from) return null; // ya está en esa suscripción del proveedor
+      const result = await deps.provider.changePlan({ subscriberUid: snapshot.providerSubscriberUid, fromPlanCode: from, toPlanCode: target.code });
+      return result.ok ? null : result.error.kind === "unsupported" ? "feature_unavailable" : result.error.retryable ? "provider_unavailable" : "provider_rejected";
+    },
+  );
+}
+
+export type PaymentMethodResult = { readonly ok: true; readonly redirectUrl: string } | { readonly ok: false; readonly failure: BillingFailure; readonly message: string };
+
+/**
+ * Actualizar el medio de pago: lleva a la persona a la página del proveedor donde carga la tarjeta nueva. NO cambia ningún estado
+ * (volver de allá nunca activa nada: lo único que cuenta es el cobro conciliado). Sólo para quien ya tiene un suscriptor.
+ */
+export async function updatePaymentMethod(deps: CommandDeps, ownerId: string): Promise<PaymentMethodResult> {
+  const failure = (code: BillingFailure): PaymentMethodResult => ({ ok: false, failure: code, message: billingErrorMessage(code) });
+  if (!deps.flags.enabled) return failure("billing_disabled");
+  if (!deps.provider.capabilities.paymentMethodUpdate) return failure("feature_unavailable");
+  let snapshot: BillingSnapshot | undefined;
+  try {
+    snapshot = (await deps.store.loadSubscriptions([ownerId])).get(ownerId);
+  } catch {
+    return failure("billing_unavailable");
+  }
+  const planCode = snapshot ? providerPlanOf(snapshot) : null;
+  if (!snapshot?.providerSubscriberUid || !planCode) return failure("not_allowed");
+  const status = projectStatus(snapshot, deps.now());
+  if (status === "grandfathered" || status === "expired") return failure("not_allowed");
+  const result = await deps.provider.getPaymentMethodUpdateUrl({ subscriberUid: snapshot.providerSubscriberUid, planCode });
+  if (!result.ok) return failure(result.error.kind === "unsupported" ? "feature_unavailable" : result.error.retryable ? "provider_unavailable" : "provider_rejected");
+  return { ok: true, redirectUrl: result.data.redirectUrl };
 }
 
 export type StartCheckoutResult = { readonly ok: true; readonly redirectUrl: string; readonly attempt: CheckoutAttempt } | { readonly ok: false; readonly failure: BillingFailure; readonly message: string };
@@ -145,7 +197,7 @@ export type StartCheckoutResult = { readonly ok: true; readonly redirectUrl: str
  */
 export async function startCheckout(
   deps: CommandDeps & { readonly attemptTtlMinutes?: number },
-  input: { readonly ownerId: string; readonly planCode: unknown; readonly idempotencyKey: string; readonly returnUrl: string; readonly customer: { email: string; name: string; identification: string } },
+  input: { readonly ownerId: string; readonly planCode: unknown; readonly idempotencyKey: string; readonly returnUrl: string; readonly customer: ProviderCustomer },
 ): Promise<StartCheckoutResult> {
   const failure = (code: BillingFailure): StartCheckoutResult => ({ ok: false, failure: code, message: billingErrorMessage(code) });
   if (!deps.flags.enabled) return failure("billing_disabled");
@@ -153,19 +205,29 @@ export async function startCheckout(
   if (!plan || !plan.active) return failure("plan_invalid");
   let opened;
   try {
-    const expiresAt = new Date(deps.now().getTime() + (deps.attemptTtlMinutes ?? 60) * 60_000).toISOString();
+    const expiresAt = new Date(deps.now().getTime() + (deps.attemptTtlMinutes ?? 1_440) * 60_000).toISOString();
     opened = await deps.store.openCheckoutAttempt({ ownerId: input.ownerId, plan, provider: deps.provider.name, idempotencyKey: input.idempotencyKey, expiresAt });
   } catch {
     return failure("billing_unavailable");
   }
   if (!opened.ok) return failure(opened.reason === "not_allowed" ? "already_subscribed" : opened.reason === "plan_invalid" ? "plan_invalid" : "billing_unavailable");
   if (opened.attempt.status !== "open" && opened.attempt.status !== "completed") return failure("conflict");
+  // Dos pestañas, un doble clic o volver atrás: el intento ya tiene su enlace → se devuelve el MISMO, sin crear otro suscriptor en el proveedor.
+  if (opened.attempt.status === "completed" && opened.attempt.redirectUrl) return { ok: true, redirectUrl: opened.attempt.redirectUrl, attempt: opened.attempt };
+  // Cambió de plan antes de pagar: el suscriptor del intento anterior se cancela ANTES de crear el nuevo (nunca dos suscriptores con medio de pago).
+  for (const stale of opened.stale) {
+    const cancelled = await deps.provider.cancelSubscriber({ subscriberUid: stale.uid, planCode: stale.planCode });
+    if (!cancelled.ok) {
+      await deps.store.failCheckoutAttempt(opened.attempt.id).catch(() => undefined);
+      return failure(cancelled.error.retryable ? "provider_unavailable" : "provider_rejected");
+    }
+  }
   const response = await deps.provider.createCheckout({ subscriberReference: opened.attempt.subscriberReference, plan, customer: input.customer, returnUrl: input.returnUrl, idempotencyKey: opened.attempt.idempotencyKey });
   if (!response.ok) {
     await deps.store.failCheckoutAttempt(opened.attempt.id).catch(() => undefined);
     return failure(response.error.retryable ? "provider_unavailable" : "provider_rejected");
   }
-  const completed = await deps.store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: response.data.checkoutUid, providerSubscriberUid: response.data.subscriberUid }).catch(() => false);
+  const completed = await deps.store.completeCheckoutAttempt({ attemptId: opened.attempt.id, providerCheckoutUid: response.data.checkoutUid, providerSubscriberUid: response.data.subscriberUid, redirectUrl: response.data.redirectUrl }).catch(() => false);
   if (!completed) return failure("billing_unavailable");
   return { ok: true, redirectUrl: response.data.redirectUrl, attempt: opened.attempt };
 }

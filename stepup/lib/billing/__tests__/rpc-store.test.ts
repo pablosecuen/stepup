@@ -42,7 +42,7 @@ test("las lecturas por lotes se parten en tandas de 500 identificadores (nunca u
   const store = new RpcBillingStore(rpc);
   await store.loadSubscriptions(ids);
   await store.loadExecutions(ids, 24);
-  await store.resolveSubscribers(ids.map((id) => `tfs_${id.replace(/-/g, "").slice(0, 32)}`));
+  await store.resolveSubscribers({ references: ids.map((id) => `tfs_${id.replace(/-/g, "").slice(0, 32)}`), uids: [] });
   assert.deepEqual(calls.map((call) => [call.name, (call.args.p_owner_ids ?? call.args.p_refs) instanceof Array ? ((call.args.p_owner_ids ?? call.args.p_refs) as unknown[]).length : -1]), [
     ["billing_get_subscriptions", 500], ["billing_get_subscriptions", 500], ["billing_get_subscriptions", 200],
     ["billing_owner_executions", 500], ["billing_owner_executions", 500], ["billing_owner_executions", 200],
@@ -51,7 +51,7 @@ test("las lecturas por lotes se parten en tandas de 500 identificadores (nunca u
 });
 
 test("la recepción de avisos se parte en tandas de 200 y suma lo insertado y lo descartado", async () => {
-  const rows = Array.from({ length: 450 }, (_, i) => ({ dedupKey: String(i).padStart(64, "0"), provider: "fake" as const, eventType: "other" as const, payloadHash: "a".repeat(64), normalized: { operation: null, subscriberUid: null, subscriberReference: null }, receivedAt: "2026-10-13T00:00:00.000Z" }));
+  const rows = Array.from({ length: 450 }, (_, i) => ({ dedupKey: String(i).padStart(64, "0"), provider: "fake" as const, eventType: "other" as const, payloadHash: "a".repeat(64), hint: { providerPaymentId: null, executionUid: null, subscriberUid: "S", subscriberReference: null }, receivedAt: "2026-10-13T00:00:00.000Z" }));
   const { rpc, calls } = recorder((_, args) => ({ inserted: (args.p_rows as unknown[]).length - 1, duplicates: 1 }));
   const result = await new RpcBillingStore(rpc).ingestEvents(rows);
   assert.deepEqual(calls.map((call) => (call.args.p_rows as unknown[]).length), [200, 200, 50]);
@@ -69,7 +69,7 @@ test("el lote de escritura lleva SÓLO campos normalizados y la versión esperad
     events: [{ id: 9, ownerId: OWNER_A, status: "processed", result: "fact", retryDelaySeconds: 0 }],
     changes: [{ ownerId: OWNER_B, kind: "cancel", fromPlanCode: "tf_monthly_ars_v1", toPlanCode: null, effectiveAt: null, idempotencyKey: "cancel:4:-" }],
   });
-  assert.deepEqual(Object.keys(json).sort(), ["changes", "events", "executions", "periods", "reconciliations", "subscriptions"]);
+  assert.deepEqual(Object.keys(json).sort(), ["changes", "events", "executions", "periods", "reconciliations", "subscriptions", "voided_periods"]);
   const sub = (json.subscriptions as Array<Record<string, unknown>>)[0];
   assert.equal(sub.expected_version, 4);
   assert.equal(sub.next_check_at, ar("2026-11-01"));
@@ -95,7 +95,7 @@ test("un resultado inesperado de la base (no es arreglo, estado desconocido) fal
   assert.deepEqual(open, { ok: false, reason: "no_account" }, "un motivo desconocido nunca se trata como éxito");
 });
 
-test("todas las funciones SQL tienen forma declarada y sólo p / p_rows viajan como JSON", () => {
-  assert.equal(Object.keys(RPC_SHAPES).length, 14);
-  assert.deepEqual([...RPC_JSON_ARGS].sort(), ["p", "p_rows"]);
+test("todas las funciones SQL tienen forma declarada y sólo p / p_rows / p_items viajan como JSON", () => {
+  assert.equal(Object.keys(RPC_SHAPES).length, 20);
+  assert.deepEqual([...RPC_JSON_ARGS].sort(), ["p", "p_items", "p_rows"]);
 });

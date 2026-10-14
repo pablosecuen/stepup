@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowRightOnRectangleIcon, ChevronUpDownIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { ArrowRightOnRectangleIcon, ChevronUpDownIcon, CreditCardIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Avatar } from "@/components/ui/avatar";
 import { MENU_ITEM, MENU_ITEM_DANGER, MENU_PANEL, MENU_SEPARATOR } from "@/components/ui/menu-styles";
@@ -21,7 +21,7 @@ type AccountMenuVariant = "sidebar" | "header";
  * Rediseño visual v1: en la barra lateral (escritorio) es un panel que se abre hacia arriba; en la barra superior (móvil) es una
  * hoja inferior con fondo atenuado. Sólo cambia el aspecto: el comportamiento y la semántica son los de siempre.
  */
-export function AccountMenu({ identity, variant }: { identity: AccountIdentity; variant: AccountMenuVariant }) {
+export function AccountMenu({ identity, variant, billingEnabled = false }: { identity: AccountIdentity; variant: AccountMenuVariant; billingEnabled?: boolean }) {
   const pathname = usePathname();
   const baseId = useId();
   const triggerId = `${baseId}-trigger`;
@@ -167,6 +167,13 @@ export function AccountMenu({ identity, variant }: { identity: AccountIdentity; 
               <Cog6ToothIcon className="h-5 w-5 shrink-0 text-textSecondary" aria-hidden />
               Configuración
             </PrivateLink>
+            {/* Sólo con la facturación encendida: apagada, el menú es exactamente el de siempre. */}
+            {billingEnabled && (
+              <PrivateLink href="/facturacion" role="menuitem" tabIndex={-1} onClick={() => close(true)} className={itemClass}>
+                <CreditCardIcon className="h-5 w-5 shrink-0 text-textSecondary" aria-hidden />
+                Facturación
+              </PrivateLink>
+            )}
             <div role="none" className={MENU_SEPARATOR} />
             <button
               type="button"

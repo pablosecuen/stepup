@@ -1,5 +1,7 @@
 # M1 — Arquitectura y base segura de suscripciones
 
+> **Documento histórico de M1.** M2 conectó la facturación por puntos aprobados (rutas, pantallas, trabajos) manteniendo todo apagado y convirtió los avisos en señales no confiables: lo vigente está en [`M2_ARQUITECTURA.md`](./M2_ARQUITECTURA.md) y [`M1_DECISIONES.md`](./M1_DECISIONES.md). Donde este texto dice «no conectado», «ningún archivo importa `lib/billing`» o «el aviso se verifica», rige M2.
+
 Estado: **implementado y probado localmente, SIN conectar, SIN aplicar y SIN desplegar.** Base: `teacherflow-web` en `7a63254` (rediseño v1 ya publicado, sin modificarlo). Rama de trabajo: `m1-billing`.
 
 Con `BILLING_ENABLED=false` y `BILLING_ENFORCEMENT_ENABLED=false` (el estado de Production) la aplicación funciona **exactamente como hoy**: ningún archivo de `app/`, `components/` ni `proxy.ts` importa `lib/billing` (lo fija una prueba estructural), no hay rutas nuevas, no se configuró ninguna variable en Vercel, no se aplicó ninguna migración y no se cobra dinero.
@@ -307,7 +309,7 @@ Diseño:
 
 ### 9.1 Qué se probó y qué se midió
 
-`supabase/tests/postgres/m1_billing_scale.mjs` (Postgres 17 real, varias conexiones simultáneas; datos y métricas completos en `m1-scale-metrics.json` y, con 100 cuentas, en `m1-scale-metrics-100.json`):
+`supabase/tests/postgres/m2_billing_scale.mjs (antes m1_billing_scale.mjs; las cifras de esta sección son de M1)` (Postgres 17 real, varias conexiones simultáneas; datos y métricas completos en `m1-scale-metrics-1000.json` y, con 100 cuentas, en `m1-scale-metrics-100.json`):
 
 * **1.000 suscripciones activas** cuyo período vence el **mismo día y a la misma hora** (1/11 a las 00:00): las 1.000 renuevan en la misma ola.
 * **5.000 entregas de avisos** desordenadas: 2.000 duplicados exactos (3 copias de cada aprobación), 1.000 liquidaciones posteriores del mismo cobro, 500 rechazos **viejos** que llegan tarde y 500 avisos auténticos de pagos que el proveedor **no conoce**. Se reciben con 20 conexiones simultáneas.

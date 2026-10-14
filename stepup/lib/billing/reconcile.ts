@@ -21,7 +21,10 @@ export type AnomalyKind =
   | "unknown_plan"
   | "inactive_plan"
   | "plan_not_expected"
-  | "refund_review"
+  | "refund_review" // devolución PARCIAL o ambigua: revisión manual, no cambia el estado
+  | "refund_applied" // devolución TOTAL confirmada: se aplicó sola y queda auditada
+  | "chargeback_review" // contracargo conciliado: modo limitado inmediato y revisión
+  | "provider_state_mismatch" // el proveedor y la base no coinciden en el estado del suscriptor
   | "paid_after_cancel"
   | "impossible_transition"
   | "provider_unreachable";
@@ -38,7 +41,7 @@ export interface SubscriberRecord {
 }
 
 export type Reconciliation =
-  | { kind: "fact"; ownerId: string; fact: ExecutionFact; providerPaymentId: string }
+  | { kind: "fact"; ownerId: string; fact: ExecutionFact; providerPaymentId: string; audit: "refund_applied" | "chargeback_review" | null }
   | { kind: "ignore"; reason: IgnoreReason }
   | { kind: "anomaly"; anomaly: AnomalyKind; ownerId: string | null; dedupeKey: string };
 
@@ -69,7 +72,8 @@ export function reconcileOperation(operation: ProviderOperation, context: Reconc
   if (context.hintedExecutionUid && operation.executionUid && context.hintedExecutionUid !== operation.executionUid) return anomaly("missing_execution", ownerId);
   if (!executionUid) return anomaly("missing_execution", ownerId);
 
-  if (operation.outcome === "refunded") return anomaly("refund_review", ownerId);
+  // Devolución: sólo la TOTAL se aplica sola; una parcial o ambigua queda para revisión manual y no toca el estado.
+  if (operation.outcome === "refunded" && operation.refundScope !== "full") return anomaly("refund_review", ownerId);
   if (operation.outcome === "other") return { kind: "ignore", reason: "unsupported_status" };
 
   const validation = validateAgainstCatalog({ planCode: operation.planReference, amountMinor: operation.amountMinor, currency: operation.currency });
@@ -77,13 +81,16 @@ export function reconcileOperation(operation: ProviderOperation, context: Reconc
     const map = { unknown_plan: "unknown_plan", inactive_plan: "inactive_plan", currency_mismatch: "currency_mismatch", amount_mismatch: "amount_mismatch" } as const;
     return anomaly(map[validation.reason], ownerId);
   }
-  if (!record.acceptablePlans.includes(validation.plan.code)) return anomaly("plan_not_expected", ownerId);
+  // Una devolución o un contracargo se refiere a un cobro YA hecho: el plan puede haber cambiado desde entonces.
+  const settled = operation.outcome === "refunded" || operation.outcome === "chargeback";
+  if (!settled && !record.acceptablePlans.includes(validation.plan.code)) return anomaly("plan_not_expected", ownerId);
   if (!operation.dueAt) return anomaly("missing_due_date", ownerId);
 
   return {
     kind: "fact",
     ownerId,
     providerPaymentId: operation.providerPaymentId,
+    audit: operation.outcome === "refunded" ? "refund_applied" : operation.outcome === "chargeback" ? "chargeback_review" : null,
     fact: { executionId: executionUid, outcome: operation.outcome, planCode: validation.plan.code, amountMinor: validation.plan.amountMinor, dueAt: operation.dueAt, occurredAt: operation.occurredAt },
   };
 }

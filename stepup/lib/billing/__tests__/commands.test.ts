@@ -14,7 +14,7 @@ const CUSTOMER = { email: "qa@example.com", name: "QA", identification: "2011122
 function setup(initial = snap({ status: "active", ...PAID })) {
   const store = new MemoryStore();
   store.seed(initial);
-  const provider = new FakeProviderAdapter(null);
+  const provider = new FakeProviderAdapter();
   const deps: CommandDeps = { store, provider, flags: { enabled: true, enforcement: false }, now: () => NOW };
   return { store, provider, deps };
 }
@@ -223,7 +223,7 @@ test("los mensajes de error son claros, en español y NUNCA muestran códigos in
       assert.doesNotMatch(message, forbidden, `${failure}: ${message}`);
     }
   }
-  assert.equal(ALL_BILLING_FAILURES.length, 9);
+  assert.equal(ALL_BILLING_FAILURES.length, 11);
 });
 
 test("checkout con un plan manipulado (código inventado, precio, objeto, inyección): se rechaza sin tocar la base ni el proveedor", async () => {

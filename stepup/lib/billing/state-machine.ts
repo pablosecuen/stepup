@@ -31,7 +31,7 @@ export const BILLING_STATUSES = [
 ] as const;
 export type BillingStatus = (typeof BILLING_STATUSES)[number];
 
-export const AUTOMATIC_TRIGGERS = ["payment_confirmed", "renewal_due", "payment_rejected", "grace_elapsed", "period_elapsed", "provider_ended"] as const;
+export const AUTOMATIC_TRIGGERS = ["payment_confirmed", "renewal_due", "payment_rejected", "grace_elapsed", "period_elapsed", "provider_ended", "chargeback_confirmed", "payment_voided"] as const;
 export const COMMAND_TRIGGERS = ["checkout_started", "cancel_requested", "reactivate_requested", "plan_change_requested", "grandfather_ended"] as const;
 export type AutomaticTrigger = (typeof AUTOMATIC_TRIGGERS)[number];
 export type CommandTrigger = (typeof COMMAND_TRIGGERS)[number];
@@ -71,6 +71,8 @@ export const TRANSITIONS: Table = deepFreeze({
     cancel_requested: ["cancel_at_period_end"],
     plan_change_requested: ["active"], // cambio de plan programado para el próximo período; no duplica la suscripción
     provider_ended: ["active"], // al final del período pasa a `expired` por `renewal_due` → ver `projectStatus`
+    chargeback_confirmed: ["limited"], // contracargo conciliado: modo limitado inmediato (y revisión)
+    payment_voided: ["pending"], // devolución total del único período pagado: la cuenta vuelve a no tener período
   },
   past_due: {
     payment_confirmed: ["active"],
@@ -78,6 +80,8 @@ export const TRANSITIONS: Table = deepFreeze({
     grace_elapsed: ["limited"],
     cancel_requested: ["cancel_at_period_end"],
     provider_ended: ["expired"],
+    chargeback_confirmed: ["limited"],
+    payment_voided: ["pending"],
   },
   grace_period: {
     payment_confirmed: ["active"],
@@ -85,12 +89,16 @@ export const TRANSITIONS: Table = deepFreeze({
     grace_elapsed: ["limited"],
     cancel_requested: ["cancel_at_period_end"],
     provider_ended: ["expired"],
+    chargeback_confirmed: ["limited"],
+    payment_voided: ["pending"],
   },
   limited: {
     payment_confirmed: ["active"],
     payment_rejected: ["limited"],
     cancel_requested: ["canceled"],
     provider_ended: ["expired"],
+    chargeback_confirmed: ["limited"], // repetición
+    payment_voided: ["pending"],
   },
   cancel_at_period_end: {
     period_elapsed: ["canceled"],
@@ -99,6 +107,7 @@ export const TRANSITIONS: Table = deepFreeze({
     payment_confirmed: ["cancel_at_period_end"], // un cobro aprobado después de cancelar se registra, no revive la suscripción
     payment_rejected: ["cancel_at_period_end"],
     provider_ended: ["cancel_at_period_end"],
+    chargeback_confirmed: ["limited"],
   },
   canceled: {
     checkout_started: ["pending"], // volver a suscribirse crea un intento nuevo
