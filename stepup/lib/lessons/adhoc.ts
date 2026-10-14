@@ -49,6 +49,11 @@ export function isAdhocClassHeld(outcome: AdhocOutcome, holidayException: boolea
   return false;
 }
 
+/** Fin de una clase: inicio + duración EXACTA en minutos, sin redondeos (cruza la medianoche sin ajustes). */
+export function adhocEndAt(startAtIso: string, durationMinutes: number): string {
+  return new Date(new Date(startAtIso).getTime() + durationMinutes * 60_000).toISOString();
+}
+
 export interface AdhocRegistrationInput {
   studentIds: string[];
   date: string; // YYYY-MM-DD

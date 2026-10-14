@@ -16,7 +16,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
-import { isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
+import { adhocEndAt, isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
 import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
 import { syncPerClassCharge } from "@/lib/repositories/payments";
@@ -140,7 +140,7 @@ export async function startAdhocRegistrationAction(input: StartAdhocRegistration
 
     const [hourStr, minuteStr] = input.time.split(":");
     const startAt = localDateTimeToInstantIso({ date: input.date, hour: Number(hourStr), minute: Number(minuteStr), timeZone: TIMEZONE });
-    const endAt = new Date(new Date(startAt).getTime() + input.durationMinutes * 60_000).toISOString();
+    const endAt = adhocEndAt(startAt, input.durationMinutes);
     const countsAsClass = isAdhocClassHeld(input.outcome, input.holidayException);
     const primary = activeStudents[0];
 

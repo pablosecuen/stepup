@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SkipLink } from "@/components/ui/skip-link";
+import { NumberWheelGuard } from "@/components/ui/number-wheel-guard";
 
 // Rediseño visual v1 (docs/design/web-v1/01-fundamentos.md): Hanken Grotesk para la interfaz y Fraunces para títulos, cifras
 // grandes y nombres. `next/font` las autoaloja (sin pedidos a Google al navegar; CSP `font-src 'self'`) y reserva el espacio
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-screen max-w-screen overflow-x-hidden bg-background font-sans text-textPrimary antialiased">
         <SkipLink />
         {children}
+        <NumberWheelGuard />
       </body>
     </html>
   );
