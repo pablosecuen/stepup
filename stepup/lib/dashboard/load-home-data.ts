@@ -4,7 +4,7 @@ import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
-import { loadCalendarViewBase, loadCalendarViewForRange } from "@/lib/calendar/view";
+import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { selectCurrentOrNextOccurrence, type LessonTimingStatus } from "@/lib/calendar/next-class";
@@ -83,14 +83,18 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // (Server Action) y la pantalla se refresca si se creó algo. Sólo los cargos con saldo pendiente (calculados en la base).
   // Series, excepciones y alumnos se leen UNA vez y alimentan las dos vistas del calendario (hoy y los últimos 90 días) y el resumen
   // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
-  const base = loadCalendarViewBase(ctx);
-  const [{ rules, students, exceptions }, todayItems, horizonLessons, pendingItems, balances] = await Promise.all([
-    base,
-    base.then((loaded) => loadCalendarViewForRange(ctx, new Date(dayStartIso), dayEndExclusive, loaded)),
+  // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
+  const dayStart = new Date(dayStartIso);
+  const [{ rules, students, exceptions }, todayLessonRows, horizonLessons, pendingLessonRows, balances] = await Promise.all([
+    loadCalendarViewBase(ctx),
+    listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
-    base.then((loaded) => loadCalendarViewForRange(ctx, pendingLookbackStart, now, loaded)),
+    listCalendarLessonsInRange(ctx, pendingLookbackStart.toISOString(), now.toISOString()),
     listOpenChargeBalances(ctx),
   ]);
+  const calendarBase = { rules, students, exceptions };
+  const todayItems = composeCalendarView(calendarBase, todayLessonRows, dayStart, dayEndExclusive);
+  const pendingItems = composeCalendarView(calendarBase, pendingLessonRows, pendingLookbackStart, now);
 
   // Ola 2: lo que depende de las clases pendientes.
   const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);

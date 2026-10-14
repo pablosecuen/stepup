@@ -138,13 +138,16 @@ test("Inicio y Resumen financiero leen series, excepciones y alumnos UNA vez y a
   const home = code("lib/dashboard/load-home-data.ts");
   assert.equal((home.match(/loadCalendarViewBase\(ctx\)/g) ?? []).length, 1, "una sola base");
   assert.doesNotMatch(home, /listRecurrenceRules\(|listRecurrenceExceptionsForRules\(|listStudents\(/, "Inicio ya no repite esas lecturas");
-  assert.match(home, /base\.then\(\(loaded\) => loadCalendarViewForRange\(ctx, new Date\(dayStartIso\), dayEndExclusive, loaded\)\)/);
-  assert.match(home, /base\.then\(\(loaded\) => loadCalendarViewForRange\(ctx, pendingLookbackStart, now, loaded\)\)/);
-  assert.match(home, /listOpenChargeBalances\(ctx\),\n  \]\);/, "los cobros salen en la misma ola");
+  // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y cada vista se compone cuando llega todo.
+  assert.match(home, /loadCalendarViewBase\(ctx\),\n\s+listCalendarLessonsInRange\(ctx, dayStart\.toISOString\(\), dayEndExclusive\.toISOString\(\)\),/);
+  assert.match(home, /listCalendarLessonsInRange\(ctx, pendingLookbackStart\.toISOString\(\), now\.toISOString\(\)\),\n\s+listOpenChargeBalances\(ctx\),\n  \]\);/, "los cobros salen en la misma ola");
+  assert.match(home, /const todayItems = composeCalendarView\(calendarBase, todayLessonRows, dayStart, dayEndExclusive\);/);
+  assert.match(home, /const pendingItems = composeCalendarView\(calendarBase, pendingLessonRows, pendingLookbackStart, now\);/);
+  assert.doesNotMatch(home, /base\.then\(/, "ninguna lectura espera a otra que no necesita");
   const overview = code("lib/dashboard/load-financial-overview.ts");
   assert.equal((overview.match(/loadCalendarViewBase\(ctx\)/g) ?? []).length, 1);
-  assert.equal((overview.match(/, loaded\)\)/g) ?? []).length, 2, "demanda y valor de la hora comparten la base");
-  assert.doesNotMatch(overview, /await loadCalendarViewForRange|await listLessonRegistrationsInRange\(ctx, rangeStartIso/, "sin esperas seguidas por lecturas independientes");
+  assert.equal((overview.match(/composeCalendarView\(calendarBase,/g) ?? []).length, 2, "demanda y valor de la hora comparten la base");
+  assert.doesNotMatch(overview, /await loadCalendarViewForRange|base\.then\(|await listLessonRegistrationsInRange\(ctx, rangeStartIso/, "sin esperas seguidas por lecturas independientes");
   const view = code("lib/calendar/view.ts");
   assert.match(view, /export async function loadCalendarViewBase\(/);
   assert.match(view, /base\?: CalendarViewBase/);

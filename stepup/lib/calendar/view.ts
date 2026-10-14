@@ -50,7 +50,11 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
   return composeCalendarView({ rules, exceptions, students }, lessons, rangeStart, rangeEnd);
 }
 
-function composeCalendarView(
+/**
+ * Arma la vista del calendario de un rango a partir de la base y de las clases de ESE rango. Es pura: quien necesite varios rangos
+ * lee las clases de todos a la vez (en paralelo con la base) y compone cada vista cuando llegan.
+ */
+export function composeCalendarView(
   { rules, exceptions, students }: CalendarViewBase,
   lessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
   rangeStart: Date,

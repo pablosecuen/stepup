@@ -2,7 +2,8 @@ import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { listAllCharges, listAllAllocations, listAllPayments } from "@/lib/repositories/payments";
 import { listLessonRegistrationsInRange, listRosterForRegistrationIds } from "@/lib/repositories/lesson-registrations";
-import { loadCalendarViewBase, loadCalendarViewForRange } from "@/lib/calendar/view";
+import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
+import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE, toDateKey } from "@/lib/payments/dates";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { resolveFinancialPeriodRange, comparePeriodValues, previousComparableRange, type FinancialPeriodPreset, type DateRange } from "@/lib/reports/period";
@@ -52,18 +53,21 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   // Todas las lecturas que NO dependen unas de otras salen juntas (antes eran seis esperas seguidas, cada una con su ida y vuelta
   // a la base): el resultado es exactamente el mismo.
   // Series, excepciones y alumnos se leen UNA vez para las dos vistas del calendario (demanda y valor de la hora).
-  const base = loadCalendarViewBase(ctx);
-  const [{ students }, charges, allocations, payments, registrationsInRange, demandItems, hourlyRangeItems, ownYearRegistrations] = await Promise.all([
-    base,
+  const [{ students, rules, exceptions }, charges, allocations, payments, registrationsInRange, demandLessons, hourlyLessons, ownYearRegistrations] = await Promise.all([
+    loadCalendarViewBase(ctx),
     listAllCharges(ctx),
     listAllAllocations(ctx),
     listAllPayments(ctx),
     listLessonRegistrationsInRange(ctx, rangeStartIso, rangeEndIso),
-    base.then((loaded) => loadCalendarViewForRange(ctx, demandStart, now, loaded)),
+    listCalendarLessonsInRange(ctx, demandStart.toISOString(), now.toISOString()),
     // Valor programado de la hora: TODA la agenda real del rango del preset (materializada + virtual).
-    base.then((loaded) => loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso), loaded)),
+    listCalendarLessonsInRange(ctx, new Date(rangeStartIso).toISOString(), new Date(rangeEndIso).toISOString()),
     rangeIsCurrentYear ? Promise.resolve(null) : listLessonRegistrationsInRange(ctx, yearStartIso, yearEndIso),
   ]);
+
+  const calendarBase = { rules, students, exceptions };
+  const demandItems = composeCalendarView(calendarBase, demandLessons, demandStart, now);
+  const hourlyRangeItems = composeCalendarView(calendarBase, hourlyLessons, new Date(rangeStartIso), new Date(rangeEndIso));
 
   const summary = buildPeriodFinancialSummary({
     charges,
