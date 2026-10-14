@@ -92,5 +92,5 @@ test("los escenarios de demostración son inventados, deterministas y sólo se r
 
 test("los requisitos de activación incluyen el secreto de los trabajos programados y no piden credenciales de Mobbex con el adaptador falso", () => {
   const result = checkBillingReadiness({}, { enabled: true, enforcement: false }, { realProvider: false });
-  assert.deepEqual(result.missing.map((item) => item.split(" ")[0]), ["SUPABASE_SERVICE_ROLE_KEY", "CRON_SECRET"]);
+  assert.deepEqual(result.missing.map((item) => item.split(" ")[0]), ["SUPABASE_SERVICE_ROLE_KEY", "CRON_SECRET", "BILLING_SUPPORT_EMAIL", "BILLING_LEGAL_REVIEWED=true"]);
 });

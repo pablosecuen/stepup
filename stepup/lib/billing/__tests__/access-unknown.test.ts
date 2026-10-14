@@ -181,6 +181,6 @@ test("requisitos de activación: lista sólo NOMBRES de variables faltantes, nun
   assert.ok(!JSON.stringify(partial).includes(secret));
   assert.ok(partial.missing.some((item) => item.startsWith("CRON_SECRET")), "un CRON_SECRET corto no alcanza");
   assert.ok(!partial.missing.some((item) => item.startsWith("MOBBEX")), "con el adaptador falso no se exigen credenciales de Mobbex");
-  const full = checkBillingReadiness({ SUPABASE_SERVICE_ROLE_KEY: "k", CRON_SECRET: "c".repeat(32), BILLING_GRANDFATHER_CUTOFF: CUTOFF, BILLING_STATE_COOKIE_SECRET: "d".repeat(32) }, { enabled: true, enforcement: true }, { realProvider: false });
+  const full = checkBillingReadiness({ SUPABASE_SERVICE_ROLE_KEY: "k", CRON_SECRET: "c".repeat(32), BILLING_GRANDFATHER_CUTOFF: CUTOFF, BILLING_STATE_COOKIE_SECRET: "d".repeat(32), BILLING_SUPPORT_EMAIL: "ayuda@ejemplo.test", BILLING_LEGAL_REVIEWED: "true" }, { enabled: true, enforcement: true }, { realProvider: false });
   assert.deepEqual(full, { ready: true, missing: [] });
 });

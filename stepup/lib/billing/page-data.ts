@@ -5,6 +5,8 @@ import { demoScenariosAllowed } from "./provider-selection";
 import { DEMO_NOW, demoScenario } from "./demo-scenarios";
 import { buildBillingView, buildPlanOptions, type BillingView, type PlanOptionView } from "./view";
 import type { ProviderCapabilities } from "./provider";
+import { resolveSupportContact, type SupportContact } from "./support";
+import { isLegalReviewed } from "./legal";
 
 /**
  * Datos de las pantallas de facturación. Con la facturación apagada devuelve `null` y la pantalla responde 404 (como si no existiera).
@@ -20,6 +22,8 @@ export interface BillingPageData {
   readonly demo: boolean;
   /** ¿Puede elegir un plan y pasar al pago? (alta o re-alta). */
   readonly canCheckout: boolean;
+  /** Correo de soporte configurado (`BILLING_SUPPORT_EMAIL`); `null` si falta o es inválido: no se dibuja ningún enlace. */
+  readonly support: SupportContact | null;
 }
 
 /**
@@ -47,18 +51,24 @@ export async function loadBillingPageData(searchParams?: { escenario?: string | 
   const scenario = demoScenariosAllowed(process.env) ? demoScenario(requested) : null;
   if (scenario) {
     const view = buildBillingView({ snapshot: scenario.snapshot, history: scenario.history, now: DEMO_NOW, capabilities, available: scenario.available });
-    return { view, options, capabilities, demo: true, canCheckout: view.actions.subscribe };
+    return { view, options, capabilities, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
   }
 
-  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, demo: false, canCheckout: false });
+  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, demo: false, canCheckout: false, support: resolveSupportContact(process.env) });
   if (!runtime.store) return unavailable();
   try {
     const { ownerId } = await requireAuthenticatedDbContext();
     const snapshot = await runtime.store.ensureAccount(ownerId);
     const history = await runtime.store.getHistory(ownerId, 24);
     const view = buildBillingView({ snapshot, history, now: runtime.now(), capabilities, available: true });
-    return { view, options, capabilities, demo: false, canCheckout: view.actions.subscribe };
+    return { view, options, capabilities, demo: false, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
   } catch {
     return unavailable();
   }
+}
+
+/** Datos de la página de condiciones: nulos con la facturación apagada (404). */
+export function loadLegalPageData(): { readonly support: SupportContact | null; readonly reviewed: boolean } | null {
+  if (!getBillingRuntime().flags.enabled) return null;
+  return { support: resolveSupportContact(process.env), reviewed: isLegalReviewed(process.env) };
 }

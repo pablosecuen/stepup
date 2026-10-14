@@ -3,9 +3,10 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { Button } from "@/components/ui/button";
+import { Button, linkClass } from "@/components/ui/button";
 import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import PrivateLink from "@/components/nav/private-link";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { changePlanAction, startCheckoutAction, type BillingActionResult } from "@/lib/actions/billing";
@@ -138,6 +139,9 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
               Tu documento viaja directo de nuestro servidor al servicio de cobro. No lo guardamos en TeacherFlow, no queda en ningún registro y se borra de esta pantalla apenas continuás. TeacherFlow nunca ve los datos de tu tarjeta.
             </span>
           </p>
+          <PrivateLink href="/facturacion/condiciones" className={linkClass()}>
+            Leer las condiciones de la suscripción
+          </PrivateLink>
         </section>
       ) : (
         <Notice tone="info" title="Cuándo se aplica">

@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 const { start } = require("./load.cjs");
 
 const PRE_M1 = "20261012100000_r8_retire_legacy_student_claims_and_enddate.sql";
-const M1_FILES = ["20261014100000_m1_billing_core.sql", "20261014110000_m1_billing_functions.sql", "20261015100000_m2_billing_ops.sql"];
+const M1_FILES = ["20261014100000_m1_billing_core.sql", "20261014110000_m1_billing_functions.sql", "20261014120000_m2_billing_ops.sql"];
 
 console.info = () => {}; // el registro seguro de la facturación no ensucia la salida de la batería
 console.warn = () => {};

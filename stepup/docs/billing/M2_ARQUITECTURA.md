@@ -29,7 +29,7 @@ Estado: **implementado y verificado en local, sin push, sin `db push`, sin deplo
 | Trabajos | `app/api/billing/cron/process`, `cron/reconcile`, `lib/billing/jobs.ts`, `processor.ts` | cola de avisos por lotes, **sondeo por suscriptor**, barrido del reloj, barrido global, retención, métricas sin datos personales |
 | Pantallas | `app/(app)/facturacion/{page,planes,resultado}`, `components/billing/*`, `lib/billing/view.ts` | planes, suscripción actual, historial, estados, cancelación, medio de pago, cambio de plan |
 | Acciones | `lib/actions/billing.ts` | checkout, cancelar, reactivar, cambiar plan, medio de pago; la cuenta sale de la sesión |
-| Base | `supabase/migrations/20261015100000_m2_billing_ops.sql` | sondeo, devoluciones/contracargos, registro fiscal, historial, operación |
+| Base | `supabase/migrations/20261014120000_m2_billing_ops.sql` | sondeo, devoluciones/contracargos, registro fiscal, historial, operación |
 | Adaptador | `providers/fake.ts` (completo), `providers/mobbex.ts` (cerrado, sólo lo documentado) | el falso implementa TODO el puerto; el real no sale a la red sin credenciales |
 | Eliminación | `lib/billing/account-deletion.ts` + paso opcional en `lib/account/delete-account-flow.ts` | cancelar y **confirmar** en el proveedor antes de borrar nada |
 
@@ -228,6 +228,8 @@ Nada de esto lo puedo suplir sin ustedes; M2 no depende de ello para estar compl
 9. **Prueba extremo a extremo en sandbox** con evidencia no sensible (crear, consultar, cancelar, estados, devolución).
 10. **Revisión visual en dispositivo real** (las capturas son del navegador de escritorio emulado).
 11. Antes de M3: decidir `BILLING_STATE_COOKIE_SECRET` y cómo se transporta el comprobante firmado de la última verificación.
+
+> **Actualización M3 (14/10/2026):** el enlace de soporte ya depende de `BILLING_SUPPORT_EMAIL` y hay textos mínimos en borrador (`/facturacion/condiciones`, `BILLING_LEGAL_REVIEWED`). Variables, pasos de sandbox y plan de migraciones: `M3_PREPARACION.md`.
 
 ## 14. Qué NO hace M2
 

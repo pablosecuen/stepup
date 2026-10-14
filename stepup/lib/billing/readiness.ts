@@ -1,4 +1,6 @@
 import type { BillingFlags } from "./flags.ts";
+import { isLegalReviewed } from "./legal.ts";
+import { resolveSupportContact } from "./support.ts";
 
 /**
  * Requisitos para encender la facturación o el control de acceso. Función PURA: sólo informa qué falta (nombres de variables,
@@ -18,6 +20,8 @@ export function checkBillingReadiness(env: Readonly<Record<string, string | unde
   const missing: string[] = [];
   if (!present(env, "SUPABASE_SERVICE_ROLE_KEY")) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (!present(env, "CRON_SECRET") || env.CRON_SECRET!.trim().length < 32) missing.push("CRON_SECRET (mínimo 32 caracteres)");
+  if (!resolveSupportContact(env)) missing.push("BILLING_SUPPORT_EMAIL (correo de soporte válido; lo define TeacherFlow)");
+  if (!isLegalReviewed(env)) missing.push("BILLING_LEGAL_REVIEWED=true (sólo después de que asesoría legal revise lib/billing/legal.ts)");
   if (options.realProvider) {
     for (const name of ["MOBBEX_API_KEY", "MOBBEX_ACCESS_TOKEN"]) if (!present(env, name)) missing.push(name);
   }

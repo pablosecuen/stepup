@@ -40,6 +40,7 @@ const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modu
   { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },
+  { match: /^app\/\(app\)\/facturacion\/condiciones\/page\.tsx$/, modules: new Set(["page-data", "legal"]) },
   { match: /^app\/api\/billing\/.+\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "jobs", "log"]) },
   { match: /^components\/billing\/[a-z-]+\.tsx$/, modules: new Set(["view", "redirect", "@/lib/actions/billing"]) },
 ];

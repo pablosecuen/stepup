@@ -1,5 +1,5 @@
 -- M1 + M2 — Rollback de la facturación. Elimina ÚNICAMENTE objetos `billing_*` (funciones, triggers y tablas creados por
--- 20261014100000_m1_billing_core.sql, 20261014110000_m1_billing_functions.sql y 20261015100000_m2_billing_ops.sql). No toca
+-- 20261014100000_m1_billing_core.sql, 20261014110000_m1_billing_functions.sql y 20261014120000_m2_billing_ops.sql). No toca
 -- `auth.users`, ni ninguna tabla, función o política de la aplicación. Idempotente (`if exists`) y válido con M1 solo o con M1 + M2.
 --
 -- DESTRUCTIVO para los datos de facturación: usarlo sólo antes de que existan cobros reales (o después de exportar

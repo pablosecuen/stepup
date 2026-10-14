@@ -3,6 +3,7 @@ import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { SubscriptionCard } from "@/components/billing/subscription-card";
 import { HistoryList } from "@/components/billing/history-list";
 import { BillingRules } from "@/components/billing/billing-rules";
+import { SupportCard } from "@/components/billing/support-card";
 import { loadBillingPageData } from "@/lib/billing/page-data";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function FacturacionPage({ searchParams }: { searchParams: 
         <SubscriptionCard view={data.view} demo={data.demo} />
         {data.view.state !== "unavailable" && <HistoryList rows={data.view.history} />}
         <BillingRules />
+        <SupportCard support={data.support} />
       </div>
     </div>
   );
