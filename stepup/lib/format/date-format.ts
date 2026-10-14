@@ -81,6 +81,13 @@ export function formatCivilMonth(value: string | null | undefined, fallback: str
   return `${MONTH_LONG[Number(match[2]) - 1]} de ${match[1]}`;
 }
 
+/** "octubre 2026" (mes y año, en minúscula) a partir de una clave civil `YYYY-MM-DD`; clave inválida → `fallback`. Encabezado del Calendario. */
+export function formatCivilMonthYear(dateKey: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const key = parseCivilDateKey(dateKey);
+  if (!key) return fallback;
+  return `${MONTH_LONG[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+}
+
 /**
  * Rango de días civiles, sin repetir lo que no cambia: "5 – 11 oct 2026", "28 sept – 4 oct 2026" y, si cruza de año,
  * "28 dic 2026 – 3 ene 2027". Extremos `YYYY-MM-DD`; si alguno es inválido o el fin es anterior al inicio → `fallback`.

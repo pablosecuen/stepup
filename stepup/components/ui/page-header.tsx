@@ -16,8 +16,12 @@ export const PAGE_WIDTH = {
 export const PAGE_TITLE_CLASS =
   "font-display text-[34px] font-medium leading-[1.06] tracking-[-0.03em] text-textPrimary [overflow-wrap:anywhere] max-[360px]:text-[30px] nav:text-[44px]";
 
-export function PageTitle({ children }: { children: ReactNode }) {
-  return <h1 className={PAGE_TITLE_CLASS}>{children}</h1>;
+/** Título reducido para pantallas donde el alto es escaso (Calendario): la misma serifa, sin el cuerpo de 44 px. */
+export const PAGE_TITLE_COMPACT_CLASS =
+  "font-display text-[28px] font-medium leading-[1.1] tracking-[-0.03em] text-textPrimary [overflow-wrap:anywhere] nav:text-[30px]";
+
+export function PageTitle({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  return <h1 className={compact ? PAGE_TITLE_COMPACT_CLASS : PAGE_TITLE_CLASS}>{children}</h1>;
 }
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {

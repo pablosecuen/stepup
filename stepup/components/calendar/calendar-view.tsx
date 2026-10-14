@@ -1,15 +1,16 @@
 import PrivateLink from "@/components/nav/private-link";
-import { ClipboardDocumentCheckIcon, ClockIcon, PlusIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
-import { PrivateButtonLink, linkClass } from "@/components/ui/button";
-import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
-import { Notice } from "@/components/ui/notice";
-import { visibleCalendarItems, type CalendarViewItem } from "@/lib/calendar/occurrences";
+import { ClipboardDocumentCheckIcon, ClockIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { linkClass } from "@/components/ui/button";
+import { PageTitle } from "@/components/ui/page-header";
+import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
-import { RealCalendarGrid } from "@/components/calendar/real-calendar-grid";
+import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 
 /**
- * Calendario (presentación): encabezado con los accesos a Series, Disponibilidad y Clases por registrar, «Nueva clase» como
- * acción principal, barra de período y la grilla (escritorio) o la agenda por día (móvil). La página resuelve los datos.
+ * Calendario (presentación). Arriba a la izquierda el título reducido y, debajo, Series, Disponibilidad y Clases por registrar;
+ * arriba a la derecha la navegación del período («‹ octubre 2026 ›»). Debajo, una fila de controles (Densidad · Semana/Día ·
+ * Nueva clase) y la grilla, que comienza enseguida. En escritorio la pantalla mide exactamente `100dvh` y la grilla ocupa el
+ * espacio que queda (la página no se desplaza); en móvil la página fluye normal con la agenda por día. La página resuelve los datos.
  */
 export function CalendarView({
   view,
@@ -27,11 +28,11 @@ export function CalendarView({
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
 }) {
   return (
-    <div className={PAGE_WIDTH.wide}>
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+    <div data-calendar-page className="mx-auto flex w-full max-w-[1180px] flex-col px-4 py-5 nav:h-dvh nav:px-6 nav:pb-4 nav:pt-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <PageTitle>Calendario</PageTitle>
-          <nav aria-label="Secciones del calendario" className="mt-1 flex flex-wrap items-center gap-x-4">
+          <PageTitle compact>Calendario</PageTitle>
+          <nav aria-label="Secciones del calendario" className="flex flex-wrap items-center gap-x-4">
             <PrivateLink href="/calendario/series" className={linkClass()}>
               <Squares2X2Icon className="h-4 w-4" aria-hidden />
               Series
@@ -46,26 +47,19 @@ export function CalendarView({
             </PrivateLink>
           </nav>
         </div>
-        <PrivateButtonLink href="/calendario/nueva" variant="accent">
-          <PlusIcon className="h-5 w-5" aria-hidden />
-          Nueva clase
-        </PrivateButtonLink>
+        <div className="w-full nav:w-auto">
+          <RealCalendarToolbar view={view} weekStartKey={weekStartKey} dayKey={dayKey} buildHref={buildHref} />
+        </div>
       </div>
 
-      <RealCalendarToolbar view={view} weekStartKey={weekStartKey} dayKey={dayKey} buildHref={buildHref} />
-      {visibleCalendarItems(items).length === 0 && (
-        <div className="mt-4">
-          <Notice tone="info">
-            {view === "week" ? "No hay clases esta semana." : "No hay clases este día."}{" "}
-            <PrivateLink href="/calendario/nueva" className={linkClass()}>
-              Programar una clase
-            </PrivateLink>
-          </Notice>
-        </div>
-      )}
-      <div className="mt-4">
-        <RealCalendarGrid dayKeys={dayKeys} items={items} />
-      </div>
+      <CalendarWorkspace
+        view={view}
+        dayKeys={dayKeys}
+        items={items}
+        weekHref={buildHref({ view: "week", week: weekStartKey })}
+        dayHref={buildHref({ view: "day", day: dayKey })}
+        newClassHref="/calendario/nueva"
+      />
     </div>
   );
 }

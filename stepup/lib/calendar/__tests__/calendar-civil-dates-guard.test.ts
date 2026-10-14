@@ -20,6 +20,10 @@ const GUARDED = [
   "components/calendar/calendar-view.tsx",
   "components/calendar/real-calendar-grid.tsx",
   "components/calendar/real-calendar-toolbar.tsx",
+  "components/calendar/calendar-workspace.tsx",
+  "components/calendar/calendar-view-switch.tsx",
+  "components/calendar/calendar-density-picker.tsx",
+  "lib/calendar/header.ts",
   "components/calendar/real-lesson-card.tsx",
   "components/calendar/real-lesson-detail-modal.tsx",
   "lib/calendar/layout.ts",
@@ -68,7 +72,12 @@ test("la página resuelve la ventana con resolveCalendarWindow y consulta con in
   assert.match(page, /loadCalendarViewForRange\(ctx, new Date\(rangeStartIso\), new Date\(rangeEndIso\)\)/);
   assert.match(page, /<CalendarView view=\{view\} weekStartKey=\{weekStartKey\} dayKey=\{dayKey\} dayKeys=\{dayKeys\}/);
   const view = stripComments(readFileSync(ROOT + "components/calendar/calendar-view.tsx", "utf8"));
-  assert.match(view, /<RealCalendarGrid dayKeys=\{dayKeys\}/);
+  assert.match(view, /<CalendarWorkspace\s+view=\{view\}\s+dayKeys=\{dayKeys\}/);
+  const workspace = stripComments(readFileSync(ROOT + "components/calendar/calendar-workspace.tsx", "utf8"));
+  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\}/);
+  const workspaceProps = /interface CalendarWorkspaceProps \{([\s\S]*?)\n\}/.exec(workspace)?.[1] ?? "";
+  assert.match(workspaceProps, /dayKeys:\s*string\[\]/);
+  assert.doesNotMatch(workspaceProps, /\bDate\b/, "las props del espacio de trabajo no pueden ser Date");
 });
 
 test("el primer render de la grilla no depende de la hora actual (estado `now` nace en null: sin diferencia servidor/cliente)", () => {

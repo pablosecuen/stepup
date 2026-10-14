@@ -26,7 +26,7 @@ export const END_HOUR = 22;
 /** Alto por hora de la densidad «Media» (la de partida; ver `density.ts`): las funciones de abajo reciben el de la densidad elegida. */
 export const HOUR_HEIGHT_PX = 64;
 export const TIME_COLUMN_WIDTH_PX = 48;
-export const DAY_COLUMN_MIN_WIDTH_PX = 148;
+export const DAY_COLUMN_MIN_WIDTH_PX = 116;
 /** Lado mínimo de todo objetivo táctil. */
 export const MIN_TARGET_PX = 44;
 /** Ancho mínimo de un carril: con más carriles la columna del día se ensancha en vez de comprimirse. */

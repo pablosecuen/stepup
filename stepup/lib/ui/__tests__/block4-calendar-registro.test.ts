@@ -42,7 +42,8 @@ test("la escala de color del calendario sigue CONGELADA y las tarjetas sólo la 
 
 test("Escritorio: grilla horaria; 320–819 px: agenda agrupada por día con los mismos datos y el mismo detalle (la grilla nunca se comprime)", () => {
   const grid = code("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /hidden overflow-x-auto pb-2 nav:block/, "la grilla sólo existe desde 820 px");
+  assert.match(grid, /data-calendar-region className="relative hidden min-h-0 flex-1 nav:block"/, "la grilla sólo existe desde 820 px");
+  assert.match(grid, /overflow-x-auto rounded-lg/, "la grilla se desplaza en horizontal dentro de su zona si hay muchos carriles");
   assert.match(grid, /flex flex-col gap-6 nav:hidden/, "la agenda sólo existe por debajo de 820 px");
   assert.equal([...grid.matchAll(/setSelected\(/g)].length >= 3, true, "cualquiera de las dos abre el mismo detalle");
   assert.match(grid, /<RealLessonDetailModal/);

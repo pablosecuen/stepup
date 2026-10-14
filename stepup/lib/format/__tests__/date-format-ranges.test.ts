@@ -123,9 +123,12 @@ test("consistencia: el servidor (UTC) y el navegador (Argentina y otras zonas) p
 
 test("cableado: el Calendario y el Resumen financiero usan el formateador único y la UI ya no capitaliza el texto", () => {
   const toolbar = source("components/calendar/real-calendar-toolbar.tsx");
-  assert.match(toolbar, /formatCivilWeek\(weekStartKey\)/, "el encabezado semanal sale de formatCivilWeek");
+  // El encabezado ya no repite el rango de la semana (lo dicen las columnas): muestra mes y año, y ese texto sale del formateador único.
+  assert.doesNotMatch(toolbar, /formatCivilWeek/, "el rango de la semana ya no se repite en el encabezado");
+  assert.match(toolbar, /calendarHeaderNav\(view, weekStartKey, dayKey\)/);
+  assert.match(source("lib/calendar/header.ts"), /formatCivilMonthYear\(calendarAnchorKey\(view, weekStartKey, dayKey\)\)/, "el mes y el año salen de formatCivilMonthYear");
   assert.doesNotMatch(toolbar, /\bcapitalize\b/, "text-transform: capitalize convertía 'de' en 'De' y 'oct' en 'Oct'");
-  assert.match(toolbar, /first-letter:uppercase/, "sólo la primera letra del rótulo del día va en mayúscula");
+  assert.doesNotMatch(toolbar, /uppercase/, "el mes va en minúscula");
 
   const civil = source("lib/calendar/civil-calendar.ts");
   assert.doesNotMatch(civil, /formatWeekRangeLabel/, "ya no existe un segundo formateador semanal");

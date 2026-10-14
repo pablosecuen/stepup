@@ -139,9 +139,13 @@ test("todo enlace de texto o botón del área privada y pública declara 44 px d
 
 test("los botones de iconos tienen el tamaño y la medida mínimos de 44 px", () => {
   const toolbar = code("components/calendar/real-calendar-toolbar.tsx");
-  assert.match(toolbar, /const ROUND_BUTTON =\s*"flex h-11 w-11 items-center justify-center/);
-  assert.equal((toolbar.match(/className=\{`min-h-11 min-w-11 \$\{ROUND_BUTTON\}`\}/g) ?? []).length, 2, "anterior y siguiente");
-  assert.match(toolbar, /aria-label=\{isWeek \? "Semana anterior" : "Día anterior"\}/);
+  assert.match(toolbar, /const ARROW_BUTTON =\s*"flex h-11 w-11 shrink-0 items-center justify-center/);
+  assert.equal((toolbar.match(/className=\{`min-h-11 min-w-11 \$\{ARROW_BUTTON\}`\}/g) ?? []).length, 2, "anterior y siguiente");
+  assert.match(toolbar, /aria-label=\{previousLabel\}/);
+  assert.match(toolbar, /aria-label=\{nextLabel\}/);
+  const header = code("lib/calendar/header.ts");
+  assert.match(header, /view === "week" \? "Semana anterior" : "Día anterior"/);
+  assert.match(header, /view === "week" \? "Semana siguiente" : "Día siguiente"/);
   assert.match(code("components/ui/dialog.tsx"), /aria-label="Cerrar" className="[^"]*flex h-11 w-11/, "el diálogo de la clase usa este botón de cierre");
   assert.match(code("components/dashboard/home-view.tsx"), /relative flex h-11 w-11 items-center justify-center rounded-full/);
 });
@@ -292,7 +296,7 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
     ["components/calendar/weekday-schedule-editor.tsx", /aria-pressed=\{cycleLengthWeeks === option\.value\}/],
     ["components/students/profile/reportes-tab.tsx", /aria-pressed=\{selectedMonths\.has\(month\)\}[\s\S]*<CheckIcon/],
     ["app/(app)/registro/nuevo/nuevo-registro-form.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],
-    ["components/calendar/real-calendar-toolbar.tsx", /aria-current=\{isWeek \? "true" : undefined\}[\s\S]*aria-current=\{!isWeek \? "true" : undefined\}/],
+    ["components/calendar/calendar-view-switch.tsx", /aria-current=\{isWeek \? "true" : undefined\}[\s\S]*aria-current=\{!isWeek \? "true" : undefined\}/],
     ["components/finance/financial-overview-view.tsx", /aria-current=\{selected \? "true" : undefined\}[\s\S]*\{selected && <CheckIcon/],
     ["components/students/student-form-fields.tsx", /peer sr-only[\s\S]*peer-checked:inline[\s\S]*✓/],
     ["components/calendar/real-calendar-grid.tsx", /\(hoy\)/],
