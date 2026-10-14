@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import type { CalendarViewItem } from "../occurrences";
-import { END_HOUR, HOUR_HEIGHT_PX, LANE_MIN_WIDTH_PX, MIN_TARGET_PX, START_HOUR, dayColumnMinWidth, layoutDayItems, type PositionedItem } from "../layout.ts";
+import { END_HOUR, HOUR_HEIGHT_PX, MIN_TARGET_PX, START_HOUR, cardWidthPx, layoutDayItems, type PositionedItem } from "../layout.ts";
 
 /**
  * Bloque 4 (corrección): grilla de escritorio con carriles. Ninguna clase queda tapada, el bloque visual conserva la hora y la
@@ -71,7 +71,8 @@ test("tres clases superpuestas: tres carriles; una cuarta posterior que no toca 
   const out = layout([lesson("c", "10:20", 60), lesson("a", "10:00", 90), lesson("b", "10:10", 60), lesson("d", "13:00", 60)]);
   assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 3], ["b", 1, 3], ["c", 2, 3], ["d", 0, 1]]);
   assertTargets(out);
-  assert.equal(dayColumnMinWidth(out), 3 * LANE_MIN_WIDTH_PX, "con tres carriles la columna se ensancha para que cada uno conserve su ancho");
+  // Los carriles dividen el ancho de la columna: NUNCA la ensanchan (cada carril mide un tercio menos su margen).
+  for (const column of [120, 160, 240]) assert.ok(Math.abs(3 * (cardWidthPx(column, 3) + 4) - column) < 1e-9, `${column}px: tres carriles se reparten la columna`);
 });
 
 test("cuatro o más superpuestas: todas visibles, un carril cada una", () => {
@@ -79,7 +80,7 @@ test("cuatro o más superpuestas: todas visibles, un carril cada una", () => {
   assert.equal(out.length, 5);
   assert.deepEqual(out.map((p) => p.lane), [0, 1, 2, 3, 4]);
   assert.ok(out.every((p) => p.laneCount === 5));
-  assert.equal(dayColumnMinWidth(out), 5 * LANE_MIN_WIDTH_PX);
+  assert.ok(Math.abs(5 * (cardWidthPx(200, 5) + 4) - 200) < 1e-9, "cinco carriles también se reparten la misma columna");
 });
 
 test("clases consecutivas que no se superponen: un solo carril, ancho completo", () => {
@@ -156,14 +157,15 @@ test("cableado: la grilla dibuja TODAS las clases posicionadas (sin filtros) y c
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
   const grid = read("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /positioned\.map\(\(positionedItem\) => \(\s*<RealLessonCard key=\{positionedItem\.item\.id\}/, "una tarjeta por clase, en el orden estable (también el de tabulación)");
-  assert.match(grid, /dayColumnMinWidth\(positionedByDay\.get\(dayKey\)/);
+  assert.match(grid, /positioned\.map\(\(positionedItem\) => \(\s*<RealLessonCard\s+key=\{positionedItem\.item\.id\}/, "una tarjeta por clase, en el orden estable (también el de tabulación)");
+  assert.doesNotMatch(grid, /dayColumnMinWidth|LANE_MIN_WIDTH_PX|minWidth/, "los carriles no ensanchan la columna");
+  assert.match(grid, /repeat\(\$\{dayKeys\.length\}, minmax\(0, 1fr\)\)/);
   const card = read("components/calendar/real-lesson-card.tsx");
   assert.match(card, /top: hitTop,\s*height: hitHeight,/, "el botón ocupa la zona interactiva");
   assert.match(card, /top: blockOffset, height, boxSizing/, "el bloque visual conserva su alto exacto");
   assert.match(card, /left: `calc\(\$\{\(lane \* 100\) \/ laneCount\}% \+ \$\{inset\}px\)`/);
   assert.match(card, /aria-label=\{ariaLabelOf\(/);
-  assert.match(card, /title=\{fullInfo\}/, "nombre, hora, modalidad y estado completos al pasar el puntero");
+  assert.match(card, /onTip\?\.\(\{ id: tipId, text: fullInfo/, "nombre, hora, modalidad y estado completos al pasar el puntero o enfocar");
   // La agenda móvil no cambió: sigue dibujando la misma lista, sin carriles.
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /lane|hitTop|blockOffset/);

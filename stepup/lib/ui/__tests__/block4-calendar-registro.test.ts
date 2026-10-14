@@ -42,9 +42,9 @@ test("la escala de color del calendario sigue CONGELADA y las tarjetas sólo la 
 
 test("Escritorio: grilla horaria; 320–819 px: agenda agrupada por día con los mismos datos y el mismo detalle (la grilla nunca se comprime)", () => {
   const grid = code("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /data-calendar-region className="relative hidden min-h-0 flex-1 nav:block"/, "la grilla sólo existe desde 820 px");
-  assert.match(grid, /overflow-x-auto rounded-lg/, "la grilla se desplaza en horizontal dentro de su zona si hay muchos carriles");
-  assert.match(grid, /flex flex-col gap-6 nav:hidden/, "la agenda sólo existe por debajo de 820 px");
+  assert.match(grid, /data-calendar-region className=\{`relative hidden min-h-0 flex-1 \$\{gridFits \? "nav:block" : ""\}`\}/, "la grilla sólo existe desde 820 px (y mientras sus columnas sean legibles)");
+  assert.match(grid, /overflow-x-hidden rounded-lg/, "la grilla nunca se desplaza en horizontal: los carriles dividen el ancho de la columna");
+  assert.match(grid, /flex flex-col gap-6 \$\{gridFits \? "nav:hidden" : /, "la agenda existe por debajo de 820 px y también cuando la grilla no entra");
   assert.equal([...grid.matchAll(/setSelected\(/g)].length >= 3, true, "cualquiera de las dos abre el mismo detalle");
   assert.match(grid, /<RealLessonDetailModal/);
   assert.match(grid, /\(positionedByDay\.get\(dayKey\) \?\? \[\]\)\.map\(\(p\) => p\.item\)/, "la agenda ordena igual que la grilla");
@@ -68,7 +68,7 @@ test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sól
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /\btruncate\b|text-ellipsis|line-clamp/, "la agenda nunca corta los textos con «…»");
   assert.match(row, /\[overflow-wrap:anywhere\]/);
-  assert.match(card, /const layout = height >= 40 \? "two" : height >= 22 \? "one" : "below";/, "un bloque corto sigue legible sin estirar su alto: el texto baja a la zona de toque");
+  assert.match(card, /cardPresentation\(\{ heightPx: height, widthPx: cardWidthPx\(columnWidthPx, laneCount\) \}\)/, "el texto se adapta al bloque real (completo, sólo título o sin texto), nunca se estira ni baja fuera de él");
 });
 
 test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día en cada paso, separa «Cancelar esta clase» y conserva las acciones y el foco entre pasos", () => {

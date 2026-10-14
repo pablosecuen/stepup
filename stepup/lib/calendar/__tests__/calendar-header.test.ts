@@ -53,6 +53,53 @@ test("el mes del encabezado sale de la fecha ancla: el día visible en Día, el 
   }
 });
 
+test("regla del mes (una sola, sin casos especiales): en Semana el mes del jueves — el que contiene más días — y en Día el del propio día; cruces de mes, de año y febrero bisiesto y no bisiesto", () => {
+  const monthOf = (view: "week" | "day", weekStart: string, day: string = weekStart) => calendarHeaderNav(view, weekStart, day).monthLabel;
+  // cruce de año: 28 dic 2026 – 3 ene 2027 (jueves 31/12 ⇒ diciembre) y 29 dic 2025 – 4 ene 2026 (jueves 1/1 ⇒ enero)
+  assert.equal(monthOf("week", "2026-12-28"), "diciembre 2026");
+  assert.equal(monthOf("week", "2027-01-04"), "enero 2027");
+  assert.equal(monthOf("week", "2025-12-29"), "enero 2026");
+  assert.equal(monthOf("week", "2024-12-30"), "enero 2025", "30 dic 2024 – 5 ene 2025: cinco días de enero");
+  assert.equal(monthOf("week", "2030-12-23"), "diciembre 2030", "una semana que termina el 29/12 no cruza");
+  // cruces de mes comunes
+  assert.equal(monthOf("week", "2026-09-28"), "octubre 2026");
+  assert.equal(monthOf("week", "2026-08-31"), "septiembre 2026");
+  assert.equal(monthOf("week", "2026-06-29"), "julio 2026", "29 jun – 5 jul: jueves 2/7");
+  assert.equal(monthOf("week", "2026-04-27"), "abril 2026", "27 abr – 3 may: jueves 30/4");
+  // febrero bisiesto (2028) y no bisiesto (2026, 2027)
+  assert.equal(monthOf("week", "2028-02-21"), "febrero 2028");
+  assert.equal(monthOf("week", "2028-02-28"), "marzo 2028", "28 feb – 5 mar 2028 (incluye el 29/02): jueves 2/3");
+  assert.equal(monthOf("week", "2026-02-23"), "febrero 2026", "23 feb – 1 mar 2026: jueves 26/2");
+  assert.equal(monthOf("week", "2026-03-02"), "marzo 2026");
+  assert.equal(monthOf("week", "2027-02-22"), "febrero 2027");
+  assert.equal(monthOf("week", "2027-03-01"), "marzo 2027");
+  // en Día: el mes del propio día, también en los bordes y en el día bisiesto
+  assert.equal(monthOf("day", "2026-12-28", "2026-12-31"), "diciembre 2026");
+  assert.equal(monthOf("day", "2026-12-28", "2027-01-01"), "enero 2027");
+  assert.equal(monthOf("day", "2028-02-28", "2028-02-29"), "febrero 2028");
+  assert.equal(monthOf("day", "2028-02-28", "2028-03-01"), "marzo 2028");
+  assert.equal(monthOf("day", "2027-02-22", "2027-02-28"), "febrero 2027");
+  assert.equal(monthOf("day", "2027-02-22", "2027-03-01"), "marzo 2027");
+  // propiedad: durante siete años de semanas el rótulo es SIEMPRE el mes con más días de la semana (y nunca hay empate: 7 es impar)
+  for (let offset = 0; offset < 7 * 53; offset++) {
+    const monday = addDaysToDateKey("2024-01-01", offset * 7); // 1/1/2024 es lunes
+    const counts = new Map<string, number>();
+    for (let d = 0; d < 7; d++) {
+      const month = addDaysToDateKey(monday, d).slice(0, 7);
+      counts.set(month, (counts.get(month) ?? 0) + 1);
+    }
+    const majority = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    assert.equal(calendarAnchorKey("week", monday, monday).slice(0, 7), majority, `semana de ${monday}`);
+    assert.equal(formatCivilMonthYear(calendarAnchorKey("week", monday, monday)), formatCivilMonthYear(`${majority}-15`), monday);
+  }
+  // la regla no tiene casos especiales por mes ni por año
+  const header = code("lib/calendar/header.ts");
+  assert.match(header, /view === "week" \? addDaysToDateKey\(weekStartKey, 3\) : dayKey/);
+  assert.doesNotMatch(header, /diciembre|enero|febrero|bisiest|getFullYear|\b12\b|\b2026\b|\b2027\b/i, "la regla sale del jueves, no de casos especiales");
+  assert.match(header, /formatCivilMonthYear\(/, "el texto sale del formateador único");
+  assert.doesNotMatch(code("components/calendar/real-calendar-toolbar.tsx"), /formatCivilWeek|formatCivilDayRange/, "el rango completo no vuelve al encabezado");
+});
+
 test("nombres accesibles de las flechas según la vista: Semana anterior/siguiente y Día anterior/siguiente", () => {
   const week = calendarHeaderNav("week", "2026-10-12", "2026-10-14");
   assert.equal(week.previousLabel, "Semana anterior");
@@ -105,7 +152,7 @@ test("fila de controles: Densidad · Semana/Día · Nueva clase en tres columnas
   assert.match(workspace, /nav:justify-self-end[\s\S]*<PrivateButtonLink href=\{newClassHref\} variant="accent"/);
   assert.match(workspace, /Nueva clase/);
   assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref="\/calendario\/nueva"/, "misma ruta de Nueva clase");
-  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} \/>/, "la grilla comienza inmediatamente debajo");
+  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} \/>/, "la grilla comienza inmediatamente debajo");
   assert.match(workspace, /readStoredCalendarDensity\(storage\)/);
   assert.match(workspace, /writeStoredCalendarDensity\(window\.localStorage, next\)/);
   assert.match(workspace, /useState<CalendarDensityKey>\(DEFAULT_CALENDAR_DENSITY\)/, "mismo valor por defecto en servidor y navegador");

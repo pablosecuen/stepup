@@ -26,11 +26,10 @@ export const END_HOUR = 22;
 /** Alto por hora de la densidad «Media» (la de partida; ver `density.ts`): las funciones de abajo reciben el de la densidad elegida. */
 export const HOUR_HEIGHT_PX = 64;
 export const TIME_COLUMN_WIDTH_PX = 48;
-export const DAY_COLUMN_MIN_WIDTH_PX = 116;
+/** Ancho mínimo de la columna de un día para que la grilla tenga sentido; con menos, el Calendario usa la agenda por día. */
+export const MIN_DAY_COLUMN_WIDTH_PX = 96;
 /** Lado mínimo de todo objetivo táctil. */
 export const MIN_TARGET_PX = 44;
-/** Ancho mínimo de un carril: con más carriles la columna del día se ensancha en vez de comprimirse. */
-export const LANE_MIN_WIDTH_PX = 68;
 const CARD_GAP_PX = 6;
 /** Sólo evita un bloque invisible para duraciones absurdas; cualquier clase real (≥ 5 min) usa su alto exacto. */
 const MIN_VISUAL_HEIGHT_PX = 4;
@@ -121,10 +120,47 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
   return boxes;
 }
 
-/** Ancho mínimo de la columna de un día: cada carril conserva al menos `LANE_MIN_WIDTH_PX`. */
-export function dayColumnMinWidth(positioned: PositionedItem[]): number {
-  const lanes = positioned.reduce((max, p) => Math.max(max, p.laneCount), 1);
-  return Math.max(DAY_COLUMN_MIN_WIDTH_PX, lanes * LANE_MIN_WIDTH_PX);
+/**
+ * Los carriles NUNCA ensanchan la columna del día: cada uno divide el ancho disponible. Lo que sí cambia es cuánto texto entra en
+ * la tarjeta (`cardPresentation`): si no cabe, pasa a un modo más compacto en vez de ensanchar la grilla o desbordar.
+ */
+export function cardInsetPx(laneCount: number): number {
+  return laneCount === 1 ? 4 : 2;
+}
+
+/** Ancho real de una tarjeta: su carril dentro de la columna, menos el margen a cada lado. */
+export function cardWidthPx(columnWidthPx: number, laneCount: number): number {
+  return Math.max(0, columnWidthPx / Math.max(1, laneCount) - cardInsetPx(laneCount) * 2);
+}
+
+/** Ancho de la columna de un día según el ancho útil de la zona de agenda (sin la columna de horas ni los bordes de las columnas). */
+export function dayColumnWidthPx(areaWidthPx: number, dayCount: number): number {
+  const borders = 3 + dayCount; // marco de la zona + borde izquierdo de cada día
+  return Math.max(0, (areaWidthPx - TIME_COLUMN_WIDTH_PX - borders) / Math.max(1, dayCount));
+}
+
+/** ¿La grilla horaria entra con columnas legibles? Si no, se usa la agenda por día (la misma de móvil). */
+export function gridFitsWidth(areaWidthPx: number, dayCount: number): boolean {
+  return areaWidthPx >= TIME_COLUMN_WIDTH_PX + MIN_DAY_COLUMN_WIDTH_PX * Math.max(1, dayCount);
+}
+
+/**
+ * Presentación de una tarjeta según su tamaño REAL (alto del bloque visual y ancho de su carril):
+ *  - `full`: título y datos (hora y estado), una línea cada uno;
+ *  - `title`: sólo el título, en una línea, truncado con elipsis;
+ *  - `block`: bloque de color sin texto visible (el nombre accesible y el tooltip siguen completos).
+ * Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto: el texto se adapta al bloque.
+ */
+export type CardPresentation = "full" | "title" | "block";
+export const FULL_CARD_MIN_HEIGHT_PX = 46;
+export const FULL_CARD_MIN_WIDTH_PX = 84;
+export const TITLE_CARD_MIN_HEIGHT_PX = 20;
+export const TITLE_CARD_MIN_WIDTH_PX = 44;
+
+export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
+  const { heightPx, widthPx } = input;
+  if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
+  return heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX ? "full" : "title";
 }
 
 export function currentTimeTop(now: Date, hourHeightPx: number = HOUR_HEIGHT_PX): number | null {

@@ -9,20 +9,23 @@ import {
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
   currentTimeTop,
-  dayColumnMinWidth,
+  dayColumnWidthPx,
+  gridFitsWidth,
   groupItemsByDayKey,
   layoutDayItems,
 } from "@/lib/calendar/layout";
 import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
 import { COMPACT_INITIAL_HOUR_HEIGHT_PX, fitHourHeight, hourHeightFor, type CalendarDensityKey, type HourFit } from "@/lib/calendar/density";
-import { RealLessonAgendaRow, RealLessonCard } from "./real-lesson-card";
+import { RealLessonAgendaRow, RealLessonCard, type CardTip } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 
 interface RealCalendarGridProps {
   dayKeys: string[]; // 7 claves civiles YYYY-MM-DD (semana) o 1 (día) — nunca Date
   items: CalendarViewItem[];
   density: CalendarDensityKey;
+  /** Avisa si la grilla horaria entra con columnas legibles (si no, se muestra la agenda por día también en escritorio). */
+  onGridFitChange?: (fits: boolean) => void;
 }
 
 /**
@@ -33,10 +36,13 @@ interface RealCalendarGridProps {
  * y la escala horaria fijos. Móvil (320–819 px): agenda agrupada por día — nunca se comprime la grilla. Las dos dibujan los mismos
  * datos y comparten el detalle de la clase; los colores salen de la escala congelada del calendario (`lib/calendar-theme.ts`).
  */
-export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
   const [fit, setFit] = useState<HourFit | null>(null);
+  const [areaWidthPx, setAreaWidthPx] = useState<number | null>(null);
+  const [tip, setTip] = useState<CardTip | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -50,12 +56,16 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
 
   // Espacio real de la zona de agenda y de lo que NO es el eje (encabezado de los días, bordes, barra horizontal si existe).
   useEffect(() => {
+    const wrap = wrapRef.current;
     const region = regionRef.current;
     const scroller = scrollerRef.current;
     const header = headerRef.current;
-    if (!region || !scroller || !header) return;
+    if (!wrap || !region || !scroller || !header) return;
     function measure() {
-      if (!region || !scroller || !header) return;
+      if (!wrap || !region || !scroller || !header) return;
+      // Ancho útil: decide si la grilla entra con columnas legibles y cuánto mide cada columna (y por lo tanto cada carril).
+      const widthPx = wrap.clientWidth;
+      if (widthPx > 0) setAreaWidthPx((previous) => (previous === widthPx ? previous : widthPx));
       const availablePx = region.clientHeight;
       if (availablePx <= 0) return; // zona oculta (móvil): se mide cuando vuelve a verse
       const next = fitHourHeight({ availablePx, fixedPx: header.offsetHeight + (scroller.offsetHeight - scroller.clientHeight), hours: HOURS.length });
@@ -63,6 +73,7 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
     }
     measure();
     const observer = new ResizeObserver(measure);
+    observer.observe(wrap);
     observer.observe(region);
     observer.observe(scroller);
     observer.observe(header);
@@ -73,6 +84,23 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
     };
   }, [density, dayKeys.length]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const gridFits = areaWidthPx === null ? true : gridFitsWidth(areaWidthPx, dayKeys.length);
+  const columnWidthPx = areaWidthPx === null ? 150 : dayColumnWidthPx(areaWidthPx, dayKeys.length);
+
+  useEffect(() => {
+    onGridFitChange?.(gridFits);
+  }, [gridFits, onGridFitChange]);
+
+  // El tooltip se cierra con Escape (sin mover el foco ni cerrar nada más).
+  useEffect(() => {
+    if (!tip) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setTip(null);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [tip]);
 
   const fixedHourHeight = hourHeightFor(density);
   const hourHeightPx = fixedHourHeight ?? fit?.hourHeightPx ?? COMPACT_INITIAL_HOUR_HEIGHT_PX;
@@ -87,12 +115,10 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
   // "Hoy" y el día de cada tarjeta se resuelven como claves civiles en la zona del calendario: igual en servidor (UTC) y navegador.
   const todayKey = now ? todayDateKey(now) : null;
   const itemsByDayKey = groupItemsByDayKey(visible);
-  // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta); un día con muchos
-  // carriles ensancha su columna en vez de comprimir las tarjetas.
+  // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta) y cada carril divide el
+  // ancho disponible: los carriles NUNCA ensanchan la columna ni la grilla; la tarjeta pasa a un modo más compacto si no le cabe el texto.
   const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [], hourHeightPx)]));
-  const columnWidths = dayKeys.map((dayKey) => dayColumnMinWidth(positionedByDay.get(dayKey) ?? []));
-  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px ${columnWidths.map((width) => `minmax(${width}px, 1fr)`).join(" ")}`;
-  const gridMinWidth = TIME_COLUMN_WIDTH_PX + columnWidths.reduce((sum, width) => sum + width, 0);
+  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
   const nowMs = (now ?? new Date()).getTime();
 
   const stateOf = (item: CalendarViewItem) => ({
@@ -102,16 +128,16 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
   });
 
   return (
-    <>
+    <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
       {/* Escritorio: zona de agenda (ocupa el espacio disponible) con la grilla horaria */}
-      <div ref={regionRef} data-calendar-region className="relative hidden min-h-0 flex-1 nav:block">
+      <div ref={regionRef} data-calendar-region className={`relative hidden min-h-0 flex-1 ${gridFits ? "nav:block" : ""}`}>
         <div
           ref={scrollerRef}
           data-calendar-scroller
           data-scrolls={scrollsVertically ? "true" : "false"}
-          className={`absolute inset-x-0 top-0 max-h-full overflow-x-auto rounded-lg border-[1.5px] border-border bg-surface shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
+          className={`absolute inset-x-0 top-0 max-h-full overflow-x-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
         >
-          <div style={{ minWidth: gridMinWidth }}>
+          <div>
             <div ref={headerRef} data-calendar-days-header className="sticky top-0 z-20 grid border-b-[1.5px] border-border bg-surface" style={{ gridTemplateColumns }}>
               <div className="sticky left-0 z-10 bg-surface" />
               {dayKeys.map((dayKey) => {
@@ -143,7 +169,7 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
                 const positioned = positionedByDay.get(dayKey) ?? [];
 
                 return (
-                  <div key={dayKey} className={`relative z-0 border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
+                  <div key={dayKey} className={`relative z-0 min-w-0 border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
                     {today && nowLineTop !== null && (
                       <div className="pointer-events-none absolute left-0 right-0 z-10" style={{ top: nowLineTop }}>
                         <div className="relative h-0.5" style={{ backgroundColor: CURRENT_TIME_COLOR }}>
@@ -153,7 +179,15 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
                     )}
 
                     {positioned.map((positionedItem) => (
-                      <RealLessonCard key={positionedItem.item.id} positioned={positionedItem} {...stateOf(positionedItem.item)} onSelect={() => setSelected(positionedItem.item)} />
+                      <RealLessonCard
+                        key={positionedItem.item.id}
+                        positioned={positionedItem}
+                        {...stateOf(positionedItem.item)}
+                        columnWidthPx={columnWidthPx}
+                        onSelect={() => setSelected(positionedItem.item)}
+                        onTip={setTip}
+                        describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined}
+                      />
                     ))}
                   </div>
                 );
@@ -163,8 +197,8 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
         </div>
       </div>
 
-      {/* Móvil: agenda agrupada por día */}
-      <div className="flex flex-col gap-6 nav:hidden">
+      {/* Móvil (y escritorio angosto, donde la grilla no entra con columnas legibles): agenda agrupada por día */}
+      <div data-calendar-agenda className={`flex flex-col gap-6 ${gridFits ? "nav:hidden" : "nav:min-h-0 nav:flex-1 nav:overflow-y-auto"}`}>
         {dayKeys.map((dayKey) => {
           const today = todayKey === dayKey;
           const dayItems = (positionedByDay.get(dayKey) ?? []).map((p) => p.item);
@@ -197,6 +231,17 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
         })}
       </div>
 
+      {tip && (
+        <div
+          id={TIP_ID}
+          role="tooltip"
+          className="pointer-events-none fixed z-[60] max-w-[280px] rounded-md bg-ink px-2.5 py-1.5 text-[12.5px] font-medium leading-snug text-background shadow-panel"
+          style={tooltipPosition(tip)}
+        >
+          {tip.text}
+        </div>
+      )}
+
       {selected && (
         <RealLessonDetailModal
           item={selected}
@@ -204,6 +249,16 @@ export function RealCalendarGrid({ dayKeys, items, density }: RealCalendarGridPr
           onClose={() => setSelected(null)}
         />
       )}
-    </>
+    </div>
   );
+}
+
+const TIP_ID = "calendar-card-tip";
+
+/** Debajo de la tarjeta (o arriba si no hay lugar), alineado a su borde izquierdo y dentro de la ventana. */
+function tooltipPosition(tip: CardTip): { left: number; top: number; transform?: string } {
+  const left = Math.max(8, Math.min(tip.rect.left, (typeof window === "undefined" ? 1200 : window.innerWidth) - 288));
+  const below = tip.rect.bottom + 6;
+  if (typeof window !== "undefined" && below + 64 > window.innerHeight) return { left, top: tip.rect.top - 6, transform: "translateY(-100%)" };
+  return { left, top: below };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import type { PositionedItem } from "@/lib/calendar/layout";
+import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -15,7 +16,19 @@ interface RealLessonCardProps {
   isActiveReplacement: boolean;
   /** Empezó y todavía no terminó (según el reloj del navegador). */
   isInProgress?: boolean;
+  /** Ancho real de la columna del día (px): con él y el alto del bloque se decide cuánto texto entra (`cardPresentation`). */
+  columnWidthPx: number;
   onSelect: () => void;
+  /** Tooltip con la información completa: al pasar el puntero o enfocar con el teclado (la grilla lo dibuja una sola vez). */
+  onTip?: (tip: CardTip | null) => void;
+  /** Id del tooltip visible de ESTA tarjeta (aria-describedby). */
+  describedBy?: string;
+}
+
+export interface CardTip {
+  id: string;
+  text: string;
+  rect: { left: number; top: number; bottom: number };
 }
 
 /** Textos de estado de una tarjeta, iguales en la grilla y en la agenda. */
@@ -52,8 +65,13 @@ function lessonTitle(item: CalendarViewItem): string {
  * Tarjeta de la grilla horaria (escritorio). El BLOQUE VISUAL (color, borde y alto) marca la hora y la duración reales; el
  * botón es la ZONA INTERACTIVA, de al menos 44 px de alto, que puede ser más alta que el bloque. Las clases que se tocan se
  * reparten en carriles (`lane`/`laneCount`): ninguna zona pisa a otra ni deja una clase sin acceso.
+ *
+ * El texto se adapta al tamaño real del bloque (`cardPresentation`): título y datos, sólo el título con elipsis, o un bloque de
+ * color sin texto. Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto, y nada se sale del bloque (todo va
+ * dentro de un contenedor con `overflow-hidden` y cada línea se trunca). El nombre accesible es siempre el completo, y la información
+ * completa se ve al pasar el puntero o enfocar con el teclado (tooltip).
  */
-export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isInProgress = false, onSelect }: RealLessonCardProps) {
+export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isInProgress = false, columnWidthPx, onSelect, onTip, describedBy }: RealLessonCardProps) {
   const { item, height, hitTop, hitHeight, blockOffset, lane, laneCount } = positioned;
   const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed, isActiveReplacement });
   const isCancelled = item.status === "cancelled";
@@ -68,27 +86,35 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const textColor = colors.textPrimary ?? CARD_TEXT_COLORS.primary;
   const secondaryColor = colors.textSecondary ?? CARD_TEXT_COLORS.secondary;
   const strike = isCancelled ? "line-through" : "none";
-  // Cuánto texto entra en el bloque exacto: dos líneas, una línea, o (bloque muy corto) debajo de él, en la zona de toque.
-  const layout = height >= 40 ? "two" : height >= 22 ? "one" : "below";
-  const inset = laneCount === 1 ? 4 : 2;
-  // Con varios carriles el ancho es corto: menos relleno y se corta sólo la palabra que no entra (nunca una que sí cabe).
+  const inset = cardInsetPx(laneCount);
+  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidthPx(columnWidthPx, laneCount) });
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
-  const wrap = laneCount === 1 ? "[overflow-wrap:anywhere]" : "[overflow-wrap:break-word]";
   const fullInfo = `${title} · ${timeLabel}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.join(" · ")}` : ""}`;
-  const oneLineText = (
-    <span className="block truncate text-[11px] font-bold leading-snug" style={{ color: textColor, textDecorationLine: strike }}>
-      {title} · {metaParts.join(" · ")}
-    </span>
-  );
+  const tipId = `calendar-tip-${item.id}`;
+
+  function showTip(target: HTMLElement) {
+    const rect = target.getBoundingClientRect();
+    onTip?.({ id: tipId, text: fullInfo, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } });
+  }
 
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() => {
+        onTip?.(null);
+        onSelect();
+      }}
+      onMouseEnter={(event) => showTip(event.currentTarget)}
+      onMouseLeave={() => onTip?.(null)}
+      onFocus={(event) => {
+        if (event.currentTarget.matches(":focus-visible")) showTip(event.currentTarget);
+      }}
+      onBlur={() => onTip?.(null)}
       data-grid-event
       data-lane={lane}
       data-lane-count={laneCount}
-      className="group absolute text-left"
+      data-presentation={presentation}
+      className="group absolute min-w-0 text-left"
       style={{
         top: hitTop,
         height: hitHeight,
@@ -96,34 +122,32 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         width: `calc(${100 / laneCount}% - ${inset * 2}px)`,
       }}
       aria-label={ariaLabelOf({ title, timeLabel, durationMinutes, item, isElapsed, isActiveReplacement, isInProgress })}
-      title={fullInfo}
+      aria-describedby={describedBy}
     >
       <span
         aria-hidden="true"
-        className="absolute inset-x-0 overflow-hidden rounded-md border-[1.5px] shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95"
+        className="absolute inset-x-0 min-w-0 overflow-hidden rounded-md border-[1.5px] shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none"
         style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border }}
-      />
-      {layout === "two" && (
-        <span className={`absolute inset-x-0 overflow-hidden ${padX} py-1`} style={{ top: blockOffset, height }}>
-          <span className="flex items-start gap-1 text-[12px] font-bold leading-snug" style={{ color: textColor, textDecorationLine: strike }}>
-            {isTraining && <BarbellIcon className="mt-0.5 h-3 w-3 shrink-0" />}
-            <span className={`min-w-0 ${wrap}`}>{title}</span>
+      >
+        {presentation === "full" && (
+          <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
+            <span className="flex min-w-0 items-center gap-1 text-[12px] font-bold leading-snug" style={{ color: textColor, textDecorationLine: strike }}>
+              {isTraining && <BarbellIcon className="h-3 w-3 shrink-0" />}
+              <span className="min-w-0 truncate">{title}</span>
+            </span>
+            <span className="mt-0.5 block min-w-0 truncate text-[11px] font-medium leading-snug" style={{ color: secondaryColor }}>
+              {metaParts.join(" · ")}
+            </span>
           </span>
-          <span className="mt-0.5 block text-[11px] font-medium leading-snug" style={{ color: secondaryColor }}>
-            {metaParts.join(" · ")}
+        )}
+        {presentation === "title" && (
+          <span className={`flex h-full min-w-0 items-center overflow-hidden ${padX}`}>
+            <span className="block min-w-0 truncate text-[11px] font-bold leading-none" style={{ color: textColor, textDecorationLine: strike }}>
+              {title}
+            </span>
           </span>
-        </span>
-      )}
-      {layout === "one" && (
-        <span className={`absolute inset-x-0 flex items-center overflow-hidden ${padX}`} style={{ top: blockOffset, height }}>
-          {oneLineText}
-        </span>
-      )}
-      {layout === "below" && (
-        <span className="absolute inset-x-0 flex items-center overflow-hidden px-1" style={{ top: blockOffset + height + 1, bottom: 0 }}>
-          {oneLineText}
-        </span>
-      )}
+        )}
+      </span>
     </button>
   );
 }

@@ -99,7 +99,7 @@ test("receptor de avisos: POST/GET/… delegan en una sola función; sin autenti
   assert.doesNotMatch(ingest, /verifyWebhook|signature/i);
 });
 
-test("trabajos programados: exigen el secreto con comparación en tiempo constante, aceptan GET (cron de la plataforma) y POST, y NO están en vercel.json (no se configura nada de Vercel en M2)", () => {
+test("trabajos programados: exigen el secreto con comparación en tiempo constante, aceptan GET (cron de la plataforma) y POST, y NO están declarados en la configuración de Vercel (los cron se declaran al activar)", () => {
   for (const file of ROUTES.slice(1)) {
     const source = code(file);
     assert.match(source, /bearerMatches\(request\.headers\.get\("authorization"\), process\.env\.CRON_SECRET\)/, file);
@@ -107,7 +107,28 @@ test("trabajos programados: exigen el secreto con comparación en tiempo constan
     assert.match(source, /export const POST = handle;/);
     assert.ok(source.indexOf("401") > source.indexOf("404"), `${file}: apagado → 404 antes que 401`);
   }
-  assert.equal(existsSync(join(ROOT, "vercel.json")), false, "no hay vercel.json: los cron se declaran al activar (ver docs)");
+  // `vercel.json` PUEDE existir (hoy fija las Vercel Functions en São Paulo), pero no habilita rutas, cron ni capacidades de facturación.
+  assert.ok(existsSync(join(ROOT, "vercel.json")), "vercel.json existe legítimamente para fijar la región de las funciones");
+  const vercelRaw = read("vercel.json");
+  const vercel = JSON.parse(vercelRaw) as Record<string, unknown>;
+  assert.deepEqual(vercel.regions, ["gru1"], "la región sigue siendo sólo gru1");
+  assert.deepEqual(Object.keys(vercel).sort(), ["$schema", "regions"], "sólo el esquema y la región: nada más se configura desde este archivo");
+  for (const key of ["crons", "rewrites", "redirects", "headers", "routes", "functions", "env", "build", "builds", "cleanUrls"]) {
+    assert.equal(vercel[key], undefined, `vercel.json no declara «${key}»: no habilita rutas, cron ni capacidades de facturación`);
+  }
+  assert.doesNotMatch(vercelRaw, /billing|facturaci|webhook|mobbex|\/api\//i, "vercel.json no menciona rutas ni capacidades de facturación");
+  // Ningún secreto ni credencial en la configuración versionada.
+  // (El ejemplo de cron es documentación inactiva: nombra la variable CRON_SECRET en un comentario pero no contiene ningún valor.)
+  for (const file of ["vercel.json", "next.config.mjs", "package.json", ".vercelignore"]) {
+    const config = read(file);
+    assert.doesNotMatch(config, /MOBBEX_|SERVICE_ROLE|service[_-]role|CRON_SECRET|API[_-]?KEY|ACCESS[_-]?TOKEN|sk_(?:live|test)_|eyJ[A-Za-z0-9_-]{10,}/i, `${file}: sin credenciales Mobbex, service role ni CRON_SECRET`);
+  }
+  // La facturación depende de sus interruptores y variables de entorno del servidor, no de la configuración de la plataforma.
+  const flags = read("lib/billing/flags.ts");
+  assert.match(flags, /const enabled = isOn\(env\.BILLING_ENABLED\);/);
+  assert.match(flags, /const enforcement = enabled && isOn\(env\.BILLING_ENFORCEMENT_ENABLED\);/);
+  for (const file of ROUTES.slice(1)) assert.match(code(file), /if \(!getBillingFlags\(\)\.enabled\) return NextResponse\.json\(\{ ok: false \}, \{ status: 404/, `${file}: apagada → 404`);
+  assert.match(code(ROUTES[0]), /if \(!getBillingFlags\(\)\.enabled\) return respond\(\{ status: 404, body: \{ ok: false \} \}\);/, "el webhook apagado → 404");
   assert.ok(existsSync(join(ROOT, "docs/billing/vercel-cron.example.json")));
   const example = JSON.parse(read("docs/billing/vercel-cron.example.json"));
   assert.deepEqual(example.crons.map((c: { path: string }) => c.path), ["/api/billing/cron/process", "/api/billing/cron/reconcile"]);

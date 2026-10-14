@@ -29,6 +29,8 @@ interface CalendarWorkspaceProps {
 export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref }: CalendarWorkspaceProps) {
   // La densidad por defecto al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
   const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
+  // Si el ancho efectivo no alcanza para la grilla, se usa la agenda por día (la de móvil) y Densidad no cambiaría nada: se oculta.
+  const [gridFits, setGridFits] = useState(true);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -55,7 +57,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
     <div className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
       <div className="grid gap-3 nav:grid-cols-[1fr_auto_1fr] nav:items-center nav:gap-4">
         <div className="nav:justify-self-start">
-          <CalendarDensityPicker value={density} onChange={chooseDensity} />
+          {gridFits && <CalendarDensityPicker value={density} onChange={chooseDensity} />}
         </div>
         <div className="nav:justify-self-center">
           <CalendarViewSwitch view={view} weekHref={weekHref} dayHref={dayHref} />
@@ -80,7 +82,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
       )}
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
-        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} />
+        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} />
       </div>
     </div>
   );
