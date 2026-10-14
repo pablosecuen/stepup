@@ -13,7 +13,7 @@ export const metadata = { title: "Disponibilidad · TeacherFlow" };
 
 export default async function DisponibilidadPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let availability;

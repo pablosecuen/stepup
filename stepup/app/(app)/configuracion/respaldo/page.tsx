@@ -13,7 +13,7 @@ export const metadata = { title: "Respaldo · TeacherFlow" };
 
 export default async function RespaldoPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   return (

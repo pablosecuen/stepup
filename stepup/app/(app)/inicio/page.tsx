@@ -17,7 +17,7 @@ export const metadata = { title: "Inicio · TeacherFlow" };
 
 export default async function InicioPage({ searchParams }: { searchParams: Promise<{ recuperada?: string }> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let data: HomeData;

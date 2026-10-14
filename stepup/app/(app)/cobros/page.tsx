@@ -13,7 +13,7 @@ export const metadata = { title: "Cobros · TeacherFlow" };
 
 export default async function CobrosPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let entries: CollectionsCenterEntry[];

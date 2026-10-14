@@ -14,7 +14,7 @@ export const metadata = { title: "Editar alumno · TeacherFlow" };
 
 export default async function EditarAlumnoPage({ params }: { params: Promise<{ id: string }> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   const { id } = await params;

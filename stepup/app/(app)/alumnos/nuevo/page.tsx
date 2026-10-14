@@ -19,7 +19,7 @@ export const metadata = { title: "Nuevo alumno · TeacherFlow" };
  */
 export default async function NuevoAlumnoPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let customLevels;

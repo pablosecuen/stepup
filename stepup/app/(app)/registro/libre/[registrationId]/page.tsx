@@ -27,7 +27,7 @@ export const metadata = { title: "Registrar clase · TeacherFlow" };
  */
 export default async function RegistroLibrePage({ params }: { params: Promise<{ registrationId: string }> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
   const { registrationId } = await params;
 

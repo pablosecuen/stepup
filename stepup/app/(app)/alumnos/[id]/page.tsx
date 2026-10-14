@@ -34,7 +34,7 @@ export default async function AlumnoProfilePage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   const { id } = await params;

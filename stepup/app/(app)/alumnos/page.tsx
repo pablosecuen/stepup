@@ -36,7 +36,7 @@ function buildQueryHref(params: AlumnosSearchParams, overrides: Partial<AlumnosS
 
 export default async function AlumnosPage({ searchParams }: { searchParams: Promise<AlumnosSearchParams> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   const params = await searchParams;

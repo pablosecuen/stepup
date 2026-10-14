@@ -19,7 +19,7 @@ interface CalendarioSearchParams {
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<CalendarioSearchParams> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   const params = await searchParams;

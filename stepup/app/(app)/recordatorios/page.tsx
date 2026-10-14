@@ -11,7 +11,7 @@ export const metadata = { title: "Recordatorios · TeacherFlow" };
 
 export default async function RecordatoriosPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let summary: RemindersCenterSummary;

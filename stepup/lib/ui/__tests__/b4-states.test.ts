@@ -65,7 +65,8 @@ test("Inicio NO tiene loading.tsx: su redirect de recuperación de sesión (B0) 
 test("el esqueleto es accesible: role=status, aria-busy, texto sólo para lectores y sin animación si se reduce el movimiento", () => {
   const skeleton = code("components/ui/page-skeleton.tsx");
   assert.match(skeleton, /role="status" aria-busy="true" aria-live="polite"/);
-  assert.match(skeleton, /<span className="sr-only">\{label\}<\/span>/);
+  assert.match(skeleton, /aria-labelledby="carga-titulo"/, "la región se nombra con la sección que carga");
+  assert.match(skeleton, /<span id="carga-titulo" className="sr-only">\s*\{label\}\s*<\/span>/);
   assert.match(skeleton, /motion-safe:animate-pulse/);
   assert.match(skeleton, /aria-hidden/, "los bloques decorativos no se leen");
   assert.match(code("components/ui/states.tsx"), /animate-spin[^"]*motion-reduce:animate-none/, "el spinner también respeta reducir movimiento");

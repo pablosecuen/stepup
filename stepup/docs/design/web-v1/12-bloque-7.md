@@ -39,8 +39,8 @@ Suite completa sobre copia LF: **1175 / 1175** (incluye autenticación y recuper
 ## Limitaciones conocidas
 
 1. ~~Contraste de la línea secundaria de las tarjetas «Cancelada» del calendario: 4,4955:1~~ — **corregido** antes del cierre, con autorización de Joaquín: el texto secundario pasa de `#9A6200` a `#7A4B00` (6,5373:1 sobre `#FFF1B8`, cálculo sin redondear). Fondo, borde, significado y geometría no cambian; `lib/ui/__tests__/calendar-card-contrast.test.ts` impide volver por debajo de 4,5:1.
-2. **Vista previa sin Supabase configurado:** `AuthNotConfigured` anida un segundo `<main>` dentro del shell. Sólo aparece en un entorno sin variables de Supabase (nunca en Production).
-3. Las pantallas de carga (esqueletos) no tienen título.
+2. ~~**Vista previa sin Supabase configurado:** `AuthNotConfigured` anida un segundo `<main>` dentro del shell.~~ — **corregido (14/10/2026):** dentro del shell privado la tarjeta se dibuja como `<div>` (`<AuthNotConfigured inShell />`); fuera del shell sigue siendo el `<main id="contenido">`, y la respuesta 503 de Production sin configuración también trae `id="contenido"`. Un solo `<main id="contenido">` en todas las pantallas (guardas en `lib/ui/__tests__/main-and-loading-guards.test.ts`).
+3. ~~Las pantallas de carga (esqueletos) no tienen título.~~ — **corregido (14/10/2026):** cada esqueleto nombra su sección como nombre accesible de la región (`aria-labelledby`, texto sólo para lectores de pantalla, sin encabezado nuevo para no duplicar el título real). Inicio sigue sin `loading.tsx` (recuperación B0).
 
 ## Rollback
 

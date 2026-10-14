@@ -63,7 +63,7 @@ Los dos hallazgos que se habían dejado como decisión de producto —clases sim
 - **Fuera del eje 08:00–22:00:** una clase que empieza antes o después del eje se ve pegada al borde (antes quedaba con alto 0); el rótulo y el detalle dicen la hora real.
 - Pruebas: `lib/calendar/__tests__/layout-lanes.test.ts` (mismo inicio y fin, superposición parcial, tres y cinco superpuestas, consecutivas, 15/30/45/60 min, dos de 30 y dos de 15 consecutivas, orden estable con entrada desordenada, propiedad sobre 60 conjuntos pseudoaleatorios: nunca desaparece una clase, nunca menos de 44 px, nunca se pisan) y el cableado de la grilla y la tarjeta.
 
-Sigue pendiente, como antes, que las pantallas de carga (esqueleto del Bloque 1) no tienen título: son transitorias y se anuncian con `role="status"`.
+Las pantallas de carga (esqueleto del Bloque 1) son transitorias y se anuncian con `role="status"`; desde el 14/10/2026 cada una nombra su sección (`aria-labelledby`, ver `12-bloque-7.md`).
 
 ## Verificación
 

@@ -20,6 +20,8 @@ interface AuthShellProps {
   layout?: "split" | "card";
   /** Sólo `card`: círculo de estado en lugar del ícono de la marca. */
   status?: { tone: StatusTone; icon: ComponentType<SVGProps<SVGSVGElement>> };
+  /** Sólo `card`: se dibuja DENTRO del shell privado, que ya tiene su propio `<main id="contenido">`: no se anida otro. */
+  inShell?: boolean;
 }
 
 const BRAND_POINTS = [
@@ -34,10 +36,12 @@ const BRAND_POINTS = [
  * formulario 5 veces"). Rediseño visual v1: dos mitades en escritorio
  * (docs/design/web-v1/02-componentes-y-navegacion.md §10) y tarjeta centrada para los estados.
  */
-export function AuthShell({ title, subtitle, children, footer, layout = "split", status }: AuthShellProps) {
+export function AuthShell({ title, subtitle, children, footer, layout = "split", status, inShell = false }: AuthShellProps) {
   if (layout === "card") {
+    const Wrapper = inShell ? "div" : "main";
+    const wrapperProps = inShell ? {} : { id: "contenido", tabIndex: -1 };
     return (
-      <main id="contenido" tabIndex={-1} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-5 py-8">
+      <Wrapper {...wrapperProps} className="focus:outline-none flex min-h-screen flex-col items-center justify-center px-5 py-8">
         <div className="w-full max-w-[440px]">
           <div className="mb-6 flex flex-col items-center gap-3 text-center">
             {status ? <StatusCircle tone={status.tone} icon={status.icon} /> : <Image src="/icon.png" alt="TeacherFlow" width={60} height={60} className="rounded-2xl" />}
@@ -53,7 +57,7 @@ export function AuthShell({ title, subtitle, children, footer, layout = "split",
             Volver al inicio
           </TextLink>
         </div>
-      </main>
+      </Wrapper>
     );
   }
 

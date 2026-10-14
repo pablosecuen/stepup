@@ -1,12 +1,15 @@
 /**
  * Esqueleto de carga de una pantalla privada (lo usan los `loading.tsx` de cada sección). Se muestra DENTRO del shell
- * (la navegación queda en pantalla) mientras el servidor prepara la página. Accesible: `role="status"` + `aria-busy` con
- * un texto sólo para lectores de pantalla; el brillo animado se apaga con "reducir movimiento".
+ * (la navegación queda en pantalla) mientras el servidor prepara la página. Accesible: `role="status"` + `aria-busy`, con el
+ * nombre de la sección como nombre accesible de la región (`aria-labelledby`, texto sólo para lectores de pantalla): ni se ve ni
+ * añade un segundo título (no es un encabezado) mientras el HTML en streaming trae también el contenido real. El brillo animado se apaga con "reducir movimiento".
  */
 export function PageSkeleton({ label }: { label: string }) {
   return (
-    <div role="status" aria-busy="true" aria-live="polite" className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-      <span className="sr-only">{label}</span>
+    <div role="status" aria-busy="true" aria-live="polite" aria-labelledby="carga-titulo" className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
+      <span id="carga-titulo" className="sr-only">
+        {label}
+      </span>
       <div aria-hidden className="motion-safe:animate-pulse">
         <div className="h-9 w-56 max-w-full rounded-md bg-paperDeep" />
         <div className="mt-3 h-4 w-80 max-w-full rounded-md bg-paperDeep/80" />

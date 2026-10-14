@@ -10,7 +10,7 @@ export const metadata = { title: "Resumen financiero · TeacherFlow" };
 
 export default async function ResumenFinancieroPage({ searchParams }: { searchParams: Promise<{ preset?: string }> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   const { preset: rawPreset } = await searchParams;

@@ -13,7 +13,7 @@ export const metadata = { title: "Series · TeacherFlow" };
 
 export default async function SeriesPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let rules;

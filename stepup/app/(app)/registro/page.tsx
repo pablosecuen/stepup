@@ -20,7 +20,7 @@ const LOOKBACK_DAYS = 90;
 
 export default async function RegistroPendientesPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let pending: ReturnType<typeof buildPendingLessons> = [];

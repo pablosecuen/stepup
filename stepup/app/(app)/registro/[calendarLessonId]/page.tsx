@@ -18,7 +18,7 @@ export const metadata = { title: "Registrar clase · TeacherFlow" };
 
 export default async function RegistroClasePage({ params }: { params: Promise<{ calendarLessonId: string }> }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
   const { calendarLessonId } = await params;
 

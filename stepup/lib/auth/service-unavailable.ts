@@ -13,7 +13,7 @@ export const SERVICE_UNAVAILABLE_HTML = `<!doctype html>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080808;color:#f5f5f5;font-family:system-ui,sans-serif}main{max-width:26rem;padding:2rem;text-align:center}h1{font-size:1.25rem}p{color:#b5b5b5;line-height:1.5}</style>
 </head>
 <body>
-<main>
+<main id="contenido">
 <h1>TeacherFlow no está disponible por ahora</h1>
 <p>Volvé a intentarlo en unos minutos. No hace falta hacer nada más.</p>
 </main>

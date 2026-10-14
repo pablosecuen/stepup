@@ -16,7 +16,7 @@ export default async function NuevaClasePage({
   searchParams: Promise<{ freedByLessonId?: string; date?: string; hour?: string; minute?: string; duration?: string; modality?: string }>;
 }) {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
   const params = await searchParams;
 

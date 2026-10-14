@@ -18,7 +18,7 @@ export const metadata = { title: "Clase no programada · TeacherFlow" };
  */
 export default async function RegistroNuevoPage() {
   if (!isSupabaseConfigured()) {
-    return <AuthNotConfigured />;
+    return <AuthNotConfigured inShell />;
   }
 
   let activeStudents: { id: string; name: string; level: string }[] = [];
