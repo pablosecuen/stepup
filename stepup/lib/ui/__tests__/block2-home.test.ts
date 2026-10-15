@@ -29,10 +29,11 @@ test("Inicio no agrega consultas, campos ni funciones: la vista sólo lee lo que
 });
 
 test("Inicio: los textos de una clase no se truncan (se parten sin desbordar) y el estado se dice con texto", () => {
-  const view = code(VIEW);
+  const view = code(VIEW) + code("components/dashboard/today-agenda.tsx");
   assert.doesNotMatch(view, /\btruncate\b|text-ellipsis|line-clamp/, "una etiqueta como «Clase individual» nunca se corta con «…»");
   assert.match(view, /\[overflow-wrap:anywhere\]/, "los nombres y títulos largos se parten");
-  assert.match(view, /\{live \? "En curso" : "Sigue"\}/, "En curso / Sigue con texto, no sólo color");
+  assert.match(view, /label: "En curso", tone: "accent"/, "En curso con texto, no sólo color");
+  assert.match(view, /label: "Sigue", tone: "warn"/, "Sigue con texto, no sólo color");
   assert.match(view, /sr-only">hasta </, "la hora de fin se lee «hasta»");
 });
 
@@ -49,7 +50,7 @@ test("Inicio sigue sin loading.tsx (la recuperación B0 es un redirect HTTP real
 
 const ALLOWED_FIELDS = new Set([
   "localHour", "todayDateKey", "todayLessons", "nextClass", "pendingLessons", "emptyClasses", "remindersSummary", "collectionsUrgency",
-  "studentCount", "activeStudentCount",
+  "studentCount", "activeStudentCount", "todayAgenda", "todayAllItems", "nowIso",
 ]);
 
 function data(source: string): string[] {

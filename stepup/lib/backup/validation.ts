@@ -335,11 +335,11 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
   const excludedCollections: ExcludedCollectionsSummary = {
     studentStatusHistory: {
       count: profilesArray.reduce((sum, p) => sum + (Array.isArray(p?.statusHistory) ? p.statusHistory.length : 0), 0),
-      reason: "Sin clave de identidad estable todavía en el formato móvil (StatusHistoryEntry no tiene id) — excluida de Fase 9 v1.",
+      reason: "Sin clave de identidad estable todavía en el formato de la copia (StatusHistoryEntry no tiene id) — excluida de Fase 9 v1.",
     },
     studentPriceHistory: {
       count: profilesArray.reduce((sum, p) => sum + (Array.isArray(p?.priceHistory) ? p.priceHistory.length : 0), 0),
-      reason: "Sin clave de identidad estable todavía en el formato móvil (PriceHistoryEntry no tiene id) — excluida de Fase 9 v1.",
+      reason: "Sin clave de identidad estable todavía en el formato de la copia (PriceHistoryEntry no tiene id) — excluida de Fase 9 v1.",
     },
     lessonRegistrationEditHistory: {
       count: 0, // el backup móvil no expone editHistory como colección propia contable sin recorrer cada lección; se documenta en 0 hasta que se decida importar (fuera de v1).

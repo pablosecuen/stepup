@@ -14,6 +14,7 @@ import { buildCollectionsCenterEntriesFromBalances, type CollectionsCenterEntry 
 import { summarizeCollectionsUrgency, type CollectionsUrgencySummary } from "@/lib/payments/collections-urgency";
 import { buildRemindersCenterSummary, type RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
 import { instantMinutesOfDay } from "@/lib/calendar/civil-calendar";
+import { buildTodayAgenda, type TodayAgendaEntry } from "@/lib/dashboard/today-agenda";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
@@ -32,8 +33,15 @@ export interface HomeData {
   activeStudentCount: number;
   /** `true` si lo ya cargado muestra alguna clase o serie; `false` NO prueba que no exista ninguna (ver `loadHomeWelcome`). */
   hasClassSignal: boolean;
+  /** Instante de la carga (el reloj con el que se calcularon los estados de «Clases de hoy»). */
+  nowIso: string;
   nextClass: HomeNextClass | null;
+  /** Clases de hoy NO canceladas (alimentan el contador y «próxima clase»). */
   todayLessons: CalendarViewItem[];
+  /** Agenda completa del día civil de Argentina, cronológica y sin límite (incluye las canceladas que el calendario muestra). */
+  todayAgenda: TodayAgendaEntry[];
+  /** Todo lo compuesto para hoy (para decidir sobre reusar el horario de una clase cancelada, igual que el Calendario). */
+  todayAllItems: CalendarViewItem[];
   emptyClasses: EmptyClassesSummary;
   pendingLessons: PendingLessonItem[];
   collectionEntries: CollectionsCenterEntry[];
@@ -101,6 +109,8 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds);
 
   const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
+  // Misma lectura acotada al día (una sola consulta): sin una consulta por clase ni historia que filtrar en el cliente.
+  const todayAgenda = buildTodayAgenda(todayItems, now, todayDateKey);
   const nextClassSelection = selectCurrentOrNextOccurrence(todayLessons, now);
   const nextClass: HomeNextClass | null = nextClassSelection ? { item: nextClassSelection.occurrence, timing: nextClassSelection.timing } : null;
 
@@ -147,8 +157,11 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     studentCount: students.length,
     activeStudentCount: students.filter((student) => student.status === "activo").length,
     hasClassSignal: rules.length > 0 || todayItems.length > 0 || horizonLessons.length > 0 || pendingItems.length > 0,
+    nowIso: now.toISOString(),
     nextClass,
     todayLessons,
+    todayAgenda,
+    todayAllItems: todayItems,
     emptyClasses,
     pendingLessons,
     collectionEntries,

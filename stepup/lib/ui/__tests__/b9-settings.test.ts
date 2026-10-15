@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
@@ -58,18 +58,15 @@ function sections(): Array<{ id: string; tone: string; body: string }> {
   }));
 }
 
-test("estructura: Cuenta → Preferencias → Acciones sensibles, con un índice que apunta a cada sección y sin «Sesión y datos»", () => {
+test("estructura: Cuenta → Preferencias → Acciones sensibles, sin índice lateral (con tres secciones cortas no aporta) ni «Sesión y datos»", () => {
   const found = sections();
   assert.deepEqual(
     found.map((s) => s.id),
     ["cuenta", "preferencias", "acciones-sensibles"],
   );
-  const index = [...code(VIEW).matchAll(/\{ id: "([^"]+)", label: "([^"]+)", icon: \w+ \}/g)].map((m) => m[1]);
-  assert.deepEqual(index, found.map((s) => s.id), "el índice enlaza a todas las secciones, en el mismo orden");
-  assert.match(code(VIEW), /<SettingsIndex items=\{SECTIONS\} \/>/);
-
+  assert.doesNotMatch(code(VIEW), /SettingsIndex|SECTIONS|Secciones de Configuración/, "no queda una columna lateral con enlaces a secciones");
   const ui = code("components/account/settings-ui.tsx");
-  assert.match(ui, /<nav aria-label="Secciones de Configuración"/);
+  assert.doesNotMatch(ui, /SettingsIndex|SettingsLinkRow|SettingsLinkCard/, "se retiraron las piezas del índice y de las tarjetas-enlace");
   assert.match(ui, /<section id=\{id\} aria-labelledby=\{`\$\{id\}-titulo`\} className="scroll-mt-20">/, "cada sección es una región con su título y no queda tapada por el encabezado fijo");
   assert.match(ui, /<h2 id=\{`\$\{id\}-titulo`\}/, "el título de cada sección es un h2");
   assert.match(ui, /<h3 className="text-\[15px\] font-\[650\] text-textPrimary">\{title\}<\/h3>/, "el título de cada fila es un h3");
@@ -82,14 +79,19 @@ test("encabezado y contenedor: «Configuración» / «Tu cuenta, preferencias y 
   assert.doesNotMatch(page, /PAGE_WIDTH\.(medium|narrow)/);
 });
 
-test("las tarjetas se organizan en dos o tres columnas cuando el contenido lo permite y vuelven a una en móvil; los formularios cortos no se estiran", () => {
+test("Cuenta y Contraseña en dos tarjetas superiores; Políticas de cobro y Acciones sensibles con ancho proporcionado a su contenido (no se estiran)", () => {
   const view = code(VIEW);
   const columns = [...view.matchAll(/columns="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(columns, ["lg:grid-cols-2", "min-[560px]:grid-cols-2 xl:grid-cols-3", "lg:grid-cols-2"], "Cuenta y Acciones en dos columnas, Preferencias en dos o tres");
+  assert.deepEqual(columns, ["lg:grid-cols-2", "max-w-[480px]", "max-w-[560px]"], "Cuenta en dos columnas; políticas (~480 px) y acciones sensibles (~560 px) compactas y a la izquierda");
   assert.ok(columns.every((c) => !/^grid-cols-[2-9]/.test(c)), "ninguna grilla de varias columnas desde el ancho móvil (por defecto una columna)");
+  const account = sections()[0].body;
+  assert.equal((account.match(/<SettingsCard>/g) ?? []).length, 2, "dos tarjetas: la cuenta con su nombre visible y la contraseña");
+  assert.match(account, /title="Nombre visible"/);
+  assert.match(account, /title="Contraseña"/);
+  assert.ok(account.indexOf("Nombre visible") < account.indexOf('title="Contraseña"'));
   const ui = code("components/account/settings-ui.tsx");
   assert.match(ui, /<div className=\{`mt-3 grid items-start gap-4 \$\{columns\}`\}>/, "una columna por defecto; items-start: una tarjeta corta no se estira a la altura de la vecina");
-  assert.doesNotMatch(view, /max-w-\[|w-full max-w/, "las tarjetas ocupan su celda: el ancho sale de la grilla, no de topes por pantalla");
+  assert.doesNotMatch(view.replace(/columns="[^"]+"/g, ""), /max-w-\[|w-full max-w/, "el único tope de ancho está en el contenedor de cada sección corta (columns), no en las tarjetas");
 });
 
 test("las acciones sensibles están juntas, al final, con tono de peligro, y ninguna otra sección las contiene", () => {
@@ -122,13 +124,19 @@ test("Configuración no contiene 50/30/20, respaldo, app móvil ni dispositivos:
   assert.doesNotMatch(all, /Respaldo|Copias? de seguridad|respaldo|configuracion\/respaldo|ArchiveBox/, "la copia de seguridad ya no está en la interfaz de Configuración");
   assert.doesNotMatch(all, /app m[óo]vil|celular/i, "ninguna mención a una app móvil");
   assert.doesNotMatch(all, /Dispositivo autorizado|sesión del dispositivo|Sesiones abiertas|active_sessions|getActiveSession/, "no se afirma controlar sesiones que la base no distingue");
+  assert.doesNotMatch(all, /Disponibilidad|Niveles personalizados|calendario\/disponibilidad|\/alumnos/, "Disponibilidad se administra desde Calendario y los niveles desde Alumnos");
   assert.doesNotMatch(all, /BudgetDistributionForm|getBudgetDistributionSettings/);
   assert.match(code(VIEW), /Los recargos por atraso están desactivados\. El semáforo de mora usa plazos fijos\./, "dice la verdad sobre los recargos (B3)");
   assert.doesNotMatch(all, /Perfil de la profesora|Gestionar disponibilidad →|Gestionar desde Alumnos →/, "sin flechas de texto: el renglón entero es el enlace");
   assert.doesNotMatch(code(VIEW), />\s*\{[^}]*(deviceId|generation|checksum)/i, "ningún dato técnico en pantalla");
-  // Preferencias: sólo Disponibilidad, Niveles personalizados y Políticas de cobro
+  // Preferencias: sólo Políticas de cobro
   const preferences = sections().find((s) => s.id === "preferencias")!.body;
-  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Disponibilidad", "Niveles personalizados", "Políticas de cobro"]);
+  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Políticas de cobro"]);
+  // Siguen accesibles desde donde se administran: Disponibilidad desde Calendario y los niveles desde Alumnos (sus rutas y su lógica no se tocan)
+  assert.match(code("components/calendar/calendar-view.tsx"), /href="\/calendario\/disponibilidad"/);
+  assert.equal(existsSync(join(ROOT, "app/(app)/calendario/disponibilidad/page.tsx")), true);
+  assert.match(code("components/students/students-list-view.tsx"), /<ManageLevelsSection customLevels=\{customLevels\} \/>/);
+  assert.match(code("components/students/manage-levels-section.tsx"), /Niveles personalizados \(\$\{customLevels\.length\}\)|Niveles personalizados \(/);
 });
 
 test("comportamiento preservado: las mismas acciones, los mismos destinos y la misma confirmación fuerte", () => {
@@ -145,8 +153,6 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
   assert.match(del, /deleteOwnAccountAction\(\{ password, confirmation: confirmText, captchaToken \}\)/, "R4: reautenticación con contraseña");
   assert.match(del, /Se va a eliminar tu cuenta y TODOS tus datos \(alumnos, clases, pagos, reportes y sus archivos PDF\) de forma permanente/);
 
-  const page = code(VIEW);
-  for (const href of ["/calendario/disponibilidad", "/alumnos"]) assert.match(page, new RegExp(`href="${href}"`));
   const loaders = code(PAGE);
   assert.match(loaders, /getTeacherProfile\(ctx\)/);
   assert.doesNotMatch(loaders, /getBudgetDistributionSettings|getActiveSession/, "la página ya no lee la distribución ni la sesión autorizada");
@@ -179,7 +185,6 @@ test("botones: los cuatro estilos compartidos son los del sistema (44 px) y ning
     for (const tag of openingTags(source, "Button")) assert.doesNotMatch(tag, /className="[^"]*\b(px-\d|py-\d)/, file + ": botón con padding propio");
   }
   assert.match(ui, /export const FIELD_CLASS = inputClass;/, "campos con borde de control (3:1)");
-  assert.match(ui, /min-h-\[88px\] min-w-0 items-start gap-3 rounded-lg/, "las tarjetas-enlace miden más de 44 px y pueden encogerse");
 });
 
 test("teclado y foco: las confirmaciones son diálogos (foco atrapado, Escape y foco devuelto al botón); el resultado se anuncia", () => {
