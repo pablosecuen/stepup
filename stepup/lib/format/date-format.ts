@@ -88,6 +88,18 @@ export function formatCivilMonthYear(dateKey: string | null | undefined, fallbac
   return `${MONTH_LONG[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
 }
 
+/** «oct» (mes abreviado) a partir de un mes civil `YYYY-MM`; cualquier otra cosa → `fallback`. Rótulos de gráficos. */
+export function formatCivilMonthAbbrev(value: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const match = value ? MONTH_KEY.exec(value) : null;
+  return match ? MONTH_SHORT[Number(match[2]) - 1] : fallback;
+}
+
+/** «octubre 2026» a partir de un mes civil `YYYY-MM`; cualquier otra cosa → `fallback`. */
+export function formatCivilMonthLongYear(value: string | null | undefined, fallback: string = DEFAULT_FALLBACK): string {
+  const match = value ? MONTH_KEY.exec(value) : null;
+  return match ? `${MONTH_LONG[Number(match[2]) - 1]} ${match[1]}` : fallback;
+}
+
 /**
  * Rango de días civiles, sin repetir lo que no cambia: "5 – 11 oct 2026", "28 sept – 4 oct 2026" y, si cruza de año,
  * "28 dic 2026 – 3 ene 2027". Extremos `YYYY-MM-DD`; si alguno es inválido o el fin es anterior al inicio → `fallback`.

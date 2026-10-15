@@ -43,7 +43,7 @@ export function SeriesListView({ rules, students, nowIso }: { rules: RecurrenceR
       .join(" · ") || "Sin horario";
 
   return (
-    <div className={PAGE_WIDTH.medium}>
+    <div className={PAGE_WIDTH.wide}>
       <BackLink href="/calendario">Volver al Calendario</BackLink>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">

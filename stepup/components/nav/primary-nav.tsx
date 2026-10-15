@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 import {
+  Cog6ToothIcon,
+  CreditCardIcon,
   HomeIcon,
   UsersIcon,
   CalendarDaysIcon,
@@ -17,9 +19,8 @@ import {
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
 } from "@heroicons/react/24/solid";
 import PrivateLink from "@/components/nav/private-link";
-import { AccountMenu } from "@/components/nav/account-menu";
+import { SignOutButton } from "@/components/nav/sign-out-button";
 import { BrandMark } from "@/components/ui/brand";
-import type { AccountIdentity } from "@/lib/nav/account-identity";
 import { PRIMARY_NAV_ITEMS, isPrimaryNavActive, isPrimarySectionActive, type PrimaryNavIconKey } from "@/lib/nav/primary-nav-items";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -39,29 +40,40 @@ function Logo({ className = "" }: { className?: string }) {
       aria-label="TeacherFlow, ir a Inicio"
       className={`flex min-h-11 w-fit items-center rounded-md ${className}`}
     >
-      <BrandMark size="sm" />
+      <BrandMark size="sm" compact />
     </PrivateLink>
   );
 }
 
 /**
  * Shell de navegación del área privada (rediseño visual v1, docs/design/web-v1/02-componentes-y-navegacion.md §9).
- *  - Escritorio (≥ 820 px): barra lateral oscura de 236 px con logo, los cinco destinos y, abajo, el bloque de cuenta (que abre el
- *    menú de cuenta).
- *  - Móvil: encabezado con logo y botón de cuenta + barra inferior con los mismos cinco destinos. Objetivos táctiles de
- *    44 px como mínimo; respeta las safe areas (muesca, barra de inicio, bordes laterales).
+ *  - Escritorio (≥ 820 px): barra lateral oscura de 236 px con logo, los cinco destinos y, abajo y separado, el acceso directo a
+ *    «Configuración» (un enlace, no un menú). «Cerrar sesión» NO está acá: vive arriba a la derecha del área principal (`SessionBar`).
+ *  - Móvil: encabezado con logo, el acceso directo a «Configuración» (un enlace propio) y «Cerrar sesión» (único control de sesión),
+ *    más la barra inferior con los mismos cinco destinos. Objetivos táctiles de 44 px como mínimo; respeta las safe areas.
  * Activo por segmento completo (destino o subruta). Ningún enlace precarga (`PrivateLink`).
  */
-export function PrimaryNav({ account, billingEnabled = false }: { account: AccountIdentity; billingEnabled?: boolean }) {
+export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolean }) {
   const pathname = usePathname();
+  const settingsActive = isPrimaryNavActive(pathname, "/configuracion");
+  const billingActive = isPrimaryNavActive(pathname, "/facturacion");
 
   return (
     <>
-      {/* Sin `backdrop-blur`: un filtro de fondo haría de este encabezado el bloque contenedor del menú de cuenta (hoja inferior fija). */}
       <header className="sticky top-0 z-30 border-b-[1.5px] border-border bg-background/95 pt-[env(safe-area-inset-top)] nav:hidden">
         <div className="flex min-h-[58px] items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <Logo className="text-textPrimary" />
-          <AccountMenu identity={account} variant="header" billingEnabled={billingEnabled} />
+          <div className="flex items-center gap-1">
+            <PrivateLink
+              href="/configuracion"
+              aria-label="Configuración"
+              aria-current={settingsActive ? "page" : undefined}
+              className={`flex h-11 w-11 items-center justify-center rounded-md transition-colors duration-150 hover:bg-paperDeep ${settingsActive ? "bg-accentSoft text-accentText" : "text-textSecondary"}`}
+            >
+              <Cog6ToothIcon className="h-6 w-6" aria-hidden />
+            </PrivateLink>
+            <SignOutButton iconOnlyBelowSm />
+          </div>
         </div>
       </header>
 
@@ -146,7 +158,28 @@ export function PrimaryNav({ account, billingEnabled = false }: { account: Accou
             })}
           </ul>
         </nav>
-        <AccountMenu identity={account} variant="sidebar" billingEnabled={billingEnabled} />
+        {/* Acceso directo a Configuración: un enlace (no un menú), separado de la navegación principal. */}
+        <div className="mt-2 flex flex-col gap-[3px] border-t border-sideLine pt-3">
+          {/* Sólo con la facturación encendida: apagada, la barra es exactamente la de siempre. */}
+          {billingEnabled && (
+            <PrivateLink
+              href="/facturacion"
+              aria-current={billingActive ? "page" : undefined}
+              className={`flex min-h-[46px] items-center gap-3 rounded-[12px] px-3 text-[15px] transition-colors duration-150 ${billingActive ? "bg-sideActive font-bold text-white" : "font-medium text-sideText hover:bg-side2 hover:text-white"}`}
+            >
+              <CreditCardIcon className="h-5 w-5 shrink-0" aria-hidden />
+              Facturación
+            </PrivateLink>
+          )}
+          <PrivateLink
+            href="/configuracion"
+            aria-current={settingsActive ? "page" : undefined}
+            className={`flex min-h-[46px] items-center gap-3 rounded-[12px] px-3 text-[15px] transition-colors duration-150 ${settingsActive ? "bg-sideActive font-bold text-white" : "font-medium text-sideText hover:bg-side2 hover:text-white"}`}
+          >
+            <Cog6ToothIcon className="h-5 w-5 shrink-0" aria-hidden />
+            Configuración
+          </PrivateLink>
+        </div>
       </div>
     </>
   );

@@ -136,7 +136,7 @@ test("encabezado: título reducido y, debajo, Series, Disponibilidad y Clases po
   assert.ok(links.every((index) => index > 0) && links[0] < links[1] && links[1] < links[2], "los tres accesos, en orden");
   assert.ok(view.indexOf("<PageTitle") < links[0], "los accesos van debajo del título");
   assert.ok(links[2] < view.indexOf("<RealCalendarToolbar"), "la navegación del mes va a la derecha del bloque izquierdo");
-  assert.match(view, /nav:h-dvh/, "en escritorio la pantalla mide 100dvh: la página no se desplaza");
+  assert.match(view, /nav:h-\[calc\(100dvh-var\(--tf-shell-top\)\)\]/, "en escritorio la pantalla mide 100dvh menos la fila de «Cerrar sesión»: la página no se desplaza");
   const header = code("components/ui/page-header.tsx");
   assert.match(header, /PAGE_TITLE_COMPACT_CLASS =\s+"[^"]*text-\[28px\][^"]*nav:text-\[30px\]"/);
   assert.ok(Number(/PAGE_TITLE_CLASS =\s+"[^"]*nav:text-\[(\d+)px\]"/.exec(header)?.[1]) > 30, "el título normal sigue igual");
@@ -205,5 +205,5 @@ test("móvil: la agenda por día no cambia y los controles se apilan sin comprim
   assert.match(toolbar, /justify-between[\s\S]*nav:justify-end/, "en móvil la fila del mes ocupa el ancho; en escritorio va a la derecha");
   // el recorte de altura sólo existe en escritorio
   const view = code("components/calendar/calendar-view.tsx");
-  assert.doesNotMatch(view.replace(/nav:h-dvh/g, ""), /\bh-dvh\b|\bh-screen\b/);
+  assert.doesNotMatch(view.replace(/nav:h-\[calc\(100dvh-var\(--tf-shell-top\)\)\]/g, ""), /\bh-dvh\b|\bh-screen\b|100dvh/);
 });

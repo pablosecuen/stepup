@@ -59,10 +59,10 @@ test("CON LOS INTERRUPTORES APAGADOS las rutas de API responden 404 ANTES de lee
   }
 });
 
-test("el menú sólo ofrece «Facturación» con el interruptor encendido: la propiedad nace en falso y el elemento está detrás de ella; la barra principal no cambia", () => {
-  assert.match(code("components/nav/account-menu.tsx"), /billingEnabled = false/);
-  assert.match(code("components/nav/account-menu.tsx"), /\{billingEnabled && \(/);
+test("la barra lateral sólo ofrece «Facturación» con el interruptor encendido: la propiedad nace en falso y el elemento está detrás de ella; la barra principal no cambia", () => {
   assert.match(code("components/nav/primary-nav.tsx"), /billingEnabled = false/);
+  assert.match(code("components/nav/primary-nav.tsx"), /\{billingEnabled && \(/);
+  assert.doesNotMatch(code("components/nav/sign-out-button.tsx"), /billing|facturaci/i, "«Cerrar sesión» no sabe nada de facturación");
   assert.deepEqual(PRIMARY_NAV_ITEMS.map((item) => item.href), ["/inicio", "/alumnos", "/calendario", "/cobros", "/registro"], "los cinco destinos principales de siempre");
   assert.match(code("components/account/delete-account-button.tsx"), /billingEnabled = false/);
   assert.match(code("components/account/delete-account-button.tsx"), /\{billingEnabled && \(/);

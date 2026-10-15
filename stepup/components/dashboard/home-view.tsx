@@ -1,3 +1,4 @@
+import { PAGE_WIDTH } from "@/components/ui/page-header";
 import Link from "@/components/nav/private-link";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import {
@@ -97,7 +98,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
   const todayCount = data.todayLessons.length;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-4 py-5 nav:px-10 nav:py-[30px]">
+    <div className={PAGE_WIDTH.wide}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-[650] text-textMuted">

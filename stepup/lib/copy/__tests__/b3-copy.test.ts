@@ -77,13 +77,10 @@ test("el acceso (login / crear cuenta) ya no habla de sincronizar", () => {
   assert.match(code("app/crear-cuenta/page.tsx"), /subtitle="Creá tu cuenta con tu correo y una contraseña\."/);
 });
 
-test("el id del dispositivo nunca se muestra, pero la acción de cerrar esa sesión sigue usándolo", () => {
-  const card = code("components/account/active-session-card.tsx");
-  assert.doesNotMatch(card, /\{session\.deviceId/, "ningún {session.deviceId…} se renderiza");
-  assert.doesNotMatch(card, /deviceId\.slice/);
-  assert.doesNotMatch(card, /<dt[^>]*>Dispositivo<\/dt>/);
-  assert.match(card, /endActiveSessionAction\(session\.deviceId, session\.generation\)/, "la funcionalidad no cambia");
-  assert.match(card, /Esto cierra la sesión del dispositivo autorizado de inmediato\./);
+test("Configuración ya no muestra el dispositivo autorizado de la app anterior (ni su id): no hay sesiones web que mostrar", () => {
+  assert.throws(() => code("components/account/active-session-card.tsx"), "el componente del dispositivo autorizado ya no existe");
+  const view = code("components/account/configuration-view.tsx");
+  assert.doesNotMatch(view, /deviceId|Dispositivo autorizado|sesión del dispositivo|Sesiones abiertas/);
 });
 
 test("el perfil del alumno quita los campos provisorios pero conserva todo dato real y las 7 pestañas", () => {

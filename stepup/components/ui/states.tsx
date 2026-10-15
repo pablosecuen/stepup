@@ -32,10 +32,13 @@ export interface EmptyStateAction {
   href: string;
 }
 
-/** Estado vacío: el mensaje y, opcionalmente, UNA acción clara para salir del vacío (nunca texto sin salida cuando hay un paso lógico). */
+/**
+ * Estado vacío: el mensaje y, opcionalmente, UNA acción clara para salir del vacío (nunca texto sin salida cuando hay un paso lógico).
+ * Compacto: como máximo ~560 px y alineado a la izquierda (en móvil ocupa todo el ancho): en una pantalla ancha nunca se estira de lado a lado.
+ */
 export function EmptyState({ message, action, icon: Icon }: { message: string; action?: EmptyStateAction; icon?: ComponentType<SVGProps<SVGSVGElement>> }) {
   return (
-    <div className="rounded-lg border-2 border-dashed border-borderMid px-4 py-9 text-center text-[14.5px] text-textSecondary">
+    <div className="w-full max-w-[560px] rounded-lg border-2 border-dashed border-borderMid px-4 py-9 text-center text-[14.5px] text-textSecondary">
       {Icon && (
         <span aria-hidden className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-pill bg-accentSoft text-accentText">
           <Icon className="h-8 w-8" />

@@ -13,7 +13,7 @@ import type { RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
  */
 export function RemindersView({ summary }: { summary: RemindersCenterSummary }) {
   return (
-    <div className={PAGE_WIDTH.medium}>
+    <div className={PAGE_WIDTH.wide}>
       <BackLink href="/inicio">Volver a Inicio</BackLink>
       <div className="mt-3">
         <PageHeader
@@ -65,7 +65,7 @@ export function RemindersView({ summary }: { summary: RemindersCenterSummary }) 
 /** Error al cargar Recordatorios: el mensaje de siempre y un reintento. */
 export function RemindersErrorView() {
   return (
-    <div className={PAGE_WIDTH.medium}>
+    <div className={PAGE_WIDTH.wide}>
       <BackLink href="/inicio">Volver a Inicio</BackLink>
       <div className="mt-3">
         <PageHeader title="Recordatorios" />

@@ -35,7 +35,7 @@ export default async function RegistroPendientesPage() {
     pending = buildPendingLessons({ calendarItems: items, now, registrations });
   } catch {
     return (
-      <div className={PAGE_WIDTH.medium}>
+      <div className={PAGE_WIDTH.wide}>
         <PageTitle>Clases por registrar</PageTitle>
         <div className="mt-5 flex flex-col items-start gap-3">
           <div className="w-full">

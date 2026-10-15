@@ -275,7 +275,7 @@ export function IdleStage({ error, pending, focusHeading, onAnalyze }: { error: 
       <StageHeading focusOnMount={focusHeading}>Qué va a pasar</StageHeading>
       <ul className="flex flex-col gap-2.5 text-sm text-textSecondary">
         <li>
-          <strong className="text-textPrimary">No elegís ningún archivo.</strong> Usamos la última copia de seguridad que tu app móvil subió sola a la nube.
+          <strong className="text-textPrimary">No elegís ningún archivo.</strong> Usamos la última copia de seguridad guardada en la nube.
         </li>
         <li>
           <strong className="text-textPrimary">Primero solo se analiza.</strong> Analizar no cambia nada: te muestra qué se agregaría, qué ya existe y qué tiene diferencias.
@@ -356,7 +356,7 @@ export function PreviewStage(props: PreviewStageProps) {
     [preview.singletons.teacherProfile, preview.singletons.budgetDistribution, preview.singletons.teacherAvailability].filter(
       (s) => s.presentInBackup && s.status === "conflict",
     ).length;
-  const sourceLabel = backup ? "Analizamos tu copia del " + backup.createdAtLabel + (backup.appVersion ? " (app móvil " + backup.appVersion + ")" : "") + ". " : "";
+  const sourceLabel = backup ? "Analizamos tu copia del " + backup.createdAtLabel + (backup.appVersion ? " (versión " + backup.appVersion + ")" : "") + ". " : "";
   const excluded = Object.entries(EXCLUDED_COLLECTION_LABELS) as Array<[keyof typeof EXCLUDED_COLLECTION_LABELS, string]>;
 
   return (

@@ -4,7 +4,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-/** B9 — reorganización de Configuración: estructura, jerarquía, acciones sensibles, textos y comportamiento preservado. */
+/**
+ * B9 (actualizado por el bloque de cuenta) — Configuración: estructura, jerarquía, acciones sensibles, textos y comportamiento
+ * preservado. Ya no contiene la distribución 50/30/20 (vive en Resumen financiero), la copia de seguridad ni el «dispositivo
+ * autorizado» de la app anterior (la base no guarda sesiones web: ver docs/design/web-v1/14-cuenta-configuracion-y-resumen.md).
+ */
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
 const code = (path: string) => read(path).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
@@ -13,8 +17,6 @@ const PAGE = "app/(app)/configuracion/page.tsx";
 const VIEW = "components/account/configuration-view.tsx";
 const BACKUP_PAGE = "app/(app)/configuracion/respaldo/page.tsx";
 const ACCOUNT_FILES = [
-  "components/account/active-session-card.tsx",
-  "components/account/budget-distribution-form.tsx",
   "components/account/change-password-button.tsx",
   "components/account/delete-account-button.tsx",
   "components/account/settings-ui.tsx",
@@ -56,11 +58,11 @@ function sections(): Array<{ id: string; tone: string; body: string }> {
   }));
 }
 
-test("estructura: Cuenta → Preferencias → Sesión y datos → Acciones sensibles, con un índice que apunta a cada sección", () => {
+test("estructura: Cuenta → Preferencias → Acciones sensibles, con un índice que apunta a cada sección y sin «Sesión y datos»", () => {
   const found = sections();
   assert.deepEqual(
     found.map((s) => s.id),
-    ["cuenta", "preferencias", "sesion-y-datos", "acciones-sensibles"],
+    ["cuenta", "preferencias", "acciones-sensibles"],
   );
   const index = [...code(VIEW).matchAll(/\{ id: "([^"]+)", label: "([^"]+)", icon: \w+ \}/g)].map((m) => m[1]);
   assert.deepEqual(index, found.map((s) => s.id), "el índice enlaza a todas las secciones, en el mismo orden");
@@ -73,56 +75,65 @@ test("estructura: Cuenta → Preferencias → Sesión y datos → Acciones sensi
   assert.match(ui, /<h3 className="text-\[15px\] font-\[650\] text-textPrimary">\{title\}<\/h3>/, "el título de cada fila es un h3");
 });
 
+test("encabezado y contenedor: «Configuración» / «Tu cuenta, preferencias y datos.» en el ancho útil del shell", () => {
+  const page = code(PAGE);
+  assert.match(page, /<PageHeader title="Configuración" subtitle=\{user \? "Tu cuenta, preferencias y datos\." :/);
+  assert.match(page, /<div className=\{PAGE_WIDTH\.wide\}>/, "ancho amplio (el mismo de Calendario, Disponibilidad y las listas)");
+  assert.doesNotMatch(page, /PAGE_WIDTH\.(medium|narrow)/);
+});
+
+test("las tarjetas se organizan en dos o tres columnas cuando el contenido lo permite y vuelven a una en móvil; los formularios cortos no se estiran", () => {
+  const view = code(VIEW);
+  const columns = [...view.matchAll(/columns="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(columns, ["lg:grid-cols-2", "min-[560px]:grid-cols-2 xl:grid-cols-3", "lg:grid-cols-2"], "Cuenta y Acciones en dos columnas, Preferencias en dos o tres");
+  assert.ok(columns.every((c) => !/^grid-cols-[2-9]/.test(c)), "ninguna grilla de varias columnas desde el ancho móvil (por defecto una columna)");
+  const ui = code("components/account/settings-ui.tsx");
+  assert.match(ui, /<div className=\{`mt-3 grid items-start gap-4 \$\{columns\}`\}>/, "una columna por defecto; items-start: una tarjeta corta no se estira a la altura de la vecina");
+  assert.doesNotMatch(view, /max-w-\[|w-full max-w/, "las tarjetas ocupan su celda: el ancho sale de la grilla, no de topes por pantalla");
+});
+
 test("las acciones sensibles están juntas, al final, con tono de peligro, y ninguna otra sección las contiene", () => {
   const found = sections();
   const danger = found[found.length - 1];
   assert.equal(danger.id, "acciones-sensibles");
   assert.equal(danger.tone, "danger");
-  assert.match(danger.body, /<EndActiveSessionControl session=\{session\} \/>/);
   assert.match(danger.body, /<DeleteAccountButton billingEnabled=\{billingEnabled\} \/>/);
+  assert.doesNotMatch(danger.body, /EndActiveSessionControl|sesión del dispositivo/, "no hay cierre remoto del dispositivo: la base no guarda sesiones web");
   for (const normal of found.slice(0, -1)) {
-    assert.doesNotMatch(normal.body, /EndActiveSessionControl|DeleteAccountButton|BUTTON_DANGER/, `${normal.id} no mezcla acciones sensibles`);
+    assert.doesNotMatch(normal.body, /DeleteAccountButton|BUTTON_DANGER/, `${normal.id} no mezcla acciones sensibles`);
   }
   assert.equal(found.filter((s) => s.tone === "danger").length, 1, "una única zona sensible");
 });
 
-test("Cerrar sesión vive sólo en el menú de cuenta: nada de Configuración lo ofrece ni importa la acción", () => {
+test("Cerrar sesión vive sólo en el control superior del shell: nada de Configuración lo ofrece ni importa la acción", () => {
   for (const file of [PAGE, VIEW, BACKUP_PAGE, ...ACCOUNT_FILES]) {
     const source = code(file);
     assert.doesNotMatch(source, /signOutAction|requestSignOut|auth\/actions/, `${file} no cierra sesión`);
     assert.doesNotMatch(source, />\s*Cerrar sesión\s*</, `${file} no muestra «Cerrar sesión»`);
   }
-  const menu = code("components/nav/account-menu.tsx");
-  assert.match(menu, /Cerrar sesión/);
-  assert.match(menu, /requestSignOut\(\)/);
+  const button = code("components/nav/sign-out-button.tsx");
+  assert.match(button, /Cerrar sesión/);
+  assert.match(button, /requestSignOut\(\)/);
 });
 
-test("textos: sin repeticiones entre título, descripción y formulario; el aviso del 50/30/20 aparece una sola vez", () => {
+test("Configuración no contiene 50/30/20, respaldo, app móvil ni dispositivos: sólo lo que realmente configura la cuenta y el uso de la plataforma", () => {
   const all = [PAGE, VIEW, ...ACCOUNT_FILES].map((f) => code(f)).join("\n");
-  assert.equal((all.match(/Presupuesto sugerido/g) ?? []).length, 1, "el aviso orientativo vive en una sola fila");
-  assert.doesNotMatch(all, /Presupuesto sugerido sobre lo cobrado/);
-  assert.equal((all.match(/Nombre visible en la app/g) ?? []).length, 0, "el título «Nombre visible en la app» ya no se repite");
-  assert.doesNotMatch(all, /Perfil de la profesora|Gestionar disponibilidad →|Gestionar desde Alumnos →|Recuperar datos del respaldo →/, "sin flechas de texto: el renglón entero es el enlace");
+  assert.doesNotMatch(all, /50\/30\/20|Distribución|Guardar distribución|presupuesto|Presupuesto|proyecci/i, "la distribución vive en Resumen financiero");
+  assert.doesNotMatch(all, /Respaldo|Copias? de seguridad|respaldo|configuracion\/respaldo|ArchiveBox/, "la copia de seguridad ya no está en la interfaz de Configuración");
+  assert.doesNotMatch(all, /app m[óo]vil|celular/i, "ninguna mención a una app móvil");
+  assert.doesNotMatch(all, /Dispositivo autorizado|sesión del dispositivo|Sesiones abiertas|active_sessions|getActiveSession/, "no se afirma controlar sesiones que la base no distingue");
+  assert.doesNotMatch(all, /BudgetDistributionForm|getBudgetDistributionSettings/);
   assert.match(code(VIEW), /Los recargos por atraso están desactivados\. El semáforo de mora usa plazos fijos\./, "dice la verdad sobre los recargos (B3)");
-  assert.match(code(VIEW), /nunca conoce tus gastos ni tu ahorro bancario real/, "lenguaje orientativo del 50/30/20");
+  assert.doesNotMatch(all, /Perfil de la profesora|Gestionar disponibilidad →|Gestionar desde Alumnos →/, "sin flechas de texto: el renglón entero es el enlace");
   assert.doesNotMatch(code(VIEW), />\s*\{[^}]*(deviceId|generation|checksum)/i, "ningún dato técnico en pantalla");
+  // Preferencias: sólo Disponibilidad, Niveles personalizados y Políticas de cobro
+  const preferences = sections().find((s) => s.id === "preferencias")!.body;
+  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Disponibilidad", "Niveles personalizados", "Políticas de cobro"]);
 });
 
 test("comportamiento preservado: las mismas acciones, los mismos destinos y la misma confirmación fuerte", () => {
   assert.match(code("components/account/teacher-profile-form.tsx"), /useGuardedActionState\(saveTeacherProfileAction, INITIAL_STATE\)/);
   assert.match(code("components/account/teacher-profile-form.tsx"), /name="displayName"/);
-  const budget = code("components/account/budget-distribution-form.tsx");
-  assert.match(budget, /useGuardedActionState\(saveBudgetDistributionAction, INITIAL_STATE\)/);
-  for (const field of ["needs", "wants", "savings"]) assert.match(budget, new RegExp(`<input type="hidden" name="${field}"`));
-  for (const fn of ["adjustNeeds", "adjustWants", "adjustSavings"]) assert.match(budget, new RegExp(`${fn}\\(distribution, v\\)`));
-
-  const session = code("components/account/active-session-card.tsx");
-  assert.match(session, /endActiveSessionAction\(session\.deviceId, session\.generation\)/);
-  assert.match(session, /Esto cierra la sesión del dispositivo autorizado de inmediato\./);
-  assert.match(session, /Cerrar esa sesión remotamente/);
-  assert.match(session, /Confirmar cierre/);
-  assert.doesNotMatch(session, /\{session\.deviceId/, "el id del dispositivo nunca se muestra");
-  assert.match(session, /No hay ningún dispositivo autorizado activo en este momento\./);
 
   assert.match(code("components/account/change-password-button.tsx"), /requestOwnPasswordChangeAction\(captchaToken\)/);
   assert.match(code("components/account/change-password-button.tsx"), /Te enviamos un enlace a tu correo para cambiar tu contraseña\./);
@@ -135,14 +146,15 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
   assert.match(del, /Se va a eliminar tu cuenta y TODOS tus datos \(alumnos, clases, pagos, reportes y sus archivos PDF\) de forma permanente/);
 
   const page = code(VIEW);
-  for (const href of ["/calendario/disponibilidad", "/alumnos", "/configuracion/respaldo"]) assert.match(page, new RegExp(`href="${href}"`));
+  for (const href of ["/calendario/disponibilidad", "/alumnos"]) assert.match(page, new RegExp(`href="${href}"`));
   const loaders = code(PAGE);
-  for (const loader of ["getTeacherProfile(ctx)", "getBudgetDistributionSettings(ctx)", "getActiveSession(ctx)"]) assert.match(loaders, new RegExp(loader.replace(/[()]/g, "\\$&")));
+  assert.match(loaders, /getTeacherProfile\(ctx\)/);
+  assert.doesNotMatch(loaders, /getBudgetDistributionSettings|getActiveSession/, "la página ya no lee la distribución ni la sesión autorizada");
 });
 
 test("los guardados devuelven `saved: true` y los errores siguen igual; la pantalla lo anuncia sin depender del color", () => {
   const actions = code("lib/actions/account.ts");
-  assert.equal((actions.match(/return \{ saved: true \};/g) ?? []).length, 2, "perfil y distribución");
+  assert.equal((actions.match(/return \{ saved: true \};/g) ?? []).length, 2, "perfil y distribución (la distribución se edita desde Resumen financiero)");
   // R1: los errores pasan por el normalizador seguro (antes se devolvía `error.message` tal cual).
   assert.match(actions, /return actionErrorMessage\("account", error\);/);
   assert.doesNotMatch(actions.replace(/result\.error\.message/g, ""), /error\.message/, "salvo el texto ya traducido por el adaptador de autenticación");
@@ -150,10 +162,7 @@ test("los guardados devuelven `saved: true` y los errores siguen igual; la panta
   assert.match(ui, /<div role="status" aria-live="polite"/, "región viva siempre montada");
   assert.match(ui, /<CheckIcon[^>]*aria-hidden/, "el éxito lleva ícono, no sólo color verde");
   assert.match(code("components/account/teacher-profile-form.tsx"), /Nombre guardado\./);
-  assert.match(code("components/account/budget-distribution-form.tsx"), /Distribución guardada\./);
-  for (const form of ["teacher-profile-form", "budget-distribution-form"]) {
-    assert.match(code(`components/account/${form}.tsx`), /state\.saved === true && !state\.error && editedAfter !== state/, "el aviso se retira al volver a editar o si hubo error");
-  }
+  assert.match(code("components/account/teacher-profile-form.tsx"), /state\.saved === true && !state\.error && editedAfter !== state/, "el aviso se retira al volver a editar o si hubo error");
 });
 
 test("botones: los cuatro estilos compartidos son los del sistema (44 px) y ningún botón de Configuración trae tamaño propio", () => {
@@ -170,6 +179,7 @@ test("botones: los cuatro estilos compartidos son los del sistema (44 px) y ning
     for (const tag of openingTags(source, "Button")) assert.doesNotMatch(tag, /className="[^"]*\b(px-\d|py-\d)/, file + ": botón con padding propio");
   }
   assert.match(ui, /export const FIELD_CLASS = inputClass;/, "campos con borde de control (3:1)");
+  assert.match(ui, /min-h-\[88px\] min-w-0 items-start gap-3 rounded-lg/, "las tarjetas-enlace miden más de 44 px y pueden encogerse");
 });
 
 test("teclado y foco: las confirmaciones son diálogos (foco atrapado, Escape y foco devuelto al botón); el resultado se anuncia", () => {
@@ -184,18 +194,12 @@ test("teclado y foco: las confirmaciones son diálogos (foco atrapado, Escape y 
   assert.match(del, /htmlFor="delete-confirm"/);
   assert.match(del, /id="delete-warning"/);
 
-  const session = code("components/account/active-session-card.tsx");
-  assert.match(session, /<Dialog\s+title="Cerrar la sesión remota"/);
-  assert.match(session, /onClose=\{cancel\}/, "Escape cancela la confirmación");
-  assert.match(session, /statusRef\.current\?\.focus\(\)/, "al terminar, el foco no queda perdido");
-  assert.match(session, /role="status" aria-live="polite" tabIndex=\{-1\}/);
-
   const pwd = code("components/account/change-password-button.tsx");
   assert.match(pwd, /if \(sent\) statusRef\.current\?\.focus\(\)/);
   assert.match(pwd, /role="status" aria-live="polite" tabIndex=\{-1\}/);
 });
 
-test("navegación: Respaldo muestra «Configuración / Respaldo» con la página actual marcada, y su jerarquía de títulos es h1 → h2 → h3", () => {
+test("Respaldo (ruta interna sin enlaces desde la interfaz): conserva «Configuración / Respaldo» y su jerarquía h1 → h2 → h3, sin mencionar una app móvil", () => {
   const ui = code("components/account/settings-ui.tsx");
   assert.match(ui, /<nav aria-label="Ruta de navegación">/);
   assert.match(ui, /<li aria-current="page"/);
@@ -208,6 +212,7 @@ test("navegación: Respaldo muestra «Configuración / Respaldo» con la página
   assert.match(page, /<BackupImportWizard \/>/);
   assert.match(page, /<ImportHistory \/>/);
   assert.match(page, /Tus importaciones anteriores\./);
+  assert.doesNotMatch(page, /app m[óo]vil/i);
 });
 
 test("historial de importaciones: estado vacío de la app y botones compartidos; la lógica de deshacer no cambia", () => {
@@ -228,12 +233,13 @@ test("sin conexión con la cuenta: un aviso con salida (Reintentar), no tres tar
   assert.doesNotMatch(page, /UnauthenticatedSections|Correo, contraseña y sesión activa/);
 });
 
-test("alcance: el asistente de importación, la autenticación, las sesiones y las migraciones no cambian", () => {
+test("alcance: el backend (sesión autorizada, respaldos, importación) queda intacto y sin uso desde la interfaz; la autenticación y las migraciones no cambian", () => {
   const wizard = read("components/backup/import-wizard.tsx");
   assert.match(wizard, /Primero solo se analiza\./, "el asistente se simplificó en B10; su lógica no cambia");
   assert.match(code("app/(app)/inicio/page.tsx"), /redirect\(SESSION_RECOVERY_PATH\)/);
   const actions = code("lib/actions/account.ts");
   assert.match(actions, /deleteAccount: \(\) => deleteOwnAccount\(ctx\)[\s\S]*?await createSupabaseAuthAdapter\(\)\.signOut\(\);/, "primero borra y sólo después cierra sesión");
-  assert.match(actions, /endActiveSession\(ctx, deviceId, generation\)/);
+  assert.match(actions, /endActiveSession\(ctx, deviceId, generation\)/, "la acción de servidor sigue existiendo (backend sin uso, para una limpieza posterior)");
   assert.match(actions, /requestPasswordReset\(user\.email, \{ captchaToken: safeToken \}\)/);
+  assert.ok(read("lib/repositories/active-sessions.ts").includes("end_active_session"), "el repositorio no se borra en este bloque");
 });

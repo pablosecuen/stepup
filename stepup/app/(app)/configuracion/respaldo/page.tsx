@@ -22,7 +22,7 @@ export default async function RespaldoPage() {
       <div className="mt-1">
         <PageHeader
           title="Respaldo"
-          subtitle="Traé a la web los datos de la copia de seguridad que hace tu app móvil. Es opcional y manual: primero ves qué se importaría y recién después confirmás. Por defecto no se reemplaza nada de lo que ya cargaste acá."
+          subtitle="Recuperá en la web los datos de una copia de seguridad anterior. Es opcional y manual: primero ves qué se importaría y recién después confirmás. Por defecto no se reemplaza nada de lo que ya cargaste acá."
         />
       </div>
 

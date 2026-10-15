@@ -10,7 +10,7 @@ import { endActiveSession } from "@/lib/repositories/active-sessions";
 import { deleteOwnAccount, removeOwnReportPdfs } from "@/lib/repositories/account-deletion";
 import { verifyOwnPassword } from "@/lib/auth/reauth-supabase";
 import { runDeleteAccount } from "@/lib/account/delete-account-flow";
-import { normalizeBudgetDistribution } from "@/lib/payments/budget-distribution";
+import { parseBudgetDistributionInput } from "@/lib/payments/budget-suggestion";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 import { consumeActionQuota } from "@/lib/repositories/action-quota";
 import { getBillingFlags, getBillingRuntime } from "@/lib/billing/runtime";
@@ -58,17 +58,16 @@ export async function saveTeacherProfileAction(_prevState: FormState, formData: 
 // ---------------------------------------------------------------------------
 
 /**
- * Recibe el valor final de las 3 barras (ya reconciliado en el cliente con
- * `adjustNeeds`/`adjustWants`/`adjustSavings` mientras se arrastra) y lo
- * vuelve a pasar por `normalizeBudgetDistribution` server-side antes de
- * guardar — nunca confía en que la suma 100 ya venga garantizada del
- * cliente, aunque en la práctica siempre debería.
+ * Recibe el valor final de las 3 barras (ya reconciliado en el cliente con `adjustNeeds`/`adjustWants`/`adjustSavings` mientras se
+ * edita) y lo VALIDA en el servidor antes de tocar nada: los tres presentes, enteros de 0 a 100 y con suma exacta 100
+ * (`parseBudgetDistributionInput`). Un valor parcial o inválido se rechaza entero, sin guardar nada. El guardado es un único
+ * `upsert` de la fila de la profesora (atómico) y repetirlo con los mismos valores deja el mismo resultado (idempotente): reintentar
+ * tras una respuesta perdida es seguro. La edición vive en el Resumen financiero («Ajustar porcentajes»).
  */
 export async function saveBudgetDistributionAction(_prevState: FormState, formData: FormData): Promise<FormState> {
-  const needs = Number(readString(formData, "needs"));
-  const wants = Number(readString(formData, "wants"));
-  const savings = Number(readString(formData, "savings"));
-  const distribution = normalizeBudgetDistribution({ needs, wants, savings });
+  const parsed = parseBudgetDistributionInput({ needs: formData.get("needs"), wants: formData.get("wants"), savings: formData.get("savings") });
+  if (!parsed.ok) return { error: parsed.error };
+  const distribution = parsed.distribution;
 
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -79,7 +78,7 @@ export async function saveBudgetDistributionAction(_prevState: FormState, formDa
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
-  revalidatePath("/configuracion");
+  revalidatePath("/resumen-financiero");
   return { saved: true };
 }
 

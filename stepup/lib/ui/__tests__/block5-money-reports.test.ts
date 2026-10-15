@@ -99,7 +99,8 @@ test("Resumen financiero: los cinco períodos, la comparación sólo del mes act
     assert.ok(view.includes(call), call);
   }
   assert.match(view, /aria-current=\{selected \? "true" : undefined\}/);
-  assert.match(view, /Sólo montos agregados — nunca nombres de alumnos ni información pedagógica\./);
+  assert.match(view, /Tus cobros, actividad y una guía para organizar lo ingresado\./);
+  assert.doesNotMatch(view, /studentName|displayName|student\.name/, "sólo montos agregados: nunca nombres de alumnos ni información pedagógica");
   assert.doesNotMatch(view, /50\/30\/20|Ingresos por mes|Saldos pendientes/, "ninguna sección del prototipo que hoy no existe");
 });
 

@@ -281,7 +281,7 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
   if (/No encontramos ningún respaldo en la nube/i.test(text)) {
     return {
       message:
-        "Todavía no hay una copia de seguridad en la nube para tu cuenta. Abrí la app móvil con esta misma cuenta y dejá que haga su copia automática; después volvé a intentar.",
+        "Todavía no hay una copia de seguridad en la nube para tu cuenta. Cuando haya una copia guardada, volvé a intentar.",
       code: "no_cloud_backup",
     };
   }
@@ -384,20 +384,20 @@ function validationMessage(code: string): TranslatedImportError {
     case "backup_duplicate_items":
       return {
         message:
-          "La copia tiene datos repetidos y no se puede importar tal como está. No se cambió nada. Abrí la app móvil para que genere una copia nueva y volvé a intentar. Si sigue igual, contactanos.",
+          "La copia tiene datos repetidos y no se puede importar tal como está. No se cambió nada. Pedí una copia nueva y volvé a intentar. Si sigue igual, contactanos.",
         code,
       };
     case "backup_text_too_long":
       return { message: "La copia tiene un texto demasiado largo (por ejemplo, una nota). No se cambió nada. Contactanos si vuelve a pasar.", code };
     case "backup_version_unknown":
       return {
-        message: "La copia fue creada por una versión de la app que esta web todavía no reconoce. No se cambió nada. Actualizá la app móvil y esperá su próxima copia.",
+        message: "La copia fue creada por una versión que esta web todavía no reconoce. No se cambió nada. Esperá a que haya una copia más reciente.",
         code,
       };
     default:
       return {
         message:
-          "La última copia de la nube no tiene el formato esperado, así que no se puede analizar. No se cambió nada. Abrí la app móvil para que genere una copia nueva. Si sigue igual, contactanos.",
+          "La última copia de la nube no tiene el formato esperado, así que no se puede analizar. No se cambió nada. Pedí una copia nueva. Si sigue igual, contactanos.",
         code: "backup_format_invalid",
       };
   }

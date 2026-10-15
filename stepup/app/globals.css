@@ -43,6 +43,8 @@
   --tf-data-needs: #0A64D2;
   --tf-placeholder: #7D7260;
   --tf-focus-ring: #1C1812;
+  /* Alto de la fila superior del área principal (escritorio) donde vive «Cerrar sesión»: las pantallas que miden 100dvh lo restan. */
+  --tf-shell-top: 3.25rem;
   --tf-focus-ring-on-dark: #F6F0E5;
   /* Ancho de la barra lateral del escritorio. */
   --tf-side-w: 236px;

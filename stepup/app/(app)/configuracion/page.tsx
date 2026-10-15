@@ -2,16 +2,10 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getTeacherProfile } from "@/lib/repositories/teacher-profile";
-import { getBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
-import { getActiveSession } from "@/lib/repositories/active-sessions";
-import type { ActiveSessionInfo } from "@/components/account/active-session-card";
 import { ConfigurationView } from "@/components/account/configuration-view";
 import { EmptyState } from "@/components/ui/states";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { CloudIcon } from "@heroicons/react/24/outline";
-import { DEFAULT_BUDGET_DISTRIBUTION } from "@/lib/payments/budget-distribution";
-import type { ActiveSessionRow } from "@/lib/db/database.types";
-import { formatInstantDateTime } from "@/lib/format/date-format";
 import { readBillingFlags } from "@/lib/billing/flags";
 
 export const dynamic = "force-dynamic";
@@ -19,22 +13,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export const metadata = { title: "Configuración · TeacherFlow" };
 
-function toSessionInfo(row: ActiveSessionRow): ActiveSessionInfo {
-  return {
-    deviceId: row.device_id,
-    generation: row.generation,
-    authorizedAtLabel: formatInstantDateTime(row.authorized_at),
-    lastSeenAtLabel: formatInstantDateTime(row.last_seen_at),
-    expiresAtLabel: formatInstantDateTime(row.expires_at),
-  };
-}
-
 export default async function ConfiguracionPage() {
   const configured = isSupabaseConfigured();
   const user = configured ? await createSupabaseAuthAdapter().getUser() : null;
 
   return (
-    <div className={PAGE_WIDTH.medium}>
+    <div className={PAGE_WIDTH.wide}>
       <PageHeader title="Configuración" subtitle={user ? "Tu cuenta, preferencias y datos." : "No pudimos conectar con tu cuenta en este momento."} />
 
       {user ? <ConfiguredSections email={user.email} /> : <UnavailableState />}
@@ -45,17 +29,11 @@ export default async function ConfiguracionPage() {
 async function ConfiguredSections({ email }: { email: string | null }) {
   const ctx = await requireAuthenticatedDbContext();
 
-  const [profileResult, budgetResult, sessionResult] = await Promise.allSettled([
-    getTeacherProfile(ctx),
-    getBudgetDistributionSettings(ctx),
-    getActiveSession(ctx),
-  ]);
-
+  // Sólo el perfil: la distribución 50/30/20 vive en Resumen financiero y la pantalla ya no muestra dispositivos ni copias de seguridad.
+  const [profileResult] = await Promise.allSettled([getTeacherProfile(ctx)]);
   const profile = profileResult.status === "fulfilled" ? profileResult.value : { displayName: "" };
-  const budget = budgetResult.status === "fulfilled" ? budgetResult.value.distribution : DEFAULT_BUDGET_DISTRIBUTION;
-  const session = sessionResult.status === "fulfilled" && sessionResult.value ? toSessionInfo(sessionResult.value) : null;
 
-  return <ConfigurationView email={email} displayName={profile.displayName} budget={budget} session={session} billingEnabled={readBillingFlags(process.env).enabled} />;
+  return <ConfigurationView email={email} displayName={profile.displayName} billingEnabled={readBillingFlags(process.env).enabled} />;
 }
 
 function UnavailableState() {

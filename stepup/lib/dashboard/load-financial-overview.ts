@@ -1,6 +1,9 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { listAllCharges, listAllAllocations, listAllPayments } from "@/lib/repositories/payments";
+import { getBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
+import { DEFAULT_BUDGET_DISTRIBUTION, type BudgetDistribution } from "@/lib/payments/budget-distribution";
+import { buildMonthlyCollectedSeries, chartMonthsForRange, type MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
 import { listLessonRegistrationsInRange, listRosterForRegistrationIds } from "@/lib/repositories/lesson-registrations";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
@@ -17,6 +20,10 @@ export interface FinancialOverviewData {
   preset: FinancialPeriodPreset;
   range: DateRange;
   summary: PeriodFinancialSummary;
+  /** Cobrado por mes (gráfico «Evolución de cobros»): sólo dinero efectivamente cobrado, cronológico. */
+  collectedSeries: MonthlyCollectedPoint[];
+  /** Porcentajes guardados de la distribución sugerida (50/30/20 por defecto). */
+  budget: BudgetDistribution;
   comparison: { generated: ReturnType<typeof comparePeriodValues>; collected: ReturnType<typeof comparePeriodValues> } | null;
   activity: AnnualActivitySummary;
   modality: ModalitySummary;
@@ -53,7 +60,7 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   // Todas las lecturas que NO dependen unas de otras salen juntas (antes eran seis esperas seguidas, cada una con su ida y vuelta
   // a la base): el resultado es exactamente el mismo.
   // Series, excepciones y alumnos se leen UNA vez para las dos vistas del calendario (demanda y valor de la hora).
-  const [{ students, rules, exceptions }, charges, allocations, payments, registrationsInRange, demandLessons, hourlyLessons, ownYearRegistrations] = await Promise.all([
+  const [{ students, rules, exceptions }, charges, allocations, payments, registrationsInRange, demandLessons, hourlyLessons, ownYearRegistrations, budgetSettings] = await Promise.all([
     loadCalendarViewBase(ctx),
     listAllCharges(ctx),
     listAllAllocations(ctx),
@@ -63,6 +70,8 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     // Valor programado de la hora: TODA la agenda real del rango del preset (materializada + virtual).
     listCalendarLessonsInRange(ctx, new Date(rangeStartIso).toISOString(), new Date(rangeEndIso).toISOString()),
     rangeIsCurrentYear ? Promise.resolve(null) : listLessonRegistrationsInRange(ctx, yearStartIso, yearEndIso),
+    // Una sola fila por profesora; si no se puede leer, la sugerencia usa 50/30/20 (nunca rompe el resumen).
+    getBudgetDistributionSettings(ctx).catch(() => null),
   ]);
 
   const calendarBase = { rules, students, exceptions };
@@ -76,6 +85,13 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     range,
     evaluationDate,
   });
+
+  // Evolución de cobros: los mismos pagos y asignaciones ya cargados, agrupados por mes (sin consultas por elemento).
+  const collectedSeries = buildMonthlyCollectedSeries(
+    { charges, allocations: allocations.map((a) => ({ chargeId: a.chargeId, paymentId: a.paymentId, amount: a.amount })), payments: payments.map((p) => ({ id: p.id, paidAt: p.paidAt, voidedAt: p.voidedAt })) },
+    chartMonthsForRange(range, evaluationDate, preset)
+  );
+  const budget = budgetSettings ? budgetSettings.distribution : DEFAULT_BUDGET_DISTRIBUTION;
 
   // La comparación con el período anterior SÓLO aplica al mes actual —
   // mismo criterio real del móvil (nunca para los otros 4 presets).
@@ -151,5 +167,5 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   const studentYear = buildStudentYearActivitySummary({ year: currentYear, students: studentsForYear, registrations: yearRosterEntries });
   const newStudentsPerMonth = buildNewStudentsPerMonthSummary({ year: currentYear, students: studentsForYear });
 
-  return { preset, range, summary, comparison, activity, modality, demand, hourlyRate, studentYear, newStudentsPerMonth };
+  return { preset, range, summary, collectedSeries, budget, comparison, activity, modality, demand, hourlyRate, studentYear, newStudentsPerMonth };
 }

@@ -71,7 +71,8 @@ test("flujo: tres pasos con indicador, y cada paso lleva el foco a su título", 
 test("estado inicial: explica qué archivo (ninguno), qué se revisa, qué puede cambiar y cómo volver atrás", () => {
   const wizard = code(WIZARD);
   assert.match(wizard, /No elegís ningún archivo\./);
-  assert.match(wizard, /última copia de seguridad que tu app móvil subió sola a la nube/);
+  assert.match(wizard, /última copia de seguridad guardada en la nube/);
+  assert.doesNotMatch(wizard, /app móvil/i, "ninguna mención a una app móvil");
   assert.match(wizard, /Primero solo se analiza\./);
   assert.match(wizard, /Analizar no cambia nada/);
   assert.match(wizard, /Lo que ya tenés en la web se conserva, salvo que marques que querés reemplazarlo\./);
@@ -191,7 +192,8 @@ test("deshacer: se revisa antes, se confirma con lo que va a pasar y quitar la o
 test("historial: términos nuevos, estado, vencimiento y botones compartidos", () => {
   const history = code(HISTORY);
   assert.match(history, /countOf\(run\.totalRowsWritten, "elemento importado", "elementos importados"\)/);
-  assert.match(history, /App móvil \{run\.appVersion\}/);
+  assert.match(history, /Versión \{run\.appVersion\}/);
+  assert.doesNotMatch(history, /app móvil/i);
   assert.match(history, /Ya no se conserva el detalle de la copia, solo este resumen\./);
   assert.match(history, /Ya no se puede deshacer: el detalle necesario se eliminó con el tiempo\./);
   assert.match(history, /El plazo para deshacerla venció\./);

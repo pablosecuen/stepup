@@ -18,7 +18,7 @@ import { StartRegistrationButton } from "@/app/(app)/registro/start-registration
  */
 export function PendingListView({ pending }: { pending: PendingLessonItem[] }) {
   return (
-    <div className={PAGE_WIDTH.medium}>
+    <div className={PAGE_WIDTH.wide}>
       <PageHeader
         title="Clases por registrar"
         subtitle={`${pending.length} actividad${pending.length === 1 ? "" : "es"} pendiente${pending.length === 1 ? "" : "s"} de registrar.`}

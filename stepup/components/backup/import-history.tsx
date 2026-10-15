@@ -94,7 +94,7 @@ export function HistoryRow({ run, onChanged }: { run: ImportRunHistoryRow; onCha
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
           <p className="font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary tf-num">{formatInstantDateTime(run.createdAt)}</p>
-          {run.appVersion && <p className="mt-0.5 text-[14px] text-textMuted">App móvil {run.appVersion}</p>}
+          {run.appVersion && <p className="mt-0.5 text-[14px] text-textMuted">Versión {run.appVersion}</p>}
         </div>
         <Badge tone={run.status === "applied" ? "ok" : "neutral"}>{STATUS_LABEL[run.status]}</Badge>
       </div>

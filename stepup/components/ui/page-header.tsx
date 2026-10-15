@@ -6,11 +6,18 @@ import type { ReactNode } from "react";
 // Encabezado de página del rediseño (docs/design/web-v1/02-componentes-y-navegacion.md §8): título en serifa, «Volver» como
 // enlace de texto (nunca un botón que compita con la acción principal) y la acción principal a la derecha.
 
-/** Ancho de contenido: lista (ancha), ficha (media) y formulario (angosto). */
+/**
+ * Contenedores de página del área privada — LA primitiva compartida (nunca se repiten estas clases pantalla por pantalla):
+ *  - `wide` (1180 px): pantallas de listas y paneles que usan el ancho útil del shell (Inicio, Calendario, Alumnos, Cobros,
+ *    Resumen financiero, Disponibilidad, Configuración, Series, Registro, Recordatorios);
+ *  - `medium` (960 px): fichas con lectura continua (perfil de un alumno, formulario de registro de una clase, Facturación);
+ *  - `narrow` (760 px): formularios breves y confirmaciones (nuevo alumno, nueva clase, nuevo registro), que no se estiran.
+ * Arriba hay poco relleno en escritorio porque la fila superior del shell («Cerrar sesión») ya separa el contenido del borde.
+ */
 export const PAGE_WIDTH = {
-  wide: "mx-auto w-full max-w-[1180px] px-4 py-5 nav:px-10 nav:py-[30px]",
-  medium: "mx-auto w-full max-w-[960px] px-4 py-5 nav:px-10 nav:py-[30px]",
-  narrow: "mx-auto w-full max-w-[760px] px-4 py-5 nav:px-10 nav:py-[30px]",
+  wide: "mx-auto w-full max-w-[1180px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
+  medium: "mx-auto w-full max-w-[960px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
+  narrow: "mx-auto w-full max-w-[760px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
 } as const;
 
 export const PAGE_TITLE_CLASS =

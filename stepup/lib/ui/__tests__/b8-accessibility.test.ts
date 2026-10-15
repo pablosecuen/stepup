@@ -124,7 +124,7 @@ test("objetivos táctiles de 44 px: regla global para campos, botones, resúmene
 });
 
 test("todo enlace de texto o botón del área privada y pública declara 44 px de alto (salvo los de la lista)", () => {
-  const EXEMPT = [/iniciando-sesion\/page\.tsx/, /nav\/account-menu\.tsx/, /nav\/private-link\.tsx/, /ui\/skip-link\.tsx/, /students\/student-card\.tsx/];
+  const EXEMPT = [/iniciando-sesion\/page\.tsx/, /nav\/private-link\.tsx/, /ui\/skip-link\.tsx/, /students\/student-card\.tsx/];
   const offenders: string[] = [];
   for (const file of sources(["app", "components"])) {
     if (EXEMPT.some((r) => r.test(file))) continue;
@@ -243,14 +243,14 @@ test("el diálogo de la clase: Escape, foco atrapado, foco inicial, devolución 
   assert.match(modal, /\[reschedulingOpen, reschedulePreview !== null, confirmingCancel\]/, "el foco acompaña cada paso");
 });
 
-test("el menú de cuenta conserva Escape, devolución del foco y la semántica de menú", () => {
-  const menu = code("components/nav/account-menu.tsx");
-  assert.match(menu, /aria-haspopup="menu"/);
-  assert.match(menu, /aria-expanded=\{open\}/);
-  assert.match(menu, /role="menu"/);
-  assert.match(menu, /role="menuitem"/);
-  assert.match(menu, /triggerRef\.current\?\.focus\(\)/);
-  assert.match(code("lib/nav/menu-keyboard.ts"), /Escape/);
+test("«Cerrar sesión» y el acceso a Configuración son un botón y un enlace nativos: Enter y Espacio funcionan, 44 px y foco visible", () => {
+  const signOut = code("components/nav/sign-out-button.tsx");
+  assert.match(signOut, /<button\s+type="button"\s+onClick=\{signOut\}/);
+  assert.match(signOut, /min-h-11/);
+  assert.match(signOut, /focus-visible:ring-2 focus-visible:ring-ink/);
+  assert.doesNotMatch(signOut, /role="menu|aria-haspopup/, "ya no es un menú: un solo control");
+  const nav = code("components/nav/primary-nav.tsx");
+  assert.match(nav, /aria-label="Configuración"/, "el enlace móvil se llama «Configuración»");
 });
 
 test("foco visible: ningún control oculta su contorno sin poner su propio anillo (salvo los destinos de salto, sin tabulación)", () => {

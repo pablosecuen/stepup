@@ -9,7 +9,7 @@ import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 /**
  * Calendario (presentación). Arriba a la izquierda el título reducido y, debajo, Series, Disponibilidad y Clases por registrar;
  * arriba a la derecha la navegación del período («‹ octubre 2026 ›»). Debajo, una fila de controles (Densidad · Semana/Día ·
- * Nueva clase) y la grilla, que comienza enseguida. En escritorio la pantalla mide exactamente `100dvh` y la grilla ocupa el
+ * Nueva clase) y la grilla, que comienza enseguida. En escritorio la pantalla mide exactamente `100dvh` menos la fila superior de «Cerrar sesión» y la grilla ocupa el
  * espacio que queda (la página no se desplaza); en móvil la página fluye normal con la agenda por día. La página resuelve los datos.
  */
 export function CalendarView({
@@ -28,7 +28,7 @@ export function CalendarView({
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
 }) {
   return (
-    <div data-calendar-page className="mx-auto flex w-full max-w-[1180px] flex-col px-4 py-5 nav:h-dvh nav:px-6 nav:pb-4 nav:pt-4">
+    <div data-calendar-page className="mx-auto flex w-full max-w-[1180px] flex-col px-4 py-5 nav:h-[calc(100dvh-var(--tf-shell-top))] nav:px-6 nav:pb-4 nav:pt-1">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <PageTitle compact>Calendario</PageTitle>

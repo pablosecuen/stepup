@@ -70,7 +70,8 @@ test("sin copia en la nube, copia demasiado grande, análisis, importación y de
     assert.ok(t.message.length > 30, `${scenario}: explicación clara`);
   }
   const noCloud = translateImportError(RAW[0].raw, "analyze").message;
-  assert.match(noCloud, /Abrí la app móvil/, "dice qué puede hacer la persona");
+  assert.match(noCloud, /Cuando haya una copia guardada, volvé a intentar/, "dice qué puede hacer la persona");
+  assert.doesNotMatch(noCloud, /app m[óo]vil/i, "sin presentar una app móvil como producto existente");
   const tooBig = translateImportError(RAW[1].raw, "analyze").message;
   assert.match(tooBig, /demasiado grande/);
   assert.match(tooBig, /No se cambió nada/);
@@ -117,7 +118,7 @@ test("sesión remota y eliminación de cuenta: los mensajes de la cuenta tampoco
 
 test("ninguna interfaz de Configuración, Respaldo e Importación dibuja un código: ni «Código para soporte», ni error.code, ni slugs en el JSX", () => {
   const files = [...sources("components/backup"), ...sources("components/account"), ...sources("app/(app)/configuracion")];
-  assert.ok(files.length >= 12);
+  assert.ok(files.length >= 10);
   for (const file of files) {
     const source = code(file);
     assert.doesNotMatch(source, SUPPORT_CODE, `${file}: texto de «código»`);

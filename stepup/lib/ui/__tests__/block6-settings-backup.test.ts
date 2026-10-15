@@ -20,15 +20,15 @@ function sources(dir: string): string[] {
 }
 
 const FILES = [...sources("components/account"), ...sources("components/backup"), ...sources("app/(app)/configuracion")];
-const BUDGET = "components/account/budget-distribution-form.tsx";
+const BUDGET = "components/finance/budget-suggestion.tsx";
 
-test("Configuración y Respaldo ya no usan el azul heredado ni el semáforo de cobro; los colores del plan 50/30/20 quedan sólo en su formulario", () => {
-  assert.ok(FILES.length >= 12);
+test("Configuración y Respaldo ya no usan el azul heredado ni el semáforo de cobro; los colores del plan 50/30/20 viven sólo en Resumen financiero", () => {
+  assert.ok(FILES.length >= 10);
   for (const file of FILES) {
     const source = code(file);
     assert.doesNotMatch(source, /brandBlue|statusVerde|statusRojo|statusAmarillo|statusNaranja|statusPendiente|statusSinDatos/, file);
     assert.doesNotMatch(source, /\b(bg|text|border|ring|accent)-(amber|red|blue|green|yellow|orange)-\d{2,3}\b/, `${file}: sin colores crudos de Tailwind`);
-    if (file !== BUDGET) assert.doesNotMatch(source, /pastelLavender|pastelSage|dataNeeds/, `${file}: los colores del plan 50/30/20 son sólo del formulario de la distribución`);
+    assert.doesNotMatch(source, /pastelLavender|pastelSage|dataNeeds/, `${file}: los colores del plan 50/30/20 ya no están en Configuración`);
   }
   const budget = code(BUDGET);
   assert.match(budget, /bg-dataNeeds/);
@@ -45,8 +45,9 @@ test("el azul heredado de interfaz se retiró: el token no existe y ninguna pant
 
 test("Las páginas sólo resuelven los datos como antes y delegan el dibujo; Respaldo conserva el asistente y el historial", () => {
   const page = code("app/(app)/configuracion/page.tsx");
-  for (const loader of ["getTeacherProfile(ctx)", "getBudgetDistributionSettings(ctx)", "getActiveSession(ctx)"]) assert.ok(page.includes(loader), loader);
-  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} budget=\{budget\} session=\{session\} billingEnabled=\{readBillingFlags\(process\.env\)\.enabled\} \/>;/);
+  assert.ok(page.includes("getTeacherProfile(ctx)"));
+  assert.doesNotMatch(page, /getBudgetDistributionSettings|getActiveSession/, "la distribución vive en Resumen financiero y no hay sesiones web que mostrar");
+  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} billingEnabled=\{readBillingFlags\(process\.env\)\.enabled\} \/>;/);
   assert.match(page, /<PageHeader title="Configuración"/);
   assert.match(page, /export const maxDuration = 60;/);
   const view = code("components/account/configuration-view.tsx");
@@ -64,9 +65,6 @@ test("Las acciones sensibles piden confirmación en un diálogo del sistema (hoj
   assert.match(del, /const canConfirm = confirmText\.trim\(\) === CONFIRM_WORD && password\.length > 0;/);
   assert.match(del, /deleteOwnAccountAction\(\{ password, confirmation: confirmText, captchaToken \}\)/);
   assert.match(del, /setPassword\(""\);/, "la contraseña no queda en pantalla tras un intento fallido");
-  const session = code("components/account/active-session-card.tsx");
-  assert.match(session, /<Dialog\s+title="Cerrar la sesión remota"/);
-  assert.match(session, /endActiveSessionAction\(session\.deviceId, session\.generation\)/);
   const ui = code("components/backup/import-ui.tsx");
   assert.match(ui, /<Dialog\s+title="Quitar la opción de deshacer"/);
   assert.match(ui, /<Dialog\s+title=\{undoState\.isSafe/);
@@ -106,7 +104,7 @@ test("Guarda contra formateadores paralelos: fechas y cifras de Configuración y
     if (!file.endsWith("import-history.tsx")) assert.doesNotMatch(source, /new Date\(/, `${file}: sin fechas armadas a mano`);
   }
   assert.match(code("components/backup/import-history.tsx"), /formatInstantDateTime\(run\.createdAt\)/);
-  assert.match(code("app/(app)/configuracion/page.tsx"), /formatInstantDateTime\(row\.authorized_at\)/);
+  assert.doesNotMatch(code("app/(app)/configuracion/page.tsx"), /formatInstantDateTime|authorized_at/, "ya no hay fechas del dispositivo autorizado");
 });
 
 test("Nada de lo que no existe: sin «Crear respaldo» en la web ni un historial nuevo de cuenta", () => {

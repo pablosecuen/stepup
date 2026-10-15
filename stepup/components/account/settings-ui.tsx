@@ -33,15 +33,29 @@ export function SettingsSection({
   title,
   description,
   tone = "default",
+  columns,
   children,
 }: {
   id: string;
   title: string;
   description?: string;
   tone?: SettingsSectionTone;
+  /** Clases de la grilla de tarjetas (cada hijo es un `SettingsCard`/`SettingsLinkCard`): organiza el contenido en dos o tres columnas cuando entra. Sin esto, una sola tarjeta con filas. */
+  columns?: string;
   children: ReactNode;
 }) {
   const danger = tone === "danger";
+  if (columns) {
+    return (
+      <section id={id} aria-labelledby={`${id}-titulo`} className="scroll-mt-20">
+        <h2 id={`${id}-titulo`} className={`font-display text-section font-semibold ${danger ? "text-bad" : "text-textPrimary"}`}>
+          {title}
+        </h2>
+        {description && <p className="mt-0.5 text-[14.5px] text-textMuted">{description}</p>}
+        <div className={`mt-3 grid items-start gap-4 ${columns}`}>{children}</div>
+      </section>
+    );
+  }
   return (
     <section id={id} aria-labelledby={`${id}-titulo`} className="scroll-mt-20">
       <h2 id={`${id}-titulo`} className={`font-display text-section font-semibold ${danger ? "text-bad" : "text-textPrimary"}`}>
@@ -56,6 +70,31 @@ export function SettingsSection({
         {children}
       </div>
     </section>
+  );
+}
+
+/** Tarjeta de una sección en grilla: filas separadas por una línea (mismo aspecto que la tarjeta única de siempre). */
+export function SettingsCard({ tone = "default", children }: { tone?: SettingsSectionTone; children: ReactNode }) {
+  const danger = tone === "danger";
+  return <div className={`min-w-0 divide-y overflow-hidden rounded-lg border-[1.5px] bg-surface shadow-card ${danger ? "divide-badLine border-badLine" : "divide-border border-border"}`}>{children}</div>;
+}
+
+/** Tarjeta que es un enlace completo a otra pantalla (toda la tarjeta es el objetivo táctil). */
+export function SettingsLinkCard({ href, title, description, icon: Icon }: { href: string; title: string; description: string; icon: IconComponent }) {
+  return (
+    <PrivateLink
+      href={href}
+      className="flex min-h-[88px] min-w-0 items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-4 py-4 shadow-card transition-colors duration-150 hover:border-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
+    >
+      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill bg-accentSoft text-accentText">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-[650] text-textPrimary">{title}</span>
+        <span className="mt-0.5 block text-[14px] text-textMuted">{description}</span>
+      </span>
+      <ChevronRightIcon className="mt-2 h-5 w-5 shrink-0 text-textMuted" aria-hidden />
+    </PrivateLink>
   );
 }
 

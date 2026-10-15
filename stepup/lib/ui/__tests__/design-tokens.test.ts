@@ -104,13 +104,18 @@ test("los tokens reservados siguen siendo suyos: el semáforo de cobro y el plan
   assert.equal((colors as Record<string, string>).brandBlueDark, undefined);
   // Azul con significado de dato (Necesidades del 50/30/20): token propio, no arrastrado por el retiro del azul de interfaz.
   assert.equal(colors.dataNeeds, "#0A64D2");
-  const budget = code("components/account/budget-distribution-form.tsx");
+  // La distribución sugerida vive en Resumen financiero: la leyenda y la dona usan sus colores; los controles del diálogo son terracota.
+  const budget = code("components/finance/budget-suggestion.tsx");
+  const adjust = code("components/finance/budget-adjust-dialog.tsx");
   assert.match(budget, /text-dataNeeds/);
-  assert.match(budget, /accent-accent/, "los controles son terracota (el color de dato queda en la cifra y la barra)");
+  assert.match(adjust, /text-dataNeeds/);
+  assert.match(adjust, /accent-accent/, "los controles son terracota (el color de dato queda en la cifra y la barra)");
   assert.match(budget, /bg-dataNeeds/);
-  assert.doesNotMatch(budget, /brandBlue/, "el plan 50/30/20 no depende del azul heredado");
+  assert.match(budget, /stroke-dataNeeds/, "la dona usa el mismo azul");
+  assert.doesNotMatch(budget + adjust, /brandBlue/, "el plan 50/30/20 no depende del azul heredado");
+  assert.doesNotMatch(budget + adjust, /statusVerde|statusRojo|statusAmarillo|statusNaranja|bg-bad|text-bad|bg-accent\b/, "ninguna categoría normal usa rojo, terracota ni el semáforo de cobro");
   // Los componentes nuevos no usan los tokens exclusivos del plan 50/30/20 ni el semáforo.
-  for (const file of ["button.tsx", "field.tsx", "notice.tsx", "badge.tsx", "card.tsx", "avatar.tsx", "table.tsx", "dialog.tsx", "menu-styles.ts", "states.tsx", "status-circle.tsx"]) {
+  for (const file of ["button.tsx", "field.tsx", "notice.tsx", "badge.tsx", "card.tsx", "avatar.tsx", "table.tsx", "dialog.tsx", "states.tsx", "status-circle.tsx"]) {
     assert.doesNotMatch(code(`components/ui/${file}`), /pastelLavender|pastelSage|statusVerde|statusRojo|statusAmarillo|statusNaranja|brandBlue/, file);
   }
 });

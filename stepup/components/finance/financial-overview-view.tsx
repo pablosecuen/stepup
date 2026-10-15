@@ -4,10 +4,12 @@ import PrivateLink from "@/components/nav/private-link";
 import { linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
+import { CollectedEvolutionChart } from "@/components/finance/collected-evolution-chart";
+import { BudgetSuggestion } from "@/components/finance/budget-suggestion";
 import { ErrorState } from "@/components/ui/states";
 import type { FinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
-import { formatCivilMonth } from "@/lib/format/date-format";
+import { formatCivilMonth, formatCivilMonthLongYear } from "@/lib/format/date-format";
 import { formatMinutesAsHours, formatMoney, formatPercent } from "@/lib/format/number-format";
 
 export const FINANCIAL_PRESETS: FinancialPeriodPreset[] = ["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"];
@@ -80,11 +82,15 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
   const topWeekdaysLabel = data.demand.topWeekdays.length > 0 ? data.demand.topWeekdays.map((w) => WEEKDAY_LABEL[w]).join(", ") : "Sin datos suficientes";
   const topSlotsLabel =
     data.demand.topSlots.length > 0 ? data.demand.topSlots.map((s) => `${WEEKDAY_LABEL[s.weekday]} ${formatMinuteOfDay(s.slotStartMinuteOfDay)}`).join(", ") : "Sin datos suficientes";
+  const chartFirst = data.collectedSeries[0]?.month;
+  const chartLast = data.collectedSeries[data.collectedSeries.length - 1]?.month;
+  const chartCaption =
+    chartFirst && chartLast ? (chartFirst === chartLast ? `Cobrado en ${formatCivilMonthLongYear(chartFirst)}` : `Cobrado por mes, de ${formatCivilMonthLongYear(chartFirst)} a ${formatCivilMonthLongYear(chartLast)}`) : "Cobrado por mes";
   const maxModalityMinutes = Math.max(data.modality.presencial, data.modality.online, data.modality.mixta);
 
   return (
     <div className={PAGE_WIDTH.wide}>
-      <PageHeader title="Resumen financiero" subtitle="Sólo montos agregados — nunca nombres de alumnos ni información pedagógica." />
+      <PageHeader title="Resumen financiero" subtitle="Tus cobros, actividad y una guía para organizar lo ingresado." />
       <PaymentsSectionNav current="overview" />
 
       <nav aria-label="Período" className="mt-5">
@@ -124,6 +130,27 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         <Kpi label="Pendiente en término" value={formatMoney(data.summary.pending)} />
         <Kpi label="Vencido" value={formatMoney(data.summary.overdue)} valueClass="text-bad" />
       </section>
+
+      {/* Dos tarjetas lado a lado cuando entran (escritorio ancho) y en una columna en móvil. */}
+      <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <section aria-labelledby="evolucion-titulo" className={CARD}>
+          <h2 id="evolucion-titulo" className="font-display text-card font-semibold">
+            Evolución de cobros
+          </h2>
+          <div className="mt-3">
+            <CollectedEvolutionChart series={data.collectedSeries} caption={chartCaption} />
+          </div>
+        </section>
+
+        <section aria-labelledby="distribucion-titulo" className={CARD}>
+          <h2 id="distribucion-titulo" className="font-display text-card font-semibold">
+            Distribución sugerida
+          </h2>
+          <div className="mt-2">
+            <BudgetSuggestion collected={data.summary.collected} distribution={data.budget} />
+          </div>
+        </section>
+      </div>
 
       <section className={`${CARD} mt-5`}>
         <h2 className="font-display text-card font-semibold">Actividad del período</h2>
