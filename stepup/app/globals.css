@@ -308,3 +308,116 @@ html:has(.tf-landing) {
     display: inline;
   }
 }
+
+/* ── Sistema único de transiciones del área privada (docs/design/web-v1/15-transiciones.md) ────────────────────────────────
+   Una sola curva y tres duraciones: entrada de página 220 ms (opacidad + 10 px), diálogos 180 ms (opacidad + escala 0,98 → 1, cierran
+   en 110 ms), hojas móviles 220 ms desde abajo (cierran en 130 ms). Sólo `opacity` y `transform` (compuestas por la GPU: no recalculan el
+   diseño), sin temporizadores, sin efectos permanentes y sin nada que oculte contenido más de un fotograma: la animación acompaña la
+   carga, nunca la retrasa. Todo vive dentro de `prefers-reduced-motion: no-preference`: con «reducir movimiento» el contenido aparece
+   ya en su lugar. */
+@keyframes tf-page-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tf-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes tf-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tf-dialog-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes tf-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tf-sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Pantalla nueva: entra el contenido (hijo directo de <main>); el esqueleto de carga no se anima (aparece al instante) y las pantallas con
+     grupos propios (`data-tf-groups`) escalonan sus bloques con `.tf-enter` + `data-enter`. La barra lateral y la navegación viven fuera
+     de <main>: nunca se vuelven a animar. */
+  .tf-page-main > :not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-overlay]),
+  .tf-enter {
+    animation: tf-page-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .tf-enter[data-enter="2"] {
+    animation-delay: 40ms;
+  }
+  .tf-enter[data-enter="3"] {
+    animation-delay: 80ms;
+  }
+  .tf-backdrop {
+    animation: tf-fade-in 160ms ease-out backwards;
+  }
+  .tf-dialog {
+    animation: tf-sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  [data-closing] .tf-backdrop {
+    animation: tf-fade-out 110ms ease-in forwards;
+  }
+  [data-closing] .tf-dialog {
+    animation: tf-sheet-out 130ms ease-in forwards;
+  }
+  @media (min-width: 820px) {
+    .tf-dialog {
+      animation: tf-dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    [data-closing] .tf-dialog {
+      animation: tf-dialog-out 110ms ease-in forwards;
+    }
+  }
+  /* Menús y selectores propios: la lista aparece con opacidad y escala leve desde su borde superior (cierra al instante). */
+  .tf-menu {
+    transform-origin: top;
+    animation: tf-dialog-in 160ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+}

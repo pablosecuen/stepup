@@ -13,7 +13,7 @@ const NAVIGATION_KEYS: ReadonlySet<string> = new Set<DensityPickerKey>(["ArrowDo
  *
  * Teclado: Flecha abajo/arriba, Enter o Espacio abren; con la lista abierta las flechas, Inicio y Fin mueven, Enter o Espacio
  * eligen, Escape cierra sin cambiar (el foco vuelve al botón) y Tab cierra. Sólo escritorio (en móvil la agenda por día no cambia).
- * Sin animaciones: nada que reducir con «reducir movimiento».
+ * La lista aparece con la animación común de menús (`.tf-menu`: opacidad + escala 0,98 → 1, 160 ms); con «reducir movimiento» no se anima.
  */
 export function CalendarDensityPicker({ value, onChange }: { value: CalendarDensityKey; onChange: (next: CalendarDensityKey) => void }) {
   const listId = useId();
@@ -97,7 +97,7 @@ export function CalendarDensityPicker({ value, onChange }: { value: CalendarDens
         role="listbox"
         aria-label="Densidad del calendario"
         hidden={!open}
-        className="absolute left-0 top-full z-40 mt-1 w-[180px] overflow-hidden rounded-md border-[1.5px] border-borderMid bg-surface p-1 shadow-panel"
+        className="tf-menu absolute left-0 top-full z-40 mt-1 w-[180px] overflow-hidden rounded-md border-[1.5px] border-borderMid bg-surface p-1 shadow-panel"
       >
         {CALENDAR_DENSITIES.map((density, index) => {
           const selected = density.key === value;

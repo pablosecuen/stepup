@@ -9,6 +9,7 @@ import { visibleCalendarItems, type CalendarViewItem } from "@/lib/calendar/occu
 import { DEFAULT_CALENDAR_DENSITY, readStoredCalendarDensity, writeStoredCalendarDensity, type CalendarDensityKey } from "@/lib/calendar/density";
 import { CalendarDensityPicker } from "./calendar-density-picker";
 import { CalendarViewSwitch } from "./calendar-view-switch";
+import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { RealCalendarGrid } from "./real-calendar-grid";
 
 interface CalendarWorkspaceProps {
@@ -81,9 +82,9 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
         </div>
       )}
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
+      <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
         <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} />
-      </div>
+      </EnterOnChange>
     </div>
   );
 }

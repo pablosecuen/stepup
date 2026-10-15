@@ -117,7 +117,7 @@ test("«Ajustar porcentajes»: diálogo compacto con la acción existente, suma 
   assert.match(dialog, /form=\{formId\}/, "el botón Guardar del pie envía el formulario");
   assert.match(dialog, /if \(state\.saved === true && !state\.error\) onSaved\(\)/);
   const ui = code("components/ui/dialog.tsx");
-  assert.match(ui, /useDialogA11y\(onClose\)/, "Escape, foco atrapado y foco devuelto al abrir/cerrar");
+  assert.match(ui, /useDialogA11y\(requestClose\)/, "Escape, foco atrapado y foco devuelto al abrir/cerrar");
   assert.match(code("lib/ui/use-dialog-a11y.ts"), /event\.key === "Escape"[\s\S]*onCloseRef\.current\(\)/);
   assert.match(code("lib/ui/use-dialog-a11y.ts"), /opener\.focus\(\)/);
   // los tres controles no ocupan la pantalla de forma permanente: sólo existen dentro del diálogo

@@ -61,7 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">
         <SignOutButton />
       </div>
-      <main id="contenido" tabIndex={-1} className="focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
+      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
     </div>
   );
 }

@@ -44,7 +44,6 @@ function groupByStart(entries: readonly TodayAgendaEntry[]): TodayAgendaEntry[][
   return groups;
 }
 
-const ENTER = "motion-safe:animate-tf-rise";
 
 /**
  * Próxima clase (franja compacta, ≈ 120 px) y «Tu día» (línea de tiempo vertical con TODAS las clases del día, de la primera a la
@@ -76,8 +75,8 @@ export function DayPlanner({
           type="button"
           onClick={() => setSelected(next.item)}
           aria-haspopup="dialog"
-          style={{ animationDelay: "120ms" }}
-          className={`${ENTER} group flex min-h-[112px] w-full items-center justify-between gap-4 rounded-xl bg-side px-5 py-4 text-left text-white shadow-card transition-colors duration-200 hover:bg-side2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 nav:px-6`}
+          data-enter="2"
+          className={`tf-enter group flex min-h-[112px] w-full items-center justify-between gap-4 rounded-xl bg-side px-5 py-4 text-left text-white shadow-card transition-colors duration-200 hover:bg-side2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 nav:px-6`}
         >
           <span className="min-w-0">
             <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] text-sideText">
@@ -98,7 +97,7 @@ export function DayPlanner({
           </span>
         </button>
       ) : (
-        <div style={{ animationDelay: "120ms" }} className={`${ENTER} flex min-h-[72px] flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border-[1.5px] border-dashed border-borderMid px-5 py-3.5`}>
+        <div data-enter="2" className={`tf-enter flex min-h-[72px] flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border-[1.5px] border-dashed border-borderMid px-5 py-3.5`}>
           <p className="text-[15px] text-textSecondary">{entries.length === 0 ? "No hay clases agendadas para hoy." : "No tenés más clases hoy."}</p>
           <PrivateLink href="/calendario" className="inline-flex min-h-11 items-center gap-1.5 text-[14px] font-[650] text-accentDark hover:underline">
             <CalendarDaysIcon className="h-4 w-4" aria-hidden />
@@ -109,7 +108,7 @@ export function DayPlanner({
 
       {/* Tu día (sin clases, la franja de arriba ya lo dice: no se repite en una segunda caja) */}
       {entries.length > 0 && (
-      <section aria-labelledby="tu-dia" style={{ animationDelay: "180ms" }} className={`${ENTER} rounded-xl border-[1.5px] border-border bg-surface shadow-card`}>
+      <section aria-labelledby="tu-dia" data-enter="2" className={`tf-enter rounded-xl border-[1.5px] border-border bg-surface shadow-card`}>
         <div className="flex items-baseline justify-between gap-3 px-5 pb-2 pt-4 nav:px-6">
           <h2 id="tu-dia" className="font-display text-[24px] font-semibold leading-tight tracking-tight">
             Tu día

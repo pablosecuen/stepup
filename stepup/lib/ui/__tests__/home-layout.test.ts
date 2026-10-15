@@ -17,7 +17,7 @@ test("resumen del día: indicadores editoriales pequeños, sin tarjetas, con nom
   const figure = VIEW.slice(VIEW.indexOf("function Figure("), VIEW.indexOf("function PanelHeader("));
   assert.doesNotMatch(figure, /shadow-card|shadow-subtle|rounded-xl|bg-surface|border-\[1\.5px\]/, "sin caja ni sombra: cifra y palabra");
   assert.match(figure, /font-display text-\[34px\]/, "cifra editorial en serifa");
-  assert.match(VIEW, /<section aria-label="Resumen del día"[^>]*className=\{`\$\{ENTER\} mt-5 flex items-stretch divide-x divide-border border-y border-border py-3`\}>/, "una fila con separadores finos, sin tarjetas");
+  assert.match(VIEW, /<section aria-label="Resumen del día"[^>]*className=\{`tf-enter mt-5 flex items-stretch divide-x divide-border border-y border-border py-3`\}>/, "una fila con separadores finos, sin tarjetas");
   assert.match(VIEW, /<Figure value=\{todayCount\}/);
   assert.match(VIEW, /<Figure value=\{pending\.length\}[^>]*href="\/registro"/);
   assert.match(VIEW, /<Figure value=\{remindersCount\}[^>]*href="\/recordatorios"/);
@@ -92,12 +92,15 @@ test("móvil: una sola columna, con los pendientes debajo de «Tu día»", () =>
   assert.doesNotMatch(VIEW, /[\s"'`:]order-/, "el orden visual es el del documento");
 });
 
-test("movimiento discreto: entrada suave escalonada de 320 ms y hover, sin animaciones constantes, respetando prefers-reduced-motion", () => {
-  const tailwind = read("tailwind.config.ts");
-  assert.match(tailwind, /"tf-rise": "tf-rise 320ms cubic-bezier\(0\.22, 1, 0\.36, 1\) both"/);
-  assert.match(VIEW, /ENTER = "motion-safe:animate-tf-rise"/, "la entrada sólo si el usuario no pidió menos movimiento");
-  assert.match(PLANNER, /ENTER = "motion-safe:animate-tf-rise"/);
+test("movimiento: Inicio usa el sistema común de transiciones (grupos escalonados 0/40/80 ms), sin animaciones constantes y respetando prefers-reduced-motion", () => {
+  // Los bloques de Inicio escalonan con `.tf-enter` + `data-enter` (definidos UNA vez en globals.css); su raíz declara los grupos
+  // (`data-tf-groups`) para no animarse dos veces. Ningún retraso en línea ni constante propia.
+  assert.match(VIEW, /<div data-tf-groups="" className=/);
+  assert.doesNotMatch(VIEW + PLANNER, /animationDelay|animate-tf-rise|const ENTER/, "sin estilos de entrada propios: todo sale del sistema común");
+  assert.ok((VIEW.match(/data-enter="[123]"/g) ?? []).length >= 6 && (PLANNER.match(/data-enter="2"/g) ?? []).length >= 2);
   const css = read("app/globals.css");
+  assert.match(css, /\.tf-enter\[data-enter="2"\] \{\s*animation-delay: 40ms;/);
+  assert.match(css, /\.tf-enter\[data-enter="3"\] \{\s*animation-delay: 80ms;/);
   const reduced = css.slice(css.indexOf("prefers-reduced-motion: reduce"));
   assert.match(reduced, /animation-delay: 0s !important/);
   assert.doesNotMatch(VIEW + PLANNER, /animate-(pulse|spin|bounce|ping)|infinite/, "ninguna animación constante");
@@ -110,7 +113,7 @@ test("preserva lo ya aprobado en Inicio: campana, un solo h1, «Nueva clase», p
   assert.equal((VIEW.match(/<h1/g) ?? []).length, 1);
   assert.match(VIEW, /href="\/recordatorios"[\s\S]{0,300}h-11 w-11/, "la campana de 44 px");
   assert.match(VIEW, /<PrivateButtonLink href="\/calendario\/nueva"/);
-  assert.match(VIEW, /\{onboarding && <FirstSteps/);
+  assert.match(VIEW, /\{onboarding && \(\s*<div className="tf-enter" data-enter="2">\s*<FirstSteps/);
   assert.match(VIEW, /className=\{`\$\{PAGE_WIDTH\.wide\}`\}/);
   assert.doesNotMatch(VIEW, /Cerrar sesión|SignOutButton/, "Cerrar sesión lo pone el shell en su fila");
 });

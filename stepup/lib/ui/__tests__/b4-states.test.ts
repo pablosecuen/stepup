@@ -51,7 +51,7 @@ test("cada sección privada (salvo Inicio) tiene su loading.tsx con el esqueleto
     assert.ok(existsSync(join(ROOT, file)), `${file} existe`);
     const source = code(file);
     assert.match(source, /export default function Loading\(\)/);
-    assert.match(source, /<PageSkeleton label="Cargando [^"]+…" \/>/, "con texto para lectores de pantalla");
+    assert.match(source, /<PageSkeleton label="Cargando [^"]+…" variant="[a-z]+" \/>/, "con texto para lectores de pantalla");
     assert.doesNotMatch(source, /"use client"/);
   }
 });
@@ -67,7 +67,8 @@ test("el esqueleto es accesible: role=status, aria-busy, texto sólo para lector
   assert.match(skeleton, /role="status" aria-busy="true" aria-live="polite"/);
   assert.match(skeleton, /aria-labelledby="carga-titulo"/, "la región se nombra con la sección que carga");
   assert.match(skeleton, /<span id="carga-titulo" className="sr-only">\s*\{label\}\s*<\/span>/);
-  assert.match(skeleton, /motion-safe:animate-pulse/);
+  assert.doesNotMatch(skeleton, /animate-|infinite/, "sin brillo ni animación permanente: aparece al instante");
+  assert.match(skeleton, /data-tf-skeleton/, "el esqueleto no se anima: sólo el contenido real entra con la transición común");
   assert.match(skeleton, /aria-hidden/, "los bloques decorativos no se leen");
   assert.match(code("components/ui/states.tsx"), /animate-spin[^"]*motion-reduce:animate-none/, "el spinner también respeta reducir movimiento");
 });

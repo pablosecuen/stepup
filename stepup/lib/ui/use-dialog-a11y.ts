@@ -21,6 +21,10 @@ export function useDialogA11y(onClose: () => void) {
     if (!dialog) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
+    const previousPadding = document.body.style.paddingRight;
+    // Al bloquear el scroll de fondo desaparece la barra de desplazamiento: se reserva su ancho para que el contenido de atrás no se mueva.
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
     document.body.style.overflow = "hidden";
     dialog.focus();
 
@@ -43,6 +47,7 @@ export function useDialogA11y(onClose: () => void) {
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPadding;
       if (opener && opener.isConnected) opener.focus();
     };
   }, []);

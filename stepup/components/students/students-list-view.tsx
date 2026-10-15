@@ -1,4 +1,5 @@
 import { PlusIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
@@ -63,6 +64,7 @@ export function StudentsListView({
         <ManageLevelsSection customLevels={customLevels} />
       </div>
 
+      <EnterOnChange changeKey={`${search}|${status}|${level}|${modality}|${page}`}>
       {items.length > 0 ? (
         <>
           <ul className="mt-5 flex flex-col gap-3 nav:hidden">
@@ -86,6 +88,7 @@ export function StudentsListView({
           />
         </div>
       )}
+      </EnterOnChange>
     </div>
   );
 }

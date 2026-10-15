@@ -94,7 +94,7 @@ test("cada loading.tsx identifica su sección (nombre accesible único, sin enca
   assert.ok(sections.length >= 8, sections.join(", "));
   const labels = new Set<string>();
   for (const section of sections) {
-    const match = code(`app/(app)/${section}/loading.tsx`).match(/<PageSkeleton label="(Cargando [^"]+…)" \/>/);
+    const match = code(`app/(app)/${section}/loading.tsx`).match(/<PageSkeleton label="(Cargando [^"]+…)" variant="[a-z]+" \/>/);
     assert.ok(match, `${section}: loading sin etiqueta «Cargando …»`);
     assert.ok(!labels.has(match![1]), `${section}: etiqueta repetida`);
     labels.add(match![1]);
@@ -105,7 +105,7 @@ test("cada loading.tsx identifica su sección (nombre accesible único, sin enca
   assert.equal((skeleton.match(/id="carga-titulo"/g) ?? []).length, 1);
   assert.doesNotMatch(skeleton, /<h[1-6]\b/, "no agrega un encabezado: el título real llega con el contenido (sin duplicados)");
   assert.match(skeleton, /role="status" aria-busy="true" aria-live="polite"/);
-  assert.match(skeleton, /motion-safe:animate-pulse/);
+  assert.doesNotMatch(skeleton, /animate-|infinite/, "sin animación permanente");
 });
 
 test("Inicio sigue sin loading.tsx y su redirect de recuperación (B0) sigue siendo un redirect HTTP del servidor", () => {

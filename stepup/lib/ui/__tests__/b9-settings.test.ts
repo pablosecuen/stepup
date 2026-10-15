@@ -189,7 +189,7 @@ test("botones: los cuatro estilos compartidos son los del sistema (44 px) y ning
 
 test("teclado y foco: las confirmaciones son diálogos (foco atrapado, Escape y foco devuelto al botón); el resultado se anuncia", () => {
   const dialog = code("components/ui/dialog.tsx");
-  assert.match(dialog, /useDialogA11y\(onClose\)/, "el diálogo atrapa el foco, cierra con Escape y devuelve el foco");
+  assert.match(dialog, /useDialogA11y\(requestClose\)/, "el diálogo atrapa el foco, cierra con Escape y devuelve el foco");
   const del = code("components/account/delete-account-button.tsx");
   assert.match(del, /<Dialog\s+title="Eliminar cuenta"/);
   assert.match(del, /onClose=\{cancel\}/);

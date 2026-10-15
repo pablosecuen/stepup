@@ -229,7 +229,7 @@ test("accesibilidad: foco en el error, Escape en los paneles, foco devuelto al b
   assert.equal((ui.match(/<Dialog\b/g) ?? []).length, 2, "la revisión y la confirmación son diálogos: Escape las cierra, el foco queda atrapado y vuelve al botón");
   assert.match(ui, /role="group"\s+aria-label="Revisión para deshacer la importación"/);
   assert.match(ui, /role="group"\s+aria-label="Confirmar que ya no se podrá deshacer"/);
-  assert.match(code("components/ui/dialog.tsx"), /useDialogA11y\(onClose\)/);
+  assert.match(code("components/ui/dialog.tsx"), /useDialogA11y\(requestClose\)/);
   assert.match(code(HISTORY), /reviewButtonRef\.current\?\.focus\(\)/);
   // Botones con los estilos compartidos de 44 px; ninguno con padding propio.
   for (const file of [WIZARD, UI, HISTORY]) {

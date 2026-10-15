@@ -145,7 +145,9 @@ test("la generación de cobros y el barrido de PDFs sólo se alcanzan desde Serv
 
 test("los enlaces del área privada nunca precargan (prefetch={false}) y las páginas públicas sólo apuntan a rutas públicas", () => {
   // (sin comentarios: el texto `prefetch={false}` también aparece en la documentación del componente)
-  assert.match(stripComments(read("components/nav/private-link.tsx")), /<NextLink \{\.\.\.props\} prefetch=\{false\} \/>/);
+  assert.match(stripComments(read("components/nav/private-link.tsx")), /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{false\}\s*\/>/);
+  // La única precarga permitida es la de INTENCIÓN (lib/nav/intent-prefetch.ts: lista cerrada, 3 s, una por destino) y vive sólo en PrivateLink.
+  assert.match(stripComments(read("components/nav/private-link.tsx")), /shouldPrefetchOnIntent\(/);
   const publicLinks = [
     "app/page.tsx",
     "app/login/login-form.tsx",
@@ -159,8 +161,8 @@ test("los enlaces del área privada nunca precargan (prefetch={false}) y las pá
   // Ningún componente llama a router.prefetch ni usa next/link directo en el área privada.
   for (const file of [...walk("app/(app)", (p) => /\.tsx$/.test(p)), ...walk("components", (p) => /\.tsx$/.test(p))]) {
     const source = read(file);
-    assert.doesNotMatch(source, /router\.prefetch\(/, `${file}: router.prefetch`);
     const normalized = file.replace(/\\/g, "/");
+    if (!normalized.endsWith("components/nav/private-link.tsx")) assert.doesNotMatch(source, /router\.prefetch\(/, `${file}: router.prefetch`);
     // `components/auth/*` es el envoltorio de las pantallas PÚBLICAS (enlaza sólo a rutas públicas).
     if (!normalized.endsWith("components/nav/private-link.tsx") && !normalized.startsWith("components/auth/")) {
       assert.doesNotMatch(source, /from "next\/link"/, `${file}: usa next/link directo (debe ser PrivateLink)`);

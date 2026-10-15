@@ -12,7 +12,6 @@ import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-form
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 
 const MAX_VISIBLE_PENDING = 4;
-const ENTER = "motion-safe:animate-tf-rise";
 const PANEL = "rounded-xl border-[1.5px] border-border bg-surface shadow-card";
 const ROW = "flex min-h-14 items-center gap-3 border-t border-border px-4 py-2.5 transition-colors duration-200 hover:bg-surface2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink motion-reduce:transition-none nav:px-5";
 
@@ -71,8 +70,8 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
   const urgency = data.collectionsUrgency;
 
   return (
-    <div className={`${PAGE_WIDTH.wide}`}>
-      <header style={{ animationDelay: "0ms" }} className={`${ENTER} flex flex-wrap items-end justify-between gap-x-6 gap-y-3`}>
+    <div data-tf-groups="" className={`${PAGE_WIDTH.wide}`}>
+      <header data-enter="1" className={`tf-enter flex flex-wrap items-end justify-between gap-x-6 gap-y-3`}>
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-[650] text-textMuted">
             <SunIcon className="h-4 w-4 shrink-0" aria-hidden />
@@ -110,14 +109,18 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
       </header>
 
       {!onboarding && (
-        <section aria-label="Resumen del día" style={{ animationDelay: "60ms" }} className={`${ENTER} mt-5 flex items-stretch divide-x divide-border border-y border-border py-3`}>
+        <section aria-label="Resumen del día" data-enter="2" className={`tf-enter mt-5 flex items-stretch divide-x divide-border border-y border-border py-3`}>
           <Figure value={todayCount} label={todayCount === 1 ? "clase hoy" : "clases hoy"} />
           <Figure value={pending.length} label={pending.length === 1 ? "clase por registrar" : "clases por registrar"} href="/registro" />
           <Figure value={remindersCount} label={remindersCount === 1 ? "recordatorio" : "recordatorios"} href="/recordatorios" />
         </section>
       )}
 
-      {onboarding && <FirstSteps steps={buildFirstSteps({ activeStudentCount: data.activeStudentCount, hasAnyClass: welcome.hasAnyClass === true })} />}
+      {onboarding && (
+        <div className="tf-enter" data-enter="2">
+          <FirstSteps steps={buildFirstSteps({ activeStudentCount: data.activeStudentCount, hasAnyClass: welcome.hasAnyClass === true })} />
+        </div>
+      )}
 
       <div className={`mt-5 grid grid-cols-1 items-start gap-5 ${onboarding ? "" : "nav:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]"}`}>
         {!onboarding && (
@@ -129,7 +132,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
         {/* Pendientes: clases por registrar → recordatorios → cobros de hoy */}
         <div className="flex min-w-0 flex-col gap-5">
           {pending.length > 0 ? (
-            <section aria-labelledby="por-registrar" style={{ animationDelay: "240ms" }} className={`${ENTER} ${PANEL}`}>
+            <section aria-labelledby="por-registrar" data-enter="3" className={`tf-enter ${PANEL}`}>
               <PanelHeader id="por-registrar" title="Clases por registrar" count={pending.length} href="/registro" linkLabel={`Ver todas${pending.length > MAX_VISIBLE_PENDING ? ` (${pending.length})` : ""}`} />
               <ul>
                 {pending.slice(0, MAX_VISIBLE_PENDING).map(({ item, registrationState, completedParticipants, totalParticipants }) => (
@@ -150,7 +153,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
             </section>
           ) : (
             !onboarding && (
-              <section style={{ animationDelay: "240ms" }} className={`${ENTER} ${PANEL} flex items-center gap-3 px-4 py-4 text-textSecondary nav:px-5`}>
+              <section data-enter="3" className={`tf-enter ${PANEL} flex items-center gap-3 px-4 py-4 text-textSecondary nav:px-5`}>
                 <CheckCircleIcon className="h-6 w-6 shrink-0 text-ok" aria-hidden />
                 <p>No hay clases pendientes de registrar.</p>
               </section>
@@ -158,7 +161,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           )}
 
           {(remindersCount > 0 || !onboarding) && (
-            <section aria-labelledby="recordatorios-resumen" style={{ animationDelay: "300ms" }} className={`${ENTER} ${PANEL}`}>
+            <section aria-labelledby="recordatorios-resumen" data-enter="3" className={`tf-enter ${PANEL}`}>
               <PanelHeader id="recordatorios-resumen" title="Recordatorios" count={remindersCount} href="/recordatorios" />
               {remindersCount === 0 ? (
                 <p className="border-t border-border px-4 py-3 text-[14px] text-textMuted nav:px-5">No hay recordatorios pendientes.</p>
@@ -182,7 +185,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           )}
 
           {showCollections && (
-            <section aria-labelledby="cobros-hoy" style={{ animationDelay: "360ms" }} className={`${ENTER} ${PANEL}`}>
+            <section aria-labelledby="cobros-hoy" data-enter="3" className={`tf-enter ${PANEL}`}>
               <PanelHeader id="cobros-hoy" title="Cobros de hoy" href="/cobros" linkLabel="Ver cobros" />
               <Link href="/cobros" className="min-h-14 grid grid-cols-2 divide-x divide-border border-t border-border transition-colors duration-200 hover:bg-surface2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink motion-reduce:transition-none">
                 <span className="block min-h-14 px-4 py-3 nav:px-5">
@@ -201,7 +204,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           )}
 
           {data.emptyClasses.items.length > 0 && (
-            <section style={{ animationDelay: "420ms" }} className={`${ENTER} rounded-xl border-[1.5px] border-warnLine bg-[#FFF8E5] p-4 nav:p-5`}>
+            <section data-enter="3" className={`tf-enter rounded-xl border-[1.5px] border-warnLine bg-[#FFF8E5] p-4 nav:p-5`}>
               <p className="flex items-start gap-2 text-[15px] font-bold text-textPrimary">
                 <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0 text-warn" aria-hidden />
                 {data.emptyClasses.items.length} clase{data.emptyClasses.items.length === 1 ? "" : "s"} sin alumnos asignados

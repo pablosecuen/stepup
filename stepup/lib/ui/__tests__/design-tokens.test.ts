@@ -189,7 +189,7 @@ test("componentes base: roles y semántica accesible", () => {
   assert.match(field, /min-h-\[46px\]/);
   const dialog = code("components/ui/dialog.tsx");
   assert.match(dialog, /role="dialog"[\s\S]{0,80}aria-modal="true"[\s\S]{0,80}aria-labelledby=\{titleId\}/);
-  assert.match(dialog, /useDialogA11y\(onClose\)/, "Escape, foco atrapado y devolución del foco");
+  assert.match(dialog, /useDialogA11y\(requestClose\)/, "Escape, foco atrapado y devolución del foco");
   assert.match(dialog, /aria-label="Cerrar"/);
   assert.match(dialog, /flex-col-reverse/, "en la hoja móvil la acción principal queda arriba");
   assert.match(dialog, /nav:items-center/, "centrado desde 820 px; hoja inferior por debajo");

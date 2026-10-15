@@ -115,7 +115,7 @@ test("Inicio: la etapa decide qué se muestra, sin métricas ni textos inventado
   const page = code("components/dashboard/home-view.tsx");
   assert.match(page, /resolveHomeStage\(\{ studentCount: data\.studentCount, hasAnyClass: welcome\.hasAnyClass \}\)/);
   assert.match(page, /buildGreeting\(data\.localHour, welcome\.displayName\)/, "saludo con la hora de Argentina y el nombre del perfil");
-  assert.match(page, /\{onboarding && <FirstSteps/, "primeros pasos sólo sin clases");
+  assert.match(page, /\{onboarding && \(\s*<div className="tf-enter" data-enter="2">\s*<FirstSteps/, "primeros pasos sólo sin clases");
   assert.match(page, /\{!onboarding && \(\s*<div className="flex min-w-0 flex-col gap-5">\s*<DayPlanner entries=\{data\.todayAgenda\}/, "sin clases (cuenta vacía) no se muestra la agenda: sólo los primeros pasos");
   assert.match(page, /const showCollections = stage !== "empty";/, "sin alumnos no se muestra un 'Cobros 0 · 0' vacío");
   assert.match(page, /\{showCollections && \(\s*<section aria-labelledby="cobros-hoy"/);

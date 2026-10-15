@@ -10,6 +10,7 @@ import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import type { ProfileClassStats, StudentNextClass } from "@/lib/students/profile-overview";
 import { ChangeStatusForm } from "@/components/students/change-status-form";
 import { StudentProfileHeader } from "@/components/students/profile/profile-header";
+import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
 import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
 import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
@@ -52,7 +53,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
         <ProfileTabsNav studentId={student.id} active={tab} />
       </div>
 
-      <div className="mt-5">
+      <EnterOnChange changeKey={tab} className="mt-5">
         {tab === "resumen" && (
           <div className="flex flex-col gap-6">
             <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} />
@@ -78,7 +79,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
             totalCollected={data.totalCollected}
           />
         )}
-      </div>
+      </EnterOnChange>
     </div>
   );
 }

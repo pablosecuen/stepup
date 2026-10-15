@@ -103,12 +103,17 @@ test("logout: acción propia (botón → signOutAction existente vía guardNetwo
 
 test("ausencia de prefetch: ningún enlace del área privada puede precargar", () => {
   const privateLink = read("components/nav/private-link.tsx");
-  assert.match(privateLink, /<NextLink \{\.\.\.props\} prefetch=\{false\} \/>/, "prefetch={false} va DESPUÉS del spread: no se puede reactivar");
+  assert.match(privateLink, /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{false\}\s*\/>/, "prefetch={false} va DESPUÉS del spread: no se puede reactivar");
+  assert.doesNotMatch(privateLink.slice(privateLink.lastIndexOf("prefetch={false}")), /\{\.\.\.[a-z]+\}/i, "ningún spread posterior a prefetch={false}");
+  assert.match(privateLink, /shouldPrefetchOnIntent\(/, "la única precarga es la de intención (lista cerrada, 3 s, una por destino)");
+  assert.match(privateLink, /event\.pointerType === "mouse"/);
+  assert.match(privateLink, /:focus-visible/);
+  assert.match(privateLink, /onPointerDown=/, "también al apoyar el dedo o el botón");
   assert.match(privateLink, /Omit<ComponentProps<typeof NextLink>, "prefetch">/, "el tipo ni siquiera acepta `prefetch`");
 
   const offenders: string[] = [];
   for (const file of [...sourceFiles("app/(app)"), ...sourceFiles("components").filter((f) => !f.startsWith("components/auth/"))]) {
-    if (file === "components/nav/private-link.tsx") continue;
+    if (file === "components/nav/private-link.tsx") continue; // la precarga por intención vive sólo acá
     const source = read(file);
     if (/from "next\/link"/.test(source)) offenders.push(`${file}: importa next/link directo`);
     if (/prefetch\s*=\s*\{?\s*(true|"auto"|null)/.test(source) || /router\.prefetch\(/.test(source)) offenders.push(`${file}: precarga explícita`);
