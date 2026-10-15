@@ -147,7 +147,7 @@ test("los botones de iconos tienen el tamaño y la medida mínimos de 44 px", ()
   assert.match(header, /view === "week" \? "Semana anterior" : "Día anterior"/);
   assert.match(header, /view === "week" \? "Semana siguiente" : "Día siguiente"/);
   assert.match(code("components/ui/dialog.tsx"), /aria-label="Cerrar" className="[^"]*flex h-11 w-11/, "el diálogo de la clase usa este botón de cierre");
-  assert.match(code("components/dashboard/home-view.tsx"), /relative flex h-11 w-11 items-center justify-center rounded-full/);
+  assert.match(code("components/dashboard/home-view.tsx"), /relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full/);
 });
 
 // --- Pestañas del perfil -----------------------------------------------------------------------------------------------

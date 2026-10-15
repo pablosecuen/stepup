@@ -119,11 +119,14 @@ const config: Config = {
         "tf-fade": { from: { opacity: "0" }, to: { opacity: "1" } },
         "tf-pop": { from: { opacity: "0", transform: "translateY(8px) scale(0.98)" }, to: { opacity: "1", transform: "translateY(0) scale(1)" } },
         "tf-sheet": { from: { opacity: "0.4", transform: "translateY(40px)" }, to: { opacity: "1", transform: "translateY(0)" } },
+        "tf-rise": { from: { opacity: "0", transform: "translateY(10px)" }, to: { opacity: "1", transform: "translateY(0)" } },
       },
       animation: {
         "tf-fade": "tf-fade 160ms ease-out",
         "tf-pop": "tf-pop 180ms ease-out",
         "tf-sheet": "tf-sheet 220ms ease-out",
+        // Entrada inicial suave de los bloques de Inicio (una sola vez; sólo opacidad y desplazamiento: sin saltos de layout).
+        "tf-rise": "tf-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

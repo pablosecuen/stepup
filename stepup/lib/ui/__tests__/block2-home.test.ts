@@ -29,7 +29,7 @@ test("Inicio no agrega consultas, campos ni funciones: la vista sólo lee lo que
 });
 
 test("Inicio: los textos de una clase no se truncan (se parten sin desbordar) y el estado se dice con texto", () => {
-  const view = code(VIEW) + code("components/dashboard/today-agenda.tsx");
+  const view = code(VIEW) + code("components/dashboard/day-planner.tsx");
   assert.doesNotMatch(view, /\btruncate\b|text-ellipsis|line-clamp/, "una etiqueta como «Clase individual» nunca se corta con «…»");
   assert.match(view, /\[overflow-wrap:anywhere\]/, "los nombres y títulos largos se parten");
   assert.match(view, /label: "En curso", tone: "accent"/, "En curso con texto, no sólo color");

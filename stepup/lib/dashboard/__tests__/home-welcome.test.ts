@@ -116,10 +116,10 @@ test("Inicio: la etapa decide qué se muestra, sin métricas ni textos inventado
   assert.match(page, /resolveHomeStage\(\{ studentCount: data\.studentCount, hasAnyClass: welcome\.hasAnyClass \}\)/);
   assert.match(page, /buildGreeting\(data\.localHour, welcome\.displayName\)/, "saludo con la hora de Argentina y el nombre del perfil");
   assert.match(page, /\{onboarding && <FirstSteps/, "primeros pasos sólo sin clases");
-  assert.match(page, /\{!onboarding && \(\s*<section aria-labelledby="clases-de-hoy" className=\{CARD\}>\s*<div[^>]*>\s*<h2[^>]*>\s*Clases de hoy/, "sin clases no se muestra una agenda vacía");
+  assert.match(page, /\{!onboarding && \(\s*<div className="flex min-w-0 flex-col gap-5">\s*<DayPlanner entries=\{data\.todayAgenda\}/, "sin clases (cuenta vacía) no se muestra la agenda: sólo los primeros pasos");
   assert.match(page, /const showCollections = stage !== "empty";/, "sin alumnos no se muestra un 'Cobros 0 · 0' vacío");
-  assert.match(page, /\{showCollections && \(\s*<Link href="\/cobros"/);
-  assert.match(page, /\{!onboarding && \(\s*<section className="mt-4">\s*<PrivateButtonLink href="\/calendario\/nueva"/, "el acceso rápido lo reemplazan los primeros pasos");
+  assert.match(page, /\{showCollections && \(\s*<section aria-labelledby="cobros-hoy"/);
+  assert.match(page, /\{!onboarding && \(\s*<PrivateButtonLink href="\/calendario\/nueva"/, "el acceso rápido lo reemplazan los primeros pasos");
   assert.match(page, /\{!onboarding && \(\s*<section aria-label="Resumen del día"/, "el resumen del día sólo con actividad");
   // Sólo datos YA cargados: Inicio no muestra nombres ni importes de cobros (sólo las dos cantidades del resumen).
   assert.doesNotMatch(page, /collectionEntries|formatMoney|\.amount|balanceCents/, "sin nombres ni importes de cobros");

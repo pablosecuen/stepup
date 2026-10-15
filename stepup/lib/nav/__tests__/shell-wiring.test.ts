@@ -147,7 +147,7 @@ test("Recordatorios y Resumen financiero siguen accesibles desde sus puntos actu
 test("Inicio: «Cerrar sesión» (fila superior del shell) y la campana de Recordatorios no se superponen y tienen objetivos separados", () => {
   const home = code("components/dashboard/home-view.tsx");
   assert.doesNotMatch(home, /Cerrar sesión|SignOutButton/, "Inicio no dibuja el control de sesión: lo pone el shell en su propia fila");
-  assert.match(home, /h-11 w-11 items-center justify-center rounded-full shrink-0/, "la campana mide 44 × 44 y no se encoge");
+  assert.match(home, /h-11 w-11 shrink-0 items-center justify-center rounded-full/, "la campana mide 44 × 44 y no se encoge");
   // la fila del shell reserva su propio alto: el contenido de cada pantalla empieza debajo y nunca por encima
   assert.match(layout, /h-\[var\(--tf-shell-top\)\]/);
 });
