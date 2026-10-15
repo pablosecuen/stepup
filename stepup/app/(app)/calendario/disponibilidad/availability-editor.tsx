@@ -19,6 +19,21 @@ function randomId(): string {
   return `avail_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Campos de un formulario de esta pantalla: se reparten solos según el ancho (cada uno de al menos 170 px y nunca más ancho que
+ * la tarjeta), de modo que en escritorio entran en una fila, en anchos medios en dos o tres y en móvil en una columna, sin
+ * desbordes ni campos comprimidos. El botón de enviar es la última celda.
+ */
+const FORM_GRID = "mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))] items-end gap-3.5 border-t-[1.5px] border-border pt-4";
+
+/**
+ * Estado vacío de una lista: un bloque compacto alineado a la izquierda (como máximo ~540 px en escritorio) que en móvil ocupa el
+ * ancho disponible. Sólo afecta al estado vacío: las filas reales de la lista usan todo el ancho que necesitan.
+ */
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return <li className="w-full max-w-[540px] rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">{children}</li>;
+}
+
 /** Una fila de la lista (bloqueo o excepción) con «Quitar» (texto rojo, al otro extremo). */
 function ListRow({ children, onRemove, disabled }: { children: React.ReactNode; onRemove: () => void; disabled: boolean }) {
   return (
@@ -99,10 +114,10 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               {WEEKDAY_LABELS[block.weekday]} {block.startTime}–{block.endTime} · {BLOCK_REASON_LABEL[block.reason]}
             </ListRow>
           ))}
-          {availability.weeklyBlocks.length === 0 && <li className="rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">Sin bloqueos semanales todavía.</li>}
+          {availability.weeklyBlocks.length === 0 && <EmptyNote>Sin bloqueos semanales todavía.</EmptyNote>}
         </ul>
 
-        <form action={addWeeklyBlock} className="mt-4 grid grid-cols-1 gap-3.5 border-t-[1.5px] border-border pt-4 sm:grid-cols-2 nav:grid-cols-4">
+        <form action={addWeeklyBlock} className={FORM_GRID}>
           <Field label="Día" htmlFor="weekday">
             <SelectInput id="weekday" name="weekday" aria-label="Día de la semana" defaultValue="0">
               {WEEKDAY_LABELS.map((label, index) => (
@@ -127,11 +142,9 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               ))}
             </SelectInput>
           </Field>
-          <div className="sm:col-span-2 nav:col-span-4">
-            <Button type="submit" variant="secondary" busy={pending}>
-              Agregar bloqueo
-            </Button>
-          </div>
+          <Button type="submit" variant="secondary" busy={pending} className="w-full">
+            Agregar bloqueo
+          </Button>
         </form>
       </Card>
 
@@ -144,10 +157,10 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               {exception.endDate ? ` – ${formatCivilDate(exception.endDate)}` : ""} · {EXCEPTION_REASON_LABEL[exception.reason]}
             </ListRow>
           ))}
-          {availability.exceptions.length === 0 && <li className="rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">Sin excepciones todavía.</li>}
+          {availability.exceptions.length === 0 && <EmptyNote>Sin excepciones todavía.</EmptyNote>}
         </ul>
 
-        <form action={addException} className="mt-4 grid grid-cols-1 gap-3.5 border-t-[1.5px] border-border pt-4 sm:grid-cols-3">
+        <form action={addException} className={FORM_GRID}>
           <Field label="Desde" htmlFor="exception-start">
             <TextInput id="exception-start" type="date" name="date" required />
           </Field>
@@ -163,11 +176,9 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               ))}
             </SelectInput>
           </Field>
-          <div className="sm:col-span-3">
-            <Button type="submit" variant="secondary" busy={pending}>
-              Agregar excepción
-            </Button>
-          </div>
+          <Button type="submit" variant="secondary" busy={pending} className="w-full">
+            Agregar excepción
+          </Button>
         </form>
       </Card>
     </div>
