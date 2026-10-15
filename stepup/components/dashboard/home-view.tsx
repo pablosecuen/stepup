@@ -46,7 +46,7 @@ function SectionCard({ title, count, action, children }: { title: string; count?
 }
 
 /**
- * Indicador de la franja de resumen: compacto (≈ 70 px de alto en escritorio) y con poco protagonismo frente a la agenda. En móvil
+ * Indicador de la franja de resumen: compacto (≈ 73 px de alto en escritorio) y con poco protagonismo frente a la agenda. En móvil
  * (< 480 px) cada uno es una fila de 44 px (nombre a la izquierda, cifra a la derecha) para no volver a ser tres tarjetas enormes.
  */
 function Kpi({ label, value, hint, href, icon: Icon }: { label: string; value: number; hint: string; href?: string; icon: IconComponent }) {
@@ -57,13 +57,13 @@ function Kpi({ label, value, hint, href, icon: Icon }: { label: string; value: n
         {label}
       </span>
       <span className="flex shrink-0 items-baseline gap-1.5 min-[480px]:mt-0.5">
-        <span className="font-display text-[22px] font-medium leading-none tracking-tight tf-num min-[480px]:text-[28px]">{value}</span>
+        <span className="font-display text-[22px] font-medium leading-none tracking-tight tf-num min-[480px]:text-[26px]">{value}</span>
         <span className="text-[12px] leading-tight text-textMuted">{hint}</span>
       </span>
     </>
   );
   const cls =
-    "flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-2 shadow-subtle min-[480px]:flex-col min-[480px]:items-start min-[480px]:justify-center min-[480px]:py-3";
+    "flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-2 shadow-subtle min-[480px]:flex-col min-[480px]:items-start min-[480px]:justify-center min-[480px]:py-2.5";
   return href ? (
     <Link href={href} className={`min-h-11 ${cls} transition-colors hover:border-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2`}>
       {body}

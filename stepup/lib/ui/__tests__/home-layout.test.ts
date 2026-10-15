@@ -16,12 +16,12 @@ const LOADER = code("lib/dashboard/load-home-data.ts");
 test("indicadores compactos: sin las clases tipográficas del diseño grande, sombra sutil, iconos chicos y los tres en una fila", () => {
   const kpi = VIEW.slice(VIEW.indexOf("function Kpi("), VIEW.indexOf("export function HomeView"));
   assert.doesNotMatch(kpi, /text-\[30px\]|text-\[40px\]|nav:text-\[40px\]|nav:py-4|nav:px-\[18px\]|mt-1\.5 block/, "ninguna clase del diseño grande anterior");
-  assert.match(kpi, /min-\[480px\]:text-\[28px\]/, "cifra de 28 px (antes 40)");
+  assert.match(kpi, /min-\[480px\]:text-\[26px\]/, "cifra de 26 px (antes 40)");
   assert.match(kpi, /text-\[22px\]/, "y 22 px en móvil (antes 30)");
   assert.match(kpi, /h-3\.5 w-3\.5/, "iconos de 14 px (antes 16)");
   assert.match(kpi, /shadow-subtle/, "sombra más sutil");
   assert.doesNotMatch(kpi, /shadow-card/);
-  assert.match(kpi, /min-\[480px\]:py-3/, "relleno vertical compacto");
+  assert.match(kpi, /min-\[480px\]:py-2.5/, "relleno vertical compacto");
   assert.match(VIEW, /<section aria-label="Resumen del día" className="mt-5 grid grid-cols-1 gap-2 min-\[480px\]:grid-cols-3 nav:gap-3\.5">/, "tres en una fila desde 480 px; filas de 44 px en móvil");
   assert.match(kpi, /min-h-11/, "objetivos de 44 px");
   // los tres conservan nombre, valor y destino
