@@ -134,8 +134,12 @@ test("la acción de guardado valida antes de tocar nada y repetirla es seguro; l
   assert.match(repo, /\.upsert\(\{/, "un único upsert por propietaria: atómico e idempotente");
   assert.match(repo, /owner_id: ctx\.ownerId/, "aislamiento por propietaria");
   // el 50/30/20 aparece SÓLO en Resumen financiero (componentes de finanzas), nunca en Configuración ni en otra pantalla
-  const holders = [...sources("app"), ...sources("components")].filter((file) => /Ajustar porcentajes|Distribución sugerida|saveBudgetDistributionAction|splitCollectedByPercent/.test(code(file)));
+  // La landing pública sólo NOMBRA «Distribución sugerida» en una maqueta demostrativa (sin acciones, sin guardado, sin cálculo real).
+  const all = [...sources("app"), ...sources("components")];
+  const isLanding = (file: string) => file.startsWith("components/landing/");
+  const holders = all.filter((file) => !isLanding(file) && /Ajustar porcentajes|Distribución sugerida|saveBudgetDistributionAction|splitCollectedByPercent/.test(code(file)));
   assert.deepEqual(holders.sort(), [DIALOG, SUGGESTION, VIEW].sort(), "la funcionalidad vive sólo en Resumen financiero");
+  for (const file of all.filter(isLanding)) assert.doesNotMatch(code(file), /Ajustar porcentajes|saveBudgetDistributionAction|splitCollectedByPercent|BudgetSuggestion|budget-adjust-dialog/, `${file}: la landing no trae la funcionalidad, sólo una maqueta`);
   assert.equal(existsSync(join(ROOT, "components/account/budget-distribution-form.tsx")), false, "no se duplica: el formulario de Configuración se retiró");
 });
 

@@ -12,7 +12,7 @@ const display = Fraunces({ subsets: ["latin"], variable: "--font-display", displ
 
 export const metadata: Metadata = {
   title: "TeacherFlow",
-  description: "TeacherFlow — gestión de alumnos, calendario y cobros para profesoras particulares.",
+  description: "TeacherFlow es la plataforma web para profesoras y profesores independientes: alumnos, clases y series, registro de clases y cobros en un solo lugar.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

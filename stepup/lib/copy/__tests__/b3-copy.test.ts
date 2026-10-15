@@ -60,11 +60,20 @@ test("ningún texto visible contiene referencias a fases, jerga interna ni prome
 });
 
 test("la landing no promete recargos automáticos (están desactivados) y no dice 'en construcción'", () => {
-  const landing = code("app/page.tsx");
+  // La landing se compone de `app/page.tsx` y de `components/landing/*` (escenas, maquetas y paneles demostrativos).
+  const landing = ["app/page.tsx", "components/landing/sections.tsx", "components/landing/screens.tsx", "components/landing/floats.tsx", "components/landing/frame.tsx", "components/landing/site-header.tsx", "components/landing/tour.tsx", "lib/landing/demo-data.ts"].map(code).join("\n");
   assert.doesNotMatch(landing, /recargos?/i);
   assert.doesNotMatch(landing, /automáticamente/i);
   assert.match(landing, /Mensualidades, pagos y vencimientos siempre a la vista\./);
   assert.match(landing, /para profesoras y profesores independientes/);
+});
+
+test("la landing no promete precios, suscripciones ni procesamiento de pagos, y no nombra una app móvil", () => {
+  const landing = ["app/page.tsx", "components/landing/sections.tsx", "components/landing/screens.tsx", "components/landing/floats.tsx", "components/landing/site-header.tsx", "components/landing/tour.tsx"].map(code).join("\n");
+  assert.doesNotMatch(landing, /suscripci|precio|plan(es)? (mensual|anual)|Mobbex|facturaci/i, "billing apagado: ni precios ni suscripciones");
+  assert.match(landing, /no procesa pagos/, "aclara que no procesa pagos");
+  assert.match(landing, /no conoce tus gastos ni tu ahorro real/, "la distribución 50\/30\/20 es una proyección");
+  assert.doesNotMatch(landing, /<img\b|background-image|\.(jpg|jpeg|webp)\b/i, "ninguna fotografía ni imagen decorativa");
 });
 
 test("Configuración dice la verdad sobre los recargos en lenguaje simple", () => {
