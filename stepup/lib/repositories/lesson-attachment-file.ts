@@ -18,7 +18,7 @@ export interface LessonAttachmentFile {
 }
 
 export async function getLessonAttachmentFile(ctx: AuthenticatedDbContext, id: string): Promise<LessonAttachmentFile> {
-  const { data, error } = await ctx.supabase.from("lesson_attachments").select("name, mime_type, storage_path, file_status").eq("owner_id", ctx.ownerId).eq("id", id).maybeSingle();
+  const { data, error } = await ctx.supabase.from("lesson_attachments").select("name, mime_type, storage_path, file_status").eq("owner_id", ctx.ownerId).eq("id", id).is("removed_at", null).maybeSingle();
   if (error) throw error;
   const row = data as { name: string; mime_type: string | null; storage_path: string | null; file_status: string } | null;
   if (!row) throw new AttachmentNotFoundError("No encontramos ese archivo.");

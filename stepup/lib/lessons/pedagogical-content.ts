@@ -6,6 +6,8 @@ export interface PedagogicalContentInput {
   activities: string[];
   activityNotes: string;
   internalNotes: string;
+  /** Materiales de la biblioteca usados en la clase (por su identificador de biblioteca). Si falta, el guardado no toca los materiales. */
+  materialIds?: string[];
 }
 
 export function validatePedagogicalContent(value: unknown): value is PedagogicalContentInput {
@@ -15,7 +17,8 @@ export function validatePedagogicalContent(value: unknown): value is Pedagogical
     t && typeof t === "object" && typeof t.text === "string" && t.text.trim() !== "" &&
     (t.id === null || typeof t.id === "string") && (t.status === "planificado" || t.status === "visto")
   ) && [c.objectives, c.activities].every((list) => Array.isArray(list) && list.every((s) => typeof s === "string" && s.trim() !== "")) &&
-    typeof c.activityNotes === "string" && typeof c.internalNotes === "string";
+    typeof c.activityNotes === "string" && typeof c.internalNotes === "string" &&
+    (c.materialIds === undefined || (Array.isArray(c.materialIds) && c.materialIds.every((m) => typeof m === "string" && m.trim() !== "" && m.length <= 80)));
 }
 
 /** The RPC payload used by both first registration and audited editing. */
@@ -27,5 +30,6 @@ export function pedagogicalContentPayload(content: PedagogicalContentInput): Rec
     activities: [...content.activities],
     activity_notes: content.activityNotes,
     internal_notes: content.internalNotes,
+    ...(content.materialIds !== undefined ? { material_ids: [...new Set(content.materialIds)] } : {}),
   };
 }

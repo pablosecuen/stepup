@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, TextArea, TextInput } from "@/components/ui/field";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
+import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
+import { LessonFilesEditor } from "./lesson-files-editor";
 
 function TextList({ label, singular, items, onChange }: { label: string; singular: string; items: string[]; onChange: (items: string[]) => void }) {
   const id = useId();
@@ -27,7 +29,14 @@ function TextList({ label, singular, items, onChange }: { label: string; singula
   </fieldset>;
 }
 
-export function PedagogicalContentEditor({ value, onChange }: { value: PedagogicalContentInput; onChange: (content: PedagogicalContentInput) => void }) {
+/** `files`: con el registro ya creado, el editor también permite adjuntar fotos y PDF y elegir materiales de la biblioteca (como la app anterior). */
+export interface PedagogicalFilesProps {
+  registrationId: string;
+  attachments: LessonContentAttachment[];
+  library: LibraryMaterial[];
+}
+
+export function PedagogicalContentEditor({ value, onChange, files }: { value: PedagogicalContentInput; onChange: (content: PedagogicalContentInput) => void; files?: PedagogicalFilesProps }) {
   const id = useId();
   const [topicDraft, setTopicDraft] = useState("");
   function addTopic() {
@@ -55,6 +64,7 @@ export function PedagogicalContentEditor({ value, onChange }: { value: Pedagogic
         <TextList label="Objetivos" singular="Objetivo" items={value.objectives} onChange={(objectives) => onChange({ ...value, objectives })} />
         <TextList label="Actividades" singular="Actividad" items={value.activities} onChange={(activities) => onChange({ ...value, activities })} />
         <Field label="Notas de actividades" htmlFor={`${id}-notes`}><TextArea id={`${id}-notes`} rows={4} placeholder="Qué se hizo en esta clase, en texto libre" value={value.activityNotes} onChange={(e) => onChange({ ...value, activityNotes: e.target.value })} /></Field>
+        {files && <LessonFilesEditor registrationId={files.registrationId} attachments={files.attachments} library={files.library} materialIds={value.materialIds ?? []} onMaterialIdsChange={(materialIds) => onChange({ ...value, materialIds })} />}
         <Field label="Observación interna (privada)" htmlFor={`${id}-internal`} hint="Solo la ve la profesora; no se incluye en reportes."><TextArea id={`${id}-internal`} rows={3} value={value.internalNotes} onChange={(e) => onChange({ ...value, internalNotes: e.target.value })} /></Field>
       </div>
     </Card>

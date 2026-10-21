@@ -23,7 +23,9 @@
 //    <style> en línea; se revisará junto con el nonce.
 //  - `img-src 'self' data: blob:`: íconos propios y SVG/imágenes embebidas. `font-src 'self'`: no hay fuentes externas (las de
 //    `next/font` —Hanken Grotesk y Fraunces— se autoalojan en el propio origen). `connect-src 'self'`: el navegador NUNCA habla con Supabase (todo pasa por el servidor de
-//    TeacherFlow), sólo con su propio origen (Server Actions y datos RSC).
+//    TeacherFlow), sólo con su propio origen (Server Actions y datos RSC). ÚNICA excepción: la subida de adjuntos de una clase (fotos y PDF de hasta 20 MB, más que el tope de 4,5 MB de
+//    las funciones del servidor): el servidor firma una URL de UN solo objeto de la carpeta de la propia cuenta y el navegador sube ese archivo directo al almacenamiento. Por eso, SI el proyecto
+//    tiene un origen de almacenamiento (`storageOrigin`, el de `NEXT_PUBLIC_SUPABASE_URL`), `connect-src` suma ese único origen; sin él, sigue siendo `'self'`.
 //  - Los PDF de informes se abren con una URL firmada de Supabase Storage en una pestaña nueva (`window.open`): es una
 //    NAVEGACIÓN de nivel superior, no un recurso de la página, así que ninguna directiva la afecta.
 //  - Previews de Vercel: la barra de comentarios de Vercel carga scripts de vercel.live y producirá avisos de la política (sólo
@@ -33,15 +35,16 @@
  * @param {string | null} captchaOrigin Origen de Cloudflare Turnstile (R3): sólo si CAPTCHA está activo se permite su script, su
  * iframe y su conexión en la política de PRUEBA; sin él la política es la de siempre (`frame-src 'none'`).
  */
-function cspReportOnly(captchaOrigin = null) {
+function cspReportOnly(captchaOrigin = null, storageOrigin = null) {
   const extra = captchaOrigin ? ` ${captchaOrigin}` : "";
+  const storage = storageOrigin ? ` ${storageOrigin}` : "";
   return [
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${extra}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src 'self'${extra}`,
+    `connect-src 'self'${extra}${storage}`,
     "manifest-src 'self'",
     "media-src 'none'",
     "object-src 'none'",
@@ -79,7 +82,7 @@ const PERMISSIONS_POLICY = [
  * recambio en caliente y llenaría la consola de avisos que no existen en el build real).
  * @returns {{ key: string; value: string }[]}
  */
-export function buildSecurityHeaders({ production = process.env.NODE_ENV === "production", captchaOrigin = null } = {}) {
+export function buildSecurityHeaders({ production = process.env.NODE_ENV === "production", captchaOrigin = null, storageOrigin = null } = {}) {
   const headers = [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -88,7 +91,7 @@ export function buildSecurityHeaders({ production = process.env.NODE_ENV === "pr
     // Bloqueante, y sólo esta directiva: protege contra el enmarcado sin tocar ningún otro recurso.
     { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   ];
-  if (production) headers.push({ key: "Content-Security-Policy-Report-Only", value: cspReportOnly(captchaOrigin) });
+  if (production) headers.push({ key: "Content-Security-Policy-Report-Only", value: cspReportOnly(captchaOrigin, storageOrigin) });
   return headers;
 }
 
@@ -107,6 +110,21 @@ const PLACEHOLDER_PATTERN = /^(?:x+|your[-_]?|changeme|example|placeholder|todo|
 export function captchaOriginFromEnv(env = process.env) {
   const raw = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
   return raw && SITE_KEY_PATTERN.test(raw) && !PLACEHOLDER_PATTERN.test(raw) ? TURNSTILE_ORIGIN : null;
+}
+
+/**
+ * Origen del almacenamiento (el del proyecto de Supabase) para la subida de adjuntos; `null` si la variable falta o no es una dirección https válida.
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function storageOriginFromEnv(env = process.env) {
+  const raw = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" ? url.origin : null;
+  } catch {
+    return null;
+  }
 }
 
 export { CSP_REPORT_ONLY, PERMISSIONS_POLICY };

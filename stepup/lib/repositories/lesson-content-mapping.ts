@@ -34,6 +34,20 @@ export interface MaterialRow {
   file_status: string;
 }
 
+/** Una fila de la biblioteca de materiales (para elegir y agregar materiales en el registro de una clase). */
+export interface LibraryMaterial {
+  id: string;
+  legacyId: string;
+  name: string;
+  note: string | null;
+  hasFile: boolean;
+  availability: FileAvailability | "sin_archivo";
+}
+
+export interface LibraryMaterialRow extends MaterialRow {
+  created_at: string | null;
+}
+
 export type FileAvailability = "disponible" | "pendiente" | "no_disponible";
 
 export interface LessonTopic {
@@ -131,6 +145,16 @@ export function toLessonContent(row: LessonContentRegistrationRow, attachments: 
     content.isBillable &&
     content.consumesMonthlyPackage;
   return empty ? null : content;
+}
+
+/** Biblioteca en el orden en que se fue armando (igual que la app anterior): primero los materiales más antiguos. */
+export function toMaterialLibrary(rows: readonly LibraryMaterialRow[]): LibraryMaterial[] {
+  return [...rows]
+    .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") || a.name.localeCompare(b.name))
+    .map((m) => {
+      const hasFile = m.attachment_name !== null && m.file_status !== "sin_archivo";
+      return { id: m.id, legacyId: m.legacy_mobile_id, name: m.name, note: m.note && m.note.trim() !== "" ? m.note : null, hasFile, availability: hasFile ? availabilityOf(m.file_status) : ("sin_archivo" as const) };
+    });
 }
 
 /** Texto en lenguaje simple del estado de un archivo (nunca sólo un color). */

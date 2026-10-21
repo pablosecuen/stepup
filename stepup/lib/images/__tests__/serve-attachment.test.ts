@@ -21,6 +21,7 @@ function fakeContext(row: Row | null, options: { storageError?: boolean; ownerId
   const filters: Array<[string, string]> = [];
   const query = {
     select: () => query,
+    is: () => query,
     eq: (column: string, value: string) => {
       filters.push([column, value]);
       return query;

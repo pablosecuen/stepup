@@ -45,7 +45,7 @@ test("CSP Report-Only: sin unsafe-eval, unsafe-inline sólo en script/style (tem
   assert.equal(directives["object-src"], "object-src 'none'");
   assert.equal(directives["base-uri"], "base-uri 'self'");
   assert.equal(directives["form-action"], "form-action 'self'");
-  assert.equal(directives["connect-src"], "connect-src 'self'", "el navegador nunca habla con Supabase");
+  assert.equal(directives["connect-src"], "connect-src 'self'", "sin origen de almacenamiento configurado, el navegador sólo habla con su propio origen");
   assert.equal(directives["manifest-src"], "manifest-src 'self'");
 });
 
@@ -68,4 +68,17 @@ test("HSTS: la configuración propia no agrega includeSubDomains ni preload sin 
     assert.doesNotMatch(source, /Strict-Transport-Security/i);
     assert.doesNotMatch(source.replace(/\/\/[^\n]*/g, ""), /includeSubDomains|preload/i);
   }
+});
+
+test("la subida de adjuntos: con un origen de almacenamiento configurado, connect-src suma ESE único origen (nada más); sin él no cambia", async () => {
+  const { storageOriginFromEnv } = await import("../security-headers.mjs");
+  assert.equal(storageOriginFromEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://abcdefghij.supabase.co/" }), "https://abcdefghij.supabase.co");
+  assert.equal(storageOriginFromEnv({ NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321" }), null, "sólo https");
+  assert.equal(storageOriginFromEnv({ NEXT_PUBLIC_SUPABASE_URL: "no es una dirección" }), null);
+  assert.equal(storageOriginFromEnv({}), null);
+  const withStorage = byKey(buildSecurityHeaders({ production: true, storageOrigin: "https://abcdefghij.supabase.co" }))["Content-Security-Policy-Report-Only"];
+  assert.match(withStorage, /connect-src 'self' https:\/\/abcdefghij\.supabase\.co;/);
+  assert.doesNotMatch(withStorage, /\*/, "ningún comodín");
+  const without = byKey(buildSecurityHeaders({ production: true }))["Content-Security-Policy-Report-Only"];
+  assert.match(without, /connect-src 'self';/);
 });

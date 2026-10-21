@@ -13,11 +13,11 @@ import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 import { LessonContentCard } from "@/components/registro/lesson-content-card";
-import { getLessonContent } from "@/lib/repositories/lesson-content";
+import { getLessonContent, listMaterialLibrary } from "@/lib/repositories/lesson-content";
 import { loadRegistrationIncidents } from "@/lib/repositories/origin-incidents";
 import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 import { OriginIncidentsCard } from "@/components/registro/origin-incidents-card";
-import type { LessonContent } from "@/lib/repositories/lesson-content-mapping";
+import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -41,6 +41,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
   let lessonContent: LessonContent | null = null;
+  let materialLibrary: LibraryMaterial[] = [];
   let incidents: OriginIncidentView[] = [];
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -55,6 +56,8 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
       });
 
       lessonContent = await getLessonContent(ctx, detail.registration.id);
+      // La biblioteca es complementaria: si no se puede leer, el registro igual se puede completar (sin elegir materiales).
+      materialLibrary = await listMaterialLibrary(ctx).catch(() => []);
       // Las incidencias heredadas son información complementaria: si no se pueden leer, la pantalla sigue como siempre.
       incidents = (await loadRegistrationIncidents(ctx, [detail.registration.id]).catch(() => ({}) as Record<string, OriginIncidentView[]>))[detail.registration.id] ?? [];
 
@@ -105,9 +108,10 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
       kindLabel={ACTIVITY_KIND_LABEL[registration.activityKind]}
     >
       <OriginIncidentsCard incidents={incidents} />
-      {lessonContent && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
+      {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
         initialContent={lessonContent}
+        materialLibrary={materialLibrary}
         registration={registration}
         participants={participantsInfo}
         participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}

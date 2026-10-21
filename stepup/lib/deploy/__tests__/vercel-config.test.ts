@@ -24,7 +24,7 @@ test("vercel.json fija UNA sola región, gru1, y no agrega nada más (sin otras 
 test("la configuración previa sigue presente: cabeceras de seguridad y sin X-Powered-By en next.config, ejemplo de cron inactivo, nada excluye vercel.json", () => {
   const next = read("next.config.mjs");
   assert.match(next, /poweredByHeader: false/);
-  assert.match(next, /buildSecurityHeaders\(\{ captchaOrigin: captchaOriginFromEnv\(\) \}\)/);
+  assert.match(next, /buildSecurityHeaders\(\{ captchaOrigin: captchaOriginFromEnv\(\), storageOrigin: storageOriginFromEnv\(\) \}\)/);
   assert.match(next, /source: "\/:path\*"/);
   // No hay cron activo (la facturación está apagada): el ejemplo sigue siendo sólo documentación y NO es vercel.json.
   assert.equal(JSON.parse(read("vercel.json")).crons, undefined);

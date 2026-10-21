@@ -26,7 +26,7 @@ import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { PedagogicalContentEditor } from "@/components/registro/pedagogical-content-editor";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import { validatePedagogicalContent } from "@/lib/lessons/pedagogical-content";
-import type { LessonContent } from "@/lib/repositories/lesson-content-mapping";
+import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { saveLessonContentDraftAction } from "@/lib/actions/lesson-registrations";
 
 const HOMEWORK_OUTCOME_LABEL: Record<HomeworkReviewOutcome, string> = {
@@ -360,6 +360,7 @@ export function RegistrationWorkspace({
   scheduledStartAt,
   scheduledEndAt,
   initialContent,
+  materialLibrary,
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -370,6 +371,8 @@ export function RegistrationWorkspace({
   scheduledStartAt: string;
   scheduledEndAt: string;
   initialContent?: LessonContent | null;
+  /** Biblioteca de materiales de la cuenta (para elegirlos en la clase). */
+  materialLibrary?: LibraryMaterial[];
 }) {
   const router = useRouter();
   // Idempotencia real de ESTA edición que sobrevive una RECARGA (a pedido
@@ -400,6 +403,7 @@ export function RegistrationWorkspace({
     activities: initialContent?.activities ?? [],
     activityNotes: initialContent?.activityNotes ?? "",
     internalNotes: initialContent?.internalNotes ?? "",
+    materialIds: initialContent?.materials.map((m) => m.legacyId) ?? [],
   }));
   const [draftSaved, setDraftSaved] = useState(false);
   function handleContentChange(next: PedagogicalContentInput) {
@@ -528,7 +532,7 @@ export function RegistrationWorkspace({
 
       {countsAsClass && (
         <>
-          <PedagogicalContentEditor value={content} onChange={handleContentChange} />
+          <PedagogicalContentEditor value={content} onChange={handleContentChange} files={{ registrationId: registration.id, attachments: initialContent?.attachments ?? [], library: materialLibrary ?? [] }} />
           {!isFinalized && <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={handleSaveContentDraft} busy={pending}>Guardar contenido sin finalizar</Button>
             {draftSaved && <p role="status" className="text-sm text-textSecondary">Contenido guardado.</p>}
