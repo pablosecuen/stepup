@@ -90,8 +90,9 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
       kindLabel={ACTIVITY_KIND_LABEL[detail.registration.activityKind]}
     >
       <OriginIncidentsCard incidents={incidents} />
-      {lessonContent && <LessonContentCard content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
+      {lessonContent && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
+        initialContent={lessonContent}
         registration={detail.registration}
         participants={participantsInfo}
         participantStatusByStudentId={Object.fromEntries(detail.participants.map((p) => [p.studentId, p.participantStatus]))}

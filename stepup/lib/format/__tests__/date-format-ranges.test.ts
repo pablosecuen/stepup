@@ -10,7 +10,7 @@ import { formatCivilDayMonth, formatCivilDayRange, formatCivilMonth, formatCivil
  * ("septiembre de 2026"). Ambos son claves civiles: nunca pasan por `Date` ni por la zona del proceso.
  */
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const source = (relative: string) => readFileSync(ROOT + relative, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const source = (relative: string) => readFileSync(ROOT + relative, "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 test("semana dentro de un mismo mes: no repite mes ni año", () => {
   assert.equal(formatCivilWeek("2026-10-05"), "5 – 11 oct 2026");

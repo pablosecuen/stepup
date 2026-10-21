@@ -33,6 +33,9 @@ const TIMEZONE = "America/Argentina/Buenos_Aires";
 // mecanismo de eco de valores en `new-lesson-form.tsx`; acá no hace falta
 // porque nunca hay un `<form>` nativo de por medio.
 
+import { validatePedagogicalContent, type PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
+import { saveLessonContentDraft } from "@/lib/repositories/lesson-registrations";
+
 export interface ActionResult<T = undefined> {
   error?: string;
   data?: T;
@@ -191,6 +194,7 @@ export async function startAdhocRegistrationAction(input: StartAdhocRegistration
 }
 
 export interface SaveParticipantActionInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   studentId: string;
   participantStatus: "pending" | "completed" | "omitted" | null;
@@ -207,9 +211,11 @@ export interface SaveParticipantActionInput {
 }
 
 export async function saveParticipantAction(input: SaveParticipantActionInput): Promise<ActionResult> {
+  if (input.content !== undefined && !validatePedagogicalContent(input.content)) return { error: "Revisá el contenido pedagógico de la clase." };
   try {
     const ctx = await requireAuthenticatedDbContext();
     await saveParticipantRegistration(ctx, {
+      content: input.content,
       lessonRegistrationId: input.lessonRegistrationId,
       studentId: input.studentId,
       participantStatus: input.participantStatus,
@@ -235,6 +241,7 @@ export async function saveParticipantAction(input: SaveParticipantActionInput): 
 }
 
 export interface FinalizeRegistrationActionInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   homeworkDescription?: string | null;
   homeworkDueDate?: string | null;
@@ -243,12 +250,14 @@ export interface FinalizeRegistrationActionInput {
 }
 
 export async function finalizeRegistrationAction(input: FinalizeRegistrationActionInput): Promise<ActionResult> {
+  if (input.content !== undefined && !validatePedagogicalContent(input.content)) return { error: "Revisá el contenido pedagógico de la clase." };
   try {
     const ctx = await requireAuthenticatedDbContext();
     const startIso = input.scheduledStartAt ?? null;
     const endIso = startIso && input.actualDurationMinutes ? new Date(new Date(startIso).getTime() + input.actualDurationMinutes * 60_000).toISOString() : undefined;
     await finalizeLessonRegistration(ctx, {
       lessonRegistrationId: input.lessonRegistrationId,
+      content: input.content,
       homeworkDescription: input.homeworkDescription,
       homeworkDueDate: input.homeworkDueDate,
       actualStartedAt: startIso ?? undefined,
@@ -317,6 +326,7 @@ export interface EditCompletedRegistrationParticipantActionInput {
 }
 
 export interface EditCompletedRegistrationActionInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   /** Idempotencia real de ESTA edición — generado UNA vez del lado del cliente por cada intento de "Guardar cambios" (`useState(() => crypto.randomUUID())`), nunca regenerado en un reintento. */
   editOperationId: string;
@@ -340,6 +350,7 @@ export interface EditCompletedRegistrationActionInput {
  * del lado del cliente.
  */
 export async function editCompletedRegistrationAction(input: EditCompletedRegistrationActionInput): Promise<ActionResult> {
+  if (input.content !== undefined && !validatePedagogicalContent(input.content)) return { error: "Revisá el contenido pedagógico de la clase." };
   if (!input.editOperationId) return { error: "Falta el identificador de la edición. Recargá la página e intentá de nuevo." };
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -348,6 +359,7 @@ export async function editCompletedRegistrationAction(input: EditCompletedRegist
     await editCompletedLessonRegistration(ctx, {
       lessonRegistrationId: input.lessonRegistrationId,
       editOperationId: input.editOperationId,
+      content: input.content,
       homeworkDescription: input.homeworkDescription,
       homeworkDueDate: input.homeworkDueDate,
       actualStartedAt: startIso ?? undefined,
@@ -382,4 +394,17 @@ export async function editCompletedRegistrationAction(input: EditCompletedRegist
 export async function getLessonRegistrationForCalendarLessonAction(calendarLessonId: string) {
   const ctx = await requireAuthenticatedDbContext();
   return getLessonRegistrationDetailByCalendarLessonId(ctx, calendarLessonId);
+}
+
+/** Persists pedagogy for an unfinished class without completing attendance. */
+export async function saveLessonContentDraftAction(input: { lessonRegistrationId: string; content: PedagogicalContentInput }): Promise<ActionResult> {
+  if (!validatePedagogicalContent(input.content)) return { error: "Revisá el contenido pedagógico de la clase." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await saveLessonContentDraft(ctx, input.lessonRegistrationId, input.content);
+  } catch (error) {
+    return { error: actionErrorMessage("lesson-registrations", error) };
+  }
+  revalidatePath("/registro");
+  return {};
 }

@@ -10,7 +10,7 @@ const SECTION_TITLE = "text-[13px] font-semibold uppercase tracking-wide text-te
  * Contenido propio de una clase ya cargada (traslado): temas con su estado, objetivos, actividades, notas, materiales y archivos adjuntos. Sólo lectura.
  * Las notas internas son privadas de la profesora: figuran acá, pero nunca salen en un reporte para terceros.
  */
-export function LessonContentCard({ content, studentNames }: { content: LessonContent; studentNames: Record<string, string> }) {
+export function LessonContentCard({ content, studentNames, includePedagogy = true }: { content: LessonContent; studentNames: Record<string, string>; includePedagogy?: boolean }) {
   const list = (items: string[]) => (
     <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[15px] [overflow-wrap:anywhere]">
       {items.map((item, i) => (
@@ -18,12 +18,13 @@ export function LessonContentCard({ content, studentNames }: { content: LessonCo
       ))}
     </ul>
   );
+  if (!includePedagogy && content.materials.length === 0 && content.attachments.length === 0 && content.isBillable && content.consumesMonthlyPackage) return null;
   return (
     <section aria-labelledby="contenido-de-la-clase" className="mb-5">
       <Card padded={false}>
-        <CardHeader title={<span id="contenido-de-la-clase">Contenido de la clase</span>} meta="Sólo lectura" />
+        <CardHeader title={<span id="contenido-de-la-clase">{includePedagogy ? "Contenido de la clase" : "Evidencias y materiales de la clase"}</span>} meta="Sólo lectura" />
         <div className="space-y-4 px-4 pb-4 nav:px-5 nav:pb-5">
-          {content.topics.length > 0 && (
+          {includePedagogy && content.topics.length > 0 && (
             <div>
               <h3 className={SECTION_TITLE}>Temas</h3>
               <ul className="mt-1 space-y-1">
@@ -36,25 +37,25 @@ export function LessonContentCard({ content, studentNames }: { content: LessonCo
               </ul>
             </div>
           )}
-          {content.objectives.length > 0 && (
+          {includePedagogy && content.objectives.length > 0 && (
             <div>
               <h3 className={SECTION_TITLE}>Objetivos</h3>
               {list(content.objectives)}
             </div>
           )}
-          {content.activities.length > 0 && (
+          {includePedagogy && content.activities.length > 0 && (
             <div>
               <h3 className={SECTION_TITLE}>Actividades</h3>
               {list(content.activities)}
             </div>
           )}
-          {content.activityNotes !== "" && (
+          {includePedagogy && content.activityNotes !== "" && (
             <div>
               <h3 className={SECTION_TITLE}>Notas de las actividades</h3>
               <p className="mt-1 whitespace-pre-wrap text-[15px] [overflow-wrap:anywhere]">{content.activityNotes}</p>
             </div>
           )}
-          {content.internalNotes !== "" && (
+          {includePedagogy && content.internalNotes !== "" && (
             <div>
               <h3 className={SECTION_TITLE}>Notas internas (privadas)</h3>
               <p className="mt-1 whitespace-pre-wrap text-[15px] [overflow-wrap:anywhere]">{content.internalNotes}</p>

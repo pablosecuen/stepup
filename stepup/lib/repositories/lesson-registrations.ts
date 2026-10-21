@@ -1,4 +1,5 @@
 import "server-only";
+import { pedagogicalContentPayload, type PedagogicalContentInput } from "../lessons/pedagogical-content.ts";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type {
   LessonRegistrationAttendanceRow,
@@ -347,6 +348,7 @@ export interface EditCompletedRegistrationParticipantInput {
 }
 
 export interface EditCompletedRegistrationInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   /** Idempotencia real de esta edición — generado UNA vez del lado del cliente por cada intento de "Guardar cambios", nunca acá. */
   editOperationId: string;
@@ -389,6 +391,7 @@ export async function editCompletedLessonRegistration(ctx: AuthenticatedDbContex
       homework_reviews: p.homeworkReviews.map((h) => ({ task_id: h.taskId, outcome: h.outcome })),
     })),
   };
+  if (input.content !== undefined) payload.pedagogical_content = pedagogicalContentPayload(input.content);
   if (input.homeworkDescription !== undefined) payload.homework_description = input.homeworkDescription;
   if (input.homeworkDueDate !== undefined) payload.homework_due_date = input.homeworkDueDate;
   if (input.countsAsClass !== undefined) payload.counts_as_class = input.countsAsClass;
@@ -406,6 +409,7 @@ export async function editCompletedLessonRegistration(ctx: AuthenticatedDbContex
 }
 
 export interface SaveParticipantRegistrationInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   studentId: string;
   participantStatus: "pending" | "completed" | "omitted" | null;
@@ -426,6 +430,7 @@ export interface SaveParticipantRegistrationInput {
 export async function saveParticipantRegistration(ctx: AuthenticatedDbContext, input: SaveParticipantRegistrationInput): Promise<void> {
   const { error } = await ctx.supabase.rpc("save_participant_registration", {
     p_payload: {
+      ...(input.content === undefined ? {} : { pedagogical_content: pedagogicalContentPayload(input.content) }),
       lesson_registration_id: input.lessonRegistrationId,
       student_id: input.studentId,
       participant_status: input.participantStatus,
@@ -452,6 +457,7 @@ export async function saveParticipantRegistration(ctx: AuthenticatedDbContext, i
 }
 
 export interface FinalizeLessonRegistrationInput {
+  content?: PedagogicalContentInput;
   lessonRegistrationId: string;
   homeworkDescription?: string | null;
   homeworkDueDate?: string | null;
@@ -463,6 +469,7 @@ export interface FinalizeLessonRegistrationInput {
 
 export async function finalizeLessonRegistration(ctx: AuthenticatedDbContext, input: FinalizeLessonRegistrationInput): Promise<LessonRegistrationRecord> {
   const payload: Record<string, unknown> = { lesson_registration_id: input.lessonRegistrationId };
+  if (input.content !== undefined) payload.pedagogical_content = pedagogicalContentPayload(input.content);
   if (input.homeworkDescription !== undefined) payload.homework_description = input.homeworkDescription;
   if (input.homeworkDueDate !== undefined) payload.homework_due_date = input.homeworkDueDate;
   if (input.billedAmount !== undefined) payload.billed_amount = input.billedAmount;
@@ -604,4 +611,11 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
       };
     })
     .sort((a, b) => (a.dateKey < b.dateKey ? -1 : 1));
+}
+
+export async function saveLessonContentDraft(ctx: AuthenticatedDbContext, registrationId: string, content: PedagogicalContentInput): Promise<void> {
+  const { error } = await ctx.supabase.rpc("save_lesson_content_draft", {
+    p_payload: { lesson_registration_id: registrationId, pedagogical_content: pedagogicalContentPayload(content) },
+  });
+  if (error) throw error;
 }
