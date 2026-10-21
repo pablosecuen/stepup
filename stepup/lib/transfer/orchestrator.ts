@@ -163,7 +163,9 @@ export async function backupPhase(deps: TransferDeps, label: "previa" | "final" 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // Espera de las migraciones (pasos 2 a 4 los hace quien despliega): se detecta que el esquema ya tiene todo lo del traslado.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-const REQUIRED_RPCS = ["archive_legacy_cloud_backups", "get_transfer_state", "import_phone_extraction", "register_transfer_file", "mark_transfer_file_unavailable", "record_phone_extraction_result"];
+// Sólo funciones SIN argumentos y de sólo lectura: el servicio real responde «no existe» (PGRST202) a una función con argumentos obligatorios llamada sin ellos, aunque exista. Las demás funciones
+// del traslado se crean en las mismas migraciones que las tablas que ya se comprueban arriba (el resto de las fases falla con un mensaje claro si alguna faltara).
+const REQUIRED_RPCS = ["get_transfer_state"];
 
 export async function probeSchema(deps: TransferDeps): Promise<{ ready: boolean; missing: string[] }> {
   const missing: string[] = [];

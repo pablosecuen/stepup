@@ -126,10 +126,10 @@ function depsWith(client: TransferClient, extra: Partial<TransferDeps> = {}): Tr
 }
 
 test("espera de migraciones: detecta las tablas y funciones que faltan y se frena con un motivo claro si no llegan", async () => {
-  const missingFn = fakeClient({ origin_incidents: [] }, {}, { rpc: (fn) => (fn === "register_transfer_file" ? { error: { code: "PGRST202", message: "Could not find the function" } } : {}) });
+  const missingFn = fakeClient({ origin_incidents: [] }, {}, { rpc: (fn) => (fn === "get_transfer_state" ? { error: { code: "PGRST202", message: "Could not find the function" } } : {}) });
   const probe = await probeSchema(depsWith(missingFn));
   assert.equal(probe.ready, false);
-  assert.ok(probe.missing.includes("lesson_attachments") && probe.missing.includes("función register_transfer_file") && probe.missing.includes("account_transfer_state"));
+  assert.ok(probe.missing.includes("lesson_attachments") && probe.missing.includes("función get_transfer_state") && probe.missing.includes("account_transfer_state"));
   const waited = await waitSchemaPhase(depsWith(missingFn));
   assert.equal(waited.ok, false);
   assert.match(waited.blocker ?? "", /todavía faltan migraciones/);
