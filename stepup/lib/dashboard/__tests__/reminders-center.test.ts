@@ -113,3 +113,25 @@ test("buildRemindersCenterSummary: totalCount suma las 4 categorías reales", ()
   assert.equal(summary.totalCount, 4);
   assert.equal(summary.categories.length, 4);
 });
+
+test("buildRemindersCenterSummary: un cargo POR CLASE (sin urgencia) que vence hoy es «por vencer»; sólo el ya vencido figura en «Pagos vencidos» (misma cuenta que la app anterior: 2 y 2, no 4)", () => {
+  const perClass = (id: string, dueDate: string, isOverdue: boolean) => chargeEntry({ chargeId: id, chargeType: "por_clase", urgency: null, dueDate, isOverdue });
+  const summary = buildRemindersCenterSummary({
+    emptyClassItems: [],
+    pendingLessons: [],
+    collectionEntries: [perClass("a", "2026-09-15", true), perClass("b", "2026-09-16", true), perClass("c", TODAY, false), perClass("d", TODAY, false)],
+    todayDateKey: TODAY,
+  });
+  assert.equal(summary.categories.find((c) => c.kind === "pagos_por_vencer")?.items.length, 2);
+  assert.equal(summary.categories.find((c) => c.kind === "pagos_vencidos")?.items.length, 2);
+  assert.equal(summary.totalCount, 4);
+  // Al día siguiente los dos que vencían hoy ya están vencidos.
+  const tomorrow = buildRemindersCenterSummary({
+    emptyClassItems: [],
+    pendingLessons: [],
+    collectionEntries: [perClass("a", "2026-09-15", true), perClass("b", "2026-09-16", true), perClass("c", TODAY, true), perClass("d", TODAY, true)],
+    todayDateKey: "2026-09-23",
+  });
+  assert.equal(tomorrow.categories.find((c) => c.kind === "pagos_vencidos")?.items.length, 4);
+  assert.equal(tomorrow.categories.some((c) => c.kind === "pagos_por_vencer"), false);
+});

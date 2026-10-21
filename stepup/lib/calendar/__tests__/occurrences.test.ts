@@ -151,3 +151,43 @@ function toItem(l: MaterializedLessonForMerge) {
     notes: l.notes,
   };
 }
+
+// ── Misma regla que la app anterior: la clase real se ve en SU horario; las ocurrencias con excepción no se dibujan como virtuales ──
+const SERIE = "11111111-1111-1111-1111-111111111111";
+const regla = { recurrenceId: SERIE, studentId: "s1", participantIds: ["s1"], cycleLengthWeeks: 1, weeks: [{ weekIndex: 0, sessions: [{ weekday: 1, hour: 18, minute: 0, durationMinutes: 60 }] }], modality: "online" as const, timezone: "America/Argentina/Buenos_Aires", startDate: "2026-10-19", endDate: null, status: "active" as const, classTitle: null, activityKind: "class" as const };
+// 20/10/2026 (martes) 18:00 hora de Argentina = 21:00Z: la ocurrencia de la serie de esa semana.
+const OCCURRENCE_KEY = `${SERIE}:w0:c0:d1:t1800:s0`;
+const baseLesson = (overrides: Partial<MaterializedLessonForMerge> & { id: string }): MaterializedLessonForMerge => ({
+  recurrenceId: null, recurrenceOccurrenceKey: null, primaryStudentId: "s1", studentName: "Alumno", level: "", lessonType: "individual", startAt: "2026-10-20T21:00:00.000Z", endAt: "2026-10-20T22:00:00.000Z", modality: "online", status: "scheduled", isRecurring: false, classTitle: null, activityKind: "class", freedByLessonId: null, notes: null, participantIds: ["s1"], ...overrides,
+});
+const day = (iso: string) => ({ rangeStart: new Date(`${iso}T03:00:00.000Z`), rangeEnd: new Date(new Date(`${iso}T03:00:00.000Z`).getTime() + 24 * 3600_000 - 1) });
+
+test("una clase de serie MOVIDA a otro horario se ve en su horario real (no en el de la serie) y la ocurrencia original no queda como virtual", () => {
+  const moved = baseLesson({ id: "movida", recurrenceId: SERIE, recurrenceOccurrenceKey: OCCURRENCE_KEY, isRecurring: true, status: "completed", startAt: "2026-10-20T20:30:00.000Z", endAt: "2026-10-20T21:30:00.000Z" });
+  const items = buildCalendarViewForRange({ ...day("2026-10-20"), rules: [regla], exceptions: [], lessons: [moved] });
+  assert.deepEqual(items.map((i) => [i.id, i.start, i.isMaterialized]), [["movida", "2026-10-20T20:30:00.000Z", true]]);
+  // Un día en el que la clase real NO cae (pero sí la ocurrencia de la serie, si hubiera): nada duplicado ni fantasma.
+  const other = buildCalendarViewForRange({ ...day("2026-10-21"), rules: [regla], exceptions: [], lessons: [] });
+  assert.equal(other.length, 0);
+});
+
+test("si la clase de una ocurrencia cae FUERA del rango consultado, la ocurrencia no reaparece como virtual (los marcadores traen todas las clases de la serie)", () => {
+  const markers = [{ id: "fuera", recurrenceId: SERIE, recurrenceOccurrenceKey: OCCURRENCE_KEY, status: "completed" as const }];
+  const withMarkers = buildCalendarViewForRange({ ...day("2026-10-20"), rules: [regla], exceptions: [], lessons: [], occurrenceMarkers: markers });
+  assert.equal(withMarkers.length, 0);
+  const without = buildCalendarViewForRange({ ...day("2026-10-20"), rules: [regla], exceptions: [], lessons: [] });
+  assert.equal(without.length, 1, "sin marcadores (comportamiento anterior) la ocurrencia se dibujaría virtual");
+});
+
+test("una ocurrencia REPROGRAMADA no se dibuja en su horario original aunque su clase de reemplazo esté fuera del rango; la cancelada y la excluida tampoco como virtuales", () => {
+  for (const type of ["rescheduled", "cancelled", "excluded"] as const) {
+    const items = buildCalendarViewForRange({ ...day("2026-10-20"), rules: [regla], exceptions: [{ recurrenceId: SERIE, occurrenceKey: OCCURRENCE_KEY, type, replacementLessonId: type === "rescheduled" ? "reemplazo-futuro" : null }], lessons: [] });
+    assert.equal(items.length, 0, type);
+  }
+});
+
+test("la clase de reemplazo de una reprogramación aparece por su cuenta en su nuevo horario", () => {
+  const replacement = baseLesson({ id: "reemplazo", status: "rescheduled", startAt: "2026-10-24T19:30:00.000Z", endAt: "2026-10-24T20:30:00.000Z" });
+  const items = buildCalendarViewForRange({ ...day("2026-10-24"), rules: [regla], exceptions: [{ recurrenceId: SERIE, occurrenceKey: OCCURRENCE_KEY, type: "rescheduled", replacementLessonId: "reemplazo" }], lessons: [replacement] });
+  assert.deepEqual(items.map((i) => [i.id, i.status]), [["reemplazo", "rescheduled"]]);
+});

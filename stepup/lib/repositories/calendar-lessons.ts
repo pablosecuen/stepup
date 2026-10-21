@@ -57,6 +57,18 @@ export async function listCalendarLessonsInRange(ctx: AuthenticatedDbContext, ra
   return attachParticipants(ctx, data);
 }
 
+/**
+ * Lo mínimo de TODAS las clases de serie de la cuenta (cualquier fecha y estado): sirve para reconocer qué ocurrencias de una serie ya tienen su clase aunque esa clase haya sido movida o ajustada fuera
+ * del rango que se está mirando. Una lectura liviana (cuatro columnas), nunca la historia completa de cada clase.
+ */
+export async function listRecurringLessonMarkers(ctx: AuthenticatedDbContext): Promise<Array<{ id: string; recurrenceId: string; recurrenceOccurrenceKey: string; status: CalendarLessonRow["status"] }>> {
+  const data = await readTable<Pick<CalendarLessonRow, "id" | "recurrence_id" | "recurrence_occurrence_key" | "status">>(ctx.supabase, "calendar_lessons", {
+    columns: "id, recurrence_id, recurrence_occurrence_key, status",
+    filter: (query) => query.eq("owner_id", ctx.ownerId).not("recurrence_id", "is", null).not("recurrence_occurrence_key", "is", null),
+  });
+  return data.flatMap((row) => (row.recurrence_id && row.recurrence_occurrence_key ? [{ id: row.id, recurrenceId: row.recurrence_id, recurrenceOccurrenceKey: row.recurrence_occurrence_key, status: row.status }] : []));
+}
+
 /** Todas las clases materializadas de una regla (cualquier fecha) — usado para saber qué ocurrencias ya NO son vírgenes antes de congelar participantes. */
 export async function listCalendarLessonsForRecurrence(ctx: AuthenticatedDbContext, recurrenceId: string): Promise<CalendarLessonRecord[]> {
   const data = await readTable<CalendarLessonRow>(ctx.supabase, "calendar_lessons", {

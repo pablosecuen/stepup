@@ -69,11 +69,21 @@ function materializationToLessonStatus(status: "virtual" | "materialized" | "can
   return "scheduled"; // 'virtual' y 'materialized' (sin excepción) se muestran como programada
 }
 
+/** Lo mínimo que hace falta saber de TODAS las clases de serie (de cualquier fecha) para reconocer qué ocurrencias ya tienen su clase. */
+export interface OccurrenceMarker {
+  id: string;
+  recurrenceId: string | null;
+  recurrenceOccurrenceKey: string | null;
+  status: CalendarLessonStatus;
+}
+
 /**
- * Construye la vista completa de un rango: ocurrencias virtuales de todas
- * las reglas activas (con excepciones aplicadas) + clases materializadas
- * (recurrentes ya tocadas Y clases sueltas, que tienen `recurrenceId: null`).
- * Pura — no consulta Supabase.
+ * Construye la vista completa de un rango con la MISMA regla que la app anterior (`buildLessonsInRange` / calendario semanal): lo que se ve es
+ *   (1) toda clase REAL (`calendar_lessons`, de serie o suelta) por su PROPIO horario — una clase de serie movida, ajustada o reprogramada aparece donde está, no donde la generó la serie;
+ *   (2) las ocurrencias de las series que siguen realmente VIRTUALES (sin clase, sin cancelar, sin reprogramar, sin excluir).
+ * Una ocurrencia con excepción (cancelada/reprogramada/excluida) o con su clase ya creada NO se dibuja como virtual: su clase real (si existe) es la que se ve, y la clase de reemplazo de una
+ * reprogramación aparece por su cuenta en su nuevo horario. Para reconocer las ocurrencias que ya tienen clase hace falta saber de TODAS las clases de la serie (también las que caen fuera del
+ * rango): `occurrenceMarkers` las trae; sin ese dato se usan las clases del rango (comportamiento anterior). Pura — no consulta Supabase.
  */
 export function buildCalendarViewForRange(input: {
   rangeStart: Date;
@@ -81,6 +91,7 @@ export function buildCalendarViewForRange(input: {
   rules: RecurrenceRuleForEngine[];
   exceptions: RecurrenceExceptionForMerge[];
   lessons: MaterializedLessonForMerge[];
+  occurrenceMarkers?: readonly OccurrenceMarker[];
   /**
    * Alumnos conocidos (por id) para ponerle nombre y nivel a las ocurrencias VIRTUALES con la MISMA regla que las clases
    * materializadas (`resolveOccurrenceStudentLabel`). Opcional: sin mapa, las virtuales quedan sin nombre como antes.
@@ -88,48 +99,21 @@ export function buildCalendarViewForRange(input: {
   students?: ReadonlyMap<string, StudentForLabel>;
 }): CalendarViewItem[] {
   const students = input.students ?? new Map<string, StudentForLabel>();
-  const lessonById = new Map(input.lessons.map((lesson) => [lesson.id, lesson]));
+  const markers: readonly OccurrenceMarker[] =
+    input.occurrenceMarkers ??
+    input.lessons.filter((lesson) => lesson.recurrenceId !== null).map((lesson) => ({ id: lesson.id, recurrenceId: lesson.recurrenceId, recurrenceOccurrenceKey: lesson.recurrenceOccurrenceKey, status: lesson.status }));
   const items: CalendarViewItem[] = [];
-  const consumedLessonIds = new Set<string>();
 
   input.rules.forEach((rule) => {
     const raw = generateOccurrences(rule, input.rangeStart, input.rangeEnd);
     const withExceptions = applyExceptionsToOccurrences(
       raw,
       input.exceptions.filter((exception) => exception.recurrenceId === rule.recurrenceId),
-      input.lessons
-        .filter((lesson) => lesson.recurrenceId === rule.recurrenceId)
-        .map((lesson) => ({ id: lesson.id, recurrenceId: lesson.recurrenceId, recurrenceOccurrenceKey: lesson.recurrenceOccurrenceKey, status: lesson.status }))
+      markers.filter((marker) => marker.recurrenceId === rule.recurrenceId).map((marker) => ({ id: marker.id, recurrenceId: marker.recurrenceId, recurrenceOccurrenceKey: marker.recurrenceOccurrenceKey, status: marker.status }))
     );
 
     withExceptions.forEach((occurrence) => {
-      const materialized = occurrence.materializedLessonId ? lessonById.get(occurrence.materializedLessonId) : undefined;
-      if (materialized) {
-        consumedLessonIds.add(materialized.id);
-        items.push({
-          id: materialized.id,
-          recurrenceId: rule.recurrenceId,
-          occurrenceKey: occurrence.occurrenceKey,
-          materializedLessonId: materialized.id,
-          isMaterialized: true,
-          studentId: materialized.primaryStudentId,
-          participantIds: materialized.participantIds,
-          studentName: materialized.studentName,
-          level: materialized.level,
-          lessonType: materialized.lessonType,
-          title: materialized.classTitle,
-          start: materialized.startAt,
-          end: materialized.endAt,
-          modality: materialized.modality,
-          status: materialized.status,
-          activityKind: materialized.activityKind,
-          isRecurring: true,
-          freedByLessonId: materialized.freedByLessonId,
-          notes: materialized.notes,
-        });
-        return;
-      }
-
+      if (occurrence.materializationStatus !== "virtual") return;
       const label = resolveOccurrenceStudentLabel({ primaryStudentId: occurrence.studentId, participantIds: occurrence.participantIds, students });
       items.push({
         id: `virtual:${occurrence.occurrenceKey}`,
@@ -155,21 +139,14 @@ export function buildCalendarViewForRange(input: {
     });
   });
 
-  // Clases sueltas (recurrenceId null) dentro del rango — nunca generadas
-  // por ninguna regla, se agregan directo. Defensa adicional:
-  // `consumedLessonIds` evita duplicar una materializada ya incluida
-  // arriba si, por algún motivo, también apareciera en `input.lessons`
-  // sin `recurrenceId` (nunca debería pasar, pero nunca confiar en una
-  // sola fuente de verdad para no duplicar).
+  // Clases reales (de serie o sueltas) por su propio horario dentro del rango.
   input.lessons.forEach((lesson) => {
-    if (lesson.recurrenceId !== null) return;
-    if (consumedLessonIds.has(lesson.id)) return;
     const startTime = new Date(lesson.startAt).getTime();
     if (startTime < input.rangeStart.getTime() || startTime > input.rangeEnd.getTime()) return;
     items.push({
       id: lesson.id,
-      recurrenceId: null,
-      occurrenceKey: null,
+      recurrenceId: lesson.recurrenceId,
+      occurrenceKey: lesson.recurrenceOccurrenceKey,
       materializedLessonId: lesson.id,
       isMaterialized: true,
       studentId: lesson.primaryStudentId,
@@ -183,7 +160,7 @@ export function buildCalendarViewForRange(input: {
       modality: lesson.modality,
       status: lesson.status,
       activityKind: lesson.activityKind,
-      isRecurring: false,
+      isRecurring: lesson.recurrenceId !== null,
       freedByLessonId: lesson.freedByLessonId,
       notes: lesson.notes,
     });

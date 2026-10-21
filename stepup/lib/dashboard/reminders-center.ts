@@ -55,6 +55,15 @@ function needsAttention(entry: CollectionsCenterEntry, todayDateKey: string): bo
   return entry.isOverdue || entry.dueDate === todayDateKey;
 }
 
+/**
+ * «Vence hoy» (todavía no vencido): las mensualidades/entrenamientos lo traen en su urgencia (`vence_hoy`); el resto de los tipos (por clase, semanal, quincenal, paquete) no tienen urgencia y vencen
+ * «hoy» cuando su fecha es hoy y todavía no están vencidos. Antes esos últimos caían siempre en «Pagos vencidos» (la urgencia es nula), por eso Recordatorios mostraba 4 vencidos cuando 2 vencían hoy.
+ */
+function isDueToday(entry: CollectionsCenterEntry, todayDateKey: string): boolean {
+  if (entry.urgency !== null) return entry.urgency === "vence_hoy";
+  return !entry.isOverdue && entry.dueDate === todayDateKey;
+}
+
 export function buildRemindersCenterSummary(input: {
   emptyClassItems: readonly EmptyClassItem[];
   pendingLessons: readonly PendingLessonItem[];
@@ -78,7 +87,7 @@ export function buildRemindersCenterSummary(input: {
   const urgentEntries = input.collectionEntries.filter((entry) => needsAttention(entry, input.todayDateKey));
 
   const pagosPorVencer: ReminderCenterItem[] = urgentEntries
-    .filter((entry) => entry.urgency === "vence_hoy")
+    .filter((entry) => isDueToday(entry, input.todayDateKey))
     .map((entry) => ({
       kind: "pagos_por_vencer",
       id: `charge_${entry.chargeId}`,
@@ -87,7 +96,7 @@ export function buildRemindersCenterSummary(input: {
     }));
 
   const pagosVencidos: ReminderCenterItem[] = urgentEntries
-    .filter((entry) => entry.urgency !== "vence_hoy")
+    .filter((entry) => !isDueToday(entry, input.todayDateKey))
     .map((entry) => ({
       kind: "pagos_vencidos",
       id: `charge_${entry.chargeId}`,

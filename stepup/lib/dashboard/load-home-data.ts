@@ -94,14 +94,14 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
   // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
   const dayStart = new Date(dayStartIso);
-  const [{ rules, students, exceptions }, todayLessonRows, horizonLessons, pendingLessonRows, balances] = await Promise.all([
+  const [{ rules, students, exceptions, occurrenceMarkers }, todayLessonRows, horizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
     listCalendarLessonsInRange(ctx, pendingLookbackStart.toISOString(), now.toISOString()),
     listOpenChargeBalances(ctx),
   ]);
-  const calendarBase = { rules, students, exceptions };
+  const calendarBase = { rules, students, exceptions, occurrenceMarkers };
   const todayItems = composeCalendarView(calendarBase, todayLessonRows, dayStart, dayEndExclusive);
   const pendingItems = composeCalendarView(calendarBase, pendingLessonRows, pendingLookbackStart, now);
 

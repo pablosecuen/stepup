@@ -1,7 +1,7 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { listRecurrenceRules } from "@/lib/repositories/recurrence-rules";
-import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
+import { listCalendarLessonsInRange, listRecurringLessonMarkers } from "@/lib/repositories/calendar-lessons";
 import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
 import { listStudents } from "@/lib/repositories/students";
 import { buildCalendarViewForRange, type CalendarViewItem } from "./occurrences";
@@ -21,15 +21,17 @@ export interface CalendarViewBase {
   readonly rules: Awaited<ReturnType<typeof listRecurrenceRules>>;
   readonly exceptions: Awaited<ReturnType<typeof listRecurrenceExceptionsForRules>>;
   readonly students: Awaited<ReturnType<typeof listStudents>>;
+  /** Todas las clases de serie (cualquier fecha): para reconocer qué ocurrencias ya tienen su clase aunque esté fuera del rango. */
+  readonly occurrenceMarkers: Awaited<ReturnType<typeof listRecurringLessonMarkers>>;
 }
 
 export async function loadCalendarViewBase(ctx: AuthenticatedDbContext): Promise<CalendarViewBase> {
-  const [rules, students] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx)]);
+  const [rules, students, occurrenceMarkers] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx), listRecurringLessonMarkers(ctx)]);
   const exceptions = await listRecurrenceExceptionsForRules(
     ctx,
     rules.map((rule) => rule.id)
   );
-  return { rules, exceptions, students };
+  return { rules, exceptions, students, occurrenceMarkers };
 }
 
 export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date, base?: CalendarViewBase): Promise<CalendarViewItem[]> {
@@ -39,15 +41,16 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     return composeCalendarView(base, lessons, rangeStart, rangeEnd);
   }
   const rules = await listRecurrenceRules(ctx);
-  const [lessons, exceptions, students] = await Promise.all([
+  const [lessons, exceptions, students, occurrenceMarkers] = await Promise.all([
     listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString()),
     listRecurrenceExceptionsForRules(
       ctx,
       rules.map((rule) => rule.id)
     ),
     listStudents(ctx),
+    listRecurringLessonMarkers(ctx),
   ]);
-  return composeCalendarView({ rules, exceptions, students }, lessons, rangeStart, rangeEnd);
+  return composeCalendarView({ rules, exceptions, students, occurrenceMarkers }, lessons, rangeStart, rangeEnd);
 }
 
 /**
@@ -55,7 +58,7 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
  * lee las clases de todos a la vez (en paralelo con la base) y compone cada vista cuando llegan.
  */
 export function composeCalendarView(
-  { rules, exceptions, students }: CalendarViewBase,
+  { rules, exceptions, students, occurrenceMarkers }: CalendarViewBase,
   lessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
   rangeStart: Date,
   rangeEnd: Date,
@@ -79,6 +82,7 @@ export function composeCalendarView(
     rangeStart,
     rangeEnd,
     rules: engineRules,
+    occurrenceMarkers,
     students: new Map(students.map((student) => [student.id, { name: student.name, levels: student.levels }])),
     exceptions: exceptions.map((exception) => ({
       recurrenceId: exception.recurrenceId,
