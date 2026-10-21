@@ -6,7 +6,7 @@
 //   --fases backup,esquema,archivo,despliegue,proteccion,importar,archivos,final   (por defecto, todas en ese orden)
 //   «despliegue» espera el archivo `despliegue-verificado.txt` en la carpeta privada (lo crea quien despliega la web cuando la verificó) antes de importar
 //   --rehacer                deshace la importación anterior (sólo si es seguro) y vuelve a importar la copia MÁS RECIENTE
-//   --puerto-metro 8082      Metro del teléfono        --espera-esquema-min 180   cuánto esperar las migraciones
+//   --puerto-metro 8081      Metro del teléfono (por defecto se detecta el que sirve la app)        --espera-esquema-min 180   cuánto esperar las migraciones
 //
 // Nunca congela el origen ni borra respaldos, archivos o datos del origen. Cierra SÓLO su propia sesión al terminar.
 // Protocolo de líneas con el iniciador: @@AUTH_FAIL|tipo|mensaje · @@AUTH_OK · @@SUMMARY|línea. Salida: 0 completo · 10 sesión · 20 se detuvo en una fase · 30 terminó pero NO COMPLETO · 1 error.
@@ -19,7 +19,7 @@ import { ALL_PHASES, runTransfer } from "../../lib/transfer/orchestrator.ts";
 import { openSession, SessionError } from "../../lib/transfer/session.ts";
 import { createFileStateStore } from "../../lib/transfer/state-file.ts";
 import { createDpapiSaver } from "../../lib/transfer/save-copy.ts";
-import { createPhoneChannel } from "./phone-copy.mjs";
+import { createPhoneChannel, detectMetroPort } from "./phone-copy.mjs";
 
 const [folder, ...flags] = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -88,7 +88,7 @@ try {
         log: (line) => console.log(line),
         sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
         saveCopy: createDpapiSaver(folder, () => new Date()),
-        phone: createPhoneChannel({ appDir, metroPort: Number(option("--puerto-metro", "8082")), log: (l) => console.log(l) }),
+        phone: createPhoneChannel({ appDir, metroPort: Number(option("--puerto-metro", "")) || (await detectMetroPort(appDir)) || 8081, log: (l) => console.log(l) }),
         schemaWaitMs: Number(option("--espera-esquema-min", "180")) * 60_000,
         waitGate: async (_name, timeoutMs) => {
           const flag = join(folder, "despliegue-verificado.txt");

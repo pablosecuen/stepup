@@ -139,3 +139,18 @@ export function createPhoneChannel({ appDir, metroPort = 8082, log = () => {}, r
   channel.checkProtection = (options) => channel.run("protection", options);
   return channel;
 }
+
+/** Puerto del Metro que sirve ESTA app (el que responde con la carpeta de la app en su cabecera), probando los puertos habituales; `null` si no hay ninguno. */
+export async function detectMetroPort(appDir, { ports = [8081, 8082, 8083, 8084, 8085, 19000, 19001], fetchImpl = fetch } = {}) {
+  const norm = (p) => decodeURIComponent(String(p)).split("\\").join("/").replace(/\/+$/, "").toLowerCase();
+  for (const port of ports) {
+    try {
+      const response = await fetchImpl(`http://127.0.0.1:${port}/status`, { signal: AbortSignal.timeout(2500) });
+      const root = response.headers.get("x-react-native-project-root");
+      if (root && norm(root) === norm(appDir)) return port;
+    } catch {
+      /* ese puerto no responde */
+    }
+  }
+  return null;
+}
