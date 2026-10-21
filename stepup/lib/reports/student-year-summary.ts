@@ -1,17 +1,16 @@
+import { isClassHeld, type RegisteredLessonFacts } from "./registered-lessons.ts";
+
 /**
- * Puerto de `buildStudentYearActivitySummary`/`buildNewStudentsPerMonthSummary`
- * (móvil, `studentYearSummary.ts`). Pura.
+ * Puerto exacto de `buildStudentYearActivitySummary`/`buildNewStudentsPerMonthSummary` (móvil, `studentYearSummary.ts`). Pura.
+ *
+ * - Alumnos únicos atendidos: alumnos con al menos una clase DICTADA en el año (mismo `isClassHeld` que la app); una clase compartida cuenta a cada participante una sola vez. Sólo alumnos que existen.
+ * - Activos actualmente: estado real del perfil, nunca inferido por tener clases a futuro.
+ * - Nuevos: fecha real de alta (`dateJoined`), nunca la de la primera clase ni la del primer pago.
  */
 export interface StudentForYearSummary {
   id: string;
-  status: "activo" | "pausado" | "inactivo" | "archivado";
-  dateJoined: string; // YYYY-MM-DD
-}
-
-export interface RegistrationForYearSummary {
-  studentId: string;
-  countsAsClass: boolean;
-  dateKey: string; // fecha real de la clase, YYYY-MM-DD
+  status: string;
+  dateJoined: string; // YYYY-MM-DD ("" si no hay)
 }
 
 export interface StudentYearActivitySummary {
@@ -21,62 +20,65 @@ export interface StudentYearActivitySummary {
   newStudentsThisYear: number;
 }
 
-export function buildStudentYearActivitySummary(input: {
-  year: number;
-  students: readonly StudentForYearSummary[];
-  registrations: readonly RegistrationForYearSummary[];
-}): StudentYearActivitySummary {
-  const yearPrefix = String(input.year);
-  const attendedThisYear = new Set(
-    input.registrations.filter((r) => r.countsAsClass && r.dateKey.slice(0, 4) === yearPrefix).map((r) => r.studentId)
-  );
+export function buildStudentYearActivitySummary(input: { year: number; students: readonly StudentForYearSummary[]; lessons: readonly RegisteredLessonFacts[] }): StudentYearActivitySummary {
+  const { year, students, lessons } = input;
+  const rangeStart = `${year}-01-01`;
+  const rangeEnd = `${year}-12-31`;
+  const validStudentIds = new Set(students.map((student) => student.id));
+
+  const attended = new Set<string>();
+  lessons
+    .filter((lesson) => lesson.dateKey >= rangeStart && lesson.dateKey <= rangeEnd && isClassHeld(lesson))
+    .forEach((lesson) => {
+      lesson.studentIds.forEach((studentId) => {
+        if (validStudentIds.has(studentId)) attended.add(studentId);
+      });
+    });
 
   return {
-    year: input.year,
-    uniqueStudentsAttended: attendedThisYear.size,
-    activeStudentsNow: input.students.filter((s) => s.status === "activo").length,
-    newStudentsThisYear: input.students.filter((s) => s.dateJoined.slice(0, 4) === yearPrefix).length,
+    year,
+    uniqueStudentsAttended: attended.size,
+    activeStudentsNow: students.filter((student) => student.status === "activo").length,
+    newStudentsThisYear: students.filter((student) => student.dateJoined.slice(0, 4) === String(year)).length,
   };
 }
 
-export interface NewStudentsPerMonthEntry {
-  month: string; // YYYY-MM
+export interface MonthlyNewStudents {
+  month: number; // 1-12
   count: number;
 }
 
 export interface NewStudentsPerMonthSummary {
   year: number;
-  entries: NewStudentsPerMonthEntry[]; // 12 entradas, meses sin alta en 0
-  peakMonths: string[]; // empates soportados
+  /** Siempre 12 entradas; los meses sin altas valen 0. */
+  months: MonthlyNewStudents[];
   total: number;
-  previousYearTotal: number | null; // null si no hay datos del año anterior
+  /** Mes(es) con más incorporaciones — más de uno si empatan. */
+  peakMonths: number[];
+  /** `null` si no hay datos del año anterior para comparar. */
+  previousYearTotal: number | null;
 }
 
-export function buildNewStudentsPerMonthSummary(input: { year: number; students: readonly StudentForYearSummary[] }): NewStudentsPerMonthSummary {
-  const yearPrefix = String(input.year);
-  const previousYearPrefix = String(input.year - 1);
-
-  const countsByMonth = new Map<string, number>();
-  for (let month = 1; month <= 12; month += 1) {
-    countsByMonth.set(`${yearPrefix}-${String(month).padStart(2, "0")}`, 0);
-  }
+export function buildNewStudentsPerMonthSummary(input: { year: number; students: readonly { dateJoined: string }[] }): NewStudentsPerMonthSummary {
+  const { year, students } = input;
+  const counts = new Array(12).fill(0) as number[];
   let previousYearTotal = 0;
   let hasPreviousYearData = false;
-  input.students.forEach((student) => {
-    const yearPart = student.dateJoined.slice(0, 4);
-    if (yearPart === yearPrefix) {
-      const monthKey = student.dateJoined.slice(0, 7);
-      countsByMonth.set(monthKey, (countsByMonth.get(monthKey) ?? 0) + 1);
-    } else if (yearPart === previousYearPrefix) {
+
+  students.forEach((student) => {
+    if (student.dateJoined === "") return;
+    const [studentYear, studentMonth] = student.dateJoined.split("-").map(Number);
+    if (studentYear === year) counts[studentMonth - 1] += 1;
+    else if (studentYear === year - 1) {
       previousYearTotal += 1;
       hasPreviousYearData = true;
     }
   });
 
-  const entries = [...countsByMonth.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([month, count]) => ({ month, count }));
-  const total = entries.reduce((sum, e) => sum + e.count, 0);
-  const maxCount = Math.max(0, ...entries.map((e) => e.count));
-  const peakMonths = maxCount > 0 ? entries.filter((e) => e.count === maxCount).map((e) => e.month) : [];
+  const months: MonthlyNewStudents[] = counts.map((count, index) => ({ month: index + 1, count }));
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  const maxCount = Math.max(0, ...counts);
+  const peakMonths = maxCount > 0 ? months.filter((entry) => entry.count === maxCount).map((entry) => entry.month) : [];
 
-  return { year: input.year, entries, peakMonths, total, previousYearTotal: hasPreviousYearData ? previousYearTotal : null };
+  return { year, months, total, peakMonths, previousYearTotal: hasPreviousYearData ? previousYearTotal : null };
 }

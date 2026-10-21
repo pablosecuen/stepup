@@ -1,65 +1,126 @@
+import { instantDateKey, instantMinutesOfDay, weekdayIndexMondayFirst } from "../calendar/civil-calendar.ts";
+import { addDaysToDateKey } from "../payments/dates.ts";
+
 /**
- * Puerto de `buildCalendarDemandSummary` (móvil, `calendarDemandSummary.ts`)
- * — SIEMPRE últimos 90 días (`DEMAND_LOOKBACK_DAYS`), no configurable por
- * el usuario (el móvil no tiene selector de rango para esta tarjeta). Una
- * clase GRUPAL cuenta una sola vez (nunca por participante) — el input ya
- * es "una ocurrencia", no "una por alumno". Pura.
+ * Puerto exacto de `buildCalendarDemandSummary` (móvil, `calendarDemandSummary.ts`): demanda semanal y horaria de los ÚLTIMOS 90 DÍAS (hoy incluido, por fecha civil de Argentina), no configurable.
+ *
+ * - Cuenta clases dictadas (`completed`) y confirmadas a futuro (`scheduled`): excluye canceladas, reprogramadas y cualquier otro estado, y las clases «sin alumnos» que ya pasaron.
+ * - Mide HORAS OCUPADAS, no sólo cantidad: cada clase reparte su duración entre los intervalos de 30 minutos que toca.
+ * - Una clase compartida ocupa la agenda UNA sola vez (el insumo ya es «una ocurrencia», nunca una por alumno).
+ * - Día de la semana con lunes = 0 … domingo = 6 (como la app).
  */
 export const DEMAND_LOOKBACK_DAYS = 90;
 const SLOT_MINUTES = 30;
+const SLOT_COUNT_PER_DAY = (24 * 60) / SLOT_MINUTES;
 
 export interface OccurrenceForDemand {
-  startAt: string; // ISO instant
-  timeZone: string;
+  start: string;
+  end: string;
+  status: string;
+  participantCount: number;
+}
+
+export interface DemandByWeekday {
+  /** 0 = lunes … 6 = domingo. */
+  weekday: number;
+  occupiedHours: number;
+  lessonCount: number;
+  percentOfWeeklyDemand: number;
 }
 
 export interface DemandSlot {
-  weekday: number; // 0=domingo..6=sábado (mismo criterio que Date.getUTCDay tras convertir a zona real)
-  slotStartMinuteOfDay: number; // minutos desde medianoche, múltiplo de 30
-  count: number;
+  hour: number;
+  minute: number;
+  occupiedHours: number;
+  lessonCount: number;
 }
 
 export interface CalendarDemandSummary {
-  totalOccurrences: number;
-  topWeekdays: number[]; // empates soportados
-  topSlots: { weekday: number; slotStartMinuteOfDay: number }[]; // empates soportados
-  slotCounts: DemandSlot[];
+  rangeStart: string;
+  rangeEnd: string;
+  byWeekday: DemandByWeekday[];
+  /** Día(s) más demandados — más de uno en caso de empate. */
+  topWeekdays: DemandByWeekday[];
+  bySlot: DemandSlot[];
+  /** Horario(s) más demandados — más de tres en caso de empate en el tercer lugar. */
+  topSlots: DemandSlot[];
 }
 
-function localWeekdayAndMinuteOfDay(instantIso: string, timeZone: string): { weekday: number; minuteOfDay: number } {
-  const date = new Date(instantIso);
-  const formatter = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" });
-  const parts = new Map(formatter.formatToParts(date).map((p) => [p.type, p.value]));
-  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  const weekday = weekdayMap[parts.get("weekday") ?? "Sun"] ?? 0;
-  const minuteOfDay = Number(parts.get("hour")) * 60 + Number(parts.get("minute"));
-  return { weekday, minuteOfDay };
+/** Rango de la demanda: los últimos `DEMAND_LOOKBACK_DAYS` días terminando en `evaluationDate`, ambos incluidos. */
+export function demandRangeFor(evaluationDate: string): { rangeStart: string; rangeEnd: string } {
+  return { rangeStart: addDaysToDateKey(evaluationDate, -(DEMAND_LOOKBACK_DAYS - 1)), rangeEnd: evaluationDate };
 }
 
-export function buildCalendarDemandSummary(occurrences: readonly OccurrenceForDemand[]): CalendarDemandSummary {
-  const counts = new Map<string, DemandSlot>();
-  const weekdayTotals = new Map<number, number>();
+function isRelevantOccurrence(occurrence: OccurrenceForDemand, rangeStart: string, rangeEnd: string, evaluationInstant: string): boolean {
+  if (occurrence.status !== "scheduled" && occurrence.status !== "completed") return false;
+  const startDateKey = instantDateKey(occurrence.start);
+  if (startDateKey < rangeStart || startDateKey > rangeEnd) return false;
+  const isEmpty = occurrence.participantCount === 0;
+  const isPast = new Date(occurrence.end).getTime() < new Date(evaluationInstant).getTime();
+  if (isEmpty && isPast) return false;
+  return true;
+}
 
-  occurrences.forEach((occurrence) => {
-    const { weekday, minuteOfDay } = localWeekdayAndMinuteOfDay(occurrence.startAt, occurrence.timeZone);
-    const slotStartMinuteOfDay = Math.floor(minuteOfDay / SLOT_MINUTES) * SLOT_MINUTES;
-    const key = `${weekday}:${slotStartMinuteOfDay}`;
-    const existing = counts.get(key);
-    if (existing) existing.count += 1;
-    else counts.set(key, { weekday, slotStartMinuteOfDay, count: 1 });
-    weekdayTotals.set(weekday, (weekdayTotals.get(weekday) ?? 0) + 1);
+export function buildCalendarDemandSummary(input: { occurrences: readonly OccurrenceForDemand[]; rangeStart: string; rangeEnd: string; evaluationInstant: string }): CalendarDemandSummary {
+  const { occurrences, rangeStart, rangeEnd, evaluationInstant } = input;
+  const relevant = occurrences.filter((occurrence) => isRelevantOccurrence(occurrence, rangeStart, rangeEnd, evaluationInstant));
+
+  const weekdayMinutes = new Map<number, number>();
+  const weekdayLessonCount = new Map<number, number>();
+  const slotMinutes = new Map<number, number>();
+  const slotLessonCount = new Map<number, number>();
+
+  relevant.forEach((occurrence) => {
+    const durationMinutes = Math.max(0, Math.round((new Date(occurrence.end).getTime() - new Date(occurrence.start).getTime()) / 60_000));
+    if (durationMinutes === 0) return;
+
+    const weekday = weekdayIndexMondayFirst(instantDateKey(occurrence.start));
+    weekdayMinutes.set(weekday, (weekdayMinutes.get(weekday) ?? 0) + durationMinutes);
+    weekdayLessonCount.set(weekday, (weekdayLessonCount.get(weekday) ?? 0) + 1);
+
+    // Reparte la duración de la clase entre los intervalos de 30 min que toca.
+    const startMinuteOfDay = instantMinutesOfDay(occurrence.start);
+    let currentSlot = Math.floor(startMinuteOfDay / SLOT_MINUTES);
+    let minutesRemaining = durationMinutes;
+    let minutesIntoCurrentSlot = startMinuteOfDay - currentSlot * SLOT_MINUTES;
+    const touchedSlots = new Set<number>();
+    while (minutesRemaining > 0 && currentSlot < SLOT_COUNT_PER_DAY) {
+      const minutesInThisSlot = Math.min(SLOT_MINUTES - minutesIntoCurrentSlot, minutesRemaining);
+      slotMinutes.set(currentSlot, (slotMinutes.get(currentSlot) ?? 0) + minutesInThisSlot);
+      touchedSlots.add(currentSlot);
+      minutesRemaining -= minutesInThisSlot;
+      minutesIntoCurrentSlot = 0;
+      currentSlot += 1;
+    }
+    touchedSlots.forEach((slot) => slotLessonCount.set(slot, (slotLessonCount.get(slot) ?? 0) + 1));
   });
 
-  const slotCounts = [...counts.values()].sort((a, b) => (a.weekday - b.weekday) || (a.slotStartMinuteOfDay - b.slotStartMinuteOfDay));
+  const totalWeeklyMinutes = Array.from(weekdayMinutes.values()).reduce((sum, minutes) => sum + minutes, 0);
+  const byWeekday: DemandByWeekday[] = [0, 1, 2, 3, 4, 5, 6].map((weekday) => {
+    const minutes = weekdayMinutes.get(weekday) ?? 0;
+    return {
+      weekday,
+      occupiedHours: minutes / 60,
+      lessonCount: weekdayLessonCount.get(weekday) ?? 0,
+      percentOfWeeklyDemand: totalWeeklyMinutes > 0 ? (minutes / totalWeeklyMinutes) * 100 : 0,
+    };
+  });
 
-  const maxWeekdayCount = Math.max(0, ...weekdayTotals.values());
-  const topWeekdays = maxWeekdayCount > 0 ? [...weekdayTotals.entries()].filter(([, count]) => count === maxWeekdayCount).map(([weekday]) => weekday).sort((a, b) => a - b) : [];
+  const maxWeekdayMinutes = Math.max(0, ...byWeekday.map((entry) => entry.occupiedHours * 60));
+  const topWeekdays = maxWeekdayMinutes > 0 ? byWeekday.filter((entry) => entry.occupiedHours * 60 === maxWeekdayMinutes) : [];
 
-  const maxSlotCount = Math.max(0, ...slotCounts.map((s) => s.count));
-  const topSlots =
-    maxSlotCount > 0
-      ? slotCounts.filter((s) => s.count === maxSlotCount).map((s) => ({ weekday: s.weekday, slotStartMinuteOfDay: s.slotStartMinuteOfDay }))
-      : [];
+  const bySlot: DemandSlot[] = Array.from(slotMinutes.entries())
+    .map(([slotIndex, minutes]) => ({
+      hour: Math.floor((slotIndex * SLOT_MINUTES) / 60),
+      minute: (slotIndex * SLOT_MINUTES) % 60,
+      occupiedHours: minutes / 60,
+      lessonCount: slotLessonCount.get(slotIndex) ?? 0,
+    }))
+    .sort((a, b) => (a.hour !== b.hour ? a.hour - b.hour : a.minute - b.minute));
 
-  return { totalOccurrences: occurrences.length, topWeekdays, topSlots, slotCounts };
+  const sortedByDemand = [...bySlot].sort((a, b) => b.occupiedHours - a.occupiedHours);
+  const thirdPlaceHours = sortedByDemand[2]?.occupiedHours ?? -1;
+  const topSlots = sortedByDemand.filter((slot) => slot.occupiedHours >= thirdPlaceHours && slot.occupiedHours > 0);
+
+  return { rangeStart, rangeEnd, byWeekday, topWeekdays, bySlot, topSlots };
 }

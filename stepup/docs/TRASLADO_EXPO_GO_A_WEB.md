@@ -253,3 +253,29 @@ Migraciones nuevas, SÓLO locales (nada aplicado en Production): R12 `2026102010
 **Verificación.** Funciones reales de la web sobre datos vivos de Production (sólo lectura): la clase de las 17:30 aparece el 20/10; la reprogramada ya no figura a las 18:00 y su reemplazo aparece en su día (24/10 16:30). Suite completa: 1787 pruebas, 0 fallos; tsc y eslint limpios. Commit `ac1b491` publicado. No se modificó ningún dato; el origen sigue SIN congelar y el traslado NO está cerrado.
 
 **Pendiente:** contraste de las estadísticas del video con el mismo período en la web (falta identificar qué video y qué período).
+
+## 22. Estadísticas del Resumen financiero: mismas reglas que la app (21/10/2026)
+
+**Comparación hecha** con el video de la app (20/10/2026, 22:53) y el código REAL de la app anterior sobre el respaldo final del origen (`origen-final-20261020-223918`, ~15 min antes del video; su resultado reproduce todas las cifras del video). Mismo período, mismo día de evaluación, mismos filtros.
+
+| Cifra | App (video) | Web antes | Web ahora (mismos datos) |
+|---|---|---|---|
+| Facturación prevista / Cobrado / Pendiente / Vencido (oct.) | $4.449.500 / $4.389.500 / $57.500 / $57.500 | iguales | iguales (ya era un port exacto) |
+| Valor programado de la hora | $26.102 · 152 h · 140 clases | $84.891,12 | $26.102,31 · 151,5 h · 140 clases |
+| Valor por nivel (A2, Apoyo, B1, B2, C1, Flyers, Starters, mixto…) | 23.125 · 36.000 · 24.371 · 26.121 · 28.000 · 30.000 · 20.000 · 55.000 | no existía | idénticos |
+| Demanda: día / horarios | viernes 79,3 h · 68 clases · 21 % ; 18:30 (49), 18:00 (48), 19:30 (48) | sólo nombres, otra regla | idéntica |
+| Resumen anual 2026 | 346 h dictadas · 0 h reprogramadas · 40 h canceladas | por período, otra regla | 346 · 0 · 39,5 (=40) |
+| Modalidad | online 53 % 185 h 168 · presencial 34 % 117 h 111 · mixta 13 % 45 h 34 | sólo horas | idéntica |
+| Alumnos del año | 31 atendidos · 30 activos · 31 nuevos (jul 22, ago 3, sep 5, oct 1) | otra regla | idéntico |
+
+**Causas encontradas y corregidas (sin tocar datos):**
+1. *Valor de la hora.* La web era un port «simplificado»: sumaba el importe facturado de cada clase registrada y lo dividía por horas de otro conjunto de clases. Cada clase registrada de un alumno MENSUAL guarda el importe del MES completo (83 de las 95 clases de octubre: $15.848.450 en total), así que se inflaba ~4 veces; además las horas incluían clases que la app excluye. Ahora es un port exacto: el total del mes de cada alumno (cargo real, o plan vigente) se reparte por minutos entre sus clases; por clase usa el importe de la clase o el plan si no está registrada; excluye canceladas sin registro, «cancelada tarde» cobrada, no facturables, feriado sin excepción, días declarados no disponibles y clases sin alumnos (`lib/reports/hourly-rate.ts`).
+2. *Demanda.* Ahora son los últimos 90 días por FECHA civil (23/07 a 20/10, hoy incluido, no «ahora − 90 días»), cuenta sólo clases `completed`/`scheduled` (la web incluía reprogramadas), mide horas ocupadas repartidas en intervalos de 30 minutos, días con lunes = 0 y fecha civil de Argentina (`lib/reports/demand.ts`).
+3. *Resumen anual / modalidad / alumnos.* La web decidía «dictada» por `counts_as_class`; la app, por el RESULTADO de la clase (`clase_dictada`, o feriado con excepción). «Alumno ausente» (que la web importa como dictada con asistencia «ausente») es una cancelación para la app. Ahora se usa el resultado original (`source_event_type`) y las duraciones de la app (`lib/reports/registered-lessons.ts`, `annual-activity.ts`, `student-year-summary.ts`). El resumen anual ahora es del AÑO (no depende del período elegido) y se muestra aparte, con modalidad en horas/clases/porcentaje y la incorporación mensual de alumnos.
+4. *Vínculo clase↔registro.* Los registros que la importación dejó sin clase de calendario se cruzan por la clave de ocurrencia de la serie (`source_extras.calendarReservationKey` traducida a los ids nuevos), igual que la app.
+
+**Por qué la web hoy NO da exactamente 26.102 / 346 con TODOS sus datos:** la cuenta ya tiene datos creados en la web después de importar (series y alumnos de prueba «QA…», un grupo «QA Renombrado», 6 alumnos nuevos y 7 registros propios). Con SÓLO las filas importadas del origen, la web da exactamente las cifras de la app; con todo lo vivo da: hora $25.510,08 (161,25 h, 150 clases), anual 350 h dictadas / 41 canceladas, 37 alumnos nuevos. Esa diferencia es de datos, no de cálculo; no se borró ni modificó nada.
+
+**Agenda del 20/10:** la app muestra 7 clases (08:00, 09:00, 10:00, 17:30, 18:30, 19:30, 20:30). La web muestra esas mismas 7 más una clase virtual a las 18:00 que pertenece a una SERIE DE PRUEBA creada en la web el 21/09 (alumnos «QA Alumno Editado» + «QA Alumno Dos»): no existe en la app. Sin ella, la agenda es idéntica.
+
+Verificación: 1795 pruebas, 0 fallos; tsc y eslint limpios. Quedó sin cambios el origen (sin congelar) y el traslado sigue pendiente de aceptación.

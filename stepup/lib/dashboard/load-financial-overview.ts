@@ -4,17 +4,19 @@ import { listAllCharges, listAllAllocations, listAllPayments } from "@/lib/repos
 import { getBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
 import { DEFAULT_BUDGET_DISTRIBUTION, type BudgetDistribution } from "@/lib/payments/budget-distribution";
 import { buildMonthlyCollectedSeries, chartMonthsForRange, type MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
-import { listLessonRegistrationsInRange, listRosterForRegistrationIds } from "@/lib/repositories/lesson-registrations";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
-import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE, toDateKey } from "@/lib/payments/dates";
-import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
+import { readTable } from "@/lib/db/read";
+import { getTeacherAvailability } from "@/lib/repositories/teacher-availability";
+import { dayRangeInstants } from "@/lib/calendar/civil-calendar";
 import { resolveFinancialPeriodRange, comparePeriodValues, previousComparableRange, type FinancialPeriodPreset, type DateRange } from "@/lib/reports/period";
 import { buildPeriodFinancialSummary, type PeriodFinancialSummary } from "@/lib/reports/financial-summary";
-import { buildAnnualActivitySummary, buildModalitySummary, type AnnualActivitySummary, type ModalitySummary } from "@/lib/reports/annual-activity";
-import { buildCalendarDemandSummary, DEMAND_LOOKBACK_DAYS, type CalendarDemandSummary } from "@/lib/reports/demand";
-import { buildProgrammedHourlyRateSummary, type ProgrammedHourlyRateSummary } from "@/lib/reports/hourly-rate";
-import { buildStudentYearActivitySummary, buildNewStudentsPerMonthSummary, type StudentYearActivitySummary, type NewStudentsPerMonthSummary } from "@/lib/reports/student-year-summary";
+import type { AnnualActivitySummary, ModalitySummary } from "@/lib/reports/annual-activity";
+import { demandRangeFor, type CalendarDemandSummary } from "@/lib/reports/demand";
+import type { ProgrammedHourlyRateSummary } from "@/lib/reports/hourly-rate";
+import { buildFinancialStatistics, type RegistrationRowWithExtras } from "@/lib/reports/financial-statistics";
+import type { StudentYearActivitySummary, NewStudentsPerMonthSummary } from "@/lib/reports/student-year-summary";
 
 export interface FinancialOverviewData {
   preset: FinancialPeriodPreset;
@@ -25,13 +27,21 @@ export interface FinancialOverviewData {
   /** Porcentajes guardados de la distribución sugerida (50/30/20 por defecto). */
   budget: BudgetDistribution;
   comparison: { generated: ReturnType<typeof comparePeriodValues>; collected: ReturnType<typeof comparePeriodValues> } | null;
+  /** Actividad del período elegido (mismas reglas que el resumen anual). */
   activity: AnnualActivitySummary;
+  /** Resumen anual del año en curso: no depende del período elegido. */
+  year: number;
+  annualActivity: AnnualActivitySummary;
   modality: ModalitySummary;
+  /** Últimos 90 días: siempre fijos, independientes del período elegido. */
   demand: CalendarDemandSummary;
   hourlyRate: ProgrammedHourlyRateSummary;
   studentYear: StudentYearActivitySummary;
   newStudentsPerMonth: NewStudentsPerMonthSummary;
 }
+
+const REGISTRATION_COLUMNS =
+  "id, calendar_lesson_id, source_event_type, outcome, holiday_exception, is_billable, scheduled_start_at, scheduled_end_at, actual_started_at, actual_ended_at, scheduled_duration_minutes, actual_duration_minutes, modality, billed_amount, created_at, source_extras";
 
 /**
  * Orquestador único de "Resumen financiero" (Fase 7) — combina los
@@ -39,44 +49,64 @@ export interface FinancialOverviewData {
  * `lib/reports/`. Ninguna tarjeta expone nombres de alumnos ni montos
  * individuales — sólo agregados (mismo criterio real del móvil,
  * `FinancialAnalyticsSections.tsx`).
+ *
+ * Las estadísticas de actividad (valor de la hora, demanda, resumen anual, modalidad, alumnos del año) usan las MISMAS reglas que la app anterior: ver `lib/reports/financial-statistics.ts`.
  */
 export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, preset: FinancialPeriodPreset): Promise<FinancialOverviewData> {
   const now = new Date();
   const evaluationDate = localDateKeyInTimeZone(now, ARGENTINA_TIME_ZONE);
   const range = resolveFinancialPeriodRange(preset, evaluationDate);
+  const year = Number(evaluationDate.slice(0, 4));
 
-  const rangeStartIso = localDateTimeToInstantIso({ date: range.rangeStart, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
-  const rangeEndIso = localDateTimeToInstantIso({ date: range.rangeEnd, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
-  // Demanda: SIEMPRE últimos 90 días fijos, no configurable (mismo criterio real del móvil) — independiente del preset elegido.
-  const demandStart = new Date(now.getTime() - DEMAND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
-  const currentYear = Number(evaluationDate.slice(0, 4));
-  // `studentYear`/`newStudentsPerMonth` necesitan el AÑO completo, no sólo el rango del preset — si el preset elegido ya es
-  // exactamente el año actual, reutiliza lo ya consultado; si no, hace su propia consulta anual real (nunca infiere el año a
-  // partir de un rango más angosto).
-  const yearStartIso = localDateTimeToInstantIso({ date: `${currentYear}-01-01`, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE });
-  const yearEndIso = localDateTimeToInstantIso({ date: `${currentYear}-12-31`, hour: 23, minute: 59, timeZone: ARGENTINA_TIME_ZONE });
-  const rangeIsCurrentYear = range.rangeStart === `${currentYear}-01-01` && range.rangeEnd === `${currentYear}-12-31`;
+  // Período elegido y demanda (90 días terminando hoy, por fecha civil de Argentina): ambos como rangos de días completos.
+  const periodInstants = dayRangeInstants(range.rangeStart, range.rangeEnd);
+  const demandRange = demandRangeFor(evaluationDate);
+  const demandInstants = dayRangeInstants(demandRange.rangeStart, demandRange.rangeEnd);
 
-  // Todas las lecturas que NO dependen unas de otras salen juntas (antes eran seis esperas seguidas, cada una con su ida y vuelta
-  // a la base): el resultado es exactamente el mismo.
-  // Series, excepciones y alumnos se leen UNA vez para las dos vistas del calendario (demanda y valor de la hora).
-  const [{ students, rules, exceptions, occurrenceMarkers }, charges, allocations, payments, registrationsInRange, demandLessons, hourlyLessons, ownYearRegistrations, budgetSettings] = await Promise.all([
+  // Todas las lecturas que NO dependen unas de otras salen juntas. Series, excepciones y alumnos se leen UNA vez para las dos vistas del calendario.
+  const [calendarBase, charges, allocations, payments, periodLessons, demandLessons, registrations, roster, evaluationAmounts, ruleIds, packageMovements, availability, budgetSettings] = await Promise.all([
     loadCalendarViewBase(ctx),
     listAllCharges(ctx),
     listAllAllocations(ctx),
     listAllPayments(ctx),
-    listLessonRegistrationsInRange(ctx, rangeStartIso, rangeEndIso),
-    listCalendarLessonsInRange(ctx, demandStart.toISOString(), now.toISOString()),
-    // Valor programado de la hora: TODA la agenda real del rango del preset (materializada + virtual).
-    listCalendarLessonsInRange(ctx, new Date(rangeStartIso).toISOString(), new Date(rangeEndIso).toISOString()),
-    rangeIsCurrentYear ? Promise.resolve(null) : listLessonRegistrationsInRange(ctx, yearStartIso, yearEndIso),
+    listCalendarLessonsInRange(ctx, periodInstants.startIso, periodInstants.endIso),
+    listCalendarLessonsInRange(ctx, demandInstants.startIso, demandInstants.endIso),
+    // Registros terminados de TODA la cuenta: el resumen anual y el valor de la hora los cruzan con la agenda (un registro en curso todavía no es un resultado).
+    readTable<RegistrationRowWithExtras>(ctx.supabase, "lesson_registrations", { columns: REGISTRATION_COLUMNS, filter: (query) => query.eq("owner_id", ctx.ownerId).eq("status", "completed") }),
+    readTable<{ lesson_registration_id: string; student_id: string }>(ctx.supabase, "lesson_registration_students", { columns: "id, lesson_registration_id, student_id", filter: (query) => query.eq("owner_id", ctx.ownerId) }),
+    readTable<{ lesson_registration_id: string; student_id: string; billed_amount: number | string | null }>(ctx.supabase, "lesson_registration_evaluations", {
+      columns: "id, lesson_registration_id, student_id, billed_amount",
+      filter: (query) => query.eq("owner_id", ctx.ownerId),
+    }),
+    readTable<{ id: string; legacy_mobile_id: string | null }>(ctx.supabase, "recurrence_rules", { columns: "id, legacy_mobile_id", filter: (query) => query.eq("owner_id", ctx.ownerId) }),
+    readTable<{ package_id: string; student_id: string; saved_lesson_id: string | null }>(ctx.supabase, "package_credit_movements", {
+      columns: "id, package_id, student_id, saved_lesson_id",
+      filter: (query) => query.eq("owner_id", ctx.ownerId).eq("movement_type", "consumo").is("voided_at", null).not("saved_lesson_id", "is", null),
+    }),
+    getTeacherAvailability(ctx),
     // Una sola fila por profesora; si no se puede leer, la sugerencia usa 50/30/20 (nunca rompe el resumen).
     getBudgetDistributionSettings(ctx).catch(() => null),
   ]);
 
-  const calendarBase = { rules, students, exceptions, occurrenceMarkers };
-  const demandItems = composeCalendarView(calendarBase, demandLessons, demandStart, now);
-  const hourlyRangeItems = composeCalendarView(calendarBase, hourlyLessons, new Date(rangeStartIso), new Date(rangeEndIso));
+  const periodItems = composeCalendarView(calendarBase, periodLessons, new Date(periodInstants.startIso), new Date(periodInstants.endIso));
+  const demandItems = composeCalendarView(calendarBase, demandLessons, new Date(demandInstants.startIso), new Date(demandInstants.endIso));
+
+  const statistics = buildFinancialStatistics({
+    evaluationDate,
+    evaluationInstant: now.toISOString(),
+    range,
+    year,
+    periodItems,
+    demandItems,
+    registrations,
+    roster,
+    evaluationAmounts,
+    rules: ruleIds,
+    students: calendarBase.students,
+    charges,
+    packageConsumptions: packageMovements.flatMap((movement) => (movement.saved_lesson_id ? [{ packageId: movement.package_id, studentId: movement.student_id, registrationId: movement.saved_lesson_id }] : [])),
+    availabilityExceptions: availability.exceptions,
+  });
 
   const summary = buildPeriodFinancialSummary({
     charges,
@@ -111,61 +141,20 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     };
   }
 
-  const activityInput = registrationsInRange.map((r) => ({
-    countsAsClass: r.countsAsClass,
-    scheduledStartAt: r.scheduledStartAt,
-    scheduledEndAt: r.scheduledEndAt,
-    actualStartedAt: r.actualStartedAt,
-    actualEndedAt: r.actualEndedAt,
-    outcome: r.outcome,
-    modality: r.modality,
-    calendarLessonId: r.calendarLessonId,
-    id: r.id,
-  }));
-  const activity = buildAnnualActivitySummary(activityInput, range);
-  const modality = buildModalitySummary(activityInput, range);
-
-  const demand = buildCalendarDemandSummary(
-    demandItems.filter((item) => item.status !== "cancelled").map((item) => ({ startAt: item.start, timeZone: ARGENTINA_TIME_ZONE }))
-  );
-
-  // Cruza la agenda del rango con los registros ya completados para saber qué ocurrencias ya tienen ingreso real atribuido.
-  const registrationByCalendarLessonId = new Map(registrationsInRange.filter((r) => r.calendarLessonId).map((r) => [r.calendarLessonId as string, r]));
-  const hourlyRate = buildProgrammedHourlyRateSummary(
-    hourlyRangeItems
-      .filter((item) => item.status !== "cancelled")
-      .map((item) => {
-        const registration = item.isMaterialized ? registrationByCalendarLessonId.get(item.id) : undefined;
-        const isRegisteredHeld = !!registration && registration.status === "completed" && registration.countsAsClass;
-        return {
-          scheduledStartAt: item.start,
-          scheduledEndAt: item.end,
-          isCancelled: false,
-          isRegisteredHeld,
-          billedAmount: isRegisteredHeld ? registration!.billedAmount : null,
-        };
-      }),
+  return {
+    preset,
     range,
-    evaluationDate
-  );
-
-  const studentsForYear = students.map((s) => ({ id: s.id, status: s.status, dateJoined: s.dateJoined }));
-
-  const yearRegistrationsFull = rangeIsCurrentYear || !ownYearRegistrations ? registrationsInRange : ownYearRegistrations;
-
-  const heldRegistrationIds = yearRegistrationsFull.filter((r) => r.countsAsClass).map((r) => r.id);
-  const roster = await listRosterForRegistrationIds(ctx, heldRegistrationIds);
-  const registrationById = new Map(yearRegistrationsFull.map((r) => [r.id, r]));
-  const yearRosterEntries = roster
-    .map((entry) => {
-      const registration = registrationById.get(entry.registrationId);
-      if (!registration) return null;
-      return { studentId: entry.studentId, countsAsClass: registration.countsAsClass, dateKey: toDateKey(registration.scheduledStartAt ?? registration.createdAt) };
-    })
-    .filter((entry): entry is { studentId: string; countsAsClass: boolean; dateKey: string } => entry !== null);
-
-  const studentYear = buildStudentYearActivitySummary({ year: currentYear, students: studentsForYear, registrations: yearRosterEntries });
-  const newStudentsPerMonth = buildNewStudentsPerMonthSummary({ year: currentYear, students: studentsForYear });
-
-  return { preset, range, summary, collectedSeries, budget, comparison, activity, modality, demand, hourlyRate, studentYear, newStudentsPerMonth };
+    summary,
+    collectedSeries,
+    budget,
+    comparison,
+    activity: statistics.periodActivity,
+    year,
+    annualActivity: statistics.annualActivity,
+    modality: statistics.modality,
+    demand: statistics.demand,
+    hourlyRate: statistics.hourlyRate,
+    studentYear: statistics.studentYear,
+    newStudentsPerMonth: statistics.newStudentsPerMonth,
+  };
 }

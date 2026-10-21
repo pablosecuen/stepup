@@ -9,21 +9,27 @@ import { BudgetSuggestion } from "@/components/finance/budget-suggestion";
 import { ErrorState } from "@/components/ui/states";
 import type { FinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
-import { formatCivilMonth, formatCivilMonthLongYear } from "@/lib/format/date-format";
-import { formatMinutesAsHours, formatMoney, formatPercent } from "@/lib/format/number-format";
+import { formatCivilDate, formatCivilMonth, formatCivilMonthAbbrev, formatCivilMonthLongYear } from "@/lib/format/date-format";
+import { formatCount, formatHours, formatMoney, formatPercent } from "@/lib/format/number-format";
 
 export const FINANCIAL_PRESETS: FinancialPeriodPreset[] = ["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"];
-const WEEKDAY_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+// Lunes = 0 … domingo = 6 (como el motor de demanda).
+const WEEKDAY_LABEL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const LEVEL_BUCKET_LABEL: Record<string, string> = { sin_nivel: "Sin nivel", nivel_mixto: "Nivel mixto" };
+const MODALITY_LABEL: Record<string, string> = { online: "Online", presencial: "Presencial", mixta: "Mixta" };
 
 /** Variación porcentual con signo, redondeada a entero (la comparación entre períodos no necesita decimales). */
 function formatChange(value: number | null): string {
   return formatPercent(value === null ? null : Math.round(value), { signed: true });
 }
 
-function formatMinuteOfDay(minuteOfDay: number): string {
-  const hour = Math.floor(minuteOfDay / 60);
-  const minute = minuteOfDay % 60;
+function formatSlot(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+/** Horas enteras para los totales (igual que la app: 345,5 → 346 h). */
+function formatWholeHours(hours: number): string {
+  return `${formatCount(Math.round(hours))} h`;
 }
 
 const CARD = "rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5";
@@ -48,13 +54,13 @@ function Stat({ label, value }: { label: string; value: ReactNode }) {
 }
 
 /** Fila de una distribución: etiqueta, valor en texto y una barra proporcional (decorativa: el valor ya está escrito). */
-function ShareRow({ label, minutes, max }: { label: string; minutes: number; max: number }) {
-  const width = max > 0 ? Math.max(0, Math.min(100, Math.round((minutes / max) * 100))) : 0;
+function ShareRow({ label, value, percent }: { label: string; value: string; percent: number }) {
+  const width = Math.max(0, Math.min(100, Math.round(percent)));
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 text-[14.5px]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-[14.5px]">
         <span className="text-textSecondary">{label}</span>
-        <span className="font-bold tf-num text-textPrimary">{formatMinutesAsHours(minutes)}</span>
+        <span className="font-bold tf-num text-textPrimary">{value}</span>
       </div>
       <div aria-hidden className="mt-1.5 h-2 overflow-hidden rounded-pill bg-paperDeep">
         <div className="h-full rounded-pill bg-accent" style={{ width: `${width}%` }} />
@@ -77,16 +83,12 @@ function DetailRow({ label, value }: { label: string; value: string }) {
  * únicos de dinero, porcentajes, horas y meses. Sólo montos agregados: nunca nombres de alumnos.
  */
 export function FinancialOverviewView({ data, preset }: { data: FinancialOverviewData; preset: FinancialPeriodPreset }) {
-  const cancelledTotal =
-    data.activity.cancelledCountByReason.conAviso + data.activity.cancelledCountByReason.tardia + data.activity.cancelledCountByReason.profesoraAusente + data.activity.cancelledCountByReason.feriado;
-  const topWeekdaysLabel = data.demand.topWeekdays.length > 0 ? data.demand.topWeekdays.map((w) => WEEKDAY_LABEL[w]).join(", ") : "Sin datos suficientes";
-  const topSlotsLabel =
-    data.demand.topSlots.length > 0 ? data.demand.topSlots.map((s) => `${WEEKDAY_LABEL[s.weekday]} ${formatMinuteOfDay(s.slotStartMinuteOfDay)}`).join(", ") : "Sin datos suficientes";
+  // Mes civil `AAAA-MM` de cada mes pico de altas (para escribirlo con el formateador único).
+  const peakMonthKeys = data.newStudentsPerMonth.peakMonths.map((month) => `${data.newStudentsPerMonth.year}-${String(month).padStart(2, "0")}`);
   const chartFirst = data.collectedSeries[0]?.month;
   const chartLast = data.collectedSeries[data.collectedSeries.length - 1]?.month;
   const chartCaption =
     chartFirst && chartLast ? (chartFirst === chartLast ? `Cobrado en ${formatCivilMonthLongYear(chartFirst)}` : `Cobrado por mes, de ${formatCivilMonthLongYear(chartFirst)} a ${formatCivilMonthLongYear(chartLast)}`) : "Cobrado por mes";
-  const maxModalityMinutes = Math.max(data.modality.presencial, data.modality.online, data.modality.mixta);
 
   return (
     <div className={PAGE_WIDTH.wide}>
@@ -152,57 +154,130 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         </section>
       </div>
 
-      <section className={`${CARD} mt-5`}>
-        <h2 className="font-display text-card font-semibold">Actividad del período</h2>
+      <section aria-labelledby="actividad-titulo" className={`${CARD} mt-5`}>
+        <h2 id="actividad-titulo" className="font-display text-card font-semibold">
+          Actividad del período
+        </h2>
         <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
-          <Stat label="Clases dictadas" value={data.activity.heldClassesCount} />
-          <Stat label="Horas dictadas" value={formatMinutesAsHours(data.activity.heldMinutes)} />
-          <Stat label="Canceladas" value={cancelledTotal} />
-          <Stat label="Reprogramadas" value={data.activity.rescheduledReservationsCount} />
-        </div>
-        <div className="mt-5 grid grid-cols-1 gap-4 nav:grid-cols-3 nav:gap-6">
-          <ShareRow label="Presencial" minutes={data.modality.presencial} max={maxModalityMinutes} />
-          <ShareRow label="Online" minutes={data.modality.online} max={maxModalityMinutes} />
-          <ShareRow label="Mixta" minutes={data.modality.mixta} max={maxModalityMinutes} />
+          <Stat label="Clases dictadas" value={data.activity.heldLessonCount} />
+          <Stat label="Horas dictadas" value={formatWholeHours(data.activity.heldHours)} />
+          <Stat label="Horas reprogramadas" value={formatWholeHours(data.activity.rescheduledHours)} />
+          <Stat label="Horas canceladas" value={formatWholeHours(data.activity.cancelledHours)} />
         </div>
       </section>
 
       <div className="mt-5 grid grid-cols-1 gap-5 nav:grid-cols-2">
-        <section className={CARD}>
-          <h2 className="font-display text-card font-semibold">Valor programado de la hora</h2>
-          <p className="mt-3 font-display text-[36px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">
-            {data.hourlyRate.generalRatePerHour !== null ? formatMoney(data.hourlyRate.generalRatePerHour) : "Sin datos suficientes"}
-          </p>
-          {data.hourlyRate.isEstimate && data.hourlyRate.generalRatePerHour !== null && (
-            <p className="mt-2.5 text-[13.5px] text-textMuted">Estimado — todavía hay clases del período sin registrar o el período no cerró.</p>
+        <section aria-labelledby="hora-titulo" className={CARD}>
+          <h2 id="hora-titulo" className="font-display text-card font-semibold">
+            Valor programado de tu hora
+          </h2>
+          {data.hourlyRate.generalRatePerHour === null ? (
+            <p className="mt-3 text-[15px] text-textMuted">Todavía no hay clases programadas en este período.</p>
+          ) : (
+            <>
+              <p className="mt-3 font-display text-[36px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">
+                {formatMoney(data.hourlyRate.generalRatePerHour)}
+              </p>
+              <p className="mt-2 text-[13.5px] text-textMuted">
+                General{data.hourlyRate.isEstimate ? " (estimado: el período todavía no cerró)" : ""}. Calculado con {formatCount(Math.round(data.hourlyRate.totalProgrammedHours))} horas programadas y{" "}
+                {formatCount(data.hourlyRate.lessonCount)} clase(s), del {formatCivilDate(data.range.rangeStart)} al {formatCivilDate(data.range.rangeEnd)}.
+              </p>
+              <h3 className="mt-4 text-[14px] font-[650] text-textMuted">Según nivel</h3>
+              <dl className="mt-1">
+                {data.hourlyRate.byLevel.map((entry) => (
+                  <DetailRow key={entry.level} label={LEVEL_BUCKET_LABEL[entry.level] ?? (entry.level === "" ? "Sin nivel" : entry.level)} value={entry.ratePerHour !== null ? formatMoney(entry.ratePerHour) : "—"} />
+                ))}
+              </dl>
+            </>
           )}
         </section>
 
-        <section className={CARD}>
-          <h2 className="font-display text-card font-semibold">Demanda (últimos 90 días)</h2>
-          <dl className="mt-3">
-            <DetailRow label="Día más demandado" value={topWeekdaysLabel} />
-            <DetailRow label="Horario más demandado" value={topSlotsLabel} />
-          </dl>
+        <section aria-labelledby="demanda-titulo" className={CARD}>
+          <h2 id="demanda-titulo" className="font-display text-card font-semibold">
+            Demanda semanal y horaria
+          </h2>
+          <p className="mt-1 text-[13px] text-textMuted">
+            Últimos 90 días, del {formatCivilDate(data.demand.rangeStart)} al {formatCivilDate(data.demand.rangeEnd)}.
+          </p>
+          {data.demand.topWeekdays.length === 0 ? (
+            <p className="mt-3 text-[15px] text-textMuted">Todavía no hay clases suficientes en los últimos 90 días.</p>
+          ) : (
+            <>
+              <h3 className="mt-3 text-[14px] font-[650] text-textMuted">{data.demand.topWeekdays.length === 1 ? "Día más demandado" : "Días más demandados (empate)"}</h3>
+              <ul className="mt-1 space-y-1">
+                {data.demand.topWeekdays.map((entry) => (
+                  <li key={entry.weekday} className="text-[15px] text-textPrimary">
+                    <b className="font-[650]">{WEEKDAY_LABEL[entry.weekday]}</b> · {formatHours(entry.occupiedHours)} ocupadas · {formatCount(entry.lessonCount)} clase(s) · {formatPercent(Math.round(entry.percentOfWeeklyDemand))} de la demanda semanal
+                  </li>
+                ))}
+              </ul>
+              <h3 className="mt-4 text-[14px] font-[650] text-textMuted">{data.demand.topSlots.length > 3 ? "Horarios más demandados (con empates)" : "Horarios más demandados"}</h3>
+              <ul className="mt-1 space-y-1">
+                {data.demand.topSlots.map((slot) => (
+                  <li key={`${slot.hour}-${slot.minute}`} className="text-[15px] text-textPrimary">
+                    <b className="font-[650]">{formatSlot(slot.hour, slot.minute)}</b> · {formatCount(slot.lessonCount)} clase(s) · {formatHours(slot.occupiedHours)} ocupadas
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       </div>
 
-      <section className={`${CARD} mt-5`}>
-        <h2 className="font-display text-card font-semibold">Alumnos — {data.studentYear.year}</h2>
+      <section aria-labelledby="anual-titulo" className={`${CARD} mt-5`}>
+        <h2 id="anual-titulo" className="font-display text-card font-semibold">
+          Resumen anual {data.year}
+        </h2>
+        <div className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+          <Stat label="Horas dictadas" value={formatWholeHours(data.annualActivity.heldHours)} />
+          <Stat label="Horas reprogramadas" value={formatWholeHours(data.annualActivity.rescheduledHours)} />
+          <Stat label="Horas canceladas" value={formatWholeHours(data.annualActivity.cancelledHours)} />
+        </div>
+        <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Modalidad más utilizada</h3>
+        {data.modality.breakdown.every((entry) => entry.hours <= 0) ? (
+          <p className="mt-2 text-[15px] text-textMuted">Todavía no hay clases dictadas este año.</p>
+        ) : (
+          <div className="mt-2 grid grid-cols-1 gap-4 nav:grid-cols-3 nav:gap-6">
+            {data.modality.breakdown.map((entry) => (
+              <ShareRow
+                key={entry.modality}
+                label={`${MODALITY_LABEL[entry.modality]}${data.modality.mostUsed.includes(entry.modality) ? " · Más utilizada" : ""}`}
+                value={`${formatPercent(Math.round(entry.percent))} · ${formatWholeHours(entry.hours)} · ${formatCount(entry.lessonCount)} clase(s)`}
+                percent={entry.percent}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="alumnos-titulo" className={`${CARD} mt-5`}>
+        <h2 id="alumnos-titulo" className="font-display text-card font-semibold">
+          Alumnos del año — {data.studentYear.year}
+        </h2>
         <div className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
           <Stat label="Alumnos únicos atendidos" value={data.studentYear.uniqueStudentsAttended} />
-          <Stat label="Alumnos activos" value={data.studentYear.activeStudentsNow} />
+          <Stat label="Activos actualmente" value={data.studentYear.activeStudentsNow} />
           <Stat label="Nuevos este año" value={data.studentYear.newStudentsThisYear} />
         </div>
+        <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Incorporación mensual</h3>
+        <ol className="mt-2 grid grid-cols-6 gap-x-2 gap-y-3 min-[560px]:grid-cols-12">
+          {data.newStudentsPerMonth.months.map((entry) => (
+            <li key={entry.month} className="text-center">
+              <p className={`font-display text-[20px] leading-none tf-num ${data.newStudentsPerMonth.peakMonths.includes(entry.month) ? "font-bold text-accentDark" : "font-semibold text-textPrimary"}`}>{entry.count}</p>
+              <p className="mt-1 text-[12.5px] text-textMuted">{formatCivilMonthAbbrev(`${data.newStudentsPerMonth.year}-${String(entry.month).padStart(2, "0")}`)}</p>
+            </li>
+          ))}
+        </ol>
         {data.newStudentsPerMonth.peakMonths.length > 0 && (
-          <p className="mt-4 text-[13.5px] text-textMuted">
+          <p className="mt-3 text-[13.5px] text-textMuted">
             Mes con más altas:{" "}
-            <b className="font-[650] text-textSecondary">
-              {data.newStudentsPerMonth.peakMonths.map((month) => formatCivilMonth(month)).join(", ")}
-            </b>
-            {data.newStudentsPerMonth.previousYearTotal !== null ? ` · año anterior: ${data.newStudentsPerMonth.previousYearTotal} altas totales` : ""}
+            <b className="font-[650] text-textSecondary">{peakMonthKeys.map((month) => formatCivilMonth(month)).join(", ")}</b>
           </p>
         )}
+        <p className="mt-4 text-[13.5px] text-textMuted">
+          Total del año: {data.newStudentsPerMonth.total} ·{" "}
+          {data.newStudentsPerMonth.previousYearTotal === null ? "Sin comparación disponible con el año anterior." : `Año anterior: ${data.newStudentsPerMonth.previousYearTotal} alumno(s) nuevo(s).`}
+        </p>
       </section>
     </div>
   );

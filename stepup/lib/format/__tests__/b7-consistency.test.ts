@@ -7,7 +7,8 @@ import { toDateKey } from "../../payments/dates.ts";
 import { computeSelectedMonthsRange, getStudentMonthsWithClasses } from "../../reports/months.ts";
 import { buildDeterministicReportNarrative } from "../../reports/narrative.ts";
 import { buildStudentReportData, type RegistrationForStudentReport } from "../../reports/student-report-data.ts";
-import { buildProgrammedHourlyRateSummary } from "../../reports/hourly-rate.ts";
+import { buildAnnualActivitySummary } from "../../reports/annual-activity.ts";
+import { toRegisteredLessonFacts } from "../../reports/registered-lessons.ts";
 
 /** B7 — formatos únicos (importes, porcentajes, horas, notas) y días civiles de Argentina en Reportes. */
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -62,12 +63,17 @@ test("el listado de clases dictadas deriva su día con la función civil, nunca 
 });
 
 test("las demás cuentas de Reportes y del Resumen financiero también usan el día civil (misma función)", () => {
-  // Una ocurrencia de la noche del 30/09 (22:00 ART) entra en el período de septiembre, no en el de octubre.
-  const occurrence = { scheduledStartAt: "2026-10-01T01:00:00.000Z", scheduledEndAt: "2026-10-01T02:00:00.000Z", isCancelled: false, isRegisteredHeld: true, billedAmount: 1000 };
-  const september = buildProgrammedHourlyRateSummary([occurrence as never], { rangeStart: "2026-09-01", rangeEnd: "2026-09-30" }, "2026-10-05");
-  const october = buildProgrammedHourlyRateSummary([occurrence as never], { rangeStart: "2026-10-01", rangeEnd: "2026-10-31" }, "2026-10-05");
-  assert.equal(september.totalProgrammedHours, 1);
-  assert.equal(october.totalProgrammedHours, 0);
+  // Una clase de la noche del 30/09 (22:00 ART) entra en el período de septiembre, no en el de octubre.
+  const facts = toRegisteredLessonFacts(
+    {
+      id: "r1", calendar_lesson_id: null, source_event_type: null, outcome: "clase_dictada", holiday_exception: false, is_billable: null,
+      scheduled_start_at: "2026-10-01T01:00:00.000Z", scheduled_end_at: "2026-10-01T02:00:00.000Z", actual_started_at: null, actual_ended_at: null,
+      scheduled_duration_minutes: null, actual_duration_minutes: null, modality: "online", billed_amount: null, created_at: "2026-10-01T03:00:00.000Z",
+    },
+    { studentIds: [], billedAmountByStudent: null, occurrenceKey: null }
+  );
+  assert.equal(buildAnnualActivitySummary([facts], { rangeStart: "2026-09-01", rangeEnd: "2026-09-30" }).heldHours, 1);
+  assert.equal(buildAnnualActivitySummary([facts], { rangeStart: "2026-10-01", rangeEnd: "2026-10-31" }).heldHours, 0);
 });
 
 // --- Formatos únicos -------------------------------------------------------------------------------------------------
@@ -123,7 +129,8 @@ test("horas, notas y duraciones salen del formateador único en el perfil, Repor
   assert.match(reportes, /formatCivilMonth\(month\)/, "los meses con el formateador de fechas, no una lista propia");
   assert.doesNotMatch(reportes, /function monthLabel/);
   const financiero = code("components/finance/financial-overview-view.tsx");
-  assert.match(financiero, /formatMinutesAsHours/);
+  assert.match(financiero, /formatHours\(entry\.occupiedHours\)/);
+  assert.match(financiero, /formatCount\(Math\.round\(hours\)\)/, "las horas enteras salen del formateador único de cantidades");
   assert.doesNotMatch(financiero, /Math\.round\(\(minutes \/ 60\) \* 10\) \/ 10/);
 });
 

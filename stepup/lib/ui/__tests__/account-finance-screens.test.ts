@@ -40,11 +40,11 @@ test("Resumen financiero: encabezado, períodos y métricas conservados; el orde
   for (const label of ["Facturación prevista", "Cobrado (por fecha real de pago)", "Pendiente en término", "Vencido"]) assert.ok(view.includes(`label="${label}"`), label);
   const order = ['aria-label="Cifras del período"', 'id="evolucion-titulo"', 'id="distribucion-titulo"', "Actividad del período"].map((needle) => view.indexOf(needle));
   assert.ok(order.every((i) => i > 0) && [...order].sort((a, b) => a - b).join() === order.join(), `orden de secciones: ${order}`);
-  for (const kept of ["Clases dictadas", "Horas dictadas", "Canceladas", "Reprogramadas", "Presencial", "Online", "Mixta"]) assert.ok(view.includes(kept), `Actividad del período conserva «${kept}»`);
+  for (const kept of ["Clases dictadas", "Horas dictadas", "Horas canceladas", "Horas reprogramadas", "Presencial", "Online", "Mixta"]) assert.ok(view.includes(kept), `Actividad del período conserva «${kept}»`);
   assert.match(view, /className=\{PAGE_WIDTH\.wide\}/);
   assert.doesNotMatch(view, /studentName|displayName|student\.name/, "sólo montos agregados: nunca nombres de alumnos");
   // la actividad sigue separada de lo financiero
-  const activity = view.slice(view.indexOf("Actividad del período"), view.indexOf("Valor programado de la hora"));
+  const activity = view.slice(view.indexOf("Actividad del período"), view.indexOf("Valor programado de tu hora"));
   assert.doesNotMatch(activity, /BudgetSuggestion|CollectedEvolutionChart|formatMoney/, "la actividad no se mezcla con la distribución financiera");
 });
 
