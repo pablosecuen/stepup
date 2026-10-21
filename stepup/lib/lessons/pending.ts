@@ -16,6 +16,9 @@ export const PENDING_REGISTRATION_LEAD_TIME_MS = 10 * 60 * 1000;
 
 export function isEligibleForPendingRegistration(item: CalendarViewItem, now: Date): boolean {
   if (item.status !== "scheduled" && item.status !== "rescheduled") return false;
+  // Una ocurrencia que NO es una clase real (virtual) sólo es registrable si sigue «programada». Si su excepción la REPROGRAMÓ, la clase vive en su clase de reemplazo (que aparece por su cuenta si
+  // corresponde); el horario original ya no es una clase. Igual que la app anterior, que sólo contaba como clase las ocurrencias realmente «virtuales».
+  if (!item.isMaterialized && item.status !== "scheduled") return false;
   const startTime = new Date(item.start).getTime();
   const endTime = new Date(item.end).getTime();
   const availableFrom = Math.max(startTime, endTime - PENDING_REGISTRATION_LEAD_TIME_MS);

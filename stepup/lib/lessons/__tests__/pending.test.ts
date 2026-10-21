@@ -114,3 +114,14 @@ test("una ocurrencia que TeacherFlow anterior ya registró (clase de calendario 
   const without = buildPendingLessons({ calendarItems: [registered, pending, otherSeries], now, registrations: [] });
   assert.equal(without.length, 3, "sin el conjunto, el comportamiento anterior no cambia");
 });
+
+test("una ocurrencia virtual REPROGRAMADA (la clase vive en su reemplazo) no se pide registrar; la clase real «reprogramada» sí", () => {
+  const now = new Date("2026-09-21T23:00:00.000Z");
+  const virtualMoved = item({ id: "virtual:movida", recurrenceId: "serie-1", occurrenceKey: "serie-1:w3:c0:d1:t1800:s0", materializedLessonId: null, isMaterialized: false, isRecurring: true, status: "rescheduled", start: "2026-09-14T21:00:00.000Z", end: "2026-09-14T22:00:00.000Z" });
+  const realMoved = item({ id: "reemplazo", status: "rescheduled", start: "2026-09-18T21:00:00.000Z", end: "2026-09-18T22:00:00.000Z" });
+  const virtualScheduled = item({ id: "virtual:normal", recurrenceId: "serie-1", occurrenceKey: "serie-1:w4:c0:d1:t1800:s0", materializedLessonId: null, isMaterialized: false, isRecurring: true, status: "scheduled", start: "2026-09-15T21:00:00.000Z", end: "2026-09-15T22:00:00.000Z" });
+  assert.equal(isEligibleForPendingRegistration(virtualMoved, now), false);
+  assert.equal(isEligibleForPendingRegistration(realMoved, now), true);
+  assert.equal(isEligibleForPendingRegistration(virtualScheduled, now), true);
+  assert.deepEqual(buildPendingLessons({ calendarItems: [virtualMoved, realMoved, virtualScheduled], now, registrations: [] }).map((p) => p.item.id).sort(), ["reemplazo", "virtual:normal"]);
+});
