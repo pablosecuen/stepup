@@ -1,7 +1,9 @@
 "use client";
 
+import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
+import { INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -81,15 +83,29 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const durationMinutes = Math.round((new Date(item.end).getTime() - start.getTime()) / 60_000);
   const title = lessonTitle(item);
   const stateTexts = stateParts({ item, isElapsed, isActiveReplacement, isInProgress });
-  const metaParts = [timeLabel, ...stateTexts];
+  const stateFacts = { status: item.status, isElapsed, isActiveReplacement, isInProgress };
+  // Grupal: cuántos alumnos son (se ve en la tarjeta ancha, con el ícono en las angostas, y siempre en el cuadro de información).
+  const groupSize = item.participantIds.length > 1 ? item.participantIds.length : null;
 
   const textColor = colors.textPrimary ?? CARD_TEXT_COLORS.primary;
   const secondaryColor = colors.textSecondary ?? CARD_TEXT_COLORS.secondary;
   const strike = isCancelled ? "line-through" : "none";
   const inset = cardInsetPx(laneCount);
-  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidthPx(columnWidthPx, laneCount) });
+  const cardWidth = cardWidthPx(columnWidthPx, laneCount);
+  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
-  const fullInfo = `${title} · ${timeLabel}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.join(" · ")}` : ""}`;
+  // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
+  const borderClass = presentation === "full" ? "border-[1.5px]" : "border";
+  const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${timeLabel}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.join(" · ")}` : ""}`;
+  const iconSize = presentation === "full" ? "h-3 w-3" : "h-2.5 w-2.5";
+  // En un carril de menos de 36 px las iniciales valen más que el ícono (el grupo y el entrenamiento siguen en el cuadro de información y en el nombre accesible).
+  const icons =
+    cardWidth < 36 ? null : (
+      <>
+        {groupSize && <UserGroupIcon className={`${iconSize} shrink-0`} aria-hidden />}
+        {isTraining && <BarbellIcon className={`${iconSize} shrink-0`} />}
+      </>
+    );
   const tipId = `calendar-tip-${item.id}`;
 
   function showTip(target: HTMLElement) {
@@ -126,24 +142,41 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
     >
       <span
         aria-hidden="true"
-        className="absolute inset-x-0 min-w-0 overflow-hidden rounded-md border-[1.5px] shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none"
+        className={`absolute inset-x-0 min-w-0 overflow-hidden rounded-md ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
         style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border }}
       >
         {presentation === "full" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
-            <span className="flex min-w-0 items-center gap-1 text-[12px] font-bold leading-snug" style={{ color: textColor, textDecorationLine: strike }}>
-              {isTraining && <BarbellIcon className="h-3 w-3 shrink-0" />}
-              <span className="min-w-0 truncate">{title}</span>
+            <span className="flex min-w-0 items-center gap-1 text-[12px] font-bold leading-[14px]" style={{ color: textColor, textDecorationLine: strike }}>
+              {icons}
+              <span className="min-w-0 truncate">{nameForWidth(title, cardWidth)}</span>
             </span>
-            <span className="mt-0.5 block min-w-0 truncate text-[11px] font-medium leading-snug" style={{ color: secondaryColor }}>
-              {metaParts.join(" · ")}
+            <span className="block min-w-0 truncate text-[11px] font-medium leading-[13px]" style={{ color: secondaryColor }}>
+              {wideMeta({ timeLabel, groupSize, tags: stateTexts })}
+            </span>
+          </span>
+        )}
+        {presentation === "stack" && (
+          <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${cardWidth < 44 ? "px-0.5" : "px-1"}`}>
+            <span className="flex min-w-0 items-center gap-0.5 text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
+              {icons}
+              <span className="min-w-0 truncate">{nameForWidth(title, cardWidth)}</span>
+            </span>
+            <span className={`block min-w-0 truncate font-semibold leading-3 ${cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
+              {narrowMeta({ timeLabel, facts: stateFacts })}
             </span>
           </span>
         )}
         {presentation === "title" && (
-          <span className={`flex h-full min-w-0 items-center overflow-hidden ${padX}`}>
-            <span className="block min-w-0 truncate text-[11px] font-bold leading-none" style={{ color: textColor, textDecorationLine: strike }}>
-              {title}
+          <span className="flex h-full min-w-0 items-center gap-1 overflow-hidden px-1.5">
+            {icons}
+            {cardWidth >= INLINE_TIME_MIN_WIDTH_PX && (
+              <span className="shrink-0 text-[10.5px] font-semibold leading-[13px]" style={{ color: secondaryColor, textDecorationLine: strike }}>
+                {narrowMeta({ timeLabel, facts: stateFacts })}
+              </span>
+            )}
+            <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
+              {nameForWidth(title, cardWidth)}
             </span>
           </span>
         )}
@@ -173,7 +206,8 @@ export function RealLessonAgendaRow({
   const timeLabel = instantTimeLabel(item.start);
   const durationMinutes = Math.round((new Date(item.end).getTime() - start.getTime()) / 60_000);
   const title = lessonTitle(item);
-  const metaParts = [`${timeLabel}–${instantTimeLabel(item.end)}`, MODALITY_LABELS[item.modality], ...stateParts({ item, isElapsed, isActiveReplacement, isInProgress })];
+  const groupSize = item.participantIds.length > 1 ? item.participantIds.length : null;
+  const metaParts = [`${timeLabel}–${instantTimeLabel(item.end)}`, ...(groupSize ? [`${groupSize} alumnos`] : []), MODALITY_LABELS[item.modality], ...stateParts({ item, isElapsed, isActiveReplacement, isInProgress })];
 
   return (
     <button

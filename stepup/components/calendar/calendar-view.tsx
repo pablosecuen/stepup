@@ -19,6 +19,7 @@ export function CalendarView({
   dayKeys,
   items,
   buildHref,
+  rescheduleItemId,
 }: {
   view: "week" | "day";
   weekStartKey: string;
@@ -26,9 +27,11 @@ export function CalendarView({
   dayKeys: string[];
   items: CalendarViewItem[];
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
+  /** Abre directo el flujo de reprogramar de esta clase (viene del resultado «Reprogramada» del registro). */
+  rescheduleItemId?: string;
 }) {
   return (
-    <div data-calendar-page className="mx-auto flex w-full max-w-[1180px] flex-col px-4 py-5 nav:h-[calc(100dvh-var(--tf-shell-top))] nav:px-6 nav:pb-4 nav:pt-1">
+    <div data-calendar-page className="mx-auto flex w-full max-w-[1360px] flex-col px-4 py-5 nav:h-[calc(100dvh-var(--tf-shell-top))] nav:px-6 nav:pb-4 nav:pt-1">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <PageTitle compact>Calendario</PageTitle>
@@ -59,6 +62,7 @@ export function CalendarView({
         weekHref={buildHref({ view: "week", week: weekStartKey })}
         dayHref={buildHref({ view: "day", day: dayKey })}
         newClassHref="/calendario/nueva"
+        rescheduleItemId={rescheduleItemId}
       />
     </div>
   );

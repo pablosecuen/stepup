@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
 import { useFormStatus } from "react-dom";
@@ -9,6 +9,7 @@ import { FormErrorBox } from "@/components/auth/form-boxes";
 import { Button, PrivateButtonLink } from "@/components/ui/button";
 import { Field, SelectInput, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
 import { MODALITY_LABEL } from "@/lib/students/constants";
+import { StudentPicker } from "@/components/students/student-picker";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
@@ -137,6 +138,7 @@ export function NewLessonForm({
   }
 
   const weeksJson = weekCyclesToWeeksJson(weekCycles);
+  const pickableStudents = useMemo(() => activeStudents.map((student) => ({ id: student.id, name: student.name, status: student.status, level: student.levels.join(" · ") })), [activeStudents]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de nueva clase">
@@ -164,15 +166,9 @@ export function NewLessonForm({
 
       <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
         <legend className="px-2 text-label font-bold uppercase text-textMuted">Alumnos (sólo activos) *</legend>
-        <div className={`${choiceGroupClass} max-h-64 overflow-y-auto`}>
-          {activeStudents.length === 0 && <p className="px-3 py-2.5 text-[14px] text-textMuted">No hay alumnos activos todavía.</p>}
-          {activeStudents.map((student) => (
-            <label key={student.id} className={choiceRowClass}>
-              <input type="checkbox" name="participantIds" value={student.id} checked={selected.has(student.id)} onChange={() => toggleStudent(student.id)} className={checkClass} />
-              <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
-            </label>
-          ))}
-        </div>
+        {/* Buscador con lupa (como la app anterior): filtra la lista sin perder a los elegidos, que viajan en el formulario como campos ocultos. */}
+        <StudentPicker students={pickableStudents} selectedIds={selected} onToggle={toggleStudent} hiddenInputName="participantIds" />
+        {selected.size > 0 && <p className="mt-2 text-[13.5px] text-textMuted">{selected.size === 1 ? "1 alumno elegido." : `${selected.size} alumnos elegidos.`}</p>}
 
         {selected.size >= 2 && (
           <fieldset className="mt-4 min-w-0">

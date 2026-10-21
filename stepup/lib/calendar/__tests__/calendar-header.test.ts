@@ -152,7 +152,7 @@ test("fila de controles: Densidad · Semana/Día · Nueva clase en tres columnas
   assert.match(workspace, /nav:justify-self-end[\s\S]*<PrivateButtonLink href=\{newClassHref\} variant="accent"/);
   assert.match(workspace, /Nueva clase/);
   assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref="\/calendario\/nueva"/, "misma ruta de Nueva clase");
-  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} \/>/, "la grilla comienza inmediatamente debajo");
+  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} \/>/, "la grilla comienza inmediatamente debajo");
   assert.match(workspace, /readStoredCalendarDensity\(storage\)/);
   assert.match(workspace, /writeStoredCalendarDensity\(window\.localStorage, next\)/);
   assert.match(workspace, /useState<CalendarDensityKey>\(DEFAULT_CALENDAR_DENSITY\)/, "mismo valor por defecto en servidor y navegador");

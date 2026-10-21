@@ -7,15 +7,16 @@
  * deliberadamente `cancelada_con_aviso`/`cancelada_tarde` (exigían
  * `lateCancellationPolicy`, motor financiero de Fase 5) y `reprogramada` —
  * Fase 5 los cierra ahora que ese motor existe (ver `adhoc-billing.ts`).
- * `alumno_ausente` sigue sin portarse: el propio móvil dejó de ofrecerlo
- * para elegir (ver `PendingClassOutcomeSelector.tsx`) — la ausencia de un
- * participante se expresa con su asistencia individual, no con un
- * resultado general.
+ * `alumno_ausente` (sólo clase INDIVIDUAL, con o sin aviso): la app lo vuelve a
+ * ofrecer desde 2026-08-12 como resultado de la clase individual; en un grupo
+ * la ausencia de un participante sigue expresándose con su asistencia. No se
+ * dictó: no cuenta como clase, no suma horas y no cobra.
  */
-export type AdhocOutcome = "clase_dictada" | "profesora_ausente" | "feriado" | "cancelada_con_aviso" | "cancelada_tarde" | "reprogramada";
+export type AdhocOutcome = "clase_dictada" | "profesora_ausente" | "feriado" | "cancelada_con_aviso" | "cancelada_tarde" | "reprogramada" | "alumno_ausente";
 
 export const ADHOC_OUTCOME_LABEL: Record<AdhocOutcome, string> = {
   clase_dictada: "Realizada",
+  alumno_ausente: "Alumno ausente",
   profesora_ausente: "Profesora ausente",
   feriado: "Feriado",
   cancelada_con_aviso: "Cancelada con aviso",

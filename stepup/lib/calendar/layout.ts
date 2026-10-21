@@ -7,15 +7,19 @@ import { instantDateKey, instantMinutesOfDay } from "./civil-calendar.ts";
  * lunes→domingo, eje 08:00–22:00.
  *
  * Posición y alto del BLOQUE VISUAL son exactos: `top` sale de la hora de inicio y
- * `height` de la duración real (menos una separación fija). La ZONA INTERACTIVA
- * (`hitTop`/`hitHeight`) nunca mide menos de 44 px: si el bloque es más corto se
- * extiende hacia abajo (o hacia arriba pegada al borde inferior de la grilla) y
- * el bloque queda dentro de ella en `blockOffset`.
+ * `height` de la duración real (menos una separación fija: 2 px en «Compacta», donde cada
+ * píxel cuenta, 6 px en las escalas más altas). La ZONA INTERACTIVA (`hitTop`/`hitHeight`)
+ * mide al menos 44 px de alto SIEMPRE QUE HAYA LUGAR: se extiende hacia abajo hasta donde
+ * empieza la próxima clase que comparte esa franja del día — nunca la pisa — y, si no hay
+ * lugar (clases cortas y consecutivas), coincide con el propio bloque.
  *
- * Las clases cuyas zonas se tocan se reparten en CARRILES paralelos dentro de la
- * columna del día: orden estable por inicio, fin e id; cada una toma el primer
- * carril libre y todas las de un mismo grupo comparten el ancho (`laneCount`).
- * Así ninguna clase queda tapada y ninguna zona de toque pisa a otra.
+ * Los CARRILES paralelos se forman sólo por clases que de verdad se superponen en el
+ * tiempo (mismo horario o solapadas): orden estable por inicio, fin e id; cada una toma el
+ * primer carril libre y todas las de un mismo grupo comparten el ancho (`laneCount`). Las
+ * clases CONSECUTIVAS (una termina cuando empieza la otra) comparten carril y ancho completo:
+ * antes se repartían en carriles sólo para que sus zonas de 44 px no se tocaran, y eso las
+ * hacía angostas y escalonadas sin que se superpusieran. Así ninguna clase queda tapada y
+ * ninguna zona de toque pisa a otra.
  *
  * Los días son claves civiles (`civil-calendar.ts`) y la hora de una tarjeta
  * se lee en la zona explícita del calendario, nunca con `getHours()` de la
@@ -28,11 +32,21 @@ export const HOUR_HEIGHT_PX = 64;
 export const TIME_COLUMN_WIDTH_PX = 48;
 /** Ancho mínimo de la columna de un día para que la grilla tenga sentido; con menos, el Calendario usa la agenda por día. */
 export const MIN_DAY_COLUMN_WIDTH_PX = 96;
-/** Lado mínimo de todo objetivo táctil. */
+/** Alto táctil que se busca para cada clase; se alcanza siempre que no pise a la clase de al lado (ver `layoutDayItems`). */
 export const MIN_TARGET_PX = 44;
 const CARD_GAP_PX = 6;
+/** Separación entre bloques consecutivos en «Compacta» (menos de `COMPACT_GAP_BELOW_HOUR_HEIGHT_PX` por hora): el borde ya los separa y cada píxel de alto sirve para leer. */
+const COMPACT_CARD_GAP_PX = 2;
+const COMPACT_GAP_BELOW_HOUR_HEIGHT_PX = 56;
+
+/** Separación vertical entre bloques para un alto por hora dado. */
+export function cardGapPx(hourHeightPx: number): number {
+  return hourHeightPx < COMPACT_GAP_BELOW_HOUR_HEIGHT_PX ? COMPACT_CARD_GAP_PX : CARD_GAP_PX;
+}
 /** Sólo evita un bloque invisible para duraciones absurdas; cualquier clase real (≥ 5 min) usa su alto exacto. */
 const MIN_VISUAL_HEIGHT_PX = 4;
+/** Una línea de texto (11 px de letra, interlineado 13) y el borde de 1 px: el alto mínimo con el que una clase de 30 minutos o más conserva su nombre. */
+export const MIN_TEXT_HEIGHT_PX = 15;
 
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 export const WEEKDAY_SHORT = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
@@ -43,10 +57,10 @@ export interface PositionedItem {
   top: number;
   /** Alto del bloque visual (duración exacta menos la separación). */
   height: number;
-  /** Zona interactiva: nunca menor de 44 px de alto. */
+  /** Zona interactiva: 44 px de alto o más cuando hay lugar; nunca menor que el bloque ni encima de otra clase. */
   hitTop: number;
   hitHeight: number;
-  /** Desplazamiento del bloque visual dentro de la zona interactiva. */
+  /** Desplazamiento del bloque visual dentro de la zona interactiva (la zona nace en el bloque: hoy siempre 0). */
   blockOffset: number;
   /** Carril (0 = el primero) y cantidad de carriles del grupo de clases que se tocan. */
   lane: number;
@@ -77,11 +91,12 @@ function compareItems(a: { startMs: number; endMs: number; item: CalendarViewIte
 }
 
 /**
- * Posiciona TODAS las clases de un día — ninguna se oculta ni se descarta. Las que se tocan (mismo inicio, superpuestas o
- * demasiado seguidas para que sus zonas de 44 px no se pisen) se reparten en carriles.
+ * Posiciona TODAS las clases de un día — ninguna se oculta ni se descarta. Sólo las que se superponen en el tiempo (mismo inicio o
+ * solapadas) se reparten en carriles; las consecutivas comparten carril y ancho completo.
  */
 export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number = HOUR_HEIGHT_PX): PositionedItem[] {
   const gridBottomPx = (END_HOUR - START_HOUR) * hourHeightPx;
+  const gapPx = cardGapPx(hourHeightPx);
 
   const sorted = items
     .map((item) => ({ item, startMs: new Date(item.start).getTime(), endMs: new Date(item.end).getTime() }))
@@ -90,14 +105,16 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
   const boxes = sorted.map(({ item, startMs, endMs }) => {
     const top = Math.max(0, (minutesFromDayStart(item.start) / 60) * hourHeightPx);
     const durationPx = ((endMs - startMs) / 3_600_000) * hourHeightPx;
-    const height = Math.max(MIN_VISUAL_HEIGHT_PX, Math.min(durationPx - CARD_GAP_PX, gridBottomPx - top));
-    const hitHeight = Math.max(height, MIN_TARGET_PX);
+    // Alto exacto de la duración (menos la separación). Una clase de 30 minutos o más nunca baja del alto de UNA línea de texto: con la escala
+    // más ajustada (ventanas bajas, zoom) 30 minutos medirían menos que eso y la clase quedaría sin nombre; la hora de inicio sigue siendo exacta.
+    const exactHeight = Math.max(MIN_VISUAL_HEIGHT_PX, Math.min(durationPx - gapPx, gridBottomPx - top));
+    const height = endMs - startMs >= 30 * 60_000 ? Math.max(MIN_TEXT_HEIGHT_PX, exactHeight) : exactHeight;
     const displayTop = Math.max(0, Math.min(top, gridBottomPx - height));
-    const hitTop = Math.max(0, Math.min(displayTop, gridBottomPx - hitHeight));
-    return { item, top, height, hitTop, hitHeight, blockOffset: displayTop - hitTop, lane: 0, laneCount: 1 };
+    // `laneBottom`: hasta dónde llega la clase en el tiempo (el bloque real, sin el piso de lectura): dos clases consecutivas nunca se reparten carriles por ese píxel de más.
+    return { item, top, height, displayTop, laneBottom: displayTop + exactHeight, hitTop: displayTop, hitHeight: height, blockOffset: 0, lane: 0, laneCount: 1 };
   });
 
-  // Carriles por grupos de zonas que se tocan. El recorrido es por `hitTop` creciente (el orden de `sorted` lo conserva).
+  // Carriles por grupos de BLOQUES que se superponen. El recorrido es por inicio creciente (el orden de `sorted` lo conserva).
   let laneEnds: number[] = [];
   let groupEnd = -Infinity;
   let groupStart = 0;
@@ -105,19 +122,34 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
     for (let k = groupStart; k < end; k++) boxes[k].laneCount = laneEnds.length;
   };
   boxes.forEach((box, index) => {
-    if (box.hitTop >= groupEnd) {
+    if (box.displayTop >= groupEnd) {
       closeGroup(index);
       laneEnds = [];
       groupStart = index;
     }
-    const free = laneEnds.findIndex((laneEnd) => laneEnd <= box.hitTop);
+    const free = laneEnds.findIndex((laneEnd) => laneEnd <= box.displayTop);
     box.lane = free === -1 ? laneEnds.length : free;
-    laneEnds[box.lane] = box.hitTop + box.hitHeight;
+    laneEnds[box.lane] = box.laneBottom;
     groupEnd = Math.max(groupEnd, laneEnds[box.lane]);
   });
   closeGroup(boxes.length);
 
-  return boxes;
+  // Zona interactiva: 44 px de alto cuando hay lugar, nunca encima de otra clase que ocupe esa misma franja horizontal y empiece después.
+  for (const box of boxes) {
+    const left = box.lane / box.laneCount;
+    const right = (box.lane + 1) / box.laneCount;
+    let limit = gridBottomPx;
+    for (const other of boxes) {
+      if (other === box || other.displayTop < box.laneBottom - 0.001) continue;
+      const otherLeft = other.lane / other.laneCount;
+      const otherRight = (other.lane + 1) / other.laneCount;
+      if (left < otherRight - 1e-9 && otherLeft < right - 1e-9) limit = Math.min(limit, other.displayTop);
+    }
+    // Nunca pasa de donde empieza la clase de al lado (aunque eso deje la zona un píxel más baja que el bloque dibujado con el piso de lectura).
+    box.hitHeight = Math.min(Math.max(box.height, MIN_TARGET_PX), limit - box.displayTop);
+  }
+
+  return boxes.map(({ displayTop: _displayTop, laneBottom: _laneBottom, ...positioned }) => positioned);
 }
 
 /**
@@ -125,7 +157,7 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
  * la tarjeta (`cardPresentation`): si no cabe, pasa a un modo más compacto en vez de ensanchar la grilla o desbordar.
  */
 export function cardInsetPx(laneCount: number): number {
-  return laneCount === 1 ? 4 : 2;
+  return laneCount === 1 ? 4 : laneCount === 2 ? 2 : 1;
 }
 
 /** Ancho real de una tarjeta: su carril dentro de la columna, menos el margen a cada lado. */
@@ -146,21 +178,27 @@ export function gridFitsWidth(areaWidthPx: number, dayCount: number): boolean {
 
 /**
  * Presentación de una tarjeta según su tamaño REAL (alto del bloque visual y ancho de su carril):
- *  - `full`: título y datos (hora y estado), una línea cada uno;
- *  - `title`: sólo el título, en una línea, truncado con elipsis;
- *  - `block`: bloque de color sin texto visible (el nombre accesible y el tooltip siguen completos).
- * Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto: el texto se adapta al bloque.
+ *  - `full`: nombre y datos (hora, quiénes si es un grupo, estado), una línea cada uno;
+ *  - `stack`: dos líneas en una tarjeta angosta pero alta — nombre (primera palabra o iniciales) y, debajo, el estado o la hora;
+ *  - `title`: UNA línea («09:00 Nombre» si entra la hora; si no, el nombre), truncada con elipsis — las clases cortas;
+ *  - `block`: bloque de color sin texto (sólo clases de ~15 minutos o carriles de menos de 28 px); el nombre accesible y el tooltip siguen completos.
+ * Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto: el texto se adapta al bloque. Los alturas mínimas salen de las líneas reales
+ * (11–12 px de letra, interlineado 13–14 px) más el borde: ver `card-presentation.test.ts`.
  */
-export type CardPresentation = "full" | "title" | "block";
-export const FULL_CARD_MIN_HEIGHT_PX = 46;
+export type CardPresentation = "full" | "stack" | "title" | "block";
+export const FULL_CARD_MIN_HEIGHT_PX = 32;
 export const FULL_CARD_MIN_WIDTH_PX = 84;
-export const TITLE_CARD_MIN_HEIGHT_PX = 20;
-export const TITLE_CARD_MIN_WIDTH_PX = 44;
+export const STACK_CARD_MIN_HEIGHT_PX = 27;
+/** Debajo de este ancho no entra la segunda línea (la hora): queda una sola línea con las iniciales. */
+export const STACK_CARD_MIN_WIDTH_PX = 30;
+export const TITLE_CARD_MIN_HEIGHT_PX = 15;
+export const TITLE_CARD_MIN_WIDTH_PX = 22;
 
 export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
   const { heightPx, widthPx } = input;
   if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
-  return heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX ? "full" : "title";
+  if (heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX) return "full";
+  return heightPx >= STACK_CARD_MIN_HEIGHT_PX && widthPx >= STACK_CARD_MIN_WIDTH_PX ? "stack" : "title";
 }
 
 export function currentTimeTop(now: Date, hourHeightPx: number = HOUR_HEIGHT_PX): number | null {

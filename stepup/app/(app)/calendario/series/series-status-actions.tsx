@@ -7,6 +7,7 @@ import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
+import { StudentPicker } from "@/components/students/student-picker";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
 import type { RecurrenceRuleStatus } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
@@ -104,6 +105,7 @@ export function SeriesStatusActions({
   }
 
   const eligibleStudents = students.filter((s) => s.status !== "archivado" || selectedParticipantIds.has(s.id));
+  const pickableStudents = eligibleStudents.map((student) => ({ id: student.id, name: student.name, status: student.status, level: student.levels.join(" · ") }));
 
   return (
     <div className="mt-3 flex flex-col gap-3 border-t-[1.5px] border-border pt-3">
@@ -181,13 +183,8 @@ export function SeriesStatusActions({
           </Field>
           <fieldset className="min-w-0">
             <legend className="text-sm font-[650] text-textSecondary">Alumnos *</legend>
-            <div className={`${choiceGroupClass} mt-2 max-h-64 overflow-y-auto`}>
-              {eligibleStudents.map((student) => (
-                <label key={student.id} className={choiceRowClass}>
-                  <input type="checkbox" checked={selectedParticipantIds.has(student.id)} onChange={() => toggleParticipant(student.id)} className={checkClass} />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
-                </label>
-              ))}
+            <div className="mt-2">
+              <StudentPicker students={pickableStudents} selectedIds={selectedParticipantIds} onToggle={toggleParticipant} />
             </div>
           </fieldset>
           {selectedParticipantIds.size >= 2 && (

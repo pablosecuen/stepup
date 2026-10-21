@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import type { CalendarViewItem } from "../occurrences";
-import { END_HOUR, HOUR_HEIGHT_PX, MIN_TARGET_PX, START_HOUR, cardWidthPx, layoutDayItems, type PositionedItem } from "../layout.ts";
+import { END_HOUR, HOUR_HEIGHT_PX, MIN_TARGET_PX, MIN_TEXT_HEIGHT_PX, START_HOUR, cardGapPx, cardInsetPx, cardWidthPx, layoutDayItems, type PositionedItem } from "../layout.ts";
 
 /**
  * Bloque 4 (corrección): grilla de escritorio con carriles. Ninguna clase queda tapada, el bloque visual conserva la hora y la
@@ -25,25 +25,40 @@ const layout = (items: CalendarViewItem[]) => layoutDayItems(items);
 const byId = (positioned: PositionedItem[], id: string) => positioned.find((p) => p.item.id === id)!;
 const px = (minutes: number) => (minutes / 60) * HOUR_HEIGHT_PX;
 
-/** Las zonas interactivas de dos clases nunca se pisan: o están en carriles distintos o una termina antes de que empiece la otra. */
+const assertTargetsAt = (positioned: PositionedItem[], hourHeightPx: number) => assertTargets(positioned, 4, (END_HOUR - START_HOUR) * hourHeightPx);
+const xRange = (p: PositionedItem) => [p.lane / p.laneCount, (p.lane + 1) / p.laneCount] as const;
+const sameColumnStrip = (a: PositionedItem, b: PositionedItem) => {
+  const [a0, a1] = xRange(a);
+  const [b0, b1] = xRange(b);
+  return a0 < b1 - 1e-9 && b0 < a1 - 1e-9;
+};
+
+/** Las zonas interactivas de dos clases nunca se pisan: si ocupan la misma franja horizontal, una termina antes de que empiece la otra. */
 function assertNoHitCollisions(positioned: PositionedItem[]): void {
   for (let i = 0; i < positioned.length; i++) {
     for (let j = i + 1; j < positioned.length; j++) {
       const a = positioned[i];
       const b = positioned[j];
-      const verticalOverlap = a.hitTop < b.hitTop + b.hitHeight && b.hitTop < a.hitTop + a.hitHeight;
-      // Dos zonas que se tocan en altura sólo pueden convivir en carriles distintos (y entonces no se pisan en horizontal).
-      if (verticalOverlap) assert.notEqual(a.lane, b.lane, `${a.item.id} y ${b.item.id} se pisan`);
+      const verticalOverlap = a.hitTop < b.hitTop + b.hitHeight - 0.001 && b.hitTop < a.hitTop + a.hitHeight - 0.001;
+      if (verticalOverlap) assert.ok(!sameColumnStrip(a, b), `${a.item.id} y ${b.item.id} se pisan`);
     }
   }
 }
 
-function assertTargets(positioned: PositionedItem[]): void {
+/**
+ * Zona de 44 px cuando hay lugar: si una zona mide menos, es porque la clase de al lado (en la misma franja) empieza justo donde ella termina, o porque llegó al fondo de la
+ * grilla — nunca por otro motivo. Y nunca es más baja que el bloque (salvo el píxel del piso de lectura, sólo en escalas muy ajustadas).
+ */
+function assertTargets(positioned: PositionedItem[], tolerance = 0.001, gridBottom = GRID_BOTTOM): void {
   for (const p of positioned) {
-    assert.ok(p.hitHeight >= MIN_TARGET_PX, `${p.item.id}: zona de ${p.hitHeight} px`);
-    assert.ok(p.hitTop >= 0 && p.hitTop + p.hitHeight <= GRID_BOTTOM + 0.001, `${p.item.id}: dentro de la grilla`);
+    assert.ok(p.hitTop >= 0 && p.hitTop + p.hitHeight <= gridBottom + 0.001, `${p.item.id}: dentro de la grilla`);
     assert.ok(p.lane >= 0 && p.lane < p.laneCount, `${p.item.id}: carril válido`);
-    assert.ok(p.blockOffset >= 0 && p.blockOffset + p.height <= p.hitHeight + 0.001, `${p.item.id}: el bloque cabe en su zona`);
+    assert.ok(p.blockOffset === 0 && p.hitHeight >= p.height - tolerance, `${p.item.id}: la zona cubre el bloque`);
+    if (p.hitHeight < MIN_TARGET_PX - 0.001) {
+      const bottom = p.hitTop + p.hitHeight;
+      const clipped = positioned.some((o) => o !== p && sameColumnStrip(p, o) && Math.abs(o.hitTop - bottom) < 0.001) || bottom >= gridBottom - 0.001;
+      assert.ok(clipped, `${p.item.id}: zona de ${p.hitHeight} px sin ninguna clase pegada debajo`);
+    }
   }
   assertNoHitCollisions(positioned);
 }
@@ -72,7 +87,7 @@ test("tres clases superpuestas: tres carriles; una cuarta posterior que no toca 
   assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 3], ["b", 1, 3], ["c", 2, 3], ["d", 0, 1]]);
   assertTargets(out);
   // Los carriles dividen el ancho de la columna: NUNCA la ensanchan (cada carril mide un tercio menos su margen).
-  for (const column of [120, 160, 240]) assert.ok(Math.abs(3 * (cardWidthPx(column, 3) + 4) - column) < 1e-9, `${column}px: tres carriles se reparten la columna`);
+  for (const column of [120, 160, 240]) assert.ok(Math.abs(3 * (cardWidthPx(column, 3) + 2 * cardInsetPx(3)) - column) < 1e-9, `${column}px: tres carriles se reparten la columna`);
 });
 
 test("cuatro o más superpuestas: todas visibles, un carril cada una", () => {
@@ -80,7 +95,7 @@ test("cuatro o más superpuestas: todas visibles, un carril cada una", () => {
   assert.equal(out.length, 5);
   assert.deepEqual(out.map((p) => p.lane), [0, 1, 2, 3, 4]);
   assert.ok(out.every((p) => p.laneCount === 5));
-  assert.ok(Math.abs(5 * (cardWidthPx(200, 5) + 4) - 200) < 1e-9, "cinco carriles también se reparten la misma columna");
+  assert.ok(Math.abs(5 * (cardWidthPx(200, 5) + 2 * cardInsetPx(5)) - 200) < 1e-9, "cinco carriles también se reparten la misma columna");
 });
 
 test("clases consecutivas que no se superponen: un solo carril, ancho completo", () => {
@@ -110,11 +125,35 @@ test("dos clases consecutivas de 30 minutos con 96 px por hora (o más): las dos
   assertTargets(out);
 });
 
-test("dos clases consecutivas de 15 minutos: sus zonas de 44 px no caben en una columna, así que se reparten en carriles (ninguna se oculta)", () => {
-  const out = layout([lesson("a", "10:00", 15), lesson("b", "10:15", 15)]);
-  assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 2], ["b", 1, 2]]);
+test("clases consecutivas de 15 y 30 minutos: comparten carril y ancho completo (no se parten en carriles sólo por la zona de toque); la zona de la primera termina donde empieza la segunda", () => {
+  const out = layout([lesson("a", "10:00", 15), lesson("b", "10:15", 15), lesson("c", "10:30", 30), lesson("d", "11:00", 30)]);
+  assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 1], ["b", 0, 1], ["c", 0, 1], ["d", 0, 1]]);
   assert.equal(out[0].height, px(15) - 6, "la duración sigue siendo exacta");
+  assert.equal(out[0].hitTop + out[0].hitHeight, out[1].hitTop, "la zona de la primera llega justo hasta la segunda");
+  assert.ok(out[3].hitHeight >= MIN_TARGET_PX, "la última, con lugar libre debajo, sí llega a 44 px");
   assertTargets(out);
+});
+
+test("la separación entre bloques es de 2 px en Compacta (menos de 56 px por hora) y de 6 px en Media y Amplia", () => {
+  assert.equal(cardGapPx(30), 2);
+  assert.equal(cardGapPx(55.75), 2);
+  assert.equal(cardGapPx(56), 6);
+  assert.equal(cardGapPx(64), 6);
+  assert.equal(cardGapPx(80), 6);
+  const [compact] = layoutDayItems([lesson("x", "12:00", 60)], 40);
+  assert.equal(compact.height, 40 - 2);
+  const [wide] = layoutDayItems([lesson("x", "12:00", 60)], 80);
+  assert.equal(wide.height, 80 - 6);
+});
+
+test("Compacta con poca altura: una clase de 30 minutos o más nunca baja del alto de una línea de texto; la de 15 minutos conserva su alto exacto; y las consecutivas siguen en un carril", () => {
+  const px30 = 28; // ventana baja o con zoom: 30 minutos = 14 px
+  const out = layoutDayItems([lesson("a", "10:00", 30), lesson("b", "10:30", 30), lesson("c", "11:00", 15), lesson("d", "11:15", 15)], px30);
+  assert.ok(out[0].height >= MIN_TEXT_HEIGHT_PX && out[1].height >= MIN_TEXT_HEIGHT_PX, "30 minutos conserva el alto de una línea de texto");
+  assert.equal(out[0].top, (2 * px30), "la hora de inicio es exacta");
+  assert.equal(out[2].height, Math.max(4, px30 / 4 - 2), "15 minutos: alto exacto");
+  assert.ok(out.every((p) => p.lane === 0 && p.laneCount === 1), "ni siquiera el píxel del piso de lectura reparte carriles");
+  assertTargetsAt(out, px30);
 });
 
 test("orden estable: la misma salida aunque la entrada llegue desordenada (inicio, fin e id)", () => {
@@ -133,7 +172,7 @@ test("ninguna clase desaparece: toda clase de entrada sale posicionada (también
   const out = layout(items);
   assert.deepEqual(out.map((p) => p.item.id).sort(), items.map((i) => i.id).sort());
   assertTargets(out);
-  for (const p of out) assert.ok(p.height > 0 && p.hitHeight >= 44, `${p.item.id} tiene alto visible`);
+  for (const p of out) assert.ok(p.height > 0 && p.hitHeight >= p.height - 0.001, `${p.item.id} tiene alto visible y una zona que lo cubre`);
 });
 
 test("propiedad: conjuntos aleatorios deterministas nunca ocultan una clase, nunca bajan de 44 px y nunca se pisan", () => {

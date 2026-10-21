@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import type { CalendarViewItem } from "../occurrences";
-import { END_HOUR, HOURS, MIN_TARGET_PX, START_HOUR, currentTimeTop, layoutDayItems, type PositionedItem } from "../layout.ts";
+import { END_HOUR, HOURS, MIN_TARGET_PX, MIN_TEXT_HEIGHT_PX, START_HOUR, cardGapPx, currentTimeTop, layoutDayItems, type PositionedItem } from "../layout.ts";
 import {
   CALENDAR_DENSITIES,
   CALENDAR_DENSITY_STORAGE_KEY,
@@ -37,17 +37,27 @@ const lesson = (id: string, from: string, minutes: number): CalendarViewItem => 
   return { id, start, end: new Date(Date.parse(start) + minutes * 60_000).toISOString(), status: "scheduled", freedByLessonId: null } as unknown as CalendarViewItem;
 };
 
+const strip = (p: PositionedItem) => [p.lane / p.laneCount, (p.lane + 1) / p.laneCount] as const;
+const sameStrip = (a: PositionedItem, b: PositionedItem) => a.lane / a.laneCount < strip(b)[1] - 1e-9 && strip(b)[0] < strip(a)[1] - 1e-9;
+
+/**
+ * Zonas de toque: dentro de la grilla, cubren el bloque (salvo el píxel del piso de lectura), llegan a 44 px siempre que no haya otra clase pegada debajo en la misma franja, y nunca se pisan.
+ */
 function assertNoCollisions(positioned: PositionedItem[], gridBottom: number): void {
   for (const p of positioned) {
-    assert.ok(p.hitHeight >= MIN_TARGET_PX, `${p.item.id}: zona de ${p.hitHeight}px`);
     assert.ok(p.hitTop >= 0 && p.hitTop + p.hitHeight <= gridBottom + 0.001, `${p.item.id}: dentro de la grilla`);
-    assert.ok(p.blockOffset >= 0 && p.blockOffset + p.height <= p.hitHeight + 0.001, `${p.item.id}: el bloque cabe en su zona`);
+    // El piso de lectura (15 px, clases de 30 min o más) puede dejar el bloque dibujado unos 3 px más alto que el hueco hasta la clase siguiente, sólo con la escala más ajustada.
+    assert.ok(p.blockOffset === 0 && p.hitHeight >= p.height - 4, `${p.item.id}: la zona cubre el bloque`);
+    if (p.hitHeight < MIN_TARGET_PX - 0.001) {
+      const bottom = p.hitTop + p.hitHeight;
+      assert.ok(bottom >= gridBottom - 0.001 || positioned.some((o) => o !== p && sameStrip(p, o) && Math.abs(o.hitTop - bottom) < 0.001), `${p.item.id}: zona de ${p.hitHeight}px sin nada pegado debajo`);
+    }
   }
   for (let i = 0; i < positioned.length; i++)
     for (let j = i + 1; j < positioned.length; j++) {
       const a = positioned[i];
       const b = positioned[j];
-      if (a.hitTop < b.hitTop + b.hitHeight - 0.001 && b.hitTop < a.hitTop + a.hitHeight - 0.001) assert.notEqual(a.lane, b.lane, `${a.item.id} y ${b.item.id} se pisan`);
+      if (a.hitTop < b.hitTop + b.hitHeight - 0.001 && b.hitTop < a.hitTop + a.hitHeight - 0.001) assert.ok(!sameStrip(a, b), `${a.item.id} y ${b.item.id} se pisan`);
     }
 }
 
@@ -130,8 +140,9 @@ test("la densidad sólo cambia la escala: la posición temporal y la duración d
       const minutesFromStart = (h - START_HOUR) * 60 + m;
       assert.equal(p.top, (minutesFromStart / 60) * px, `${key} ${from}: la posición es minutos × px/hora`);
       assert.ok(Math.abs(p.top / px - minutesFromStart / 60) < 1e-9, "misma posición en horas en cualquier densidad");
-      const expectedHeight = Math.max(4, Math.min((minutes / 60) * px - 6, (END_HOUR - START_HOUR) * px - p.top));
-      assert.equal(p.height, expectedHeight, `${key} ${from}+${minutes}: el alto del bloque sigue la duración`);
+      const exactHeight = Math.max(4, Math.min((minutes / 60) * px - cardGapPx(px), (END_HOUR - START_HOUR) * px - p.top));
+      const expectedHeight = minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exactHeight) : exactHeight;
+      assert.equal(p.height, expectedHeight, `${key} ${from}+${minutes}: el alto del bloque sigue la duración (piso de una línea de texto desde 30 min)`);
       assert.equal(p.item, item, "la clase no se modifica: mismas fechas, horas y duración");
       assert.equal(p.item.start, item.start);
       assert.equal(p.item.end, item.end);
@@ -153,29 +164,29 @@ test("clases al inicio y al final de la jornada: la primera (08:00) y la última
   }
 });
 
-test("clases de 15, 30, 45 y 60 minutos: la zona interactiva nunca baja de 44 px y el bloque visible conserva su alto exacto", () => {
+test("clases de 15, 30, 45 y 60 minutos: sin vecinos la zona interactiva llega a 44 px y el bloque visible conserva su alto exacto (con el piso de una línea de texto desde 30 min)", () => {
   for (const px of Object.values(PX)) {
     for (const minutes of [15, 30, 45, 60]) {
       const [p] = layoutDayItems([lesson("x", "12:00", minutes)], px);
       assert.ok(p.hitHeight >= MIN_TARGET_PX, `${px}px/h ${minutes} min`);
-      assert.equal(p.height, Math.max(4, (minutes / 60) * px - 6), "la geometría visible NO se estira para alcanzar 44 px");
+      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px));
+      assert.equal(p.height, minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exact) : exact, "la geometría visible NO se estira para alcanzar 44 px");
       assert.equal(p.hitHeight, Math.max(p.height, MIN_TARGET_PX));
     }
   }
 });
 
-test("consecutivas, simultáneas y superpuestas en todas las escalas: ninguna se oculta ni se pisan sus zonas de 44 px", () => {
+test("consecutivas, simultáneas y superpuestas en todas las escalas: ninguna se oculta ni se pisan sus zonas", () => {
   for (const px of Object.values(PX)) {
     const bottom = (END_HOUR - START_HOUR) * px;
-    // consecutivas de 30 min: a cualquier escala miden menos de 44 px, así que se reparten en carriles (nunca una zona sobre otra)
+    // consecutivas (de 30 o de 60 min): una termina donde empieza la otra, así que comparten carril y ancho completo a cualquier escala; la zona de cada una llega hasta la siguiente
     const consecutive = layoutDayItems([lesson("a", "10:00", 30), lesson("b", "10:30", 30), lesson("c", "11:00", 30)], px);
     assert.equal(consecutive.length, 3);
-    assert.ok(consecutive.some((p) => p.laneCount >= 2), `${px}px/h: 30 min consecutivos comparten ancho en carriles`);
+    assert.ok(consecutive.every((p) => p.laneCount === 1), `${px}px/h: 30 min consecutivos conservan el ancho completo`);
     assertNoCollisions(consecutive, bottom);
-    // consecutivas de 60 min: caben en una sola columna cuando la hora mide al menos 44 px; si no, comparten carriles
     const hourly = layoutDayItems([lesson("a", "10:00", 60), lesson("b", "11:00", 60)], px);
     assert.equal(hourly.length, 2);
-    assert.deepEqual(hourly.map((p) => p.laneCount), px >= MIN_TARGET_PX ? [1, 1] : [2, 2], `${px}px/h`);
+    assert.deepEqual(hourly.map((p) => p.laneCount), [1, 1], `${px}px/h`);
     assertNoCollisions(hourly, bottom);
     // simultáneas (mismo inicio y fin)
     const simultaneous = layoutDayItems([lesson("a", "10:00", 60), lesson("b", "10:00", 60), lesson("c", "10:00", 60)], px);

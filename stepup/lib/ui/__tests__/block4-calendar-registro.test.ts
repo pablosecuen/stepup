@@ -52,8 +52,8 @@ test("Escritorio: grilla horaria; 320–819 px: agenda agrupada por día con los
   // (detalle y pruebas de comportamiento en lib/calendar/__tests__/layout-lanes.test.ts).
   const layout = code("lib/calendar/layout.ts");
   assert.match(layout, /export const MIN_TARGET_PX = 44;/);
-  assert.match(layout, /const hitHeight = Math\.max\(height, MIN_TARGET_PX\);/);
-  assert.match(layout, /Math\.min\(durationPx - CARD_GAP_PX, gridBottomPx - top\)/);
+  assert.match(layout, /box\.hitHeight = Math\.min\(Math\.max\(box\.height, MIN_TARGET_PX\), limit - box\.displayTop\);/, "la zona llega a 44 px cuando hay lugar y nunca pisa a la clase de al lado");
+  assert.match(layout, /Math\.min\(durationPx - gapPx, gridBottomPx - top\)/, "la altura del bloque es la duración menos la separación (2 px en Compacta, 6 px en las escalas altas)");
 });
 
 test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sólo con color) y la fila de agenda mide ≥ 56 px sin cortar textos", () => {
@@ -68,7 +68,7 @@ test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sól
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /\btruncate\b|text-ellipsis|line-clamp/, "la agenda nunca corta los textos con «…»");
   assert.match(row, /\[overflow-wrap:anywhere\]/);
-  assert.match(card, /cardPresentation\(\{ heightPx: height, widthPx: cardWidthPx\(columnWidthPx, laneCount\) \}\)/, "el texto se adapta al bloque real (completo, sólo título o sin texto), nunca se estira ni baja fuera de él");
+  assert.match(card, /const cardWidth = cardWidthPx\(columnWidthPx, laneCount\);\s+const presentation = cardPresentation\(\{ heightPx: height, widthPx: cardWidth \}\)/, "el texto se adapta al bloque real (completo, dos líneas, una línea o sin texto), nunca se estira ni baja fuera de él");
 });
 
 test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día en cada paso, separa «Cancelar esta clase» y conserva las acciones y el foco entre pasos", () => {

@@ -15,6 +15,8 @@ interface CalendarioSearchParams {
   view?: string;
   week?: string;
   day?: string;
+  /** Id de la clase cuyo flujo de «Reprogramar» se abre directo (desde el resultado «Reprogramada» del registro). */
+  reprogramar?: string;
 }
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<CalendarioSearchParams> }) {
@@ -59,5 +61,5 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     return qs ? `/calendario?${qs}` : "/calendario";
   }
 
-  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} />;
+  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} rescheduleItemId={params.reprogramar} />;
 }

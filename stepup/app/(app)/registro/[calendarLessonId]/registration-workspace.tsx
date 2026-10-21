@@ -10,7 +10,7 @@ import type { LessonRegistrationAttendanceRecord, LessonRegistrationEvaluationRe
 import type { ParticipantRegistrationStatus } from "@/lib/lessons/group-progress";
 import { ATTENDANCE_STATUS_LABEL, hasResolvedAttendanceStatus } from "@/lib/lessons/attendance";
 import { getBlockingHomeworkTasks, homeworkReviewSelectionKey, type PendingHomeworkTask, type HomeworkReviewOutcome } from "@/lib/lessons/homework";
-import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
+import { ADHOC_OUTCOME_LABEL, type AdhocOutcome } from "@/lib/lessons/adhoc";
 import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import {
@@ -34,6 +34,7 @@ import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { InternalNotesCard, PedagogicalContentEditor } from "@/components/registro/pedagogical-content-editor";
+import { RegistrationOutcomeField } from "@/components/registro/registration-outcome-field";
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, type ParticipantForm } from "@/components/registro/registration-form-parts";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import { validatePedagogicalContent } from "@/lib/lessons/pedagogical-content";
@@ -210,6 +211,7 @@ export function RegistrationWorkspace({
   scheduledEndAt,
   initialContent,
   materialLibrary,
+  outcomeField,
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -222,6 +224,8 @@ export function RegistrationWorkspace({
   initialContent?: LessonContent | null;
   /** Biblioteca de materiales de la cuenta (para elegirlos en la clase). */
   materialLibrary?: LibraryMaterial[];
+  /** Clase programada: permite elegir/cambiar el resultado de la clase («¿Qué pasó con esta clase?»). Ausente en una clase no programada (el resultado se elige al crearla). */
+  outcomeField?: { alreadyRescheduled: boolean; rescheduleHref: string };
 }) {
   const router = useRouter();
   const homeworkId = useId();
@@ -437,6 +441,20 @@ export function RegistrationWorkspace({
 
   return (
     <div className="flex flex-col gap-4">
+      {outcomeField && !isFinalized && (
+        <RegistrationOutcomeField
+          registrationId={registration.id}
+          current={{
+            outcome: registration.outcome as AdhocOutcome,
+            absenceNotice: registration.outcome === "alumno_ausente" ? (attendanceByStudentId[single.studentId]?.status === "ausente_aviso" ? "aviso" : "sin_aviso") : undefined,
+          }}
+          currentHolidayException={registration.holidayException}
+          isGroup={isGroup}
+          alreadyRescheduled={outcomeField.alreadyRescheduled}
+          rescheduleHref={outcomeField.rescheduleHref}
+        />
+      )}
+
       {isFinalized && <Notice tone="ok">Este registro ya está finalizado — podés editar cualquier dato y guardar de nuevo.</Notice>}
 
       {!countsAsClass && (

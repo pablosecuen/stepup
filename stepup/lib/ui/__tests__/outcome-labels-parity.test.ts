@@ -35,7 +35,10 @@ test("una sola fuente de etiquetas: el formulario ad-hoc, el registro no program
   }
   const form = code("app/(app)/registro/nuevo/nuevo-registro-form.tsx");
   const offered = form.match(/const OUTCOMES: AdhocOutcome\[\] = \[([^\]]+)\]/)?.[1].replace(/["\s]/g, "").split(",");
-  assert.deepEqual(offered, Object.keys(ADHOC_OUTCOME_LABEL), "el formulario ofrece los seis resultados, en el orden del mapa");
+  // «Alumno ausente» no se ofrece al crear una clase no programada (la app tampoco: sólo en una clase individual PROGRAMADA, desde `RegistrationOutcomeField`).
+  assert.deepEqual(offered, Object.keys(ADHOC_OUTCOME_LABEL).filter((key) => key !== "alumno_ausente"), "el formulario ofrece los seis resultados, en el orden del mapa");
+  const outcomeField = code("components/registro/registration-outcome-field.tsx");
+  assert.match(outcomeField, /outcomeOptions\(isGroup\)/, "el registro programado ofrece las ocho opciones (individual) o las seis (grupo)");
 });
 
 test("el resultado «no dictado» se avisa con texto en un solo tono (info) para cancelada, reprogramada, ausencia y feriado: sin colores propios por resultado", () => {

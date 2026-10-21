@@ -281,7 +281,12 @@ test("cada campo tiene nombre accesible: etiqueta asociada o envolvente, o aria-
   const availability = code("app/(app)/calendario/disponibilidad/availability-editor.tsx");
   for (const label of ["Día de la semana", "Motivo del bloqueo", "Motivo de la excepción"]) assert.match(availability, new RegExp(`aria-label="${label}"`));
   const registro = code("app/(app)/registro/nuevo/nuevo-registro-form.tsx");
-  for (const label of ["Modalidad", "Resultado", "Buscar alumno activo"]) assert.match(registro, new RegExp(`aria-label="${label}"`));
+  for (const label of ["Modalidad", "Resultado"]) assert.match(registro, new RegExp(`aria-label="${label}"`));
+  // El buscador de alumnos (compartido) lleva su etiqueta asociada por htmlFor/id, aunque no se vea (la lupa y el texto del campo la acompañan).
+  assert.match(registro, /searchLabel="Buscar alumno activo"/);
+  const studentPicker = code("components/students/student-picker.tsx");
+  assert.match(studentPicker, /<label htmlFor=\{searchId\} className="sr-only">/);
+  assert.match(studentPicker, /<TextInput\s+id=\{searchId\}/);
   // Campos del registro de clase: etiqueta envolvente.
   const parts = code("components/registro/registration-form-parts.tsx");
   assert.match(parts, /<Field label="Nota general de la clase \(1-10\)" htmlFor=\{`\$\{id\}-grade`\}>/);
@@ -296,7 +301,7 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
     ["components/registro/registration-form-parts.tsx", /selected=\{reviews\[homeworkReviewSelectionKey\(task\.taskId, studentId\)\] === outcome\}/],
     ["components/calendar/weekday-schedule-editor.tsx", /aria-pressed=\{cycleLengthWeeks === option\.value\}/],
     ["components/students/profile/reportes-tab.tsx", /aria-pressed=\{selectedMonths\.has\(month\)\}[\s\S]*<CheckIcon/],
-    ["app/(app)/registro/nuevo/nuevo-registro-form.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],
+    ["components/students/student-picker.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],
     ["components/calendar/calendar-view-switch.tsx", /aria-current=\{isWeek \? "true" : undefined\}[\s\S]*aria-current=\{!isWeek \? "true" : undefined\}/],
     ["components/finance/financial-overview-view.tsx", /aria-current=\{selected \? "true" : undefined\}[\s\S]*\{selected && <CheckIcon/],
     ["components/students/student-form-fields.tsx", /peer sr-only[\s\S]*peer-checked:inline[\s\S]*✓/],

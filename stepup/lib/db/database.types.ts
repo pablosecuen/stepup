@@ -428,7 +428,9 @@ export type LessonRegistrationOutcome =
   | "feriado"
   | "cancelada_con_aviso"
   | "cancelada_tarde"
-  | "reprogramada";
+  | "reprogramada"
+  /** Sólo clase individual; la clase no se dictó (ver `20261022300000_registration_outcomes.sql`). */
+  | "alumno_ausente";
 
 export type LateCancellationPolicyRow = "cobrar_100" | "cobrar_porcentaje" | "descontar_del_paquete" | "no_cobrar";
 

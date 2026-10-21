@@ -24,6 +24,8 @@ interface RealLessonDetailModalProps {
   item: CalendarViewItem;
   canReuseSlot: boolean;
   onClose: () => void;
+  /** Abre directo el paso «Reprogramar» (resultado «Reprogramada» del registro, también para una clase que ya pasó). */
+  startInReschedule?: boolean;
 }
 
 const RESCHEDULE_FORM_ID = "lesson-reschedule-form";
@@ -34,11 +36,11 @@ const RESCHEDULE_FORM_ID = "lesson-reschedule-form";
  * clase y QUÉ fecha se están modificando sin depender del fondo oscurecido. La lógica (acciones, validaciones, foco entre
  * pasos) no cambió; sólo la presentación.
  */
-export function RealLessonDetailModal({ item, canReuseSlot, onClose }: RealLessonDetailModalProps) {
+export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInReschedule = false }: RealLessonDetailModalProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [reschedulingOpen, setReschedulingOpen] = useState(false);
+  const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
   const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [now, setNow] = useState<number | null>(null);

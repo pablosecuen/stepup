@@ -485,6 +485,32 @@ export async function finalizeLessonRegistration(ctx: AuthenticatedDbContext, in
   return toLessonRegistrationRecord(data as LessonRegistrationRow);
 }
 
+export interface ChangeLessonRegistrationOutcomeInput {
+  lessonRegistrationId: string;
+  outcome: LessonRegistrationRecord["outcome"];
+  holidayException?: boolean;
+  lateCancellationPolicy?: string | null;
+  lateCancellationPercentage?: number | null;
+}
+
+/** Cambia el resultado de un registro TODAVÍA EN CURSO (atómico: la RPC valida política, individual/grupal y ajusta a los participantes). */
+export async function changeLessonRegistrationOutcome(ctx: AuthenticatedDbContext, input: ChangeLessonRegistrationOutcomeInput): Promise<LessonRegistrationRecord> {
+  const { data, error } = await ctx.supabase.rpc("change_lesson_registration_outcome", {
+    p_payload: {
+      lesson_registration_id: input.lessonRegistrationId,
+      outcome: input.outcome,
+      holiday_exception: input.holidayException ?? false,
+      late_cancellation_policy: input.lateCancellationPolicy ?? null,
+      late_cancellation_percentage: input.lateCancellationPercentage ?? null,
+    },
+  });
+  if (error) {
+    if (error.code === "P0002") throw new LessonRegistrationNotFoundError("No encontrado.");
+    throw error;
+  }
+  return toLessonRegistrationRecord(data as LessonRegistrationRow);
+}
+
 /**
  * TODOS los registros del owner (cualquier alumno) anclados dentro de un
  * rango real — fuente para Analíticas financieras (Fase 7: horas

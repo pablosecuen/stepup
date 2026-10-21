@@ -6,7 +6,7 @@ import { startAdhocRegistrationAction } from "@/lib/actions/lesson-registrations
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { ADHOC_OUTCOME_LABEL, LATE_CANCELLATION_POLICY_LABEL, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { StudentPicker } from "@/components/students/student-picker";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { Button, PrivateButtonLink } from "@/components/ui/button";
 import { Field, SelectInput, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
@@ -37,7 +37,6 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
   // ÚNICAMENTE tras una respuesta exitosa confirmada — nunca antes, nunca
   // ante un error (ver `useDraftOperationId`).
   const { operationId, clear: clearOperationId } = useDraftOperationId(ADHOC_OPERATION_ID_STORAGE_KEY);
-  const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -50,13 +49,8 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter((s) => s.name.toLowerCase().includes(q));
-  }, [students, query]);
-
-  const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedStudents = students.filter((s) => selectedSet.has(s.id));
 
   function toggle(id: string) {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
@@ -95,51 +89,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
     <div className="flex flex-col gap-5">
       <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">
         <legend className="px-2 text-label font-bold uppercase text-textMuted">Alumno o grupo *</legend>
-        {selectedStudents.length > 0 && (
-          <ul className="mb-3 flex flex-wrap gap-2" aria-label="Alumnos elegidos">
-            {selectedStudents.map((s) => (
-              <li key={s.id} className="inline-flex min-h-11 items-center gap-1 rounded-pill border-[1.5px] border-ink bg-ink pl-4 pr-1 text-[14.5px] font-[650] text-background">
-                <span className="[overflow-wrap:anywhere]">{s.name}</span>
-                <button type="button" onClick={() => toggle(s.id)} aria-label={`Quitar a ${s.name}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill text-background hover:bg-white/15">
-                  <span aria-hidden>×</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="relative">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-textMuted" aria-hidden />
-          <TextInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar alumno activo" aria-label="Buscar alumno activo" className="block pl-11" />
-        </div>
-        <div className={`${choiceGroupClass} mt-2 max-h-64 overflow-y-auto`}>
-          {filtered.length === 0 ? (
-            <p className="px-3 py-3 text-[14.5px] text-textMuted">No hay alumnos activos con ese nombre.</p>
-          ) : (
-            filtered.map((s) => {
-              const isSelected = selectedIds.includes(s.id);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggle(s.id)}
-                  aria-pressed={isSelected}
-                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left text-[15px] text-textPrimary transition-colors hover:bg-paperDeep"
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span
-                      aria-hidden
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-[1.5px] text-[12px] font-bold leading-none ${isSelected ? "border-ink bg-ink text-background" : "border-borderStrong"}`}
-                    >
-                      {isSelected ? "✓" : ""}
-                    </span>
-                    <span className="min-w-0 [overflow-wrap:anywhere]">{s.name}</span>
-                  </span>
-                  <span className="shrink-0 text-[13px] text-textMuted">{s.level}</span>
-                </button>
-              );
-            })
-          )}
-        </div>
+        <StudentPicker students={students} selectedIds={selectedSet} onToggle={toggle} searchLabel="Buscar alumno activo" emptyText="No hay alumnos activos todavía." />
       </fieldset>
 
       <fieldset className="min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6">

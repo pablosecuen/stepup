@@ -19,6 +19,8 @@ interface CalendarWorkspaceProps {
   weekHref: string;
   dayHref: string;
   newClassHref: string;
+  /** Clase cuyo flujo de reprogramar se abre directo al entrar (resultado «Reprogramada» del registro). */
+  rescheduleItemId?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ interface CalendarWorkspaceProps {
  * Semana · Día al centro y «Nueva clase» a la derecha. En móvil se apilan (Semana · Día y «Nueva clase»; sin Densidad, que allá no
  * cambia nada). La densidad se guarda sólo en el `localStorage` de este navegador.
  */
-export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref }: CalendarWorkspaceProps) {
+export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, rescheduleItemId }: CalendarWorkspaceProps) {
   // La densidad por defecto al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
   const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
   // Si el ancho efectivo no alcanza para la grilla, se usa la agenda por día (la de móvil) y Densidad no cambiaría nada: se oculta.
@@ -83,7 +85,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
       )}
 
       <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
-        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} />
+        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} />
       </EnterOnChange>
     </div>
   );

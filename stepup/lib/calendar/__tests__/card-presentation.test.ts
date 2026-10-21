@@ -10,11 +10,14 @@ import {
   FULL_CARD_MIN_WIDTH_PX,
   HOURS,
   MIN_DAY_COLUMN_WIDTH_PX,
-  MIN_TARGET_PX,
+  MIN_TEXT_HEIGHT_PX,
   START_HOUR,
+  STACK_CARD_MIN_HEIGHT_PX,
+  STACK_CARD_MIN_WIDTH_PX,
   TIME_COLUMN_WIDTH_PX,
   TITLE_CARD_MIN_HEIGHT_PX,
   TITLE_CARD_MIN_WIDTH_PX,
+  cardGapPx,
   cardInsetPx,
   cardPresentation,
   cardWidthPx,
@@ -38,8 +41,8 @@ const lesson = (id: string, from: string, minutes: number): CalendarViewItem => 
   return { id, start, end: new Date(Date.parse(start) + minutes * 60_000).toISOString(), status: "scheduled", freedByLessonId: null } as unknown as CalendarViewItem;
 };
 
-/** Pantallas del bloque: ancho de la ventana (CSS px, ya con el zoom aplicado) → ancho útil de la zona de agenda (barra de 236 + relleno 2×24 y máximo 1180). */
-const areaWidth = (viewportCssPx: number) => Math.min(1180, viewportCssPx - 236) - 48;
+/** Pantallas del bloque: ancho de la ventana (CSS px, ya con el zoom aplicado) → ancho útil de la zona de agenda (barra de 236 + relleno 2×24 y máximo 1360). */
+const areaWidth = (viewportCssPx: number) => Math.min(1360, viewportCssPx - 236) - 48;
 const VIEWPORTS: Array<[string, number, number]> = [
   ["1366×768 al 100 %", 1366, 768],
   ["1366×768 al 125 %", 1366 / 1.25, 768 / 1.25],
@@ -50,10 +53,13 @@ const VIEWPORTS: Array<[string, number, number]> = [
 /** Alto por hora de Compacta en esa pantalla: lo que arriba del eje ocupan el encabezado y los controles (≈ 209 px medidos) y 16 px de relleno inferior. */
 const compactHourHeight = (viewportHeightCssPx: number) => fitHourHeight({ availablePx: viewportHeightCssPx - 209 - 16 + 47, fixedPx: 50, hours: HOURS.length }).hourHeightPx;
 
-test("cardPresentation: tres modos según el tamaño real; los umbrales son exactos y nada depende del contenido", () => {
+test("cardPresentation: cuatro modos según el tamaño real; los umbrales son exactos y nada depende del contenido", () => {
   assert.equal(cardPresentation({ heightPx: FULL_CARD_MIN_HEIGHT_PX, widthPx: FULL_CARD_MIN_WIDTH_PX }), "full");
-  assert.equal(cardPresentation({ heightPx: FULL_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "title", "un poco bajo: sólo el título");
-  assert.equal(cardPresentation({ heightPx: 300, widthPx: FULL_CARD_MIN_WIDTH_PX - 0.01 }), "title", "un poco angosto: sólo el título");
+  assert.equal(cardPresentation({ heightPx: FULL_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "stack", "un poco bajo para el modo completo: dos líneas apretadas");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: FULL_CARD_MIN_WIDTH_PX - 0.01 }), "stack", "angosta pero alta: nombre y hora, una debajo de otra");
+  assert.equal(cardPresentation({ heightPx: STACK_CARD_MIN_HEIGHT_PX, widthPx: STACK_CARD_MIN_WIDTH_PX }), "stack");
+  assert.equal(cardPresentation({ heightPx: STACK_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "title", "no entran dos líneas: una sola línea");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: STACK_CARD_MIN_WIDTH_PX - 0.01 }), "title", "demasiado angosta para la hora: una sola línea con las iniciales");
   assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX, widthPx: TITLE_CARD_MIN_WIDTH_PX }), "title");
   assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "block", "muy bajo: bloque de color");
   assert.equal(cardPresentation({ heightPx: 300, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "block", "muy angosto: bloque de color");
@@ -61,37 +67,32 @@ test("cardPresentation: tres modos según el tamaño real; los umbrales son exac
     assert.equal(cardPresentation({ heightPx: bad, widthPx: 100 }), "block", String(bad));
     assert.equal(cardPresentation({ heightPx: 100, widthPx: bad }), "block", String(bad));
   }
-  // La altura mínima del modo «título» deja entrar una línea de 11 px con el borde de 1,5 px por lado.
-  assert.ok(TITLE_CARD_MIN_HEIGHT_PX >= 11 * 1 + 3, "una línea y el borde");
-  // La del modo completo: relleno (4+4) + título 12 px y datos 11 px con interlineado 1,375 + separación 2 + borde 3.
-  assert.ok(FULL_CARD_MIN_HEIGHT_PX >= 8 + 12 * 1.375 + 2 + 11 * 1.375 + 3, "título, datos y borde");
+  // Los umbrales salen de las líneas reales: una línea (11 px de letra, interlineado 13) + borde de 1 px; dos líneas (11/13 y 10/12) + borde; completa (12/14 y 11/13) + borde de 1,5 px y 2 px de aire.
+  assert.ok(TITLE_CARD_MIN_HEIGHT_PX >= 13 + 2, "una línea y el borde");
+  assert.ok(STACK_CARD_MIN_HEIGHT_PX >= 13 + 12 + 2, "dos líneas y el borde");
+  assert.ok(FULL_CARD_MIN_HEIGHT_PX >= 14 + 13 + 3 + 2, "título, datos, borde y aire");
+  assert.equal(MIN_TEXT_HEIGHT_PX, TITLE_CARD_MIN_HEIGHT_PX, "el piso de lectura de una clase de 30 minutos es exactamente el de una línea de texto");
 });
 
-test("duraciones de 15, 30, 45 y 60 minutos en cada pantalla: el modo sólo depende del alto y del ancho reales, y el bloque nunca se agranda ni se mueve", () => {
+test("Compacta en cada pantalla: TODA clase de 30 minutos o más muestra su nombre; la de 15 minutos conserva su alto exacto; la hora y la duración nunca se mueven", () => {
   for (const [name, vw, vh] of VIEWPORTS) {
     const px = compactHourHeight(vh);
     const column = dayColumnWidthPx(areaWidth(vw), 7);
     for (const minutes of [15, 30, 45, 60, 90]) {
-      const item = lesson("x", "12:00", minutes);
-      const [p] = layoutDayItems([item], px);
+      const [p] = layoutDayItems([lesson("x", "12:00", minutes)], px);
       const mode = cardPresentation({ heightPx: p.height, widthPx: cardWidthPx(column, p.laneCount) });
-      // posición y alto son los exactos de la duración, pase lo que pase con el texto
-      assert.equal(p.top, ((12 - START_HOUR) * px), `${name} ${minutes} min: misma hora`);
-      assert.equal(p.height, Math.max(4, (minutes / 60) * px - 6), `${name} ${minutes} min: misma duración`);
-      assert.ok(p.hitHeight >= MIN_TARGET_PX, `${name} ${minutes} min: zona de 44 px`);
-      assert.equal(p.hitHeight, Math.max(p.height, MIN_TARGET_PX));
-      if (mode === "full") assert.ok(p.height >= FULL_CARD_MIN_HEIGHT_PX && cardWidthPx(column, 1) >= FULL_CARD_MIN_WIDTH_PX, `${name} ${minutes}: completo sólo si cabe`);
-      if (mode === "title") assert.ok(p.height >= TITLE_CARD_MIN_HEIGHT_PX, `${name} ${minutes}: título sólo si cabe una línea`);
-      if (minutes === 15) assert.equal(mode, "block", `${name}: 15 min es un bloque de color sin texto`);
+      assert.equal(p.top, (12 - START_HOUR) * px, `${name} ${minutes} min: misma hora`);
+      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px));
+      assert.equal(p.height, minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exact) : exact, `${name} ${minutes} min: misma duración (con el piso de lectura desde 30 min)`);
+      assert.ok(p.hitHeight >= p.height - 0.001 && p.hitHeight >= 44 - 0.001, `${name} ${minutes} min: sin vecinos la zona llega a 44 px`);
+      if (minutes >= 30) assert.notEqual(mode, "block", `${name}: ${minutes} min se lee (modo ${mode})`);
+      if (minutes >= 60 && px >= 35) assert.ok(mode === "full" || mode === "stack", `${name}: 60 min muestra nombre y hora`);
+      if (minutes === 15) assert.equal(p.height, exact, `${name}: 15 min no se estira`);
     }
-    // Compacta en pantallas bajas: 30 min no puede mostrar texto; 60 min a lo sumo el título
-    const thirty = Math.max(4, 0.5 * px - 6);
-    assert.equal(cardPresentation({ heightPx: thirty, widthPx: cardWidthPx(column, 1) }), thirty < TITLE_CARD_MIN_HEIGHT_PX ? "block" : "title", `${name}: 30 min`);
-    if (px <= 48) assert.equal(cardPresentation({ heightPx: thirty, widthPx: 500 }), "block", `${name}: en pantallas bajas 30 min no muestra texto`);
   }
 });
 
-test("consecutivas, simultáneas y superpuestas: cada una elige su modo por su carril real; ninguna se oculta ni cambia de hora", () => {
+test("consecutivas, simultáneas y superpuestas: ninguna se oculta ni cambia de hora; las consecutivas comparten ancho completo y todas muestran su nombre", () => {
   for (const [name, vw, vh] of VIEWPORTS) {
     const px = compactHourHeight(vh);
     const column = dayColumnWidthPx(areaWidth(vw), 7);
@@ -109,17 +110,20 @@ test("consecutivas, simultáneas y superpuestas: cada una elige su modo por su c
       for (const p of out as PositionedItem[]) {
         const width = cardWidthPx(column, p.laneCount);
         const mode = cardPresentation({ heightPx: p.height, widthPx: width });
-        assert.ok(["full", "title", "block"].includes(mode));
-        if (mode !== "block") assert.ok(width >= TITLE_CARD_MIN_WIDTH_PX && p.height >= TITLE_CARD_MIN_HEIGHT_PX, `${name} ${kind}: ${p.item.id} muestra texto sólo si le cabe`);
         assert.equal(p.item.start, items.find((i) => i.id === p.item.id)!.start, "la clase no se mueve");
-        assert.ok(p.hitHeight >= MIN_TARGET_PX && p.hitTop >= 0 && p.hitTop + p.hitHeight <= bottom + 0.001, `${name} ${kind}: zona de 44 px dentro de la grilla`);
+        assert.ok(p.hitTop >= 0 && p.hitTop + p.hitHeight <= bottom + 0.001, `${name} ${kind}: zona dentro de la grilla`);
+        const minutes = (Date.parse(p.item.end) - Date.parse(p.item.start)) / 60_000;
+        if (minutes >= 30) assert.notEqual(mode, "block", `${name} ${kind}: ${p.item.id} (${minutes} min, ${p.laneCount} carriles, ${width.toFixed(0)} px) muestra su nombre`);
       }
-      // las zonas que se tocan quedan en carriles distintos
+      if (kind === "consecutivas") assert.ok(out.every((p) => p.laneCount === 1), `${name}: las consecutivas no se reparten carriles`);
+      // las zonas que se tocan no se pisan: o están en franjas distintas o una termina donde empieza la otra
       for (let i = 0; i < out.length; i++)
         for (let j = i + 1; j < out.length; j++) {
           const a = out[i];
           const b = out[j];
-          if (a.hitTop < b.hitTop + b.hitHeight - 0.001 && b.hitTop < a.hitTop + a.hitHeight - 0.001) assert.notEqual(a.lane, b.lane, `${name} ${kind}: ${a.item.id} y ${b.item.id}`);
+          const sameStrip = a.lane / a.laneCount < (b.lane + 1) / b.laneCount - 1e-9 && b.lane / b.laneCount < (a.lane + 1) / a.laneCount - 1e-9;
+          const overlap = a.hitTop < b.hitTop + b.hitHeight - 1.001 && b.hitTop < a.hitTop + a.hitHeight - 1.001;
+          if (sameStrip && overlap) assert.fail(`${name} ${kind}: ${a.item.id} y ${b.item.id} se pisan`);
         }
     }
   }
@@ -160,14 +164,20 @@ test("cableado de la tarjeta: texto sólo dentro del bloque, líneas truncadas, 
   const grid = card.slice(card.indexOf("export function RealLessonCard"), card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(grid, /"below"|blockOffset \+ height|\btop: blockOffset \+/, "ningún texto fuera del bloque visual");
   assert.match(grid, /presentation === "full"/);
+  assert.match(grid, /presentation === "stack"/);
   assert.match(grid, /presentation === "title"/);
   assert.doesNotMatch(grid, /presentation === "block"/, "el modo bloque no dibuja texto");
   // todo el texto vive dentro del bloque (overflow-hidden), cada línea se trunca y los contenedores pueden encogerse
   const block = grid.slice(grid.indexOf('aria-hidden="true"'));
   assert.match(block, /overflow-hidden rounded-md/);
-  assert.equal((block.match(/truncate/g) ?? []).length >= 3, true, "título, datos y título en una línea: todos con elipsis");
+  assert.equal((block.match(/truncate/g) ?? []).length >= 4, true, "nombre y datos de cada modo: todos con elipsis");
   assert.equal((block.match(/min-w-0/g) ?? []).length >= 5, true);
   assert.doesNotMatch(block, /overflow-visible|whitespace-nowrap(?! )|\[overflow-wrap/, "sin desbordes visibles");
+  // el nombre se escribe según el ancho (completo, primera palabra, iniciales) y el estado importante nunca depende sólo del color
+  assert.match(grid, /nameForWidth\(title, cardWidth\)/);
+  assert.match(grid, /narrowMeta\(\{ timeLabel, facts: stateFacts \}\)/);
+  assert.match(grid, /wideMeta\(\{ timeLabel, groupSize, tags: stateTexts \}\)/);
+  assert.match(grid, /<UserGroupIcon/, "las clases grupales llevan su ícono");
   // accesibilidad: nombre completo siempre, descripción sólo con el tooltip visible
   assert.match(grid, /aria-label=\{ariaLabelOf\(/);
   assert.match(grid, /aria-describedby=\{describedBy\}/);
@@ -202,4 +212,7 @@ test("zona de agenda: sin desplazamiento horizontal en ningún modo, la grilla c
   const workspace = code("components/calendar/calendar-workspace.tsx");
   assert.match(workspace, /\{gridFits && <CalendarDensityPicker/);
   assert.match(workspace, /onGridFitChange=\{setGridFits\}/);
+  // Compacta sigue siendo la densidad por defecto: la corrección no cambia la escala ni obliga a usar Media.
+  const density = code("lib/calendar/density.ts");
+  assert.match(density, /DEFAULT_CALENDAR_DENSITY: CalendarDensityKey = "compact"/);
 });

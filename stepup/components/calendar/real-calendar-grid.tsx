@@ -26,6 +26,8 @@ interface RealCalendarGridProps {
   density: CalendarDensityKey;
   /** Avisa si la grilla horaria entra con columnas legibles (si no, se muestra la agenda por día también en escritorio). */
   onGridFitChange?: (fits: boolean) => void;
+  /** Clase cuyo diálogo se abre directo en «Reprogramar» (resultado «Reprogramada» del registro). */
+  rescheduleItemId?: string;
 }
 
 /**
@@ -36,9 +38,11 @@ interface RealCalendarGridProps {
  * y la escala horaria fijos. Móvil (320–819 px): agenda agrupada por día — nunca se comprime la grilla. Las dos dibujan los mismos
  * datos y comparten el detalle de la clase; los colores salen de la escala congelada del calendario (`lib/calendar-theme.ts`).
  */
-export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
-  const [selected, setSelected] = useState<CalendarViewItem | null>(null);
+  const [selected, setSelected] = useState<CalendarViewItem | null>(() => (rescheduleItemId ? (items.find((item) => item.id === rescheduleItemId) ?? null) : null));
+  // Sólo la clase abierta por el enlace directo arranca en «Reprogramar»; cualquier otra que se elija después abre las acciones de siempre.
+  const [startInReschedule, setStartInReschedule] = useState(() => Boolean(rescheduleItemId && items.some((item) => item.id === rescheduleItemId)));
   const [fit, setFit] = useState<HourFit | null>(null);
   const [areaWidthPx, setAreaWidthPx] = useState<number | null>(null);
   const [tip, setTip] = useState<CardTip | null>(null);
@@ -86,7 +90,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange }: R
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const gridFits = areaWidthPx === null ? true : gridFitsWidth(areaWidthPx, dayKeys.length);
-  const columnWidthPx = areaWidthPx === null ? 150 : dayColumnWidthPx(areaWidthPx, dayKeys.length);
+  // Antes de medir (primer dibujo) se supone un ancho razonable para que el texto no «salte» al medir: una columna de semana ronda los 150 px y la vista de un día es ancha.
+  const columnWidthPx = areaWidthPx === null ? (dayKeys.length === 1 ? 640 : 150) : dayColumnWidthPx(areaWidthPx, dayKeys.length);
 
   useEffect(() => {
     onGridFitChange?.(gridFits);
@@ -245,8 +250,12 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange }: R
       {selected && (
         <RealLessonDetailModal
           item={selected}
+          startInReschedule={startInReschedule && selected.id === rescheduleItemId}
           canReuseSlot={now ? getCancelledSlotReuseDecision(selected, items, now).eligible : false}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setSelected(null);
+            setStartInReschedule(false);
+          }}
         />
       )}
     </div>

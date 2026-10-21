@@ -19,6 +19,7 @@ import { OriginIncidentsCard } from "@/components/registro/origin-incidents-card
 import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 import { resolveRegistrationHeader } from "@/lib/lessons/registration-form";
+import { instantDateKey } from "@/lib/calendar/civil-calendar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -105,6 +106,9 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
       <OriginIncidentsCard incidents={incidents} />
       {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
+        // Al cambiar el resultado de la clase el formulario se vuelve a armar con lo que quedó guardado.
+        key={`${detail.registration.outcome}:${detail.registration.holidayException}:${detail.registration.countsAsClass}`}
+        outcomeField={{ alreadyRescheduled: calendarLesson.status === "rescheduled", rescheduleHref: `/calendario?view=day&day=${instantDateKey(calendarLesson.startAt)}&reprogramar=${calendarLesson.id}` }}
         initialContent={lessonContent}
         materialLibrary={materialLibrary}
         registration={detail.registration}

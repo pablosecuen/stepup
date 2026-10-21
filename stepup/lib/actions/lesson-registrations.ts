@@ -5,6 +5,7 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import {
   startLessonRegistration,
   saveParticipantRegistration,
+  changeLessonRegistrationOutcome,
   finalizeLessonRegistration,
   editCompletedLessonRegistration,
   getLessonRegistrationDetailByCalendarLessonId,
@@ -13,6 +14,9 @@ import {
   type LessonRegistrationRecord,
 } from "@/lib/repositories/lesson-registrations";
 import { listStudents } from "@/lib/repositories/students";
+import { cancelCalendarOccurrence, getCalendarLesson } from "@/lib/repositories/calendar-lessons";
+import { getLessonContent } from "@/lib/repositories/lesson-content";
+import { absenceAttendanceStatus, validateOutcomeDraft, type AbsenceNotice } from "@/lib/lessons/registration-outcome";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
@@ -411,4 +415,112 @@ export async function saveLessonContentDraftAction(input: { lessonRegistrationId
   }
   revalidatePath("/registro");
   return {};
+}
+
+export interface ChangeRegistrationOutcomeActionInput {
+  lessonRegistrationId: string;
+  outcome: AdhocOutcome;
+  /** Sólo con `alumno_ausente` (clase individual). */
+  absenceNotice?: AbsenceNotice;
+  holidayException?: boolean;
+  lateCancellationPolicy?: LateCancellationPolicy | null;
+  lateCancellationPercentage?: number | null;
+  /** «Observación (opcional)»: se guarda como observación interna de la clase. */
+  observation?: string;
+}
+
+/**
+ * Elige el resultado de una clase programada que está en curso (puerto de «¿Qué pasó con esta clase?» de la app anterior). «Realizada» (o feriado con excepción) deja el
+ * formulario abierto; cualquier otro resultado cierra el registro en el acto: no hay asistencia, evaluación ni tarea que cargar. Un alumno ausente guarda su asistencia
+ * («ausente» o «ausente con aviso»); «cancelada con aviso» además libera el horario en el calendario; «reprogramada» exige que la clase ya tenga su nueva fecha.
+ * Cada paso es idempotente: si algo falla a la mitad, el registro queda en curso y se puede repetir.
+ */
+export async function changeRegistrationOutcomeAction(input: ChangeRegistrationOutcomeActionInput): Promise<ActionResult<{ closed: boolean }>> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const detail = await getLessonRegistrationDetail(ctx, input.lessonRegistrationId);
+    if (!detail) return { error: "Registro no encontrado." };
+    if (detail.registration.status === "completed") return { error: "Este registro ya está finalizado: usá «Guardar cambios» para editarlo." };
+    const calendarLesson = detail.registration.calendarLessonId ? await getCalendarLesson(ctx, detail.registration.calendarLessonId) : null;
+    const isGroup = detail.participants.length > 1;
+    const holidayException = input.outcome === "feriado" && input.holidayException === true;
+
+    const errors = validateOutcomeDraft({
+      outcome: input.outcome,
+      absenceNotice: input.absenceNotice,
+      holidayException,
+      lateCancellationPolicy: input.lateCancellationPolicy ?? null,
+      lateCancellationPercentage: input.lateCancellationPercentage ?? null,
+      alreadyRescheduled: calendarLesson?.status === "rescheduled",
+      isGroup,
+    });
+    if (errors.length > 0) return { error: errors.join(" ") };
+
+    await changeLessonRegistrationOutcome(ctx, {
+      lessonRegistrationId: input.lessonRegistrationId,
+      outcome: input.outcome,
+      holidayException,
+      lateCancellationPolicy: input.outcome === "cancelada_tarde" ? input.lateCancellationPolicy ?? null : null,
+      lateCancellationPercentage: input.outcome === "cancelada_tarde" && input.lateCancellationPolicy === "cobrar_porcentaje" ? input.lateCancellationPercentage ?? null : null,
+    });
+    revalidatePath("/registro");
+
+    if (isAdhocClassHeld(input.outcome, holidayException)) return { data: { closed: false } };
+
+    if (input.outcome === "alumno_ausente" && input.absenceNotice) {
+      const studentId = detail.participants[0].studentId;
+      await saveParticipantRegistration(ctx, {
+        lessonRegistrationId: input.lessonRegistrationId,
+        studentId,
+        participantStatus: null,
+        attendance: { status: absenceAttendanceStatus(input.absenceNotice), lateMinutes: null },
+        evaluation: null,
+        homeworkReviews: [],
+      });
+    }
+
+    const observation = input.observation?.trim() ?? "";
+    if (observation) {
+      // La observación va a las notas internas SIN pisar nada de lo que ya se hubiera cargado en el contenido.
+      const existing = await getLessonContent(ctx, input.lessonRegistrationId);
+      const content: PedagogicalContentInput = {
+        topics: existing?.topics ?? [],
+        objectives: existing?.objectives ?? [],
+        activities: existing?.activities ?? [],
+        activityNotes: existing?.activityNotes ?? "",
+        internalNotes: observation,
+      };
+      await saveLessonContentDraft(ctx, input.lessonRegistrationId, content);
+    }
+
+    await finalizeLessonRegistration(ctx, { lessonRegistrationId: input.lessonRegistrationId });
+    await syncPerClassChargesForRegistration(ctx, input.lessonRegistrationId);
+
+    if (input.outcome === "cancelada_con_aviso" && calendarLesson) {
+      await cancelCalendarOccurrence(ctx, {
+        lessonId: calendarLesson.id,
+        recurrenceId: calendarLesson.recurrenceId,
+        occurrenceKey: calendarLesson.recurrenceOccurrenceKey,
+        recurrenceIndex: calendarLesson.recurrenceIndex,
+        primaryStudentId: calendarLesson.primaryStudentId,
+        studentName: calendarLesson.studentName,
+        level: calendarLesson.level,
+        lessonType: calendarLesson.lessonType,
+        startAt: calendarLesson.startAt,
+        endAt: calendarLesson.endAt,
+        modality: calendarLesson.modality,
+        classTitle: calendarLesson.classTitle,
+        activityKind: calendarLesson.activityKind,
+        color: calendarLesson.modality === "online" ? "#DDEBFF" : calendarLesson.modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
+      });
+      revalidatePath("/calendario");
+    }
+  } catch (error) {
+    if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
+  }
+  revalidatePath("/registro");
+  revalidatePath("/calendario");
+  revalidatePath("/cobros");
+  return { data: { closed: true } };
 }
