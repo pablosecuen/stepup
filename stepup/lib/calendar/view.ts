@@ -4,6 +4,8 @@ import { listRecurrenceRules } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsInRange, listRecurringLessonMarkers } from "@/lib/repositories/calendar-lessons";
 import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
 import { listStudents } from "@/lib/repositories/students";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { NO_EXCLUDED_STUDENTS, withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { buildCalendarViewForRange, type CalendarViewItem } from "./occurrences";
 import type { RecurrenceRuleForEngine } from "./types";
 
@@ -23,25 +25,37 @@ export interface CalendarViewBase {
   readonly students: Awaited<ReturnType<typeof listStudents>>;
   /** Todas las clases de serie (cualquier fecha): para reconocer qué ocurrencias ya tienen su clase aunque esté fuera del rango. */
   readonly occurrenceMarkers: Awaited<ReturnType<typeof listRecurringLessonMarkers>>;
+  /** Alumnos de PRUEBA confirmados (R16): sus series y clases —cuando son los únicos participantes— no se muestran. Vacío = todo se muestra. */
+  readonly excludedStudentIds: ReadonlySet<string>;
 }
 
-export async function loadCalendarViewBase(ctx: AuthenticatedDbContext): Promise<CalendarViewBase> {
-  const [rules, students, occurrenceMarkers] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx), listRecurringLessonMarkers(ctx)]);
+/** `includeTestData`: las acciones que escriben (y la ficha de un alumno) ven TODO, incluidos los datos de prueba; las pantallas de agenda, pendientes y estadísticas no. */
+export interface CalendarViewOptions {
+  readonly includeTestData?: boolean;
+}
+
+export async function loadCalendarViewBase(ctx: AuthenticatedDbContext, options: CalendarViewOptions = {}): Promise<CalendarViewBase> {
+  const [rules, students, occurrenceMarkers, excludedStudentIds] = await Promise.all([
+    listRecurrenceRules(ctx),
+    listStudents(ctx),
+    listRecurringLessonMarkers(ctx),
+    options.includeTestData ? Promise.resolve(NO_EXCLUDED_STUDENTS) : loadExcludedStudentIds(ctx),
+  ]);
   const exceptions = await listRecurrenceExceptionsForRules(
     ctx,
     rules.map((rule) => rule.id)
   );
-  return { rules, exceptions, students, occurrenceMarkers };
+  return { rules, exceptions, students, occurrenceMarkers, excludedStudentIds };
 }
 
-export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date, base?: CalendarViewBase): Promise<CalendarViewItem[]> {
+export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date, base?: CalendarViewBase, options: CalendarViewOptions = {}): Promise<CalendarViewItem[]> {
   if (base) {
     // Con la base ya cargada sólo se lee lo propio del rango: las clases materializadas.
     const lessons = await listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString());
     return composeCalendarView(base, lessons, rangeStart, rangeEnd);
   }
   const rules = await listRecurrenceRules(ctx);
-  const [lessons, exceptions, students, occurrenceMarkers] = await Promise.all([
+  const [lessons, exceptions, students, occurrenceMarkers, excludedStudentIds] = await Promise.all([
     listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString()),
     listRecurrenceExceptionsForRules(
       ctx,
@@ -49,8 +63,9 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     ),
     listStudents(ctx),
     listRecurringLessonMarkers(ctx),
+    options.includeTestData ? Promise.resolve(NO_EXCLUDED_STUDENTS) : loadExcludedStudentIds(ctx),
   ]);
-  return composeCalendarView({ rules, exceptions, students, occurrenceMarkers }, lessons, rangeStart, rangeEnd);
+  return composeCalendarView({ rules, exceptions, students, occurrenceMarkers, excludedStudentIds }, lessons, rangeStart, rangeEnd);
 }
 
 /**
@@ -58,11 +73,14 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
  * lee las clases de todos a la vez (en paralelo con la base) y compone cada vista cuando llegan.
  */
 export function composeCalendarView(
-  { rules, exceptions, students, occurrenceMarkers }: CalendarViewBase,
-  lessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
+  { rules: allRules, exceptions, students, occurrenceMarkers, excludedStudentIds }: CalendarViewBase,
+  allLessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
   rangeStart: Date,
   rangeEnd: Date,
 ): CalendarViewItem[] {
+  // Datos de prueba confirmados (R16): se ocultan sólo series y clases cuyos participantes son TODOS de prueba; con la lista vacía no cambia nada.
+  const rules = withoutExcludedRules(allRules, excludedStudentIds);
+  const lessons = withoutExcludedLessons(allLessons, excludedStudentIds);
   const engineRules: RecurrenceRuleForEngine[] = rules.map((rule) => ({
     recurrenceId: rule.id,
     studentId: rule.primaryStudentId,

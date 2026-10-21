@@ -280,3 +280,25 @@ Migraciones nuevas, SÓLO locales (nada aplicado en Production): R12 `2026102010
 **Agenda del 20/10:** la app muestra 7 clases (08:00, 09:00, 10:00, 17:30, 18:30, 19:30, 20:30). La web muestra esas mismas 7 más una clase virtual a las 18:00 que pertenece a una SERIE DE PRUEBA creada en la web el 21/09 (alumnos «QA Alumno Editado» + «QA Alumno Dos»): no existe en la app. Sin ella, la agenda es idéntica.
 
 Verificación: 1795 pruebas, 0 fallos; tsc y eslint limpios. Quedó sin cambios el origen (sin congelar) y el traslado sigue pendiente de aceptación.
+
+## 23. Datos de prueba (QA) en la cuenta: inventario y exclusión reversible (PREPARADA, NO aplicada — 21/10/2026)
+
+**Inventario (sólo lectura).** La cuenta tiene 6 alumnos creados en la web y los 6 son de prueba; ninguna otra carga hecha en la web existe (0 series, clases, registros, cobros o pagos web fuera de ellos). Nada se marcó «de prueba» por no venir del teléfono: se exigió nombre de prueba + creación en las fases de prueba (21–22/09, un mes antes de importar el 21/10) + ausencia total en el respaldo del origen + sin ningún participante real compartido.
+
+| Qué | Cantidad | Evidencia |
+|---|---|---|
+| Alumnos «QA Alumno Editado», «QA Alumno Dos» (activos) y «PRUEBA WEB F5 Mensual», «PRUEBA WEB F5 Entrenamiento», «PRUEBA WEB FECHA Alumno», «PRUEBA WEB F6 Mensual» (archivados) | 6 | nombre, sin id de origen, creados 21–22/09, ausentes del respaldo del origen |
+| Series | 6 (3 vigentes) | sólo participantes de la lista; una titulada «PRUEBA WEB FECHA Serie» |
+| Clases guardadas | 12 | títulos «QA Fase4 Grupal/Individual/Entrenamiento», «PRUEBA WEB FECHA Clase Unica»; 0 con un alumno real |
+| Registros de clase | 7 | tarea «QA tarea comun grupo fase4», «PRUEBA WEB F4 tarea individual»; 0 con alumno real |
+| Cobros / pagos / asignaciones | 3 / 2 / 2 | TODOS anulados |
+| Nivel personalizado «Grupo QA Renombrado» | 1 | sólo lo usa un alumno de prueba (no se excluye: no afecta agenda ni estadísticas) |
+| Filas hijas (historial de estado 10, roster 8, asistencia 6, evaluaciones 8, revisiones de tarea 3, participantes 13 y 8) | — | cuelgan de lo anterior |
+
+Falsos positivos descartados: 9 registros IMPORTADOS del origen contienen la palabra «test»/«quiz» en tareas y notas (exámenes de inglés reales); por eso no se usó el texto como criterio.
+
+**Solución (reversible, sin borrar nada):** tabla `test_data_exclusions` (migración `20261021200000_r16_test_data_exclusions.sql`, nace vacía), `supabase/repairs/r16_mark_qa_exclusions.sql` (carga SÓLO los 6 ids, todo o nada, con 4 verificaciones previas) y `r16_unmark_qa_exclusions.sql` (revoca, no borra; volver a cargar reactiva). La aplicación (`lib/data-exclusion/exclusion.ts`, `composeCalendarView`, Inicio, Resumen financiero) oculta una serie, clase o registro sólo si TODOS sus participantes están en la lista; las acciones que escriben y la ficha del alumno ven todo. Con la tabla ausente o vacía no cambia nada. Ensayo aislado `supabase/tests/postgres/r16_test_data_exclusions_rehearsal.cjs` 23/23.
+
+**Efecto simulado en memoria sobre los datos vivos:** agenda del 20/10: 8 → 7 clases (idéntica a la app); clases por registrar: 12 → 0; valor de la hora $25.510,08 → $26.102,31 (151,5 h, 140 clases); anual 350 h/318 clases → 346 h/313; alumnos 33/32/37 → 31/30/31. Igual que la app.
+
+**Estado:** nada aplicado en Production, nada desplegado, nada empujado. Alcance fuera de lo pedido que seguiría mostrando los datos de prueba: lista de Alumnos, historial de Registro y la pantalla de Series.

@@ -83,7 +83,7 @@ async function buildConflictCandidates(
   const center = new Date(aroundIso);
   const rangeStart = new Date(center.getTime() - 14 * 24 * 60 * 60 * 1000);
   const rangeEnd = new Date(center.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
+  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true });
   return toConflictCandidates(items, { excludeRecurrenceId });
 }
 

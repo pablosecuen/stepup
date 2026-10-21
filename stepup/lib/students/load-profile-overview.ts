@@ -32,7 +32,7 @@ export async function loadStudentNextClass(ctx: AuthenticatedDbContext, student:
   if (student.status !== "activo") return { kind: "not-applicable" };
   const rangeStart = new Date(now.getTime() - 12 * 60 * 60 * 1000);
   const rangeEnd = new Date(now.getTime() + DEFAULT_RECURRENCE_HORIZON_DAYS * 24 * 60 * 60 * 1000);
-  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
+  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true });
   return pickStudentNextClass({ items, studentId: student.id, status: student.status, now });
 }
 

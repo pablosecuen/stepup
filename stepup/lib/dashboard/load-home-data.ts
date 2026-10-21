@@ -6,6 +6,7 @@ import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories
 import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
+import { withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { selectCurrentOrNextOccurrence, type LessonTimingStatus } from "@/lib/calendar/next-class";
@@ -94,14 +95,17 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
   // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
   const dayStart = new Date(dayStartIso);
-  const [{ rules, students, exceptions, occurrenceMarkers }, todayLessonRows, horizonLessons, pendingLessonRows, balances] = await Promise.all([
+  const [{ rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds }, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
     listCalendarLessonsInRange(ctx, pendingLookbackStart.toISOString(), now.toISOString()),
     listOpenChargeBalances(ctx),
   ]);
-  const calendarBase = { rules, students, exceptions, occurrenceMarkers };
+  const calendarBase = { rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds };
+  // Datos de prueba confirmados (R16): fuera de la agenda, los pendientes y las clases vacías; con la lista vacía no cambia nada.
+  const rules = withoutExcludedRules(allRules, excludedStudentIds);
+  const horizonLessons = withoutExcludedLessons(allHorizonLessons, excludedStudentIds);
   const todayItems = composeCalendarView(calendarBase, todayLessonRows, dayStart, dayEndExclusive);
   const pendingItems = composeCalendarView(calendarBase, pendingLessonRows, pendingLookbackStart, now);
 

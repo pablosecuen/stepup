@@ -42,7 +42,7 @@ async function findCalendarItem(ctx: Awaited<ReturnType<typeof requireAuthentica
   // Rango amplio (1 año atrás, 1 día adelante) para ubicar la ocurrencia real sin depender de que el llamador ya la tenga en memoria.
   const rangeEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const rangeStart = new Date(rangeEnd.getTime() - 366 * 24 * 60 * 60 * 1000);
-  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
+  const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true });
   if (calendarLessonId) return items.find((i) => i.materializedLessonId === calendarLessonId) ?? null;
   if (recurrenceId && occurrenceKey) return items.find((i) => i.recurrenceId === recurrenceId && i.occurrenceKey === occurrenceKey) ?? null;
   return null;

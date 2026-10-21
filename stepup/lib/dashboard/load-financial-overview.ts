@@ -18,6 +18,7 @@ import type { ProgrammedHourlyRateSummary } from "@/lib/reports/hourly-rate";
 import { buildFinancialStatistics, type RegistrationRowWithExtras } from "@/lib/reports/financial-statistics";
 import type { StudentYearActivitySummary, NewStudentsPerMonthSummary } from "@/lib/reports/student-year-summary";
 import { buildMonthSnapshot, type MonthSnapshot } from "@/lib/reports/month-snapshot";
+import { withoutExcludedRegistrations, withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 
 export interface FinancialOverviewData {
   preset: FinancialPeriodPreset;
@@ -94,6 +95,12 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
   const periodItems = composeCalendarView(calendarBase, periodLessons, new Date(periodInstants.startIso), new Date(periodInstants.endIso));
   const demandItems = composeCalendarView(calendarBase, demandLessons, new Date(demandInstants.startIso), new Date(demandInstants.endIso));
 
+  // Datos de prueba confirmados (R16): fuera de las estadísticas (registros y alumnos); con la lista vacía no cambia nada. La agenda ya viene filtrada por `composeCalendarView`.
+  const excludedStudentIds = calendarBase.excludedStudentIds;
+  const studentsByRegistration = new Map<string, string[]>();
+  roster.forEach((entry) => studentsByRegistration.set(entry.lesson_registration_id, [...(studentsByRegistration.get(entry.lesson_registration_id) ?? []), entry.student_id]));
+  const visibleStudents = withoutExcludedStudents(calendarBase.students, excludedStudentIds);
+
   const statistics = buildFinancialStatistics({
     evaluationDate,
     evaluationInstant: now.toISOString(),
@@ -101,11 +108,11 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     year,
     periodItems,
     demandItems,
-    registrations,
+    registrations: withoutExcludedRegistrations(registrations, studentsByRegistration, excludedStudentIds),
     roster,
     evaluationAmounts,
     rules: ruleIds,
-    students: calendarBase.students,
+    students: visibleStudents,
     charges,
     packageConsumptions: packageMovements.flatMap((movement) => (movement.saved_lesson_id ? [{ packageId: movement.package_id, studentId: movement.student_id, registrationId: movement.saved_lesson_id }] : [])),
     availabilityExceptions: availability.exceptions,
@@ -123,7 +130,7 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     charges,
     allocations: allocations.map((a) => ({ chargeId: a.chargeId, paymentId: a.paymentId, amount: a.amount })),
     payments: payments.map((p) => ({ id: p.id, paidAt: p.paidAt, voidedAt: p.voidedAt })),
-    studentStatusById: new Map(calendarBase.students.map((student) => [student.id, student.status])),
+    studentStatusById: new Map(visibleStudents.map((student) => [student.id, student.status])),
     evaluationDate,
   });
 
