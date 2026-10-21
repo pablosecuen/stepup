@@ -152,7 +152,7 @@ test("fila de controles: Densidad · Semana/Día · Nueva clase en tres columnas
   assert.match(workspace, /nav:justify-self-end[\s\S]*<PrivateButtonLink href=\{newClassHref\} variant="accent"/);
   assert.match(workspace, /Nueva clase/);
   assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref="\/calendario\/nueva"/, "misma ruta de Nueva clase");
-  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} \/>/, "la grilla comienza inmediatamente debajo");
+  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} dayHrefs=\{dayHrefs\} \/>/, "la grilla comparte datos y enlaces de navegación diaria");
   assert.match(workspace, /readStoredCalendarDensity\(storage\)/);
   assert.match(workspace, /writeStoredCalendarDensity\(window\.localStorage, next\)/);
   assert.match(workspace, /useState<CalendarDensityKey>\(DEFAULT_CALENDAR_DENSITY\)/, "mismo valor por defecto en servidor y navegador");
@@ -194,16 +194,16 @@ test("selector de densidad: un control pequeño de 150–180 px, sin terracota, 
   assert.match(picker, /CALENDAR_DENSITIES\.map\(/);
 });
 
-test("móvil: la agenda por día no cambia y los controles se apilan sin comprimir tres columnas", () => {
+test("móvil: controles de vista y creación comparten fila y la grilla reserva espacio entre las barras del teléfono", () => {
   const workspace = code("components/calendar/calendar-workspace.tsx");
-  assert.match(workspace, /className="grid gap-3 nav:grid-cols-\[1fr_auto_1fr\]/, "una columna en móvil");
+  assert.match(workspace, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "dos controles en móvil, sin columna vacía de Densidad");
   assert.match(workspace, /className="w-full nav:w-auto"/, "Nueva clase ocupa el ancho en móvil");
   const switcher = code("components/calendar/calendar-view-switch.tsx");
   assert.match(switcher, /w-full[\s\S]*nav:w-auto/);
   assert.match(switcher, /flex-1[\s\S]*nav:flex-none/);
   const toolbar = code("components/calendar/real-calendar-toolbar.tsx");
   assert.match(toolbar, /justify-between[\s\S]*nav:justify-end/, "en móvil la fila del mes ocupa el ancho; en escritorio va a la derecha");
-  // el recorte de altura sólo existe en escritorio
+  // El calendario también mide el área útil en el acceso anclado del teléfono.
   const view = code("components/calendar/calendar-view.tsx");
-  assert.doesNotMatch(view.replace(/nav:h-\[calc\(100dvh-var\(--tf-shell-top\)\)\]/g, ""), /\bh-dvh\b|\bh-screen\b|100dvh/);
+  assert.match(view, /100dvh-58px-env\(safe-area-inset-top\)-4\.5rem-env\(safe-area-inset-bottom\)/);
 });

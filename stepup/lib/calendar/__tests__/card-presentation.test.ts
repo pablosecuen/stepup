@@ -204,8 +204,8 @@ test("zona de agenda: sin desplazamiento horizontal en ningún modo, la grilla c
   assert.match(grid, /overflow-x-hidden rounded-lg/, "ni Compacta ni Media ni Amplia desplazan en horizontal");
   assert.doesNotMatch(grid, /overflow-x-auto|overflow-x-scroll|minWidth/);
   assert.match(grid, /gridFitsWidth\(areaWidthPx, dayKeys\.length\)/);
-  assert.match(grid, /gridFits \? "nav:block" : ""/);
-  assert.match(grid, /gridFits \? "nav:hidden" : "nav:min-h-0 nav:flex-1 nav:overflow-y-auto"/);
+  assert.match(grid, /gridFits \? "nav:block" : "nav:hidden"/);
+  assert.match(grid, /gridFits \? "nav:hidden" : "nav:flex nav:min-h-0 nav:flex-1 nav:overflow-y-auto"/);
   assert.match(grid, /observer\.observe\(wrap\)/);
   assert.match(grid, /minmax\(0, 1fr\)/);
   assert.match(grid, /relative z-0 min-w-0 border-l/);

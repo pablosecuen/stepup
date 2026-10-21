@@ -19,6 +19,8 @@ import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
 import { COMPACT_INITIAL_HOUR_HEIGHT_PX, fitHourHeight, hourHeightFor, type CalendarDensityKey, type HourFit } from "@/lib/calendar/density";
 import { RealLessonAgendaRow, RealLessonCard, type CardTip } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
+import PrivateLink from "@/components/nav/private-link";
+import { mobileCalendarHourFit } from "@/lib/calendar/mobile-density";
 
 interface RealCalendarGridProps {
   dayKeys: string[]; // 7 claves civiles YYYY-MM-DD (semana) o 1 (día) — nunca Date
@@ -28,6 +30,7 @@ interface RealCalendarGridProps {
   onGridFitChange?: (fits: boolean) => void;
   /** Clase cuyo diálogo se abre directo en «Reprogramar» (resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
+  dayHrefs?: Record<string, string>;
 }
 
 /**
@@ -35,16 +38,17 @@ interface RealCalendarGridProps {
  * encabezado (la página no se desplaza). «Compacta» reparte ese espacio entre las horas del eje — se MIDE con `ResizeObserver`
  * (zona de agenda y encabezado de los días), así que se recalcula al cambiar ventana, zoom, Semana/Día, densidad o el encabezado — y
  * no se desplaza; «Media» y «Amplia» conservan 64 y 80 px por hora y se desplazan DENTRO de la zona, con los encabezados de los días
- * y la escala horaria fijos. Móvil (320–819 px): agenda agrupada por día — nunca se comprime la grilla. Las dos dibujan los mismos
- * datos y comparten el detalle de la clase; los colores salen de la escala congelada del calendario (`lib/calendar-theme.ts`).
+ * y la escala horaria fijos. Móvil conserva la grilla de Semana y Día del origen, con su geometría propia y scroll dentro del
+ * espacio útil del teléfono. La alternativa de lista sólo queda en escritorio angosto. Todos comparten datos, colores y detalle.
  */
-export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(() => (rescheduleItemId ? (items.find((item) => item.id === rescheduleItemId) ?? null) : null));
   // Sólo la clase abierta por el enlace directo arranca en «Reprogramar»; cualquier otra que se elija después abre las acciones de siempre.
   const [startInReschedule, setStartInReschedule] = useState(() => Boolean(rescheduleItemId && items.some((item) => item.id === rescheduleItemId)));
   const [fit, setFit] = useState<HourFit | null>(null);
   const [areaWidthPx, setAreaWidthPx] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [tip, setTip] = useState<CardTip | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
@@ -70,9 +74,13 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
       // Ancho útil: decide si la grilla entra con columnas legibles y cuánto mide cada columna (y por lo tanto cada carril).
       const widthPx = wrap.clientWidth;
       if (widthPx > 0) setAreaWidthPx((previous) => (previous === widthPx ? previous : widthPx));
+      const mobile = window.matchMedia("(max-width: 819px)").matches;
+      setIsMobile(mobile);
       const availablePx = region.clientHeight;
-      if (availablePx <= 0) return; // zona oculta (móvil): se mide cuando vuelve a verse
-      const next = fitHourHeight({ availablePx, fixedPx: header.offsetHeight + (scroller.offsetHeight - scroller.clientHeight), hours: HOURS.length });
+      if (availablePx <= 0) return;
+      const fixedPx = header.offsetHeight + (scroller.offsetHeight - scroller.clientHeight);
+      const next = mobile ? mobileCalendarHourFit(availablePx - fixedPx, dayKeys.length)
+        : fitHourHeight({ availablePx, fixedPx, hours: HOURS.length });
       setFit((previous) => (previous && previous.hourHeightPx === next.hourHeightPx && previous.overflows === next.overflows ? previous : next));
     }
     measure();
@@ -89,7 +97,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   }, [density, dayKeys.length]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const gridFits = areaWidthPx === null ? true : gridFitsWidth(areaWidthPx, dayKeys.length);
+  const gridFits = isMobile || areaWidthPx === null ? true : gridFitsWidth(areaWidthPx, dayKeys.length);
   // Antes de medir (primer dibujo) se supone un ancho razonable para que el texto no «salte» al medir: una columna de semana ronda los 150 px y la vista de un día es ancha.
   const columnWidthPx = areaWidthPx === null ? (dayKeys.length === 1 ? 640 : 150) : dayColumnWidthPx(areaWidthPx, dayKeys.length);
 
@@ -108,9 +116,10 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   }, [tip]);
 
   const fixedHourHeight = hourHeightFor(density);
-  const hourHeightPx = fixedHourHeight ?? fit?.hourHeightPx ?? COMPACT_INITIAL_HOUR_HEIGHT_PX;
+  const hourHeightPx = isMobile ? fit?.hourHeightPx ?? (dayKeys.length > 1 ? 50 : 34)
+    : fixedHourHeight ?? fit?.hourHeightPx ?? COMPACT_INITIAL_HOUR_HEIGHT_PX;
   // Media y Amplia se desplazan dentro de la zona; Compacta sólo si ni el piso de legibilidad entra.
-  const scrollsVertically = fixedHourHeight !== null || fit?.overflows === true;
+  const scrollsVertically = isMobile || fixedHourHeight !== null || fit?.overflows === true;
 
   const visible = visibleCalendarItems(items);
   const isWeek = dayKeys.length > 1;
@@ -134,8 +143,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
 
   return (
     <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
-      {/* Escritorio: zona de agenda (ocupa el espacio disponible) con la grilla horaria */}
-      <div ref={regionRef} data-calendar-region className={`relative hidden min-h-0 flex-1 ${gridFits ? "nav:block" : ""}`}>
+      {/* Grilla horaria: Semana y Día en escritorio y móvil. */}
+      <div ref={regionRef} data-calendar-region className={`relative min-h-0 flex-1 ${gridFits ? "nav:block" : "nav:hidden"}`}>
         <div
           ref={scrollerRef}
           data-calendar-scroller
@@ -149,9 +158,9 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                 const today = todayKey === dayKey;
                 return (
                   <div key={dayKey} className={`flex flex-col items-center gap-0.5 py-1.5 text-center ${today ? "bg-accentSoft" : ""}`}>
-                    {isWeek && <span className={`text-label font-bold ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
+                    {isWeek && <span className={`text-[10px] font-bold nav:text-label ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
                     <span className={`font-display text-[22px] font-semibold leading-none tracking-tight ${today ? "text-accentDark" : "text-textPrimary"}`}>
-                      {dayOfMonth(dayKey)}
+                      {dayHrefs?.[dayKey] ? <><PrivateLink href={dayHrefs[dayKey]} aria-label={`Ver día ${formatCivilDayLabelShort(dayKey)}`} className="inline-flex min-h-11 min-w-8 items-center justify-center nav:hidden">{dayOfMonth(dayKey)}</PrivateLink><span className="hidden nav:inline">{dayOfMonth(dayKey)}</span></> : dayOfMonth(dayKey)}
                       {today && <span className="sr-only"> (hoy)</span>}
                     </span>
                   </div>
@@ -187,6 +196,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                       <RealLessonCard
                         key={positionedItem.item.id}
                         positioned={positionedItem}
+                        mobile={isMobile}
+                        dayRow={isMobile && !isWeek}
                         {...stateOf(positionedItem.item)}
                         columnWidthPx={columnWidthPx}
                         onSelect={() => setSelected(positionedItem.item)}
@@ -202,8 +213,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
         </div>
       </div>
 
-      {/* Móvil (y escritorio angosto, donde la grilla no entra con columnas legibles): agenda agrupada por día */}
-      <div data-calendar-agenda className={`flex flex-col gap-6 ${gridFits ? "nav:hidden" : "nav:min-h-0 nav:flex-1 nav:overflow-y-auto"}`}>
+      {/* Alternativa para escritorio angosto: nunca sustituye la grilla del teléfono. */}
+      <div data-calendar-agenda className={`hidden flex-col gap-6 ${gridFits ? "nav:hidden" : "nav:flex nav:min-h-0 nav:flex-1 nav:overflow-y-auto"}`}>
         {dayKeys.map((dayKey) => {
           const today = todayKey === dayKey;
           const dayItems = (positionedByDay.get(dayKey) ?? []).map((p) => p.item);

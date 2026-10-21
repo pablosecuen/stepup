@@ -3,7 +3,7 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
-import { INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, wideMeta } from "@/lib/calendar/card-text";
+import { firstWord, INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -25,6 +25,8 @@ interface RealLessonCardProps {
   onTip?: (tip: CardTip | null) => void;
   /** Id del tooltip visible de ESTA tarjeta (aria-describedby). */
   describedBy?: string;
+  mobile?: boolean;
+  dayRow?: boolean;
 }
 
 export interface CardTip {
@@ -73,16 +75,20 @@ function lessonTitle(item: CalendarViewItem): string {
  * dentro de un contenedor con `overflow-hidden` y cada línea se trunca). El nombre accesible es siempre el completo, y la información
  * completa se ve al pasar el puntero o enfocar con el teclado (tooltip).
  */
-export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isInProgress = false, columnWidthPx, onSelect, onTip, describedBy }: RealLessonCardProps) {
+export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isInProgress = false, columnWidthPx, onSelect, onTip, describedBy, mobile = false, dayRow = false }: RealLessonCardProps) {
   const { item, height, hitTop, hitHeight, blockOffset, lane, laneCount } = positioned;
   const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed, isActiveReplacement });
   const isCancelled = item.status === "cancelled";
   const isTraining = item.activityKind === "training";
   const start = new Date(item.start);
-  const timeLabel = instantTimeLabel(item.start);
+  const timeLabel = dayRow ? `${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}` : instantTimeLabel(item.start);
   const durationMinutes = Math.round((new Date(item.end).getTime() - start.getTime()) / 60_000);
   const title = lessonTitle(item);
   const stateTexts = stateParts({ item, isElapsed, isActiveReplacement, isInProgress });
+  if (dayRow) {
+    if (stateTexts.length === 0) stateTexts.push(STATUS_LABELS[item.status]);
+    stateTexts.unshift(MODALITY_LABELS[item.modality]);
+  }
   const stateFacts = { status: item.status, isElapsed, isActiveReplacement, isInProgress };
   // Grupal: cuántos alumnos son (se ve en la tarjeta ancha, con el ícono en las angostas, y siempre en el cuadro de información).
   const groupSize = item.participantIds.length > 1 ? item.participantIds.length : null;
@@ -93,10 +99,12 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const inset = cardInsetPx(laneCount);
   const cardWidth = cardWidthPx(columnWidthPx, laneCount);
   const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
+  // Same word-based identity as the native week card; mobile never substitutes two initials.
+  const narrowName = mobile && !dayRow ? firstWord(title) : nameForWidth(title, cardWidth);
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
   const borderClass = presentation === "full" ? "border-[1.5px]" : "border";
-  const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${timeLabel}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.join(" · ")}` : ""}`;
+  const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.filter((tag) => tag !== MODALITY_LABELS[item.modality]).join(" · ")}` : ""}`;
   const iconSize = presentation === "full" ? "h-3 w-3" : "h-2.5 w-2.5";
   // En un carril de menos de 36 px las iniciales valen más que el ícono (el grupo y el entrenamiento siguen en el cuadro de información y en el nombre accesible).
   const icons =
@@ -149,7 +157,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
             <span className="flex min-w-0 items-center gap-1 text-[12px] font-bold leading-[14px]" style={{ color: textColor, textDecorationLine: strike }}>
               {icons}
-              <span className="min-w-0 truncate">{nameForWidth(title, cardWidth)}</span>
+              <span className="min-w-0 truncate">{narrowName}</span>
             </span>
             <span className="block min-w-0 truncate text-[11px] font-medium leading-[13px]" style={{ color: secondaryColor }}>
               {wideMeta({ timeLabel, groupSize, tags: stateTexts })}
@@ -160,7 +168,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${cardWidth < 44 ? "px-0.5" : "px-1"}`}>
             <span className="flex min-w-0 items-center gap-0.5 text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
               {icons}
-              <span className="min-w-0 truncate">{nameForWidth(title, cardWidth)}</span>
+              <span className="min-w-0 truncate">{narrowName}</span>
             </span>
             <span className={`block min-w-0 truncate font-semibold leading-3 ${cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
               {narrowMeta({ timeLabel, facts: stateFacts })}
@@ -176,7 +184,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
               </span>
             )}
             <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
-              {nameForWidth(title, cardWidth)}
+              {narrowName}
             </span>
           </span>
         )}

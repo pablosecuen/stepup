@@ -7,7 +7,7 @@ import PrivateLink from "@/components/nav/private-link";
 export function CalendarViewSwitch({ view, weekHref, dayHref }: { view: "week" | "day"; weekHref: string; dayHref: string }) {
   const isWeek = view === "week";
   const segment = (selected: boolean) =>
-    `inline-flex flex-1 items-center justify-center rounded-sm px-5 text-[14.5px] font-[650] transition-colors motion-reduce:transition-none nav:flex-none ${selected ? "bg-surface text-textPrimary shadow-subtle" : "text-textSecondary hover:text-textPrimary"}`;
+    `inline-flex flex-1 items-center justify-center rounded-sm px-2 text-[14.5px] font-[650] transition-colors motion-reduce:transition-none nav:flex-none nav:px-5 ${selected ? "bg-surface text-textPrimary shadow-subtle" : "text-textSecondary hover:text-textPrimary"}`;
   return (
     <div role="group" aria-label="Vista del calendario" className="flex w-full items-center gap-1 rounded-md bg-paperDeep p-0.5 ring-1 ring-inset ring-border nav:w-auto">
       <PrivateLink href={weekHref} aria-current={isWeek ? "true" : undefined} className={`min-h-11 ${segment(isWeek)}`}>

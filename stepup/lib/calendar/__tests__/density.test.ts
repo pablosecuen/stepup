@@ -232,10 +232,10 @@ test("cableado de la grilla: Compacta se mide con ResizeObserver (sin altura fij
   assert.match(grid, /observer\.observe\(region\);\s+observer\.observe\(scroller\);\s+observer\.observe\(header\);/, "zona de agenda, grilla y encabezado de los días");
   assert.match(grid, /window\.addEventListener\("resize", measure\)/);
   assert.match(grid, /observer\.disconnect\(\)/, "se limpia al desmontar");
-  assert.match(grid, /fitHourHeight\(\{ availablePx, fixedPx: header\.offsetHeight \+ \(scroller\.offsetHeight - scroller\.clientHeight\), hours: HOURS\.length \}\)/);
-  assert.match(grid, /const hourHeightPx = fixedHourHeight \?\? fit\?\.hourHeightPx \?\? COMPACT_INITIAL_HOUR_HEIGHT_PX;/);
+  assert.match(grid, /fitHourHeight\(\{ availablePx, fixedPx, hours: HOURS\.length \}\)/);
+  assert.match(grid, /fixedHourHeight \?\? fit\?\.hourHeightPx \?\? COMPACT_INITIAL_HOUR_HEIGHT_PX;/);
   assert.match(grid, /\}, \[density, dayKeys\.length\]\);/, "se vuelve a medir al cambiar de densidad o de Semana a Día");
-  assert.match(grid, /scrollsVertically = fixedHourHeight !== null \|\| fit\?\.overflows === true/);
+  assert.match(grid, /scrollsVertically = isMobile \|\| fixedHourHeight !== null \|\| fit\?\.overflows === true/);
   assert.match(grid, /layoutDayItems\(itemsByDayKey\.get\(dayKey\) \?\? \[\], hourHeightPx\)/);
   assert.match(grid, /height: HOURS\.length \* hourHeightPx/);
   // encabezado de los días y escala horaria fijos dentro de la zona que se desplaza

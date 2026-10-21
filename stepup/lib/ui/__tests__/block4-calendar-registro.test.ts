@@ -40,11 +40,11 @@ test("la escala de color del calendario sigue CONGELADA y las tarjetas sólo la 
   assert.doesNotMatch(code("components/calendar/real-calendar-grid.tsx"), /resolveLessonColors|MODALITY_COLORS/, "la grilla no decide colores");
 });
 
-test("Escritorio: grilla horaria; 320–819 px: agenda agrupada por día con los mismos datos y el mismo detalle (la grilla nunca se comprime)", () => {
+test("Semana y Día conservan la grilla también en móvil y comparten datos y acciones de detalle", () => {
   const grid = code("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /data-calendar-region className=\{`relative hidden min-h-0 flex-1 \$\{gridFits \? "nav:block" : ""\}`\}/, "la grilla sólo existe desde 820 px (y mientras sus columnas sean legibles)");
+  assert.match(grid, /data-calendar-region className=\{`relative min-h-0 flex-1/, "la grilla no se elimina de los teléfonos");
   assert.match(grid, /overflow-x-hidden rounded-lg/, "la grilla nunca se desplaza en horizontal: los carriles dividen el ancho de la columna");
-  assert.match(grid, /flex flex-col gap-6 \$\{gridFits \? "nav:hidden" : /, "la agenda existe por debajo de 820 px y también cuando la grilla no entra");
+  assert.match(grid, /hidden flex-col gap-6 \$\{gridFits \? "nav:hidden" : /, "la lista queda como alternativa de escritorio angosto");
   assert.equal([...grid.matchAll(/setSelected\(/g)].length >= 3, true, "cualquiera de las dos abre el mismo detalle");
   assert.match(grid, /<RealLessonDetailModal/);
   assert.match(grid, /\(positionedByDay\.get\(dayKey\) \?\? \[\]\)\.map\(\(p\) => p\.item\)/, "la agenda ordena igual que la grilla");

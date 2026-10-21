@@ -21,6 +21,7 @@ interface CalendarWorkspaceProps {
   newClassHref: string;
   /** Clase cuyo flujo de reprogramar se abre directo al entrar (resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
+  dayHrefs?: Record<string, string>;
 }
 
 /**
@@ -29,7 +30,7 @@ interface CalendarWorkspaceProps {
  * Semana · Día al centro y «Nueva clase» a la derecha. En móvil se apilan (Semana · Día y «Nueva clase»; sin Densidad, que allá no
  * cambia nada). La densidad se guarda sólo en el `localStorage` de este navegador.
  */
-export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, rescheduleItemId }: CalendarWorkspaceProps) {
+export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, rescheduleItemId, dayHrefs }: CalendarWorkspaceProps) {
   // La densidad por defecto al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
   const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
   // Si el ancho efectivo no alcanza para la grilla, se usa la agenda por día (la de móvil) y Densidad no cambiaría nada: se oculta.
@@ -58,8 +59,8 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
 
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
-      <div className="grid gap-3 nav:grid-cols-[1fr_auto_1fr] nav:items-center nav:gap-4">
-        <div className="nav:justify-self-start">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 nav:grid-cols-[1fr_auto_1fr] nav:gap-4">
+        <div className="hidden nav:block nav:justify-self-start">
           {gridFits && <CalendarDensityPicker value={density} onChange={chooseDensity} />}
         </div>
         <div className="nav:justify-self-center">
@@ -85,7 +86,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
       )}
 
       <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
-        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} />
+        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} dayHrefs={dayHrefs} />
       </EnterOnChange>
     </div>
   );
