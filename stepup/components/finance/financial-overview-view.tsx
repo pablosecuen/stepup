@@ -133,6 +133,12 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         <Kpi label="Vencido" value={formatMoney(data.summary.overdue)} valueClass="text-bad" />
       </section>
 
+      <section aria-label="Este mes" className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 nav:mt-4 nav:gap-4">
+        <Kpi label="Deuda de meses anteriores" value={formatMoney(data.monthSnapshot.priorPeriodsDebt)} valueClass={data.monthSnapshot.priorPeriodsDebt > 0 ? "text-bad" : "text-textPrimary"} />
+        <Kpi label="Alumnos que pagaron este mes" value={formatCount(data.monthSnapshot.studentsPaidThisMonth)} />
+        <Kpi label="Alumnos con deuda" value={formatCount(data.monthSnapshot.studentsWithDebt)} valueClass={data.monthSnapshot.studentsWithDebt > 0 ? "text-bad" : "text-textPrimary"} />
+      </section>
+
       {/* Dos tarjetas lado a lado cuando entran (escritorio ancho) y en una columna en móvil. */}
       <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
         <section aria-labelledby="evolucion-titulo" className={CARD}>

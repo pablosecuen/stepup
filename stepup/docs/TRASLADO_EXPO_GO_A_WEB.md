@@ -261,6 +261,7 @@ Migraciones nuevas, SÓLO locales (nada aplicado en Production): R12 `2026102010
 | Cifra | App (video) | Web antes | Web ahora (mismos datos) |
 |---|---|---|---|
 | Facturación prevista / Cobrado / Pendiente / Vencido (oct.) | $4.449.500 / $4.389.500 / $57.500 / $57.500 | iguales | iguales (ya era un port exacto) |
+| Deuda de meses anteriores / alumnos que pagaron este mes / alumnos con deuda | $0 / 29 / 3 | no se mostraban | $0 / 29 / 3 (`lib/reports/month-snapshot.ts`) |
 | Valor programado de la hora | $26.102 · 152 h · 140 clases | $84.891,12 | $26.102,31 · 151,5 h · 140 clases |
 | Valor por nivel (A2, Apoyo, B1, B2, C1, Flyers, Starters, mixto…) | 23.125 · 36.000 · 24.371 · 26.121 · 28.000 · 30.000 · 20.000 · 55.000 | no existía | idénticos |
 | Demanda: día / horarios | viernes 79,3 h · 68 clases · 21 % ; 18:30 (49), 18:00 (48), 19:30 (48) | sólo nombres, otra regla | idéntica |

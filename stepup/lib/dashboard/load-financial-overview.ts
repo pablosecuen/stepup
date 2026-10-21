@@ -17,11 +17,14 @@ import { demandRangeFor, type CalendarDemandSummary } from "@/lib/reports/demand
 import type { ProgrammedHourlyRateSummary } from "@/lib/reports/hourly-rate";
 import { buildFinancialStatistics, type RegistrationRowWithExtras } from "@/lib/reports/financial-statistics";
 import type { StudentYearActivitySummary, NewStudentsPerMonthSummary } from "@/lib/reports/student-year-summary";
+import { buildMonthSnapshot, type MonthSnapshot } from "@/lib/reports/month-snapshot";
 
 export interface FinancialOverviewData {
   preset: FinancialPeriodPreset;
   range: DateRange;
   summary: PeriodFinancialSummary;
+  /** Deuda de meses anteriores y alumnos que pagaron / con deuda: siempre del mes en curso, independientes del período elegido. */
+  monthSnapshot: MonthSnapshot;
   /** Cobrado por mes (gráfico «Evolución de cobros»): sólo dinero efectivamente cobrado, cronológico. */
   collectedSeries: MonthlyCollectedPoint[];
   /** Porcentajes guardados de la distribución sugerida (50/30/20 por defecto). */
@@ -116,6 +119,14 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     evaluationDate,
   });
 
+  const monthSnapshot = buildMonthSnapshot({
+    charges,
+    allocations: allocations.map((a) => ({ chargeId: a.chargeId, paymentId: a.paymentId, amount: a.amount })),
+    payments: payments.map((p) => ({ id: p.id, paidAt: p.paidAt, voidedAt: p.voidedAt })),
+    studentStatusById: new Map(calendarBase.students.map((student) => [student.id, student.status])),
+    evaluationDate,
+  });
+
   // Evolución de cobros: los mismos pagos y asignaciones ya cargados, agrupados por mes (sin consultas por elemento).
   const collectedSeries = buildMonthlyCollectedSeries(
     { charges, allocations: allocations.map((a) => ({ chargeId: a.chargeId, paymentId: a.paymentId, amount: a.amount })), payments: payments.map((p) => ({ id: p.id, paidAt: p.paidAt, voidedAt: p.voidedAt })) },
@@ -145,6 +156,7 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     preset,
     range,
     summary,
+    monthSnapshot,
     collectedSeries,
     budget,
     comparison,
