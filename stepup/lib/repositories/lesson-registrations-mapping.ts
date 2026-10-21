@@ -20,6 +20,7 @@ import type { HomeworkReviewOutcome } from "../lessons/homework";
 
 export interface LessonRegistrationRecord {
   id: string;
+  legacyMobileId?: string | null;
   calendarLessonId: string | null;
   activityKind: ActivityKind;
   countsAsClass: boolean;
@@ -45,6 +46,7 @@ export interface LessonRegistrationRecord {
 export function toLessonRegistrationRecord(row: LessonRegistrationRow): LessonRegistrationRecord {
   return {
     id: row.id,
+    legacyMobileId: row.legacy_mobile_id,
     calendarLessonId: row.calendar_lesson_id,
     activityKind: row.activity_kind,
     countsAsClass: row.counts_as_class,

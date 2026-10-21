@@ -1,4 +1,5 @@
 import "server-only";
+import { homeworkTaskAliases, pendingHomeworkWithReviews } from "../lessons/homework-identity.ts";
 import { pedagogicalContentPayload, type PedagogicalContentInput } from "../lessons/pedagogical-content.ts";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type {
@@ -21,7 +22,7 @@ import {
 import { readTable, readTableByIds } from "@/lib/db/read";
 import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
 import { instantDateKey } from "@/lib/calendar/civil-calendar";
-import { commonHomeworkTaskId, individualHomeworkTaskId, isHomeworkTaskResolved, type PendingHomeworkTask } from "@/lib/lessons/homework";
+import { commonHomeworkTaskId, individualHomeworkTaskId, type PendingHomeworkTask } from "@/lib/lessons/homework";
 
 /**
  * Repositorio de registros pedagógicos — única puerta de entrada real a
@@ -235,16 +236,25 @@ export async function listPendingHomeworkTasksForStudent(
   });
   if (tasks.length === 0) return [];
 
+  const { data: studentIdentity, error: studentIdentityError } = await ctx.supabase.from("students")
+    .select("legacy_mobile_id").eq("owner_id", ctx.ownerId).eq("id", studentId).maybeSingle();
+  if (studentIdentityError) throw studentIdentityError;
+  const registrationsById = new Map(eligible.map((r) => [r.id, r]));
+  const aliases = new Map<string, string>();
+  for (const task of tasks) {
+    const origin = registrationsById.get(task.originLessonRegistrationId)!;
+    for (const alias of homeworkTaskAliases({ originRegistrationId: origin.id, legacyOriginRegistrationId: origin.legacyMobileId,
+      studentId, legacyStudentId: studentIdentity?.legacy_mobile_id, individual: task.taskId.startsWith("individual:") })) {
+      aliases.set(alias, task.taskId);
+    }
+  }
+
   const reviewRows = await readTableByIds<LessonRegistrationHomeworkReviewRow>(ctx.supabase, "lesson_registration_homework_reviews", {
     matchColumn: "task_id",
-    ids: tasks.map((t) => t.taskId),
+    ids: [...aliases.keys()],
     filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
   });
-  const resolvedTaskIds = new Set(reviewRows.filter((row) => isHomeworkTaskResolved(row.outcome)).map((row) => row.task_id));
-
-  return tasks
-    .filter((task) => !resolvedTaskIds.has(task.taskId))
-    .sort((a, b) => new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime());
+  return pendingHomeworkWithReviews(tasks, aliases, reviewRows, options?.excludeOriginLessonRegistrationId);
 }
 
 /** Evaluaciones reales de un alumno a través de sus registros finalizados — para "Progreso" (promedio, fortalezas, a mejorar). */

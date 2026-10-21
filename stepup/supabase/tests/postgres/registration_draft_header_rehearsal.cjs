@@ -39,11 +39,11 @@ const content = { topics: [], objectives: [], activities: ["Book page 72"], acti
     let row = await reg();
     check("el pedido de siempre (sólo contenido) conserva la tarea y la duración", () => { assert.equal(row.homework_description, "tarea previa"); assert.equal(date(row.homework_due_date), "2026-10-30"); assert.equal(row.actual_started_at, null); assert.equal(row.actual_ended_at, null); });
 
-    await rpc(a, { lesson_registration_id: R, pedagogical_content: content, homework_description: "Ejercicios de present perfect", homework_due_date: "2026-10-28", actual_started_at: "2026-10-21T13:00:00.000Z", actual_ended_at: "2026-10-21T14:30:00.000Z" });
+    await rpc(a, { lesson_registration_id: R, pedagogical_content: content, homework_description: "Ejercicios de present perfect\nWorkbook page 50", homework_due_date: "2026-10-28", actual_started_at: "2026-10-21T13:00:00.000Z", actual_ended_at: "2026-10-21T14:30:00.000Z" });
     const fresh = await pg.session(A); clients.push(fresh);
     row = (await fresh.query("select * from public.lesson_registrations where id=$1", [R])).rows[0];
     check("con la tarea y la duración en el pedido, otra conexión las vuelve a leer", () => {
-      assert.equal(row.homework_description, "Ejercicios de present perfect");
+      assert.equal(row.homework_description, "Ejercicios de present perfect\nWorkbook page 50");
       assert.equal(date(row.homework_due_date), "2026-10-28");
       assert.equal((new Date(row.actual_ended_at) - new Date(row.actual_started_at)) / 60000, 90);
       assert.equal(row.status, "in_progress");
@@ -71,6 +71,10 @@ const content = { topics: [], objectives: [], activities: ["Book page 72"], acti
     await rpc(a, { lesson_registration_id: R, pedagogical_content: content, actual_started_at: "2026-10-21T13:00:00.000Z" });
     await admin.query("update public.lesson_registration_students set participant_status='completed' where lesson_registration_id=$1", [R]);
     await a.query("select public.finalize_lesson_registration($1::jsonb)", [JSON.stringify({ lesson_registration_id: R })]);
+    const reopened = await pg.session(A); clients.push(reopened);
+    await reopened.query("select public.edit_completed_lesson_registration($1::jsonb)", [JSON.stringify({ lesson_registration_id:R,edit_operation_id:"eeeeeeee-0000-4000-8000-000000000021",participants:[],homework_description:"QA primera linea\nQA segunda linea" })]);
+    const reopenedRow=(await reopened.query("select homework_description from public.lesson_registrations where id=$1",[R])).rows[0];
+    check("editar y reabrir un registro finalizado conserva saltos de línea",()=>assert.equal(reopenedRow.homework_description,"QA primera linea\nQA segunda linea"));
     await rejects(rpc(a, { lesson_registration_id: R, pedagogical_content: content, homework_description: "tarde" }), /Guardar cambios/, "un registro finalizado se edita con «Guardar cambios», no con el progreso");
     console.log(`\n${checks} comprobaciones correctas contra PostgreSQL aislado. Ninguna conexión a Production.`);
   } finally {

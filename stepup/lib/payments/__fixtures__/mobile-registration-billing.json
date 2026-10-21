@@ -1,0 +1,14 @@
+{
+  "provenance": "Original application, captured 2026-10-21; source declarations copied without implementation changes",
+  "sources": [
+    {
+      "file": "lessonRegistrationDomain.ts",
+      "sha256": "6f4e3372806d269581d03834cf3c023465cc9fca3a0847a05ddd8377846939b4"
+    },
+    {
+      "file": "validation.ts",
+      "sha256": "fe7b1390d259b23495776f79591aee56101145b7aca3aad0813ab848dfd2ee49"
+    }
+  ],
+  "declarations": "export function isClassHeld(form: Pick<NewClassFormState, 'eventType' | 'holidayException'>): boolean {\n  if (form.eventType === 'clase_dictada') return true;\n  if (form.eventType === 'feriado') return form.holidayException;\n  return false;\n}\nexport function computeLessonBilledAmount(\n  form: NewClassFormState,\n  studentPrices: Record<string, number>\n): number | null {\n  if (!form.isBillable) return null;\n  const totalPrice = form.studentIds.reduce(\n    (sum, studentId) => sum + (studentPrices[studentId] ?? 0),\n    0\n  );\n  if (form.eventType === 'cancelada_tarde' && form.lateCancellationPolicy) {\n    if (form.lateCancellationPolicy === 'cobrar_100') return totalPrice;\n    if (form.lateCancellationPolicy === 'cobrar_porcentaje') {\n      return form.lateCancellationPercentage\n        ? Math.round((totalPrice * form.lateCancellationPercentage) / 100)\n        : 0;\n    }\n    return 0;\n  }\n  return isClassHeld(form) ? totalPrice : 0;\n}"
+}

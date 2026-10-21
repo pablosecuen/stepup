@@ -22,6 +22,8 @@ export interface PendingHomeworkTask {
   dueDate: string | null;
   originLessonRegistrationId: string;
   assignedAt: string;
+  /** Selection already saved in the registration currently being reopened. */
+  currentReviewOutcome?: HomeworkReviewOutcome;
 }
 
 /** `common:<originLessonRegistrationId>` — tarea asignada a todo el grupo de esa clase. */

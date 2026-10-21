@@ -40,7 +40,7 @@ import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content"
 import { validatePedagogicalContent } from "@/lib/lessons/pedagogical-content";
 import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 
-function buildInitialForm(attendance: LessonRegistrationAttendanceRecord | undefined, evaluation: LessonRegistrationEvaluationRecord | undefined, isGroup: boolean): ParticipantForm {
+function buildInitialForm(attendance: LessonRegistrationAttendanceRecord | undefined, evaluation: LessonRegistrationEvaluationRecord | undefined, isGroup: boolean, pendingTasks: PendingHomeworkTask[]): ParticipantForm {
   const saved = attendance?.status && attendance.status !== "sin_registrar" ? attendance.status : null;
   return {
     attendanceStatus: initialAttendanceStatus(saved, isGroup),
@@ -52,7 +52,8 @@ function buildInitialForm(attendance: LessonRegistrationAttendanceRecord | undef
     areasToImprove: evaluation?.areasToImprove ?? [],
     homeworkDescription: evaluation?.individualHomeworkDescription ?? "",
     homeworkDueDate: evaluation?.individualHomeworkDueDate ?? "",
-    homeworkReviews: {},
+    homeworkReviews: Object.fromEntries(pendingTasks.filter((t) => t.currentReviewOutcome)
+      .map((t) => [homeworkReviewSelectionKey(t.taskId, t.studentId), t.currentReviewOutcome!])),
   };
 }
 
@@ -239,7 +240,7 @@ export function RegistrationWorkspace({
   const order = participants.map((p) => p.studentId);
   const [statusByStudentId, setStatusByStudentId] = useState(participantStatusByStudentId);
   const [formByStudentId, setFormByStudentId] = useState<Record<string, ParticipantForm>>(() =>
-    Object.fromEntries(participants.map((p) => [p.studentId, buildInitialForm(attendanceByStudentId[p.studentId], evaluationByStudentId[p.studentId], isGroup)]))
+    Object.fromEntries(participants.map((p) => [p.studentId, buildInitialForm(attendanceByStudentId[p.studentId], evaluationByStudentId[p.studentId], isGroup, pendingHomeworkByStudentId[p.studentId] ?? [])]))
   );
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(() => firstOpenParticipant(order, participantStatusByStudentId));
   const [attendanceErrorId, setAttendanceErrorId] = useState<string | null>(null);
