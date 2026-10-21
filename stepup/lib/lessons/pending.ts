@@ -52,13 +52,21 @@ export function buildPendingLessons(params: {
   calendarItems: CalendarViewItem[];
   now: Date;
   registrations: RegistrationProgressForMerge[];
+  /**
+   * Ocurrencias de series (`<id de la serie>|<clave>`) que TeacherFlow anterior ya había registrado y cuya clase de calendario no figuraba en el respaldo: el registro existe (importado sin enlace),
+   * así que la ocurrencia no está pendiente (misma regla que la app anterior, que excluía por la clave de reserva del registro). No se crea ni se marca ninguna clase.
+   */
+  legacyRegisteredOccurrences?: ReadonlySet<string>;
 }): PendingLessonItem[] {
   const registrationByLessonId = new Map(params.registrations.map((registration) => [registration.calendarLessonId, registration]));
 
   const results: PendingLessonItem[] = [];
   for (const item of params.calendarItems) {
     if (!isEligibleForPendingRegistration(item, params.now)) continue;
+    if (!item.isMaterialized && item.recurrenceId && item.occurrenceKey && params.legacyRegisteredOccurrences?.has(`${item.recurrenceId}|${item.occurrenceKey}`)) continue;
     const registration = item.materializedLessonId ? registrationByLessonId.get(item.materializedLessonId) : undefined;
+    // Un registro ya COMPLETADO es la fuente real de «ya registrada» (la clase importada pudo quedar «programada» en el respaldo): nunca se vuelve a pedir.
+    if (registration?.status === "completed") continue;
     results.push({
       item,
       registrationState: registration ? "in_progress" : "not_started",

@@ -45,7 +45,7 @@ async function main() {
   const { admin } = pg;
   await H.reset(admin);
   await admin.query("insert into auth.users (id, email) values ($1, $2) on conflict do nothing", [B, `${B}@example.invalid`]);
-  check("hay 1 migración R11 (lo único posterior es R12, R13 y R14)", R11.length === 1 && fs.readdirSync(DIR).filter((f) => f > R11[0]).every((f) => /_r1[234]_/.test(f)));
+  check("hay 1 migración R11 (lo único posterior es R12 a R15)", R11.length === 1 && fs.readdirSync(DIR).filter((f) => f > R11[0]).every((f) => /_r1[2-5]_/.test(f)));
 
   // Estado de partida: la cuenta A usa la app anterior (dispositivo activo + respaldos en la nube) y ya importó a la web.
   const sA = await H.apiSession(pg, A, 60000);

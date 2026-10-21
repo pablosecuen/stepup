@@ -83,3 +83,34 @@ test("buildPendingLessons: orden cronológico (más antigua primero)", () => {
     ["l2", "l1"]
   );
 });
+
+test("un registro COMPLETADO excluye la clase aunque el calendario la tenga «programada» (clase importada); uno en curso la sigue mostrando", () => {
+  const now = new Date("2026-09-21T23:00:00.000Z");
+  const registered = item({ id: "ya" });
+  const inProgress = item({ id: "en-curso", start: "2026-09-20T18:00:00.000Z", end: "2026-09-20T19:00:00.000Z" });
+  const open = item({ id: "abierta", start: "2026-09-19T18:00:00.000Z", end: "2026-09-19T19:00:00.000Z" });
+  const result = buildPendingLessons({
+    calendarItems: [registered, inProgress, open],
+    now,
+    registrations: [
+      { registrationId: "r1", calendarLessonId: "ya", status: "completed", completedParticipants: 1, totalParticipants: 1 },
+      { registrationId: "r2", calendarLessonId: "en-curso", status: "in_progress", completedParticipants: 1, totalParticipants: 2 },
+    ],
+  });
+  assert.deepEqual(result.map((r) => r.item.id).sort(), ["abierta", "en-curso"], "la completada no vuelve; la en curso y la sin tocar sí");
+  assert.equal(result.find((r) => r.item.id === "en-curso")?.registrationState, "in_progress");
+  assert.equal(result.find((r) => r.item.id === "abierta")?.registrationState, "not_started");
+});
+
+test("una ocurrencia que TeacherFlow anterior ya registró (clase de calendario ausente del respaldo) no está pendiente; las demás de la serie sí, y nada se marca ni se oculta de otra forma", () => {
+  const now = new Date("2026-09-21T23:00:00.000Z");
+  const virtual = (key: string, start: string, end: string) => item({ id: `virtual:${key}`, recurrenceId: "serie-1", occurrenceKey: key, materializedLessonId: null, isMaterialized: false, isRecurring: true, start, end });
+  const registered = virtual("serie-1:w3:c0:d1:t1800:s0", "2026-09-14T21:00:00.000Z", "2026-09-14T22:00:00.000Z");
+  const pending = virtual("serie-1:w4:c0:d1:t1800:s0", "2026-09-21T21:00:00.000Z", "2026-09-21T22:00:00.000Z");
+  const otherSeries = item({ id: "virtual:otra", recurrenceId: "serie-2", occurrenceKey: "serie-2:w3:c0:d1:t1800:s0", materializedLessonId: null, isMaterialized: false, isRecurring: true, start: "2026-09-14T21:00:00.000Z", end: "2026-09-14T22:00:00.000Z" });
+  const legacy = new Set(["serie-1|serie-1:w3:c0:d1:t1800:s0"]);
+  const withSet = buildPendingLessons({ calendarItems: [registered, pending, otherSeries], now, registrations: [], legacyRegisteredOccurrences: legacy });
+  assert.deepEqual(withSet.map((r) => r.item.id).sort(), ["virtual:otra", `virtual:${pending.occurrenceKey}`].sort());
+  const without = buildPendingLessons({ calendarItems: [registered, pending, otherSeries], now, registrations: [] });
+  assert.equal(without.length, 3, "sin el conjunto, el comportamiento anterior no cambia");
+});

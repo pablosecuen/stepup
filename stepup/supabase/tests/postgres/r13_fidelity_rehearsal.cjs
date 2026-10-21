@@ -44,7 +44,7 @@ async function main() {
   try {
     if (pg.failures.length) throw new Error("migraciones con error: " + pg.failures.map((f) => f[0]).join(", "));
     const { admin } = pg;
-    check("R13 es la última migración salvo R14 (que sólo ajusta una función de R10)", fs.readdirSync(path.join(ROOT, "supabase", "migrations")).sort().slice(-2).join().includes("r13_transfer_fidelity") && fs.readdirSync(path.join(ROOT, "supabase", "migrations")).sort().pop().includes("r14_unavailable_file"));
+    check("R13 es seguida sólo por R14 y R15 (ajustes puntuales)", fs.readdirSync(path.join(ROOT, "supabase", "migrations")).sort().slice(-3).join().includes("r13_transfer_fidelity") && fs.readdirSync(path.join(ROOT, "supabase", "migrations")).sort().slice(-2).join().includes("r14_unavailable_file"));
 
     /** Respaldo sintético con TODOS los casos. */
     const backup = () => {

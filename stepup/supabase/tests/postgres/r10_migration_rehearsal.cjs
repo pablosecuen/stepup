@@ -60,7 +60,7 @@ async function main() {
   const pg = await start({ port: 5661, upTo: BEFORE_R10 });
   if (pg.failures.length) { console.log("migraciones con error:", pg.failures); process.exit(1); }
   const admin = pg.admin;
-  check("hay 1 migración R10 (la base de partida es la de Production anterior; lo único posterior es R11 a R14)", R10.length === 1 && fs.readdirSync(DIR).filter((f) => f > R10[0]).every((f) => /_r1[1-4]_/.test(f)), `${R10.length}`);
+  check("hay 1 migración R10 (la base de partida es la de Production anterior; lo único posterior es R11 a R15)", R10.length === 1 && fs.readdirSync(DIR).filter((f) => f > R10[0]).every((f) => /_r1[1-5]_/.test(f)), `${R10.length}`);
 
   // --- Datos sintéticos con el código anterior: dos cuentas, una importación aplicada (B) y una vista previa pendiente (A) ---
   for (const id of [A, B]) await admin.query(`insert into auth.users (id, email) values ($1, $2)`, [id, `${id}@example.invalid`]);

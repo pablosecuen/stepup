@@ -3,6 +3,7 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
+import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { buildPendingLessons } from "@/lib/lessons/pending";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
@@ -31,8 +32,8 @@ export default async function RegistroPendientesPage() {
     const rangeEnd = now;
     const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd);
     const calendarLessonIds = items.map((i) => i.materializedLessonId).filter((id): id is string => !!id);
-    const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, calendarLessonIds);
-    pending = buildPendingLessons({ calendarItems: items, now, registrations });
+    const [registrations, legacyRegisteredOccurrences] = await Promise.all([listRegistrationProgressForCalendarLessonIds(ctx, calendarLessonIds), loadLegacyRegisteredOccurrenceKeys(ctx)]);
+    pending = buildPendingLessons({ calendarItems: items, now, registrations, legacyRegisteredOccurrences });
   } catch {
     return (
       <div className={PAGE_WIDTH.wide}>

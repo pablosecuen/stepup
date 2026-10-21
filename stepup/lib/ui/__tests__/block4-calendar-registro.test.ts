@@ -129,6 +129,6 @@ test("Las vistas nuevas sólo dibujan: sin repositorios ni consultas (las págin
     assert.doesNotMatch(source, /supabase|requireAuthenticatedDbContext|fetch\(|\.rpc\(|"use server"/, `${file}: sin acceso a datos`);
   }
   assert.match(code("app/(app)/calendario/page.tsx"), /loadCalendarViewForRange\(ctx, new Date\(rangeStartIso\), new Date\(rangeEndIso\)\)/);
-  assert.match(code("app/(app)/registro/page.tsx"), /buildPendingLessons\(\{ calendarItems: items, now, registrations \}\)/);
+  assert.match(code("app/(app)/registro/page.tsx"), /buildPendingLessons\(\{ calendarItems: items, now, registrations, legacyRegisteredOccurrences \}\)/);
   assert.match(code("app/(app)/calendario/series/page.tsx"), /Promise\.all\(\[listRecurrenceRules\(ctx\), listStudents\(ctx\)\]\)/);
 });

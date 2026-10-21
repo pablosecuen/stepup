@@ -262,6 +262,12 @@ const get = (k: string) => (r: Obj) => r[k];
 const col = (k: string) => (d: Obj) => d[k];
 const T = (f: string, srcKey: string, dstCol: string, cmp: Cmp = "text"): FieldSpec => ({ f, cmp, src: get(srcKey), dst: col(dstCol) });
 const rel = (f: string, srcKey: string, dstCol: string, table: string): FieldSpec => ({ f: `${f} (relación)`, cmp: "text", src: (r) => str(r[srcKey]), dst: (d, x) => x.legacy(table, d[dstCol]) });
+/** La clave de ocurrencia del destino lleva el id NUEVO de la serie (R15); la del origen, el id de la app anterior. Para comparar se vuelve a la forma del origen (el resto de la clave es idéntico). */
+const legacyOccurrenceKey = (x: Ctx, recurrenceId: unknown, key: unknown): unknown => {
+  if (typeof key !== "string" || typeof recurrenceId !== "string") return key;
+  const legacy = x.legacy("recurrence_rules", recurrenceId);
+  return legacy && key.startsWith(`${recurrenceId}:`) ? legacy + key.slice(recurrenceId.length) : key;
+};
 const withId = (rows: Obj[], key = "id"): SourceRow[] => rows.flatMap((row) => (str(row[key]) ? [{ id: row[key] as string, row }] : []));
 const nonNull = (v: unknown) => (v === undefined ? null : v);
 
@@ -609,7 +615,7 @@ const SPECS: EntitySpec[] = [
       T("notes", "notes", "notes"),
       { f: "isRecurring", cmp: "bool", src: (r) => r.isRecurring === true, dst: col("is_recurring") },
       rel("serie", "recurrenceId", "recurrence_id", "recurrence_rules"),
-      T("recurrenceOccurrenceKey", "recurrenceOccurrenceKey", "recurrence_occurrence_key"),
+      { f: "recurrenceOccurrenceKey", cmp: "text", src: get("recurrenceOccurrenceKey"), dst: (d, x) => legacyOccurrenceKey(x, d.recurrence_id, d.recurrence_occurrence_key) },
       T("recurrenceIndex", "recurrenceIndex", "recurrence_index", "num"),
       T("recurrenceOriginalStart", "recurrenceOriginalStart", "recurrence_original_start", "instant"),
       T("scheduleAdjustment", "scheduleAdjustment", "schedule_adjustment", "json"),
@@ -625,7 +631,7 @@ const SPECS: EntitySpec[] = [
     rows: (x) => arr(x.doc.recurrenceExceptions).flatMap((row) => (str(row.recurrenceId) && str(row.occurrenceKey) ? [{ id: `${row.recurrenceId}|${row.occurrenceKey}`, row }] : [])),
     key: (d, x) => {
       const rid = x.legacy("recurrence_rules", d.recurrence_id);
-      return rid && typeof d.occurrence_key === "string" ? `${rid}|${d.occurrence_key}` : null;
+      return rid && typeof d.occurrence_key === "string" ? `${rid}|${legacyOccurrenceKey(x, d.recurrence_id, d.occurrence_key)}` : null;
     },
     fields: [T("type", "type", "exception_type"), { f: "clase de reemplazo (relación)", cmp: "text", src: (r, x) => existingCalendarRef(x, r.replacementLessonId), dst: (d, x) => x.legacy("calendar_lessons", d.replacement_lesson_id) }, T("createdAt", "createdAt", "created_at", "instant")],
   },

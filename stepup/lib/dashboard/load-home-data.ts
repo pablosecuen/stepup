@@ -3,6 +3,7 @@ import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
+import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
@@ -106,7 +107,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
 
   // Ola 2: lo que depende de las clases pendientes.
   const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);
-  const registrations = await listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds);
+  const [registrations, legacyRegisteredOccurrences] = await Promise.all([listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds), loadLegacyRegisteredOccurrenceKeys(ctx)]);
 
   const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
   // Misma lectura acotada al día (una sola consulta): sin una consulta por clase ni historia que filtrar en el cliente.
@@ -135,7 +136,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     now,
   });
 
-  const pendingLessons = buildPendingLessons({ calendarItems: pendingItems, now, registrations });
+  const pendingLessons = buildPendingLessons({ calendarItems: pendingItems, now, registrations, legacyRegisteredOccurrences });
 
   const collectionEntries = buildCollectionsCenterEntriesFromBalances({
     balances,

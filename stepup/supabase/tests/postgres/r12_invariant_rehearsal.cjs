@@ -32,7 +32,7 @@ async function main() {
   try {
     if (pg.failures.length) throw new Error("migraciones con error: " + pg.failures.map((f) => f[0]).join(", "));
     const { admin } = pg;
-    check("la migración R12 existe (lo único posterior es R13 y R14)", fs.readdirSync(path.join(ROOT, "supabase", "migrations")).filter((f) => f > "20261020100000_zzz").every((f) => /_r1[34]_/.test(f)));
+    check("la migración R12 existe (lo único posterior es R13 a R15)", fs.readdirSync(path.join(ROOT, "supabase", "migrations")).filter((f) => f > "20261020100000_zzz").every((f) => /_r1[3-5]_/.test(f)));
 
     /** Respaldo sintético: chg-1 (importe X) pagado por pay-1; a eso se suman pagos extra con sus asignaciones. */
     const backup = (extras) => {
