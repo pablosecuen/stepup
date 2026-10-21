@@ -36,9 +36,10 @@ const CARD = "rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card
 
 function Kpi({ label, value, valueClass = "text-textPrimary", foot }: { label: string; value: string; valueClass?: string; foot?: ReactNode }) {
   return (
-    <div className={CARD}>
+    <div className={`${CARD} [container-type:inline-size]`}>
       <p className="text-[13px] font-[650] text-textMuted">{label}</p>
-      <p className={`mt-1.5 font-display text-[30px] font-medium leading-none tracking-tight tf-num [overflow-wrap:anywhere] nav:text-[36px] ${valueClass}`}>{value}</p>
+      {/* El importe se ajusta al ancho de SU tarjeta (nunca se parte un número en dos renglones): 36 px cuando hay lugar, menos cuando la tarjeta es angosta. */}
+      <p className={`mt-1.5 font-display text-[clamp(18px,13cqw,36px)] font-medium leading-none tracking-tight tf-num [overflow-wrap:anywhere] ${valueClass}`}>{value}</p>
       {foot && <p className="mt-2 text-[13px] text-textMuted">{foot}</p>}
     </div>
   );
