@@ -129,9 +129,10 @@ test("Configuración no contiene 50/30/20, respaldo, app móvil ni dispositivos:
   assert.match(code(VIEW), /Los recargos por atraso están desactivados\. El semáforo de mora usa plazos fijos\./, "dice la verdad sobre los recargos (B3)");
   assert.doesNotMatch(all, /Perfil de la profesora|Gestionar disponibilidad →|Gestionar desde Alumnos →/, "sin flechas de texto: el renglón entero es el enlace");
   assert.doesNotMatch(code(VIEW), />\s*\{[^}]*(deviceId|generation|checksum)/i, "ningún dato técnico en pantalla");
-  // Preferencias: sólo Políticas de cobro
+  // Preferencias: Políticas de cobro y, sólo si hay datos de prueba marcados, el acceso para consultarlos y volver a mostrarlos
   const preferences = sections().find((s) => s.id === "preferencias")!.body;
-  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Políticas de cobro"]);
+  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Políticas de cobro", "Datos de prueba"]);
+  assert.match(preferences, /\{testData && \(/, "el acceso a los datos de prueba sólo aparece si hay algo marcado");
   // Siguen accesibles desde donde se administran: Disponibilidad desde Calendario y los niveles desde Alumnos (sus rutas y su lógica no se tocan)
   assert.match(code("components/calendar/calendar-view.tsx"), /href="\/calendario\/disponibilidad"/);
   assert.equal(existsSync(join(ROOT, "app/(app)/calendario/disponibilidad/page.tsx")), true);

@@ -2,6 +2,8 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { ErrorState } from "@/components/ui/states";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { FormPage } from "@/components/ui/form-page";
@@ -23,7 +25,8 @@ export default async function NuevaClasePage({
   let students;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    students = await listStudents(ctx);
+    const [allStudents, excludedStudentIds] = await Promise.all([listStudents(ctx), loadExcludedStudentIds(ctx)]);
+    students = withoutExcludedStudents(allStudents, excludedStudentIds);
   } catch {
     return (
       <div className={PAGE_WIDTH.narrow}>

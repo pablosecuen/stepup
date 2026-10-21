@@ -1,6 +1,8 @@
 import { TeacherProfileForm } from "@/components/account/teacher-profile-form";
 import { ChangePasswordButton } from "@/components/account/change-password-button";
 import { DeleteAccountButton } from "@/components/account/delete-account-button";
+import PrivateLink from "@/components/nav/private-link";
+import { linkClass } from "@/components/ui/button";
 import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account/settings-ui";
 import { Avatar } from "@/components/ui/avatar";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
@@ -17,11 +19,14 @@ export function ConfigurationView({
   email,
   displayName,
   billingEnabled = false,
+  testData = null,
 }: {
   email: string | null;
   displayName: string;
   /** Sólo con la facturación encendida: el diálogo de eliminar cuenta explica qué pasa con la suscripción. */
   billingEnabled?: boolean;
+  /** Hay datos de prueba marcados: se ofrece consultarlos y volver a mostrarlos (`hidden`: hoy están ocultos). */
+  testData?: { hidden: boolean } | null;
 }) {
   const who = displayName.trim() || email || "";
   return (
@@ -53,6 +58,15 @@ export function ConfigurationView({
         <SettingsCard>
           <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />
         </SettingsCard>
+        {testData && (
+          <SettingsCard>
+            <SettingsRow title="Datos de prueba" description={testData.hidden ? "Hay alumnos de prueba ocultos de la agenda, las listas y las estadísticas. Se pueden consultar y volver a mostrar." : "Hay alumnos de prueba marcados que hoy se muestran mezclados con tus datos."}>
+              <PrivateLink href="/configuracion/datos-de-prueba" className={linkClass()}>
+                Ver datos de prueba
+              </PrivateLink>
+            </SettingsRow>
+          </SettingsCard>
+        )}
       </SettingsSection>
 
       <SettingsSection

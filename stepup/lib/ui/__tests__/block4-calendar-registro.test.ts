@@ -130,5 +130,5 @@ test("Las vistas nuevas sólo dibujan: sin repositorios ni consultas (las págin
   }
   assert.match(code("app/(app)/calendario/page.tsx"), /loadCalendarViewForRange\(ctx, new Date\(rangeStartIso\), new Date\(rangeEndIso\)\)/);
   assert.match(code("app/(app)/registro/page.tsx"), /buildPendingLessons\(\{ calendarItems: items, now, registrations, legacyRegisteredOccurrences \}\)/);
-  assert.match(code("app/(app)/calendario/series/page.tsx"), /Promise\.all\(\[listRecurrenceRules\(ctx\), listStudents\(ctx\)\]\)/);
+  assert.match(code("app/(app)/calendario/series/page.tsx"), /Promise\.all\(\[listRecurrenceRules\(ctx\), listStudents\(ctx\), loadExcludedStudentIds\(ctx\)\]\)/);
 });

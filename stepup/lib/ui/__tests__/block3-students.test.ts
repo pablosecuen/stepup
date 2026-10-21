@@ -37,7 +37,7 @@ test("las vistas sólo dibujan: no importan repositorios ni consultas (los datos
   }
   // Las páginas siguen cargando lo mismo que antes.
   const list = code("app/(app)/alumnos/page.tsx");
-  assert.match(list, /Promise\.all\(\[listStudents\(ctx\), listCustomLevels\(ctx\)\]\)/);
+  assert.match(list, /Promise\.all\(\[listStudents\(ctx\), listCustomLevels\(ctx\), loadExcludedStudentIds\(ctx\)\]\)/);
   const profile = code("app/(app)/alumnos/[id]/page.tsx");
   assert.match(profile, /<StudentProfileView\s+student=\{student\}\s+tab=\{tab\}/);
 });

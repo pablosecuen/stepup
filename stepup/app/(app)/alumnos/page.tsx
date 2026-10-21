@@ -3,6 +3,8 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext, DbUnauthenticatedError } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
 import { listCustomLevels } from "@/lib/repositories/custom-levels";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { applyStudentFilters, paginate, type StudentsFilterState } from "@/lib/students/filters";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
@@ -50,7 +52,10 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
   let customLevels;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    [students, customLevels] = await Promise.all([listStudents(ctx), listCustomLevels(ctx)]);
+    const [allStudents, levels, excludedStudentIds] = await Promise.all([listStudents(ctx), listCustomLevels(ctx), loadExcludedStudentIds(ctx)]);
+    // Datos de prueba ocultos (R16): fuera de la lista. Se consultan y se vuelven a mostrar desde Configuración › Datos de prueba.
+    students = withoutExcludedStudents(allStudents, excludedStudentIds);
+    customLevels = levels;
   } catch (error) {
     if (error instanceof DbUnauthenticatedError) {
       // El layout privado ya debería haber redirigido — esto es defensa en

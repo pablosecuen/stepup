@@ -2,6 +2,8 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listStudents } from "@/lib/repositories/students";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
@@ -24,7 +26,8 @@ export default async function RegistroNuevoPage() {
   let activeStudents: { id: string; name: string; level: string }[] = [];
   try {
     const ctx = await requireAuthenticatedDbContext();
-    const students = await listStudents(ctx);
+    const [allStudents, excludedStudentIds] = await Promise.all([listStudents(ctx), loadExcludedStudentIds(ctx)]);
+    const students = withoutExcludedStudents(allStudents, excludedStudentIds);
     activeStudents = students.filter((s) => s.status === "activo").map((s) => ({ id: s.id, name: s.name, level: s.levels[0] ?? "" }));
   } catch {
     return (

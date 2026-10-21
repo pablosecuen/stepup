@@ -3,6 +3,8 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listRecurrenceRules } from "@/lib/repositories/recurrence-rules";
 import { listStudents } from "@/lib/repositories/students";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { withoutExcludedRules, withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
@@ -20,7 +22,10 @@ export default async function SeriesPage() {
   let students;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    [rules, students] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx)]);
+    const [allRules, allStudents, excludedStudentIds] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx), loadExcludedStudentIds(ctx)]);
+    // Datos de prueba ocultos (R16): sólo se oculta una serie cuando TODOS sus participantes son de prueba.
+    rules = withoutExcludedRules(allRules, excludedStudentIds);
+    students = withoutExcludedStudents(allStudents, excludedStudentIds);
   } catch {
     return (
       <div className={PAGE_WIDTH.wide}>
