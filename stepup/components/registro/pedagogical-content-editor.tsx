@@ -36,7 +36,11 @@ export interface PedagogicalFilesProps {
   library: LibraryMaterial[];
 }
 
-export function PedagogicalContentEditor({ value, onChange, files }: { value: PedagogicalContentInput; onChange: (content: PedagogicalContentInput) => void; files?: PedagogicalFilesProps }) {
+/**
+ * Contenido de la clase, en el mismo orden que la app anterior: temas, objetivos, actividades, notas de actividades y, al final, evidencias y
+ * materiales. La observación interna NO va acá: tiene su propio bloque más abajo (`InternalNotesCard`), como en la app.
+ */
+export function PedagogicalContentEditor({ value, onChange, files, title = "Contenido pedagógico" }: { value: PedagogicalContentInput; onChange: (content: PedagogicalContentInput) => void; files?: PedagogicalFilesProps; title?: string }) {
   const id = useId();
   const [topicDraft, setTopicDraft] = useState("");
   function addTopic() {
@@ -46,7 +50,7 @@ export function PedagogicalContentEditor({ value, onChange, files }: { value: Pe
   }
   return <section aria-labelledby={`${id}-title`}>
     <Card padded={false}>
-      <CardHeader title={<span id={`${id}-title`}>Contenido pedagógico</span>} />
+      <CardHeader title={<span id={`${id}-title`}>{title}</span>} />
       <div className="space-y-5 px-4 pb-4 nav:px-5 nav:pb-5">
         <fieldset className="min-w-0 space-y-2">
           <legend className="text-sm font-semibold text-textSecondary">Temas</legend>
@@ -65,7 +69,21 @@ export function PedagogicalContentEditor({ value, onChange, files }: { value: Pe
         <TextList label="Actividades" singular="Actividad" items={value.activities} onChange={(activities) => onChange({ ...value, activities })} />
         <Field label="Notas de actividades" htmlFor={`${id}-notes`}><TextArea id={`${id}-notes`} rows={4} placeholder="Qué se hizo en esta clase, en texto libre" value={value.activityNotes} onChange={(e) => onChange({ ...value, activityNotes: e.target.value })} /></Field>
         {files && <LessonFilesEditor registrationId={files.registrationId} attachments={files.attachments} library={files.library} materialIds={value.materialIds ?? []} onMaterialIdsChange={(materialIds) => onChange({ ...value, materialIds })} />}
-        <Field label="Observación interna (privada)" htmlFor={`${id}-internal`} hint="Solo la ve la profesora; no se incluye en reportes."><TextArea id={`${id}-internal`} rows={3} value={value.internalNotes} onChange={(e) => onChange({ ...value, internalNotes: e.target.value })} /></Field>
+      </div>
+    </Card>
+  </section>;
+}
+
+/** «Observaciones internas»: sólo las ve la profesora y nunca salen en un reporte. Va después de los participantes, antes de la tarea. */
+export function InternalNotesCard({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const id = useId();
+  return <section aria-labelledby={`${id}-title`}>
+    <Card padded={false}>
+      <CardHeader title={<span id={`${id}-title`}>Observaciones internas</span>} />
+      <div className="px-4 pb-4 nav:px-5 nav:pb-5">
+        <Field label={<span className="sr-only">Observaciones internas</span>} htmlFor={`${id}-internal`} hint="Solo la ve la profesora — no se incluye en reportes.">
+          <TextArea id={`${id}-internal`} rows={3} placeholder="Observaciones privadas sobre esta clase" value={value} onChange={(e) => onChange(e.target.value)} />
+        </Field>
       </div>
     </Card>
   </section>;

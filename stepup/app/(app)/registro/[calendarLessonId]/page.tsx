@@ -18,6 +18,7 @@ import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-map
 import { OriginIncidentsCard } from "@/components/registro/origin-incidents-card";
 import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
+import { resolveRegistrationHeader } from "@/lib/lessons/registration-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -86,10 +87,19 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
   // ya aplicado en `alumnos/[id]/page.tsx`).
   if (!detail || !calendarLesson) notFound();
 
+  // Encabezado como en la app: el alumno (clase individual) o el nombre del grupo, el tipo de clase y, en un grupo, quiénes participan.
+  const header = resolveRegistrationHeader({
+    participantNames: participantsInfo.map((p) => p.name),
+    classTitle: calendarLesson.classTitle,
+    kindLabel: ACTIVITY_KIND_LABEL[detail.registration.activityKind],
+    isRecurring: calendarLesson.isRecurring,
+  });
+
   return (
     <RegistroPageFrame
-      title={calendarLesson.classTitle?.trim() || "Registrar clase"}
+      title={header.title}
       subtitle={formatInstantDayLongTime(calendarLesson.startAt)}
+      lines={[header.typeLine, ...(header.participantsLine ? [header.participantsLine] : [])]}
       kindLabel={ACTIVITY_KIND_LABEL[detail.registration.activityKind]}
     >
       <OriginIncidentsCard incidents={incidents} />

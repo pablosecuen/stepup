@@ -11,6 +11,7 @@ import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
+import { formatParticipantNamesSentence } from "@/lib/lessons/registration-form";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 import { LessonContentCard } from "@/components/registro/lesson-content-card";
 import { getLessonContent, listMaterialLibrary } from "@/lib/repositories/lesson-content";
@@ -96,9 +97,13 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
   const scheduledStartAt = registration.scheduledStartAt ?? new Date().toISOString();
   const scheduledEndAt = registration.scheduledEndAt ?? scheduledStartAt;
 
+  const participantNames = participantsInfo.map((p) => p.name);
+  const typeLine = `${ACTIVITY_KIND_LABEL[registration.activityKind]} ${participantNames.length > 1 ? "grupal" : "individual"} · Clase suelta`;
+
   return (
     <RegistroPageFrame
       title="Clase no programada"
+      lines={[typeLine, formatParticipantNamesSentence(participantNames)].filter((line) => line !== "")}
       subtitle={
         <>
           {formatInstantDayLongTime(scheduledStartAt)} · {ADHOC_OUTCOME_LABEL[registration.outcome]}

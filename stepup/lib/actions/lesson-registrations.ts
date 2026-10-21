@@ -397,11 +397,15 @@ export async function getLessonRegistrationForCalendarLessonAction(calendarLesso
 }
 
 /** Persists pedagogy for an unfinished class without completing attendance. */
-export async function saveLessonContentDraftAction(input: { lessonRegistrationId: string; content: PedagogicalContentInput }): Promise<ActionResult> {
+export async function saveLessonContentDraftAction(input: { lessonRegistrationId: string; content: PedagogicalContentInput; homeworkDescription?: string | null; homeworkDueDate?: string | null; actualDurationMinutes?: number | null; scheduledStartAt?: string | null }): Promise<ActionResult> {
   if (!validatePedagogicalContent(input.content)) return { error: "Revisá el contenido pedagógico de la clase." };
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await saveLessonContentDraft(ctx, input.lessonRegistrationId, input.content);
+    // La duración real se guarda como inicio + duración (igual que al finalizar); sin duración válida no se toca.
+    const startIso = input.scheduledStartAt ?? null;
+    const duration = input.actualDurationMinutes && input.actualDurationMinutes > 0 ? input.actualDurationMinutes : null;
+    const times = startIso && duration ? { actualStartedAt: startIso, actualEndedAt: new Date(new Date(startIso).getTime() + duration * 60_000).toISOString() } : {};
+    await saveLessonContentDraft(ctx, input.lessonRegistrationId, input.content, { homeworkDescription: input.homeworkDescription, homeworkDueDate: input.homeworkDueDate, ...times });
   } catch (error) {
     return { error: actionErrorMessage("lesson-registrations", error) };
   }

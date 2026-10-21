@@ -112,11 +112,13 @@ test("Series: Finalizar sigue siendo directo (sin confirmación nueva), «Editar
 test("Registro: ningún diálogo de confirmación antes de finalizar, «Finalizar registro» sólo aparece con todos completos y el borrador de edición conserva su clave", () => {
   const ws = code("app/(app)/registro/[calendarLessonId]/registration-workspace.tsx");
   assert.doesNotMatch(ws, /<Dialog|confirmingFinalize|¿Finalizar/, "no hay confirmación previa");
-  assert.match(ws, /\{allComplete \? \(\s*<Button variant="primary" size="lg" onClick=\{handleFinalize\}/);
+  // Un grupo incompleto sólo ofrece «Guardar progreso»; «Finalizar registro» aparece únicamente con todos completos (en una clase individual, «Guardar registro»).
+  assert.match(ws, /countsAsClass && isGroup && !allComplete \? \(\s*<>\s*<Button variant="primary" size="lg" onClick=\{handleSaveProgress\}/);
+  assert.match(ws, /<Button variant="primary" size="lg" onClick=\{handleFinalize\}/);
   assert.match(ws, /useDraftOperationId\(`teacherflow:registro-edit:\$\{registration\.id\}`\)/);
   assert.match(ws, /editCompletedRegistrationAction\(\{/);
   assert.match(ws, /finalizeRegistrationAction\(\{ lessonRegistrationId: registration\.id, \.\.\.headerFields \}\)/);
-  assert.match(ws, /aria-expanded=\{open\}/);
+  assert.match(ws, /aria-expanded=\{isOpen\}/);
   const form = code("app/(app)/registro/nuevo/nuevo-registro-form.tsx");
   assert.match(form, /useDraftOperationId\(ADHOC_OPERATION_ID_STORAGE_KEY\)/);
   assert.equal([...form.matchAll(/variant="primary"/g)].length, 1);

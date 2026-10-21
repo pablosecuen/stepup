@@ -283,16 +283,17 @@ test("cada campo tiene nombre accesible: etiqueta asociada o envolvente, o aria-
   const registro = code("app/(app)/registro/nuevo/nuevo-registro-form.tsx");
   for (const label of ["Modalidad", "Resultado", "Buscar alumno activo"]) assert.match(registro, new RegExp(`aria-label="${label}"`));
   // Campos del registro de clase: etiqueta envolvente.
-  const workspace = code("app/(app)/registro/[calendarLessonId]/registration-workspace.tsx");
-  assert.match(workspace, /<Field label="Nota general \(1-10, opcional\)" htmlFor=\{`\$\{uid\}-grade`\}>/);
-  assert.match(workspace, /<Field label="Observaciones" htmlFor=\{`\$\{uid\}-obs`\}>/);
+  const parts = code("components/registro/registration-form-parts.tsx");
+  assert.match(parts, /<Field label="Nota general de la clase \(1-10\)" htmlFor=\{`\$\{id\}-grade`\}>/);
+  assert.match(parts, /<Field label="Observación individual \(puede aparecer en su reporte\)" htmlFor=\{`\$\{id\}-obs`\}>/);
 });
 
 test("los botones de selección dicen su estado (aria-pressed) y no dependen sólo del color", () => {
   const checks: Array<[string, RegExp]> = [
     ["app/(app)/calendario/nueva/new-lesson-form.tsx", /\["single", "Clase única"\][\s\S]*\["series", "Serie semanal"\][\s\S]*aria-pressed=\{mode === value\}/],
-    ["app/(app)/registro/[calendarLessonId]/registration-workspace.tsx", /aria-pressed=\{form\.attendanceStatus === option\}/],
-    ["app/(app)/registro/[calendarLessonId]/registration-workspace.tsx", /aria-pressed=\{form\.homeworkReviews\[/],
+    ["components/registro/registration-form-parts.tsx", /aria-pressed=\{selected\}[\s\S]*\{selected && <CheckIcon/],
+    ["components/registro/registration-form-parts.tsx", /selected=\{status === option\}/],
+    ["components/registro/registration-form-parts.tsx", /selected=\{reviews\[homeworkReviewSelectionKey\(task\.taskId, studentId\)\] === outcome\}/],
     ["components/calendar/weekday-schedule-editor.tsx", /aria-pressed=\{cycleLengthWeeks === option\.value\}/],
     ["components/students/profile/reportes-tab.tsx", /aria-pressed=\{selectedMonths\.has\(month\)\}[\s\S]*<CheckIcon/],
     ["app/(app)/registro/nuevo/nuevo-registro-form.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],

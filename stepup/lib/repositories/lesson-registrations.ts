@@ -642,9 +642,24 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
     .sort((a, b) => (a.dateKey < b.dateKey ? -1 : 1));
 }
 
-export async function saveLessonContentDraft(ctx: AuthenticatedDbContext, registrationId: string, content: PedagogicalContentInput): Promise<void> {
+/** Datos del encabezado que «Guardar progreso» guarda junto con el contenido: sólo se envía lo que viene (ausente = no se toca). */
+export interface LessonDraftHeader {
+  homeworkDescription?: string | null;
+  homeworkDueDate?: string | null;
+  actualStartedAt?: string | null;
+  actualEndedAt?: string | null;
+}
+
+export async function saveLessonContentDraft(ctx: AuthenticatedDbContext, registrationId: string, content: PedagogicalContentInput, header: LessonDraftHeader = {}): Promise<void> {
   const { error } = await ctx.supabase.rpc("save_lesson_content_draft", {
-    p_payload: { lesson_registration_id: registrationId, pedagogical_content: pedagogicalContentPayload(content) },
+    p_payload: {
+      lesson_registration_id: registrationId,
+      pedagogical_content: pedagogicalContentPayload(content),
+      ...(header.homeworkDescription !== undefined ? { homework_description: header.homeworkDescription ?? "" } : {}),
+      ...(header.homeworkDueDate !== undefined ? { homework_due_date: header.homeworkDueDate ?? "" } : {}),
+      ...(header.actualStartedAt !== undefined ? { actual_started_at: header.actualStartedAt ?? "" } : {}),
+      ...(header.actualEndedAt !== undefined ? { actual_ended_at: header.actualEndedAt ?? "" } : {}),
+    },
   });
   if (error) throw error;
 }
