@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lanAddresses, requestReload } from "../phone-extraction/auto-review.mjs";
-import { buildCopyModule, COPY_IMPORT_LINE, COPY_TEMP_MODULE, parsePhoneCopyReport, parsePhoneProtectionReport } from "../../lib/transfer/phone-copy-module.ts";
+import { buildCopyModule, COPY_IMPORT_LINE, COPY_TEMP_MODULE, parsePhoneCopyReport, parsePhoneDiagnosticReport, parsePhoneProtectionReport } from "../../lib/transfer/phone-copy-module.ts";
 
 /** Agrega (o quita) una línea de import tras el último import de un archivo, respetando LF/CRLF. */
 export function setImportLine(source, line, enabled) {
@@ -85,6 +85,11 @@ export function createPhoneChannel({ appDir, metroPort = 8082, log = () => {}, r
           log(`  teléfono: ${done}/${total} archivos`);
         },
         onResult: (value) => {
+          if (mode === "diagnostic") {
+            const diagnostic = parsePhoneDiagnosticReport(value);
+            finish(diagnostic.ok ? { state: "listo", steps: diagnostic.steps } : { state: "error", error: diagnostic.error });
+            return;
+          }
           if (mode === "protection") {
             const protection = parsePhoneProtectionReport(value);
             finish(protection.ok ? { state: "listo", protection: protection.report } : { state: "error", error: protection.error });

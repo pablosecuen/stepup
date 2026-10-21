@@ -8,7 +8,7 @@
 export const COPY_TEMP_MODULE = "autoCopyTemp.ts";
 export const COPY_IMPORT_LINE = "import './autoCopyTemp';";
 
-export type CopyMode = "trial" | "full" | "protection";
+export type CopyMode = "trial" | "full" | "protection" | "diagnostic";
 
 /**
  * Módulo temporal de SÓLO LECTURA que informa el marcador de protección de datos de la app (`@teacherflow/protection_state`): si todo lo cargado en el teléfono ya llegó al
@@ -21,6 +21,11 @@ import { createPhoneReadDeps } from './phoneExtractionDeps';
 const TARGETS: readonly string[] = ${JSON.stringify(targets)};
 const TOKEN = ${JSON.stringify(token)};
 const MODE: 'trial' | 'full' | 'protection' = "protection";
+
+function describeError(error: unknown): string {
+  const e = error as { name?: unknown; message?: unknown } | null;
+  return (String(e?.name ?? 'Error') + ': ' + String(e?.message ?? error)).replace(/file:[^ ]*/g, '<ruta>').slice(0, 200);
+}
 
 async function send(body: string): Promise<boolean> {
   for (const base of TARGETS) {
@@ -44,8 +49,8 @@ async function readProtection(): Promise<void> {
     const state = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
     const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
     await send(JSON.stringify({ mode: MODE, protection: state ? { present: true, localRevision: num(state.localRevision), lastProtectedRevision: num(state.lastProtectedRevision), pendingFileUploads: num(state.pendingFileUploads), dirty: state.dirtySince !== null && state.dirtySince !== undefined, lastSuccessfulProtectionAt: typeof state.lastSuccessfulProtectionAt === 'string' ? state.lastSuccessfulProtectionAt : null } : { present: false } }));
-  } catch {
-    await send(JSON.stringify({ error: 'fallo_en_el_telefono' }));
+  } catch (error) {
+    await send(JSON.stringify({ error: 'fallo_en_el_telefono', detail: describeError(error) }));
   }
 }
 
@@ -55,7 +60,102 @@ setTimeout(() => {
 `;
 }
 
+/**
+ * Módulo temporal de DIAGNÓSTICO (no sube ni cambia nada): ejecuta uno por uno los pasos de la copia sobre el primer archivo (sesión, usuario, plan, lista de reportes, lectura del archivo, formato,
+ * huella SHA-256 y una función de lectura de la cuenta) y devuelve, por paso, si funcionó o el mensaje del error (sin rutas ni datos).
+ */
+function buildDiagnosticModule({ targets, token }: { targets: string[]; token: string }): string {
+  return `// TEMPORAL — diagnóstico de la copia (no sube ni cambia nada). Se borra solo al terminar.
+import { buildExtractionPlan, DEVICE_LOCAL_KEYS, KEYS } from './phoneExtraction/plan';
+import { sniffKind } from './phoneExtraction/sniff';
+import { createPhoneExtractionDeps } from './phoneExtractionDeps';
+
+const TARGETS: readonly string[] = ${JSON.stringify(targets)};
+const TOKEN = ${JSON.stringify(token)};
+const MODE: 'trial' | 'full' | 'protection' | 'diagnostic' = "diagnostic";
+
+function describeError(error: unknown): string {
+  const e = error as { name?: unknown; message?: unknown } | null;
+  return (String(e?.name ?? 'Error') + ': ' + String(e?.message ?? error)).replace(/file:[^ ]*/g, '<ruta>').slice(0, 200);
+}
+
+async function send(body: string): Promise<boolean> {
+  for (const base of TARGETS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const response = await fetch(base + '/resultado/' + TOKEN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
+      if (response.ok) return true;
+    } catch {
+      // se prueba la siguiente dirección
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return false;
+}
+
+async function diagnose(): Promise<void> {
+  const steps: Array<{ step: string; ok: boolean; detail: string }> = [];
+  const run = async (step: string, fn: () => Promise<string>) => {
+    try {
+      steps.push({ step, ok: true, detail: await fn() });
+    } catch (error) {
+      steps.push({ step, ok: false, detail: describeError(error) });
+    }
+  };
+  const deps = createPhoneExtractionDeps();
+  steps.push({ step: 'sesion', ok: deps !== null, detail: deps ? 'hay cliente de la cuenta' : 'no hay cliente de la cuenta en el teléfono' });
+  if (deps) {
+    await run('usuario', async () => ((await deps.ownerId()) ? 'sesión con usuario' : 'SIN usuario'));
+    await run('funcion_de_lectura', async () => {
+      const r = await deps.rpc('get_transfer_state', {});
+      return r.error ? 'error: ' + r.error.message.slice(0, 120) : 'responde';
+    });
+    await run('reportes', async () => String((await deps.listReports()).length) + ' reportes');
+    let first: { uri: string; mimeType: string } | null = null;
+    await run('plan', async () => {
+      const device: Record<string, string | null> = {};
+      for (const key of DEVICE_LOCAL_KEYS) device[key] = await deps.readKey(key);
+      const plan = buildExtractionPlan({ lessonsRaw: await deps.readKey(KEYS.lessons), reportsRaw: await deps.readKey(KEYS.reports), materialsRaw: await deps.readKey(KEYS.materials), deviceLocal: device });
+      first = plan.items.find((i) => i.mimeType === 'image/heic') ?? plan.items[0] ?? null;
+      return String(plan.items.length) + ' archivos en el plan';
+    });
+    if (first) {
+      const item = first as { uri: string; mimeType: string };
+      let bytes: Uint8Array | null = null;
+      await run('info_del_archivo', async () => {
+        const info = await deps.fileInfo(item.uri);
+        return info.exists ? 'existe, ' + String(info.size) + ' bytes' : 'NO existe';
+      });
+      await run('lectura_del_archivo', async () => {
+        bytes = await deps.readBytes(item.uri);
+        return String(bytes.length) + ' bytes leídos, formato ' + sniffKind(bytes);
+      });
+      if (bytes) {
+        const read = bytes as Uint8Array;
+        await run('huella_sha256', async () => {
+          const hex = await deps.sha256Hex(read);
+          return 'huella de ' + String(hex.length) + ' caracteres';
+        });
+        await run('copia_para_subir', async () => {
+          const copy = read.buffer.slice(read.byteOffset, read.byteOffset + read.byteLength);
+          return 'ArrayBuffer de ' + String(copy.byteLength) + ' bytes';
+        });
+      }
+    }
+  }
+  await send(JSON.stringify({ mode: MODE, diagnostic: steps }));
+}
+
+setTimeout(() => {
+  void diagnose();
+}, 6000);
+`;
+}
+
 export function buildCopyModule({ targets, token, mode }: { targets: string[]; token: string; mode: CopyMode }): string {
+  if (mode === "diagnostic") return buildDiagnosticModule({ targets, token });
   if (mode === "protection") return buildProtectionModule({ targets, token });
   return `// TEMPORAL — copia de los archivos del teléfono a la cuenta (no destructiva). Se borra sola al terminar. Devuelve únicamente cantidades a la computadora local.
 import { runPhoneExtraction } from './phoneExtraction/runner';
@@ -64,6 +164,11 @@ import { createPhoneExtractionDeps } from './phoneExtractionDeps';
 const TARGETS: readonly string[] = ${JSON.stringify(targets)};
 const TOKEN = ${JSON.stringify(token)};
 const MODE: 'trial' | 'full' | 'protection' = ${JSON.stringify(mode)};
+
+function describeError(error: unknown): string {
+  const e = error as { name?: unknown; message?: unknown } | null;
+  return (String(e?.name ?? 'Error') + ': ' + String(e?.message ?? error)).replace(/file:[^ ]*/g, '<ruta>').slice(0, 200);
+}
 
 async function send(path: string, body: string): Promise<boolean> {
   for (const base of TARGETS) {
@@ -92,8 +197,8 @@ async function autoCopy(): Promise<void> {
     }
     const summary = await runPhoneExtraction(deps, MODE === 'trial' ? { maxItems: 1, prefer: 'image/heic' } : {});
     await send('/resultado/', JSON.stringify({ ...summary, unreadable: summary.unreadable.length }));
-  } catch {
-    await send('/resultado/', JSON.stringify({ error: 'fallo_en_el_telefono' }));
+  } catch (error) {
+    await send('/resultado/', JSON.stringify({ error: 'fallo_en_el_telefono', detail: describeError(error) }));
   }
 }
 
@@ -117,7 +222,7 @@ export interface PhoneCopyReport {
 export function parsePhoneCopyReport(value: unknown): { ok: true; report: PhoneCopyReport } | { ok: false; error: string } {
   const v = value as Record<string, unknown> | null;
   if (!v || typeof v !== "object") return { ok: false, error: "respuesta_invalida" };
-  if (typeof v.error === "string") return { ok: false, error: v.error.slice(0, 40) };
+  if (typeof v.error === "string") return { ok: false, error: v.error.slice(0, 40) + (typeof v.detail === "string" ? ` (${v.detail.slice(0, 200)})` : "") };
   const counts = v.counts as Record<string, Record<string, unknown>> | undefined;
   const kinds = ["lesson_attachment", "material", "report_pdf"] as const;
   if (!counts || typeof v.complete !== "boolean" || typeof v.trial !== "boolean" || !Array.isArray(v.failed) || !Array.isArray(v.missingAtOrigin)) return { ok: false, error: "respuesta_invalida" };
@@ -154,7 +259,7 @@ export interface PhoneProtectionReport {
 export function parsePhoneProtectionReport(value: unknown): { ok: true; report: PhoneProtectionReport } | { ok: false; error: string } {
   const v = value as Record<string, unknown> | null;
   if (!v || typeof v !== "object") return { ok: false, error: "respuesta_invalida" };
-  if (typeof v.error === "string") return { ok: false, error: v.error.slice(0, 40) };
+  if (typeof v.error === "string") return { ok: false, error: v.error.slice(0, 40) + (typeof v.detail === "string" ? ` (${v.detail.slice(0, 200)})` : "") };
   const p = v.protection as Record<string, unknown> | undefined;
   if (!p || typeof p.present !== "boolean") return { ok: false, error: "respuesta_invalida" };
   if (!p.present) return { ok: true, report: { present: false, localRevision: 0, lastProtectedRevision: 0, pendingFileUploads: 0, dirty: false, lastSuccessfulProtectionAt: null } };
@@ -171,4 +276,19 @@ export function parsePhoneProtectionReport(value: unknown): { ok: true; report: 
       lastSuccessfulProtectionAt: typeof p.lastSuccessfulProtectionAt === "string" ? p.lastSuccessfulProtectionAt : null,
     },
   };
+}
+
+export interface PhoneDiagnosticStep {
+  step: string;
+  ok: boolean;
+  detail: string;
+}
+
+/** Informe del diagnóstico del teléfono (dato externo: sólo se acepta con la forma esperada). */
+export function parsePhoneDiagnosticReport(value: unknown): { ok: true; steps: PhoneDiagnosticStep[] } | { ok: false; error: string } {
+  const v = value as Record<string, unknown> | null;
+  if (!v || typeof v !== "object") return { ok: false, error: "respuesta_invalida" };
+  if (typeof v.error === "string") return { ok: false, error: v.error.slice(0, 40) };
+  if (!Array.isArray(v.diagnostic)) return { ok: false, error: "respuesta_invalida" };
+  return { ok: true, steps: (v.diagnostic as Array<Record<string, unknown>>).map((x) => ({ step: String(x.step ?? "?").slice(0, 40), ok: x.ok === true, detail: String(x.detail ?? "").slice(0, 240) })) };
 }

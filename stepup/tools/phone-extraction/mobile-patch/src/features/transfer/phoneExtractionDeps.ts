@@ -4,7 +4,7 @@ import { File } from 'expo-file-system';
 
 import { getSupabaseClient } from '../account/lib/supabaseClient';
 import type { RunnerDeps } from './phoneExtraction/runner';
-import { supabaseDeps, toArrayBuffer } from './phoneExtraction/supabase-deps';
+import { supabaseDeps } from './phoneExtraction/supabase-deps';
 
 /**
  * Capacidades REALES del teléfono para la extracción (ver `phoneExtraction/runner.ts`, que es el mismo código que se prueba en Node con un teléfono simulado).
@@ -31,7 +31,7 @@ export function createPhoneReadDeps(): Pick<RunnerDeps, 'readKey' | 'fileInfo' |
       }
     },
     readBytes: async (uri) => new File(uri).bytes(),
-    sha256Hex: async (bytes) => toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, toArrayBuffer(bytes))),
+    sha256Hex: async (bytes) => toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource)),
   };
 }
 

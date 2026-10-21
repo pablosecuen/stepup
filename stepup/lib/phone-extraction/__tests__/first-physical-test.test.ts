@@ -43,3 +43,9 @@ test("el parche incluye el reconocimiento del formato real y los tres archivos g
   assert.equal(generated, "// GENERADO por tools/phone-extraction/build-mobile-patch.mjs a partir de lib/phone-extraction (web). No editar a mano.\n" + source);
   assert.equal(/^import .*from/m.test(source), false, "el reconocimiento de formato no depende de nada: viaja tal cual al teléfono");
 });
+
+test("la huella SHA-256 se calcula sobre el Uint8Array (expo-crypto en el teléfono NO acepta un ArrayBuffer: «The 3rd argument cannot be cast»)", () => {
+  const deps = read(join(PATCH, "src", "features", "transfer", "phoneExtractionDeps.ts"));
+  assert.match(deps, /Crypto\.digest\(Crypto\.CryptoDigestAlgorithm\.SHA256, bytes as unknown as BufferSource\)/);
+  assert.doesNotMatch(deps.slice(deps.indexOf("sha256Hex")), /toArrayBuffer/, "la huella no recibe un ArrayBuffer");
+});
