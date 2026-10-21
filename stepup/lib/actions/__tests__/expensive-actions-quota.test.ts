@@ -37,7 +37,7 @@ const order = (source: string, first: string, second: string) => {
 
 test("reportes: la vista previa, el PDF al generar y la regeneración piden cuota ANTES de trabajar", () => {
   const source = read("lib/actions/reports.ts");
-  assert.ok(order(source, 'consumeActionQuota(ctx, "report_preview")', "listCompletedRegistrationsForStudentReport(ctx, input.studentId)"), "vista previa");
+  assert.ok(order(source, 'consumeActionQuota(ctx, "report_preview")', "listCompletedRegistrationsForStudentReport(ctx, input.studentId, { withContent: true })"), "vista previa");
   const generate = source.slice(source.indexOf("export async function generateStudentReportAction"), source.indexOf("export async function startNewReportDraftAction"));
   assert.ok(order(generate, 'consumeActionQuota(ctx, "report_pdf")', "await renderReportPdf("), "generar");
   const regenerate = source.slice(source.indexOf("export async function regenerateReportPdfAction"), source.indexOf("export async function deleteReportAction"));

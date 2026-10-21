@@ -16,6 +16,8 @@ export interface ReportRecordSnapshot {
   teacherNotes: StudentReportTeacherNotes;
   studentName: string;
   monthsSummaryLabel: string;
+  /** Evidencias (fotos/PDF) elegidas para el reporte. Ausente en reportes anteriores = ninguna. */
+  selectedEvidenceIds?: string[];
 }
 
 export const REPORT_RECORD_SCHEMA_VERSION = 1;

@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextArea } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
-import { formatCivilDateRange, formatCivilMonth, formatInstantDate } from "@/lib/format/date-format";
+import { formatCivilDate, formatCivilDateRange, formatCivilMonth, formatInstantDate } from "@/lib/format/date-format";
 import { formatGrade, formatHours, formatPercent } from "@/lib/format/number-format";
 
 /** Reemplaza (si ya existe, por id) o agrega al frente la fila canónica devuelta por el servidor — nunca una entrada construida desde el formulario local. */
@@ -56,6 +56,8 @@ export function ReportPreviewCard({
   onIncludeClassDetail,
   includePunctualitySummary,
   onIncludePunctualitySummary,
+  selectedEvidenceIds,
+  onToggleEvidence,
   isGenerating,
   onGenerate,
 }: {
@@ -74,9 +76,14 @@ export function ReportPreviewCard({
   onIncludeClassDetail: (value: boolean) => void;
   includePunctualitySummary: boolean;
   onIncludePunctualitySummary: (value: boolean) => void;
+  /** Fotos y PDF elegidos para el reporte (ninguno viene preseleccionado). */
+  selectedEvidenceIds: string[];
+  onToggleEvidence: (attachmentId: string) => void;
   isGenerating: boolean;
   onGenerate: () => void;
 }) {
+  const topicsSeen = preview.data.topicsSeen ?? [];
+  const evidenceCandidates = preview.data.evidenceCandidates ?? [];
   return (
     <Card>
       <h2 className="font-display text-section font-semibold">{preview.monthsSummaryLabel}</h2>
@@ -104,6 +111,19 @@ export function ReportPreviewCard({
         </div>
       )}
 
+      {topicsSeen.length > 0 && (
+        <div className="mt-4">
+          <p className="text-label font-bold uppercase text-textMuted">Temas trabajados</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {topicsSeen.map((topic) => (
+              <li key={topic} className="inline-flex min-h-[26px] items-center rounded-pill border border-border bg-paperDeep px-2.5 text-[12.5px] font-[650] text-textSecondary [overflow-wrap:anywhere]">
+                {topic}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-5 flex flex-col gap-5">
         <Field label="Vista previa (editable)" htmlFor="narrativeText">
           <TextArea id="narrativeText" rows={8} value={narrativeText} onChange={(e) => onNarrativeText(e.target.value)} />
@@ -124,6 +144,26 @@ export function ReportPreviewCard({
           </Field>
         </div>
       </div>
+
+      {evidenceCandidates.length > 0 && (
+        <fieldset className="mt-5 min-w-0">
+          <legend className="text-label font-bold uppercase text-textMuted">Evidencias y materiales (opcional)</legend>
+          <p className="mt-1 text-[14px] text-textMuted">Elegí qué fotos o PDF de las clases incluir en el reporte. Ninguna se incluye si no la elegís.</p>
+          <ul className="mt-2 flex flex-col">
+            {evidenceCandidates.map((candidate) => (
+              <li key={candidate.attachmentId}>
+                <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
+                  <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={selectedEvidenceIds.includes(candidate.attachmentId)} onChange={() => onToggleEvidence(candidate.attachmentId)} />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    <span className="font-[650] text-textPrimary">{candidate.name}</span> · {candidate.kind === "image" ? "Foto" : "PDF"} · {formatCivilDate(candidate.dateKey)}
+                    {candidate.caption && <span className="block text-[13px] text-textMuted">{candidate.caption}</span>}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
 
       <div className="mt-4 flex flex-col">
         <label className="flex min-h-11 items-center gap-3 text-[15px] text-textSecondary">
@@ -164,6 +204,7 @@ export function ReportesTabContent({
   const [recommendations, setRecommendations] = useState("");
   const [includeClassDetail, setIncludeClassDetail] = useState(true);
   const [includePunctualitySummary, setIncludePunctualitySummary] = useState(true);
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isStartingNew, setIsStartingNew] = useState(false);
@@ -177,6 +218,7 @@ export function ReportesTabContent({
 
   function resetForm() {
     setPreview(null);
+    setSelectedEvidenceIds([]);
     setSelectedMonths(new Set());
     setNarrativeText("");
     setGeneralComment("");
@@ -193,6 +235,7 @@ export function ReportesTabContent({
       return next;
     });
     setPreview(null);
+    setSelectedEvidenceIds([]);
   }
 
   /** Previsualizar NUNCA rota el borrador activo — es una lectura pura, no una transición. */
@@ -212,6 +255,7 @@ export function ReportesTabContent({
       return;
     }
     setPreview(result.data ?? null);
+    setSelectedEvidenceIds([]);
     setNarrativeText(result.data?.suggestedNarrative ?? "");
   }
 
@@ -229,6 +273,7 @@ export function ReportesTabContent({
       teacherNotes: { generalComment, behaviorAndParticipation, nextObjectives, recommendations },
       includeClassDetail,
       includePunctualitySummary,
+      selectedEvidenceIds,
     }));
     setIsGenerating(false);
     if (result.error) {
@@ -398,6 +443,8 @@ export function ReportesTabContent({
           onIncludeClassDetail={setIncludeClassDetail}
           includePunctualitySummary={includePunctualitySummary}
           onIncludePunctualitySummary={setIncludePunctualitySummary}
+          selectedEvidenceIds={selectedEvidenceIds}
+          onToggleEvidence={(attachmentId) => setSelectedEvidenceIds((current) => (current.includes(attachmentId) ? current.filter((id) => id !== attachmentId) : [...current, attachmentId]))}
           isGenerating={isGenerating}
           onGenerate={handleGenerate}
         />

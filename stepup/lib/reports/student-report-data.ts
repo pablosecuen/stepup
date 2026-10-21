@@ -12,11 +12,8 @@ import { SKILLS, SKILL_LABEL, type Skill } from "../lessons/skills.ts";
  * alumnos (cada registro ya viene filtrado a un solo `studentId` por el
  * repositorio, antes de llegar acá). Pura.
  *
- * Diferencia real documentada respecto del móvil: no existe un campo de
- * "temas vistos" (`topicsSeen`) en el modelo de datos web — Fase 4 nunca
- * portó ese campo del registro pedagógico (no forma parte de
- * `lesson_registration_evaluations`/`lesson_registrations` reales) — se
- * omite acá en vez de inventarlo. "Puntualidad" usa el campo real
+ * Temas vistos (`topicsSeen`) y evidencias (fotos/PDF adjuntos): salen del contenido pedagógico de cada clase (`topics` con estado «visto» y los adjuntos vigentes), igual que en el móvil. Un adjunto
+ * sin alumno es común a toda la clase; uno de un alumno sólo entra al reporte de ESE alumno. "Puntualidad" usa el campo real
  * `lateMinutes` de la asistencia (`status: 'tarde'`), equivalente al
  * `studentArrival` del móvil pero con nombre/forma propios del esquema web.
  */
@@ -28,6 +25,10 @@ export interface RegistrationForStudentReport {
   actualStartedAt: string | null;
   actualEndedAt: string | null;
   homeworkDescription: string | null; // tarea común del registro
+  /** Textos de los temas marcados «visto» en esa clase. Si falta (datos anteriores), no hay temas. */
+  topicsSeen?: string[];
+  /** Adjuntos vigentes y disponibles que pueden ir al reporte de este alumno (comunes a la clase o suyos). */
+  attachments?: { attachmentId: string; kind: "pdf" | "image"; name: string; caption: string | null }[];
   attendance: { status: "presente" | "ausente" | "tarde" | "ausente_aviso" | "sin_registrar"; lateMinutes: number | null } | null;
   evaluation: {
     generalGrade: number | null;
@@ -44,8 +45,19 @@ export interface StudentReportSkillNote {
   averageGrade: number | null;
 }
 
+export interface StudentReportEvidenceCandidate {
+  attachmentId: string;
+  registrationId: string;
+  dateKey: string;
+  kind: "pdf" | "image";
+  name: string;
+  caption: string | null;
+}
+
 export interface StudentReportLessonDetail {
   dateKey: string;
+  /** Temas vistos en la clase. Ausente en reportes anteriores. */
+  topicsSeen?: string[];
   attended: boolean;
   attendanceStatus: string | null;
   generalGrade: number | null;
@@ -67,6 +79,10 @@ export interface StudentReportPunctualitySummary {
 }
 
 export interface StudentReportData {
+  /** Temas vistos en el período, sin repetir. Ausente en reportes anteriores. */
+  topicsSeen?: string[];
+  /** Fotos y PDF que la profesora puede elegir para el reporte (nunca se incluyen sin elegirlos). Ausente en reportes anteriores. */
+  evidenceCandidates?: StudentReportEvidenceCandidate[];
   classesHeld: number;
   hoursTaught: number;
   skillNotes: StudentReportSkillNote[];
@@ -100,6 +116,11 @@ export function buildStudentReportData(registrations: readonly RegistrationForSt
   const strengths = [...new Set(registrations.flatMap((r) => r.evaluation?.strengths ?? []).filter((s) => s.trim() !== ""))];
   const areasToImprove = [...new Set(registrations.flatMap((r) => r.evaluation?.areasToImprove ?? []).filter((s) => s.trim() !== ""))];
 
+  const topicsSeen = [...new Set(registrations.flatMap((r) => r.topicsSeen ?? []).map((t) => t.trim()).filter((t) => t !== ""))];
+  const evidenceCandidates: StudentReportEvidenceCandidate[] = registrations
+    .flatMap((r) => (r.attachments ?? []).map((a) => ({ attachmentId: a.attachmentId, registrationId: r.registrationId, dateKey: r.dateKey, kind: a.kind, name: a.name, caption: a.caption })))
+    .sort((a, b) => (a.dateKey < b.dateKey ? -1 : a.dateKey > b.dateKey ? 1 : a.name < b.name ? -1 : 1));
+
   const homeworkAssigned = [
     ...new Set(
       registrations.flatMap((r) => [r.homeworkDescription, r.evaluation?.individualHomeworkDescription ?? null]).filter((h): h is string => !!h && h.trim() !== "")
@@ -128,6 +149,7 @@ export function buildStudentReportData(registrations: readonly RegistrationForSt
   const lessonDetails: StudentReportLessonDetail[] = registrations
     .map((r) => ({
       dateKey: r.dateKey,
+      topicsSeen: [...new Set((r.topicsSeen ?? []).map((t) => t.trim()).filter((t) => t !== ""))],
       attended: r.attendance?.status === "presente" || r.attendance?.status === "tarde",
       attendanceStatus: r.attendance?.status ?? null,
       generalGrade: r.evaluation?.generalGrade ?? null,
@@ -135,5 +157,5 @@ export function buildStudentReportData(registrations: readonly RegistrationForSt
     }))
     .sort((a, b) => (a.dateKey < b.dateKey ? -1 : 1));
 
-  return { classesHeld, hoursTaught: Math.round(hoursTaught * 10) / 10, skillNotes, generalAverageGrade, strengths, areasToImprove, homeworkAssigned, attendance, punctuality, lessonDetails };
+  return { topicsSeen, evidenceCandidates, classesHeld, hoursTaught: Math.round(hoursTaught * 10) / 10, skillNotes, generalAverageGrade, strengths, areasToImprove, homeworkAssigned, attendance, punctuality, lessonDetails };
 }

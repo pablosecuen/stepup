@@ -29,6 +29,11 @@ export function buildDeterministicReportNarrative(data: StudentReportData, notes
         (data.attendance.ratePercent !== null ? ` La asistencia registrada fue del ${formatPercent(data.attendance.ratePercent)}.` : "")
     );
 
+    const topicsSeen = data.topicsSeen ?? [];
+    if (topicsSeen.length > 0) {
+      paragraphs.push(`Temas trabajados durante el período: ${topicsSeen.join(", ")}.`);
+    }
+
     if (data.generalAverageGrade !== null) {
       paragraphs.push(`El promedio general del período fue ${formatGrade(data.generalAverageGrade)}.`);
     }

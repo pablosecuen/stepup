@@ -22,6 +22,8 @@ import { evaluateGenerateReportOutcome } from "@/lib/reports/generate-outcome";
 import { buildStudentReportData, type StudentReportData } from "@/lib/reports/student-report-data";
 import { buildDeterministicReportNarrative, type StudentReportTeacherNotes } from "@/lib/reports/narrative";
 import { renderReportPdf } from "@/lib/reports/pdf";
+import { EMPTY_EVIDENCE, resolveSelectedEvidence } from "@/lib/reports/evidence";
+import { prepareReportEvidence } from "@/lib/reports/evidence-render";
 import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
 import type { ActionResult } from "./lesson-registrations";
 import { actionErrorMessage } from "@/lib/errors/action-error";
@@ -63,6 +65,13 @@ export async function loadStudentReportMonthsAction(studentId: string): Promise<
   }
 }
 
+/** Evidencias de un reporte ya guardado: SIEMPRE las que eligió la profesora al generarlo (la selección vive en el snapshot); un reporte anterior no tiene ninguna. */
+async function evidenceFromSnapshot(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, snapshot: { data: StudentReportData; selectedEvidenceIds?: string[] }) {
+  const ids = snapshot.selectedEvidenceIds ?? [];
+  if (ids.length === 0) return EMPTY_EVIDENCE;
+  return prepareReportEvidence(ctx, resolveSelectedEvidence(ids, snapshot.data.evidenceCandidates));
+}
+
 export interface StudentReportPreview {
   studentName: string;
   monthsSummaryLabel: string;
@@ -81,7 +90,7 @@ export async function previewStudentReportAction(input: { studentId: string; sel
     if (!student) return { error: "Alumno no encontrado." };
 
     const todayDateKey = localDateKeyInTimeZone(new Date(), ARGENTINA_TIME_ZONE);
-    const registrations = await listCompletedRegistrationsForStudentReport(ctx, input.studentId);
+    const registrations = await listCompletedRegistrationsForStudentReport(ctx, input.studentId, { withContent: true });
     const range = computeSelectedMonthsRange(
       registrations.map((r) => ({ countsAsClass: true, dateKey: r.dateKey })),
       input.selectedMonths,
@@ -117,6 +126,8 @@ export interface GenerateStudentReportInput {
   teacherNotes: StudentReportTeacherNotes;
   includeClassDetail: boolean;
   includePunctualitySummary: boolean;
+  /** Fotos y PDF elegidos para el reporte (de `data.evidenceCandidates`); nunca se incluye ninguno sin elegirlo. */
+  selectedEvidenceIds?: string[];
 }
 
 export interface GenerateStudentReportResult {
@@ -136,7 +147,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
     if (!student) return { error: "Alumno no encontrado." };
 
     const todayDateKey = localDateKeyInTimeZone(new Date(), ARGENTINA_TIME_ZONE);
-    const registrations = await listCompletedRegistrationsForStudentReport(ctx, input.studentId);
+    const registrations = await listCompletedRegistrationsForStudentReport(ctx, input.studentId, { withContent: true });
     const range = computeSelectedMonthsRange(
       registrations.map((r) => ({ countsAsClass: true, dateKey: r.dateKey })),
       input.selectedMonths,
@@ -149,6 +160,8 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
     const data = buildStudentReportData(inRange);
     const monthsSummaryLabel = buildMonthsSummaryLabel(input.selectedMonths);
     const title = `Reporte de ${student.name} — ${monthsSummaryLabel}`;
+    // Sólo se puede elegir lo que ofrece ESTE reporte (adjuntos vigentes de las clases dictadas del alumno en el período); nunca se incluye nada sin elegirlo.
+    const selectedEvidenceIds = resolveSelectedEvidence(input.selectedEvidenceIds, data.evidenceCandidates).map((candidate) => candidate.attachmentId);
 
     // Reclama (o reutiliza) el borrador activo REAL — atómico en la base
     // vía RPC (`claim_report_draft`). Dos requests concurrentes (doble
@@ -174,6 +187,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         teacherNotes: input.teacherNotes,
         studentName: student.name,
         monthsSummaryLabel,
+        selectedEvidenceIds,
       },
     });
 
@@ -185,6 +199,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         teacherNotes: record.snapshot.teacherNotes,
         includeClassDetail: record.snapshot.includeClassDetail,
         includePunctualitySummary: record.snapshot.includePunctualitySummary,
+        selectedEvidenceIds: record.snapshot.selectedEvidenceIds,
       },
       {
         selectedMonths: input.selectedMonths,
@@ -192,6 +207,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         teacherNotes: input.teacherNotes,
         includeClassDetail: input.includeClassDetail,
         includePunctualitySummary: input.includePunctualitySummary,
+        selectedEvidenceIds,
       },
       wasCreated
     );
@@ -208,6 +224,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
       // PDF tiene que coincidir siempre con lo que la fila efectivamente
       // guardó.
       await consumeActionQuota(ctx, "report_pdf");
+      const evidence = await evidenceFromSnapshot(ctx, record.snapshot);
       const pdfBytes = await renderReportPdf({
         studentName: record.snapshot.studentName,
         title: record.title,
@@ -218,6 +235,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         data: record.snapshot.data,
         narrativeText: record.snapshot.narrativeText,
         options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary },
+        evidence,
       });
       await attachReportPdf(ctx, record.id, pdfBytes);
     }
@@ -317,6 +335,7 @@ export async function regenerateReportPdfAction(reportId: string): Promise<Actio
 
     const generatedAtDateKey = localDateKeyInTimeZone(new Date(record.generatedAt), ARGENTINA_TIME_ZONE);
     await consumeActionQuota(ctx, "report_pdf");
+    const evidence = await evidenceFromSnapshot(ctx, record.snapshot);
     const pdfBytes = await renderReportPdf({
       studentName: record.snapshot.studentName,
       title: record.title,
@@ -327,6 +346,7 @@ export async function regenerateReportPdfAction(reportId: string): Promise<Actio
       data: record.snapshot.data,
       narrativeText: record.snapshot.narrativeText,
       options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary },
+      evidence,
     });
     await attachReportPdf(ctx, record.id, pdfBytes);
     revalidatePath(`/alumnos/${record.studentId}`);

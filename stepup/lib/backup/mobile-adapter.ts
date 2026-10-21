@@ -699,6 +699,9 @@ function toWebReportSnapshot(record: Obj): Obj {
   const onTimePct = typeof punctual?.onTimeOrGracePercent === "number" ? punctual.onTimeOrGracePercent : null;
   return {
     data: {
+      topicsSeen: strings(data.topicsSeen),
+      // Las evidencias del reporte original eran archivos del teléfono: no se pueden elegir de nuevo; el registro original completo sigue dentro de `_mobileRecord`.
+      evidenceCandidates: [],
       classesHeld: typeof att.classesHeld === "number" ? att.classesHeld : 0,
       hoursTaught: typeof data.hoursTaught === "number" ? data.hoursTaught : 0,
       skillNotes: arr(data.skillNotes).filter(isObj).map((n) => ({ skill: n.skill, label: n.label, averageGrade: typeof n.averageGrade === "number" ? n.averageGrade : null })),
@@ -719,6 +722,7 @@ function toWebReportSnapshot(record: Obj): Obj {
         attendanceStatus: d.present === true ? "presente" : "ausente",
         generalGrade: typeof d.generalGrade === "number" ? d.generalGrade : null,
         durationMinutes: typeof d.durationMinutes === "number" ? d.durationMinutes : 0,
+        topicsSeen: strings(d.topicsSeen),
       })),
     },
     narrativeText: text(mobile.narrativeText) ?? "",

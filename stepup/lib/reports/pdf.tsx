@@ -1,10 +1,11 @@
 import "server-only";
 import * as React from "react";
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Image, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { StudentReportData } from "./student-report-data.ts";
 import { formatCivilDate } from "../format/date-format.ts";
 import { formatGrade, formatHours, formatMinutes, formatPercent } from "../format/number-format.ts";
 import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus } from "../lessons/attendance.ts";
+import type { PreparedEvidence } from "./evidence.ts";
 
 /**
  * Puerto de `buildReportHtml.ts`/`generateReportPdf.ts` (móvil) — el móvil
@@ -29,10 +30,16 @@ const styles = StyleSheet.create({
   paragraph: { marginBottom: 6, lineHeight: 1.4 },
   tableHeader: { flexDirection: "row", borderBottom: "1 solid #cccccc", paddingBottom: 4, marginBottom: 4, fontWeight: 700 },
   tableRow: { flexDirection: "row", paddingVertical: 2, borderBottom: "1 solid #eeeeee" },
-  col1: { width: 90 },
-  col2: { width: 110 },
-  col3: { width: 60 },
-  col4: { flex: 1 },
+  col1: { width: 68 },
+  col2: { width: 78 },
+  colTopics: { flex: 1, paddingRight: 6 },
+  col3: { width: 38 },
+  col4: { width: 62 },
+  evidenceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  evidenceItem: { width: 150, marginBottom: 6 },
+  evidenceImage: { width: 150, height: 150, objectFit: "cover", borderRadius: 4 },
+  evidenceCaption: { fontSize: 9, marginTop: 3 },
+  evidenceFile: { width: 150, border: "1 solid #cccccc", borderRadius: 4, padding: 6, fontSize: 9, marginBottom: 6 },
   footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: "#999999", textAlign: "center" },
 });
 
@@ -51,6 +58,8 @@ export interface ReportPdfInput {
   data: StudentReportData;
   narrativeText: string;
   options: ReportPdfOptions;
+  /** Fotos y PDF elegidos para el reporte (ya preparados). Sin evidencias, el reporte no tiene esa sección. */
+  evidence?: PreparedEvidence;
 }
 
 function ReportDocument(input: ReportPdfInput): React.ReactElement {
@@ -162,6 +171,7 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
             <View style={styles.tableHeader}>
               <Text style={styles.col1}>Fecha</Text>
               <Text style={styles.col2}>Asistencia</Text>
+              <Text style={styles.colTopics}>Temas</Text>
               <Text style={styles.col3}>Nota</Text>
               <Text style={styles.col4}>Duración</Text>
             </View>
@@ -169,10 +179,36 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
               <View style={styles.tableRow} key={`${lesson.dateKey}-${index}`}>
                 <Text style={styles.col1}>{formatCivilDate(lesson.dateKey)}</Text>
                 <Text style={styles.col2}>{lesson.attendanceStatus ? (ATTENDANCE_STATUS_LABEL[lesson.attendanceStatus as AttendanceStatus] ?? "—") : "—"}</Text>
+                <Text style={styles.colTopics}>{(lesson.topicsSeen ?? []).length > 0 ? (lesson.topicsSeen ?? []).join(", ") : "—"}</Text>
                 <Text style={styles.col3}>{formatGrade(lesson.generalGrade)}</Text>
                 <Text style={styles.col4}>{lesson.durationMinutes > 0 ? formatMinutes(lesson.durationMinutes) : "—"}</Text>
               </View>
             ))}
+          </>
+        )}
+
+        {input.evidence && (input.evidence.images.length > 0 || input.evidence.files.length > 0) && (
+          <>
+            <View style={styles.sectionTitle}>
+              <Text>Evidencias y materiales</Text>
+            </View>
+            <View style={styles.evidenceGrid}>
+              {input.evidence.images.map((image) => (
+                <View style={styles.evidenceItem} key={image.attachmentId} wrap={false}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text -- el <Image> de @react-pdf no es un <img> de HTML: el PDF no admite texto alternativo; la descripción va debajo. */}
+                  <Image style={styles.evidenceImage} src={{ data: Buffer.from(image.jpeg), format: "jpg" }} />
+                  {image.caption && <Text style={styles.evidenceCaption}>{image.caption}</Text>}
+                </View>
+              ))}
+              {input.evidence.files.map((file, index) => (
+                <View style={styles.evidenceFile} key={`${file.name}-${index}`} wrap={false}>
+                  <Text>
+                    {file.kind === "pdf" ? "" : "Foto no disponible: "}
+                    {file.name} — {formatCivilDate(file.dateKey)}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </>
         )}
 

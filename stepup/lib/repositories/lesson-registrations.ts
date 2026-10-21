@@ -544,6 +544,9 @@ export interface RegistrationForStudentReportRow {
   actualStartedAt: string | null;
   actualEndedAt: string | null;
   homeworkDescription: string | null;
+  /** Sólo con `withContent`: temas marcados «visto» y adjuntos vigentes y disponibles (comunes a la clase o de ESTE alumno). */
+  topicsSeen?: string[];
+  attachments?: { attachmentId: string; kind: "pdf" | "image"; name: string; caption: string | null }[];
   attendance: { status: "presente" | "ausente" | "tarde" | "ausente_aviso" | "sin_registrar"; lateMinutes: number | null } | null;
   evaluation: {
     generalGrade: number | null;
@@ -561,7 +564,7 @@ export interface RegistrationForStudentReportRow {
  * (nota interna) ni ningún campo financiero (`billed_amount`) — la
  * selección de columnas ni los pide.
  */
-export async function listCompletedRegistrationsForStudentReport(ctx: AuthenticatedDbContext, studentId: string): Promise<RegistrationForStudentReportRow[]> {
+export async function listCompletedRegistrationsForStudentReport(ctx: AuthenticatedDbContext, studentId: string, options: { withContent?: boolean } = {}): Promise<RegistrationForStudentReportRow[]> {
   const registrations = await listLessonRegistrationsForStudent(ctx, studentId);
   const held = registrations.filter((r) => r.status === "completed" && r.countsAsClass);
   if (held.length === 0) return [];
@@ -579,6 +582,31 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
       filter: (query) => query.eq("owner_id", ctx.ownerId).eq("student_id", studentId),
     }),
   ]);
+
+  // Contenido pedagógico (sólo para Reportes): temas vistos y adjuntos que pueden ir al reporte de ESTE alumno. Los adjuntos quitados de la clase no se ofrecen.
+  const topicsByRegistrationId = new Map<string, string[]>();
+  const attachmentsByRegistrationId = new Map<string, NonNullable<RegistrationForStudentReportRow["attachments"]>>();
+  if (options.withContent) {
+    const [topicRows, attachmentRows] = await Promise.all([
+      readTableByIds<{ id: string; topics: unknown }>(ctx.supabase, "lesson_registrations", { columns: "id, topics", matchColumn: "id", ids: registrationIds, filter: (query) => query.eq("owner_id", ctx.ownerId) }),
+      readTableByIds<{ id: string; lesson_registration_id: string; student_id: string | null; name: string; kind: string; caption: string | null; file_status: string }>(ctx.supabase, "lesson_attachments", {
+        columns: "id, lesson_registration_id, student_id, name, kind, caption, file_status",
+        matchColumn: "lesson_registration_id",
+        ids: registrationIds,
+        filter: (query) => query.eq("owner_id", ctx.ownerId).is("removed_at", null).eq("file_status", "disponible"),
+      }),
+    ]);
+    for (const row of topicRows) {
+      const seen = Array.isArray(row.topics) ? (row.topics as { text?: unknown; status?: unknown }[]).filter((t) => t && t.status === "visto" && typeof t.text === "string").map((t) => String(t.text)) : [];
+      topicsByRegistrationId.set(row.id, seen);
+    }
+    for (const row of attachmentRows) {
+      if (row.student_id !== null && row.student_id !== studentId) continue; // el adjunto de otro alumno nunca entra al reporte de este
+      const list = attachmentsByRegistrationId.get(row.lesson_registration_id) ?? [];
+      list.push({ attachmentId: row.id, kind: row.kind === "image" ? "image" : "pdf", name: row.name, caption: row.caption && row.caption.trim() !== "" ? row.caption.trim() : null });
+      attachmentsByRegistrationId.set(row.lesson_registration_id, list);
+    }
+  }
 
   const attendanceByRegistrationId = new Map(attendanceRows.map((row) => [row.lesson_registration_id, toLessonRegistrationAttendanceRecord(row)]));
   const evaluationByRegistrationId = new Map(evaluationRows.map((row) => [row.lesson_registration_id, toLessonRegistrationEvaluationRecord(row)]));
@@ -598,6 +626,7 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
         actualStartedAt: registration.actualStartedAt,
         actualEndedAt: registration.actualEndedAt,
         homeworkDescription: registration.homeworkDescription,
+        ...(options.withContent ? { topicsSeen: topicsByRegistrationId.get(registration.id) ?? [], attachments: attachmentsByRegistrationId.get(registration.id) ?? [] } : {}),
         attendance: attendance ? { status: attendance.status, lateMinutes: attendance.lateMinutes } : null,
         evaluation: evaluation
           ? {
