@@ -251,6 +251,19 @@ export interface RawPaymentAllocation {
   chargeId: string;
   studentId: string;
   amount: number;
+  /** Sólo en copias adaptadas del traslado: parte de `amount` que supera el importe base del cobro, clasificada con su evidencia. */
+  excess?: { amount: number; status: "recargo_confirmado" | "pendiente_de_clasificacion"; evidence: Record<string, unknown> };
+}
+
+/** Referencia que ya estaba rota en la app anterior (sólo en copias adaptadas del traslado). */
+export interface RawOriginIncident {
+  id: string;
+  entity: string;
+  rowId: string;
+  field: string;
+  originalReference: string;
+  kind: "referencia_inexistente_en_origen";
+  detail?: Record<string, unknown>;
 }
 
 export interface RawPaymentAdjustment {
@@ -275,7 +288,11 @@ export interface RawMonthlyAmountCorrection {
 
 export interface RawInitialPaidSurchargeCorrection {
   id: string;
-  studentId: string;
+  /** `null` + `studentMissingRef` cuando el alumno no existía en el respaldo (copias adaptadas del traslado). */
+  studentId: string | null;
+  studentMissingRef?: string | null;
+  voidedPaymentMissingRef?: string | null;
+  newPaymentMissingRef?: string | null;
   billingPeriod: string;
   previousSurchargeAmount: number;
   voidedPaymentId?: string | null;
@@ -337,4 +354,5 @@ export interface TeacherFlowBackup {
   firstMonthProrationDecisions?: RawFirstMonthProrationDecision[];
   trainingBillingAgreements?: RawTrainingBillingAgreement[];
   customLevels?: RawCustomLevel[];
+  originIncidents?: RawOriginIncident[];
 }

@@ -240,8 +240,11 @@ test("las migraciones de facturación son posteriores a las existentes, van en o
   const files = readdirSync(join(ROOT, "supabase/migrations")).filter((f) => f.endsWith(".sql")).sort();
   const billing = files.filter((f) => /_m[12]_billing/.test(f));
   assert.deepEqual(billing.map((f) => f.replace(/^[0-9]+_/, "")), ["m1_billing_core.sql", "m1_billing_functions.sql", "m2_billing_ops.sql"]);
-  const previous = files.filter((f) => !/_m[12]_billing/.test(f));
-  assert.ok(previous[previous.length - 1] < billing[0], "la facturación va después de todo lo existente");
+  // Lo anterior a la facturación ya estaba aplicado cuando se escribió; lo posterior (p. ej. el traslado R9) debe ir DESPUÉS de las tres, nunca en medio.
+  const previous = files.filter((f) => !/_m[12]_billing/.test(f) && f < billing[0]);
+  assert.ok(previous.length > 0 && previous[previous.length - 1] < billing[0], "la facturación va después de lo existente al momento de crearla");
+  const later = files.filter((f) => !/_m[12]_billing/.test(f) && f > billing[0]);
+  for (const f of later) assert.ok(f > billing[billing.length - 1], `${f} no puede quedar entre migraciones de facturación`);
   const stamps = files.map((f) => f.split("_")[0]);
   assert.equal(new Set(stamps).size, stamps.length);
 });

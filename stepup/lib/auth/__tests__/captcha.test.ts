@@ -59,10 +59,10 @@ test("cabeceras: sin CAPTCHA la política de prueba es la de siempre (frame-src 
   assert.match(without, /frame-src 'none'/);
   assert.doesNotMatch(without, /cloudflare/);
   const withCaptcha = buildSecurityHeaders({ production: true, captchaOrigin: CAPTCHA_ORIGIN }).find((h) => h.key === "Content-Security-Policy-Report-Only")!.value;
-  assert.match(withCaptcha, /script-src 'self' 'unsafe-inline' https:\/\/challenges\.cloudflare\.com;/);
+  assert.match(withCaptcha, /script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https:\/\/challenges\.cloudflare\.com;/);
   assert.match(withCaptcha, /connect-src 'self' https:\/\/challenges\.cloudflare\.com;/);
   assert.match(withCaptcha, /frame-src https:\/\/challenges\.cloudflare\.com;/);
-  assert.doesNotMatch(withCaptcha, /unsafe-eval/);
+  assert.doesNotMatch(withCaptcha, /(?<!wasm-)unsafe-eval/, "nunca 'unsafe-eval' (sí 'wasm-unsafe-eval', que sólo permite compilar WebAssembly)");
   // el enmarcado de TeacherFlow sigue bloqueado pase lo que pase
   const enforced = buildSecurityHeaders({ production: true, captchaOrigin: CAPTCHA_ORIGIN }).find((h) => h.key === "Content-Security-Policy")!.value;
   assert.equal(enforced, "frame-ancestors 'none'");

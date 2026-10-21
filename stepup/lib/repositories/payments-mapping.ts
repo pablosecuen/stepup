@@ -72,10 +72,23 @@ export interface PaymentAllocationRecord {
   chargeId: string;
   studentId: string;
   amount: number;
+  /** Parte de `amount` por encima del importe base del cobro (traslado). Ya está incluida en `amount`; los saldos no cambian. 0 si no hay. */
+  excessAmount: number;
+  excessStatus: "recargo_confirmado" | "pendiente_de_clasificacion" | null;
 }
 
 export function toPaymentAllocationRecord(row: PaymentAllocationRow): PaymentAllocationRecord {
-  return { id: row.id, paymentId: row.payment_id, chargeId: row.charge_id, studentId: row.student_id, amount: row.amount };
+  // Antes de la migración R13 la base no devuelve estas columnas: se tratan como «sin exceso».
+  const excessAmount = Number(row.excess_amount ?? 0);
+  return {
+    id: row.id,
+    paymentId: row.payment_id,
+    chargeId: row.charge_id,
+    studentId: row.student_id,
+    amount: row.amount,
+    excessAmount: Number.isFinite(excessAmount) && excessAmount > 0 ? excessAmount : 0,
+    excessStatus: excessAmount > 0 ? (row.excess_status ?? null) : null,
+  };
 }
 
 export interface TrainingBillingAgreementRecord {

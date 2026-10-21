@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { linkClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { formatInstantDayLong, formatInstantTime } from "@/lib/format/date-format";
+import { OriginIncidentNote } from "@/components/registro/origin-incidents-card";
+import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 
 function statusLabel(registration: LessonRegistrationRecord): string {
   if (!registration.countsAsClass) return ADHOC_OUTCOME_LABEL[registration.outcome];
@@ -28,9 +30,12 @@ function registrationAnchor(registration: LessonRegistrationRecord): string {
 export function ClasesTabContent({
   registrations,
   attendanceByRegistrationId,
+  incidentsByRegistrationId = {},
 }: {
   registrations: LessonRegistrationRecord[];
   attendanceByRegistrationId: Record<string, AttendanceStatus>;
+  /** Incidencias heredadas del traslado por clase registrada (opcional: sin ellas la lista queda como siempre). */
+  incidentsByRegistrationId?: Record<string, OriginIncidentView[]>;
 }) {
   if (registrations.length === 0) {
     return <EmptyState icon={CalendarDaysIcon} message="Todavía no hay clases registradas para este alumno." action={{ label: "Ir a Registro", href: "/registro" }} />;
@@ -57,6 +62,7 @@ export function ClasesTabContent({
               <p className="mt-1.5 text-[14px] text-textMuted [overflow-wrap:anywhere]">
                 {[statusLabel(registration), timeRange, modality, attendance ? `Asistencia: ${ATTENDANCE_STATUS_LABEL[attendance]}` : null].filter(Boolean).join(" · ")}
               </p>
+              <OriginIncidentNote incidents={incidentsByRegistrationId[registration.id] ?? []} />
               <Link href={registration.calendarLessonId ? `/registro/${registration.calendarLessonId}` : `/registro/libre/${registration.id}`} className={`mt-1 ${linkClass()}`}>
                 Ver registro →
               </Link>

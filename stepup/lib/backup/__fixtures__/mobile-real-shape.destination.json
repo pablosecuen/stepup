@@ -1,0 +1,2414 @@
+{
+ "budget_distribution_settings": [
+  {
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "needs_percent": 55,
+   "wants_percent": 25,
+   "savings_percent": 20,
+   "savings_goal_enabled": true,
+   "savings_goal_target_date": "2027-06-30",
+   "savings_goal_target_amount": 1500000.77
+  }
+ ],
+ "calendar_lesson_participants": [
+  {
+   "id": "327c0eba-6752-4034-848e-aaa1d42df660",
+   "level": "B1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "student_name": "ZQ Alumna Uno",
+   "calendar_lesson_id": "5641991f-0c9d-4dc3-a958-db98833f42ab"
+  },
+  {
+   "id": "f1a51239-4e6a-4933-b290-4b7e9fc10c18",
+   "level": "B1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "student_name": "ZQ Alumna Uno",
+   "calendar_lesson_id": "5716c3c3-478c-40c8-9b50-9228feb457e9"
+  },
+  {
+   "id": "ff65137e-ca10-4d67-a202-9b37524aeb37",
+   "level": "B1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "student_name": "ZQ Alumna Uno",
+   "calendar_lesson_id": "0c3d44d3-b629-46e6-aeb0-0ccb7af812b5"
+  },
+  {
+   "id": "c76bd394-0812-4777-b164-0b180b37e472",
+   "level": "A2",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "student_name": "ZQ Alumno Dos",
+   "calendar_lesson_id": "582bdde5-8ebd-4ebf-a289-cc4c285800dc"
+  },
+  {
+   "id": "c4c9d1a8-c9ab-4084-9acc-2a46c523989f",
+   "level": "C1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "student_name": "ZQ Alumna Tres",
+   "calendar_lesson_id": "582bdde5-8ebd-4ebf-a289-cc4c285800dc"
+  },
+  {
+   "id": "de298aca-8806-45b1-a8be-8f838817b24d",
+   "level": "C1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "student_name": "ZQ Alumna Tres",
+   "calendar_lesson_id": "0ec8f098-ddb5-4f91-8520-525c78bcee60"
+  },
+  {
+   "id": "06f71890-c7cf-4607-855c-34def416c3ec",
+   "level": "B1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "student_name": "ZQ Alumna Uno",
+   "calendar_lesson_id": "7eda11ce-2ce5-4cd7-90e9-f02b29033836"
+  }
+ ],
+ "calendar_lessons": [
+  {
+   "id": "5716c3c3-478c-40c8-9b50-9228feb457e9",
+   "color": "#FFF1B8",
+   "level": "B1",
+   "notes": null,
+   "end_at": "2026-10-15T11:00:00-03:00",
+   "status": "cancelled",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-15T10:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": null,
+   "lesson_type": "individual",
+   "is_recurring": true,
+   "operation_id": null,
+   "student_name": "ZQ Alumna Uno",
+   "activity_kind": "class",
+   "recurrence_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "overlap_allowed": false,
+   "legacy_mobile_id": "cal-2",
+   "overlap_group_id": null,
+   "recurrence_index": 8,
+   "freed_by_lesson_id": null,
+   "primary_student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "schedule_adjustment": null,
+   "legacy_overlap_group_id": null,
+   "recurrence_occurrence_key": "rule-1:2026-10-15:0",
+   "recurrence_original_start": "2026-10-15T10:00:00-03:00"
+  },
+  {
+   "id": "5641991f-0c9d-4dc3-a958-db98833f42ab",
+   "color": "#FCE4D2",
+   "level": "B1",
+   "notes": "ZQ nota de la clase 1",
+   "end_at": "2026-10-13T11:00:00-03:00",
+   "status": "completed",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-13T10:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": "ZQ Conversación",
+   "lesson_type": "individual",
+   "is_recurring": true,
+   "operation_id": null,
+   "student_name": "ZQ Alumna Uno",
+   "activity_kind": "class",
+   "recurrence_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "overlap_allowed": false,
+   "legacy_mobile_id": "cal-1",
+   "overlap_group_id": null,
+   "recurrence_index": 7,
+   "freed_by_lesson_id": null,
+   "primary_student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "schedule_adjustment": null,
+   "legacy_overlap_group_id": null,
+   "recurrence_occurrence_key": "rule-1:2026-10-13:0",
+   "recurrence_original_start": "2026-10-13T10:00:00-03:00"
+  },
+  {
+   "id": "582bdde5-8ebd-4ebf-a289-cc4c285800dc",
+   "color": "#DDEEFF",
+   "level": "A2",
+   "notes": null,
+   "end_at": "2026-10-14T18:30:00-03:00",
+   "status": "completed",
+   "modality": "online",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-14T17:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": "ZQ Clase grupal",
+   "lesson_type": "group",
+   "is_recurring": false,
+   "operation_id": null,
+   "student_name": "ZQ Alumno Dos",
+   "activity_kind": "class",
+   "recurrence_id": null,
+   "overlap_allowed": true,
+   "legacy_mobile_id": "cal-4",
+   "overlap_group_id": "53de1615-a044-550a-ed66-05dbf8b55f56",
+   "recurrence_index": null,
+   "freed_by_lesson_id": null,
+   "primary_student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "schedule_adjustment": null,
+   "legacy_overlap_group_id": "ovl-ZQ-1",
+   "recurrence_occurrence_key": null,
+   "recurrence_original_start": null
+  },
+  {
+   "id": "0ec8f098-ddb5-4f91-8520-525c78bcee60",
+   "color": "#E9DDFC",
+   "level": "C1",
+   "notes": null,
+   "end_at": "2026-10-12T20:00:00-03:00",
+   "status": "rescheduled",
+   "modality": "mixta",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-12T19:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": "ZQ Entrenamiento",
+   "lesson_type": "individual",
+   "is_recurring": true,
+   "operation_id": null,
+   "student_name": "ZQ Alumna Tres",
+   "activity_kind": "training",
+   "recurrence_id": "5fb37961-7530-473a-a09b-7ffb1d32a2ad",
+   "overlap_allowed": false,
+   "legacy_mobile_id": "cal-5",
+   "overlap_group_id": null,
+   "recurrence_index": 3,
+   "freed_by_lesson_id": null,
+   "primary_student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "schedule_adjustment": null,
+   "legacy_overlap_group_id": null,
+   "recurrence_occurrence_key": "rule-2:2026-10-12:0",
+   "recurrence_original_start": "2026-10-12T19:00:00-03:00"
+  },
+  {
+   "id": "0c3d44d3-b629-46e6-aeb0-0ccb7af812b5",
+   "color": "#FCE8E6",
+   "level": "B1",
+   "notes": null,
+   "end_at": "2026-10-16T12:00:00-03:00",
+   "status": "scheduled",
+   "modality": "online",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-16T11:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": null,
+   "lesson_type": "individual",
+   "is_recurring": false,
+   "operation_id": null,
+   "student_name": "ZQ Alumna Uno",
+   "activity_kind": "class",
+   "recurrence_id": null,
+   "overlap_allowed": false,
+   "legacy_mobile_id": "cal-3",
+   "overlap_group_id": null,
+   "recurrence_index": null,
+   "freed_by_lesson_id": "5716c3c3-478c-40c8-9b50-9228feb457e9",
+   "primary_student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "schedule_adjustment": {
+    "reason": "mutual_agreement",
+    "minutes": 15,
+    "direction": "delayed",
+    "adjustedAt": "2026-10-16T13:50:00.000Z"
+   },
+   "legacy_overlap_group_id": null,
+   "recurrence_occurrence_key": null,
+   "recurrence_original_start": null
+  },
+  {
+   "id": "7eda11ce-2ce5-4cd7-90e9-f02b29033836",
+   "color": "#FCE4D2",
+   "level": "B1",
+   "notes": null,
+   "end_at": "2026-10-20T11:00:00-03:00",
+   "status": "scheduled",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "start_at": "2026-10-20T10:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": null,
+   "lesson_type": "individual",
+   "is_recurring": true,
+   "operation_id": null,
+   "student_name": "ZQ Alumna Uno",
+   "activity_kind": "class",
+   "recurrence_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "overlap_allowed": false,
+   "legacy_mobile_id": "cal-6",
+   "overlap_group_id": null,
+   "recurrence_index": 9,
+   "freed_by_lesson_id": null,
+   "primary_student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "schedule_adjustment": null,
+   "legacy_overlap_group_id": null,
+   "recurrence_occurrence_key": "rule-1:2026-10-20:0",
+   "recurrence_original_start": "2026-10-20T10:00:00-03:00"
+  }
+ ],
+ "custom_levels": [
+  {
+   "id": "b95e8b6c-7485-4083-bd88-3c16d050b2e3",
+   "name": "Intermedio ZQ",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-04-01T09:00:00-03:00",
+   "legacy_mobile_id": "cl-1"
+  }
+ ],
+ "device_local_snapshots": [
+  {
+   "id": "e8bee3e2-3b7e-49c1-b97f-da26f7a693cd",
+   "sha256": "e9fce443273ec9d934a7120da8417ad929d6fb3db3b02a0fe0fc9bac49c7d573",
+   "payload": {
+    "@teacherflow/live_class_tracking_enabled": "true",
+    "@teacherflow/reschedule_cancellation_notices": "[{\"id\":\"ntc-1\",\"studentId\":\"stu-2\",\"cancelledLessonStartIso\":\"2026-10-12T20:00:00.000Z\",\"createdAt\":\"2026-10-12T21:00:00.000Z\"}]",
+    "@teacherflow/pending_training_billing_operations": "[]"
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "taken_at": "2026-10-19T16:40:13.819178-03:00",
+   "created_at": "2026-10-19T16:40:13.819178-03:00"
+  }
+ ],
+ "first_month_proration_decisions": [
+  {
+   "id": "3dc204f0-3102-49af-aba3-5606d755a2de",
+   "source": "manual",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "charge_id": "28ca6a7c-0611-42a4-b627-4f8571a621ba",
+   "criterion": "proportional",
+   "created_at": "2026-03-02T12:40:00-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "confirmed_at": "2026-03-02T12:41:00-03:00",
+   "rule_version": 2,
+   "billing_period": "2026-03",
+   "charged_amount": 33250.22,
+   "recurrence_ids": [
+    "rule-1"
+   ],
+   "legacy_mobile_id": "fmp-1",
+   "classes_remaining": 7,
+   "effective_join_date": "2026-03-02",
+   "classes_per_full_period": 8,
+   "series_pattern_snapshot": [
+    {
+     "weeks": [
+      {
+       "sessions": [
+        {
+         "hour": 10,
+         "minute": 0,
+         "weekday": 1,
+         "durationMinutes": 60
+        }
+       ],
+       "weekIndex": 0
+      }
+     ],
+     "recurrenceId": "rule-1",
+     "cycleLengthWeeks": 1
+    }
+   ],
+   "permanent_monthly_amount": 38000.25
+  }
+ ],
+ "import_source_archives": [],
+ "initial_paid_surcharge_corrections": [
+  {
+   "id": "c8cde2d2-9f76-4c09-a2f9-b7a8ba5d275c",
+   "reason": "ZQ corrección de alta",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "corrected_at": "2026-03-03T09:00:00-03:00",
+   "billing_period": "2026-03",
+   "new_payment_id": "f63f0687-d394-4a24-9419-218bf073cc09",
+   "legacy_mobile_id": "isc-1",
+   "voided_payment_id": "1250d57a-d381-42b4-9d8b-b25ea35f146e",
+   "previous_surcharge_amount": 500.5
+  }
+ ],
+ "lesson_attachments": [
+  {
+   "id": "45348f4d-8f10-4752-afa5-8d1fea4c7172",
+   "kind": "pdf",
+   "name": "ZQ guia.pdf",
+   "sha256": "97fd175f75337a7162c994931ed3aeb973fcaf2a81410fe647a46158b1c72003",
+   "caption": "ZQ leyenda",
+   "added_at": "2026-10-13T11:00:00-03:00",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "mime_type": "application/pdf",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "size_bytes": 20480,
+   "source_uri": "file:///data/user/0/host.exp.exponent/files/ZQ-guia.pdf",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "file_status": "disponible",
+   "storage_path": "00000000-0000-4000-8000-0000000000aa/attachments/97fd175f75337a7162c994931ed3aeb973fcaf2a81410fe647a46158b1c72003.pdf",
+   "legacy_mobile_id": "les-1:att-1",
+   "stored_size_bytes": 20480,
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3"
+  }
+ ],
+ "lesson_registration_attendance": [
+  {
+   "id": "01542c39-2563-4b66-9652-0d7f54bee5dc",
+   "status": "presente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "late_minutes": null,
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3"
+  },
+  {
+   "id": "6d609370-3837-4136-b856-2a990a2cc89e",
+   "status": "tarde",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "late_minutes": 7,
+   "lesson_registration_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c"
+  },
+  {
+   "id": "807c65f8-af09-4bad-8569-02eaf6a44988",
+   "status": "ausente_aviso",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "late_minutes": null,
+   "lesson_registration_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c"
+  },
+  {
+   "id": "c6c37c37-56a5-43f3-ac0c-d2cbafb3b5b6",
+   "status": "ausente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "late_minutes": null,
+   "lesson_registration_id": "179a72ca-f8de-4f38-ade8-ca4271df3926"
+  },
+  {
+   "id": "0646d545-2094-419f-9989-3ef5c201cac1",
+   "status": "ausente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "late_minutes": null,
+   "lesson_registration_id": "932f5432-c8a6-4e8e-82ab-f9997c65fd91"
+  },
+  {
+   "id": "4a553e66-5bbb-44c5-9abd-d756e52f981a",
+   "status": "presente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "late_minutes": null,
+   "lesson_registration_id": "b708a514-4106-4fd4-8e98-c178e8383dcc"
+  },
+  {
+   "id": "3a7a2896-c192-4cd6-b097-cecd5a85f8f6",
+   "status": "presente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "late_minutes": null,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1"
+  },
+  {
+   "id": "274899f8-21b8-4c10-8a89-3046e07fa69b",
+   "status": "presente",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "late_minutes": null,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1"
+  }
+ ],
+ "lesson_registration_edit_history": [
+  {
+   "id": "91c90b64-45e4-4966-ae87-72c515325c58",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "edited_at": "2026-10-13T11:30:00-03:00",
+   "edit_operation_id": "9c3a0202-c6e9-9410-29cf-a310433f571f",
+   "previous_snapshot": {
+    "_format": "mobile_v1",
+    "editedAt": "2026-10-13T14:30:00.000Z",
+    "previousForm": {
+     "date": "2026-10-13",
+     "time": "10:00",
+     "topics": [],
+     "modality": "presencial",
+     "eventType": "clase_dictada",
+     "activities": [],
+     "attendance": [
+      {
+       "status": "presente",
+       "present": true,
+       "studentId": "stu-1"
+      }
+     ],
+     "isBillable": true,
+     "objectives": [],
+     "studentIds": [
+      "stu-1"
+     ],
+     "evaluations": [],
+     "materialIds": [],
+     "activityKind": "class",
+     "activityNotes": "",
+     "internalNotes": "ZQ nota previa a la edición",
+     "homeworkDueDate": null,
+     "holidayException": false,
+     "activityAttachments": [],
+     "homeworkDescription": "",
+     "actualDurationMinutes": 70,
+     "consumesMonthlyPackage": true,
+     "lateCancellationPolicy": null,
+     "rescheduledFromLessonId": null,
+     "scheduledDurationMinutes": 60,
+     "lateCancellationPercentage": null
+    },
+    "previousBilledAmount": 8000.11,
+    "previousAppliedPolicy": null,
+    "previousCountsAsClass": true,
+    "previousBilledAmountByStudent": {
+     "stu-1": 8000.11
+    }
+   },
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3"
+  }
+ ],
+ "lesson_registration_evaluations": [
+  {
+   "id": "fbf14ff0-5ba9-441c-a339-eb1707b08168",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "strengths": [
+    "ZQ fortaleza de la clase"
+   ],
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "skill_grades": {
+    "grammar": 7.5,
+    "speaking": 8.5
+   },
+   "billed_amount": 9000.61,
+   "general_grade": 8.5,
+   "source_grades": {
+    "flags": [],
+    "skillGrades": {
+     "grammar": 7.5,
+     "speaking": 8.5
+    },
+    "generalGrade": 8.5
+   },
+   "areas_to_improve": [
+    "ZQ mejora de la clase"
+   ],
+   "individual_observation": "ZQ observación individual",
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3",
+   "individual_homework_due_date": "2026-10-20",
+   "individual_homework_description": "ZQ tarea individual"
+  },
+  {
+   "id": "055ca235-8336-400c-885a-a4493bc38e2b",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "strengths": [],
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "skill_grades": {},
+   "billed_amount": null,
+   "general_grade": null,
+   "source_grades": {
+    "flags": [],
+    "skillGrades": {},
+    "generalGrade": null
+   },
+   "areas_to_improve": [],
+   "individual_observation": null,
+   "lesson_registration_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c",
+   "individual_homework_due_date": null,
+   "individual_homework_description": null
+  },
+  {
+   "id": "6eef14df-4109-4b2f-8f44-ca37662f3f06",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "strengths": [],
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "skill_grades": {
+    "writing": 7.5
+   },
+   "billed_amount": null,
+   "general_grade": null,
+   "source_grades": {
+    "flags": [
+     "generalGrade:out_of_range",
+     "skillGrades.speaking:unset",
+     "skillGrades.grammar:out_of_range",
+     "skillGrades.listening:out_of_range"
+    ],
+    "skillGrades": {
+     "grammar": 11,
+     "writing": 7.5,
+     "speaking": 0,
+     "listening": "ocho"
+    },
+    "generalGrade": 12
+   },
+   "areas_to_improve": [],
+   "individual_observation": null,
+   "lesson_registration_id": "b708a514-4106-4fd4-8e98-c178e8383dcc",
+   "individual_homework_due_date": null,
+   "individual_homework_description": null
+  },
+  {
+   "id": "d7b13bed-99b9-4f23-ab24-2d54678c46e9",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "strengths": [],
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "skill_grades": {
+    "speaking": 9
+   },
+   "billed_amount": null,
+   "general_grade": 9,
+   "source_grades": {
+    "flags": [],
+    "skillGrades": {
+     "speaking": 9
+    },
+    "generalGrade": 9
+   },
+   "areas_to_improve": [],
+   "individual_observation": null,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1",
+   "individual_homework_due_date": null,
+   "individual_homework_description": null
+  },
+  {
+   "id": "a616f546-232e-4257-87f3-796d31326eac",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "strengths": [],
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "skill_grades": {
+    "speaking": 7
+   },
+   "billed_amount": null,
+   "general_grade": 7,
+   "source_grades": {
+    "flags": [],
+    "skillGrades": {
+     "speaking": 7
+    },
+    "generalGrade": 7
+   },
+   "areas_to_improve": [],
+   "individual_observation": null,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1",
+   "individual_homework_due_date": null,
+   "individual_homework_description": null
+  }
+ ],
+ "lesson_registration_homework_reviews": [
+  {
+   "id": "ef6864f5-fc1d-4973-aea0-4c2166a859e4",
+   "outcome": "parcial",
+   "task_id": "common:les-0",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "reviewed_at": "2026-10-13T11:10:00-03:00",
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3"
+  }
+ ],
+ "lesson_registration_students": [
+  {
+   "id": "6a0d0f8b-021a-4ccd-b05b-4b0cab85deeb",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3"
+  },
+  {
+   "id": "f0b83e95-2352-4cbe-89d1-0f3ddceb4cc4",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c"
+  },
+  {
+   "id": "6c9dd9f6-054e-4c66-9b74-d9067584816a",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "participant_status": "pending",
+   "participant_position": 1,
+   "lesson_registration_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c"
+  },
+  {
+   "id": "851281ca-63e4-4830-8c7f-8559ddd42dc1",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "179a72ca-f8de-4f38-ade8-ca4271df3926"
+  },
+  {
+   "id": "36cc6330-250b-42c6-9eac-9f7198f38ff9",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "932f5432-c8a6-4e8e-82ab-f9997c65fd91"
+  },
+  {
+   "id": "3acc647c-69b7-4de7-ae31-941563f4594a",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "6d935838-5903-4206-b624-9ce1dff0e8d0"
+  },
+  {
+   "id": "c0ef34ff-1931-47bc-b40d-4dcfcd8d9be5",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "ae7a50b7-dde6-40d3-9dfb-e8b45f3bf994"
+  },
+  {
+   "id": "8ac748d1-5eb0-409c-9c8b-2a5c931f67ea",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "e194bcc4-d3b2-44e9-abc1-6889a555d3b5"
+  },
+  {
+   "id": "f9085682-a047-48ee-b8a8-85bb9f4938e9",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "b708a514-4106-4fd4-8e98-c178e8383dcc"
+  },
+  {
+   "id": "680fc0b4-2034-4c44-b167-020bbc3f4425",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "participant_status": "completed",
+   "participant_position": 0,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1"
+  },
+  {
+   "id": "f0a166de-253e-4a13-ac5f-f89a268c6469",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "participant_status": "completed",
+   "participant_position": 1,
+   "lesson_registration_id": "d5639ffb-cbfe-4f59-bb84-496065c501a1"
+  }
+ ],
+ "lesson_registrations": [
+  {
+   "id": "d5639ffb-cbfe-4f59-bb84-496065c501a1",
+   "status": "completed",
+   "topics": [],
+   "outcome": "clase_dictada",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-04T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-04",
+    "formTime": "17:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": "2026-10-04T18:10:00-03:00",
+   "counts_as_class": true,
+   "legacy_mobile_id": "les-9",
+   "scheduled_end_at": "2026-10-04T18:00:00-03:00",
+   "actual_started_at": "2026-10-04T17:00:00-03:00",
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "clase_dictada",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-04T17:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": 70,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "b708a514-4106-4fd4-8e98-c178e8383dcc",
+   "status": "completed",
+   "topics": [],
+   "outcome": "clase_dictada",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-05T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-05",
+    "formTime": "10:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": "2026-10-05T11:10:00-03:00",
+   "counts_as_class": true,
+   "legacy_mobile_id": "les-8",
+   "scheduled_end_at": "2026-10-05T11:00:00-03:00",
+   "actual_started_at": "2026-10-05T10:00:00-03:00",
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "clase_dictada",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-05T10:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": 70,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "e194bcc4-d3b2-44e9-abc1-6889a555d3b5",
+   "status": "completed",
+   "topics": [],
+   "outcome": "feriado",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-06T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-06",
+    "formTime": "10:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": null,
+   "counts_as_class": false,
+   "legacy_mobile_id": "les-7",
+   "scheduled_end_at": "2026-10-06T11:00:00-03:00",
+   "actual_started_at": null,
+   "holiday_exception": true,
+   "homework_due_date": null,
+   "source_event_type": "feriado",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-06T10:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": null,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "ae7a50b7-dde6-40d3-9dfb-e8b45f3bf994",
+   "status": "completed",
+   "topics": [],
+   "outcome": "profesora_ausente",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-07T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-07",
+    "formTime": "10:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": null,
+   "counts_as_class": false,
+   "legacy_mobile_id": "les-6",
+   "scheduled_end_at": "2026-10-07T11:00:00-03:00",
+   "actual_started_at": null,
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "profesora_ausente",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-07T10:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": null,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "6d935838-5903-4206-b624-9ce1dff0e8d0",
+   "status": "completed",
+   "topics": [],
+   "outcome": "reprogramada",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-08T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-08",
+    "formTime": "10:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": null,
+   "counts_as_class": false,
+   "legacy_mobile_id": "les-5",
+   "scheduled_end_at": "2026-10-08T11:00:00-03:00",
+   "actual_started_at": null,
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "reprogramada",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-08T10:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": null,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": "932f5432-c8a6-4e8e-82ab-f9997c65fd91"
+  },
+  {
+   "id": "932f5432-c8a6-4e8e-82ab-f9997c65fd91",
+   "status": "completed",
+   "topics": [],
+   "outcome": "cancelada_tarde",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-09T12:00:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": 4500.31,
+   "source_extras": {
+    "formDate": "2026-10-09",
+    "formTime": "10:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": "cobrar_porcentaje",
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": null,
+   "counts_as_class": false,
+   "legacy_mobile_id": "les-4",
+   "scheduled_end_at": "2026-10-09T11:00:00-03:00",
+   "actual_started_at": null,
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "cancelada_tarde",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-09T10:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": null,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": "cobrar_porcentaje",
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": 50,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "179a72ca-f8de-4f38-ade8-ca4271df3926",
+   "status": "completed",
+   "topics": [],
+   "outcome": "clase_dictada",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-12T20:30:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": 0,
+   "source_extras": {
+    "formDate": "2026-10-12",
+    "formTime": "19:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": null,
+   "counts_as_class": false,
+   "legacy_mobile_id": "les-3",
+   "scheduled_end_at": "2026-10-12T20:00:00-03:00",
+   "actual_started_at": null,
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "alumno_ausente",
+   "calendar_lesson_id": null,
+   "scheduled_start_at": "2026-10-12T19:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": null,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "4cba000d-c58e-4ca4-a8b2-3e1d38e27fb3",
+   "status": "completed",
+   "topics": [
+    {
+     "id": "top-1",
+     "text": "ZQ tema visto uno",
+     "status": "visto"
+    },
+    {
+     "id": "top-2",
+     "text": "ZQ tema planificado dos",
+     "status": "planificado"
+    }
+   ],
+   "outcome": "clase_dictada",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [
+    "ZQ actividad uno"
+   ],
+   "created_at": "2026-10-13T11:20:00-03:00",
+   "objectives": [
+    "ZQ objetivo de la clase"
+   ],
+   "updated_at": "2026-10-13T11:30:00-03:00",
+   "is_billable": true,
+   "material_ids": [
+    "mat-1"
+   ],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": 9000.61,
+   "source_extras": {
+    "formDate": "2026-10-13",
+    "formTime": "10:00",
+    "endSource": "button",
+    "startSource": "button",
+    "appliedPolicy": null,
+    "studentArrival": {
+     "status": "within_grace",
+     "arrivedAt": "2026-10-13T13:02:00.000Z",
+     "lateMinutes": 2,
+     "manuallyCorrected": false
+    },
+    "effectiveStartAt": "2026-10-13T13:00:00.000Z",
+    "profileAppliedAt": "2026-10-13T14:21:00.000Z",
+    "sessionUpdatedAt": "2026-10-13T14:12:00.000Z",
+    "scheduleAdjustment": {
+     "reason": "teacher",
+     "minutes": 15,
+     "direction": "advanced",
+     "adjustedAt": "2026-10-13T12:50:00.000Z"
+    },
+    "calendarRegistration": {
+     "end": "2026-10-13T14:00:00.000Z",
+     "start": "2026-10-13T13:00:00.000Z",
+     "lessonId": "cal-1",
+     "modality": "presencial",
+     "studentId": "stu-1",
+     "recurrenceId": "rule-1",
+     "reservationKey": "rule-1:2026-10-13:0",
+     "recurrenceOccurrenceKey": "rule-1:2026-10-13:0"
+    },
+    "billedAmountByStudent": {
+     "stu-1": 9000.61
+    },
+    "calendarReservationKey": "rule-1:2026-10-13:0"
+   },
+   "activity_notes": "ZQ notas de actividades",
+   "internal_notes": "ZQ notas internas de la clase",
+   "actual_ended_at": "2026-10-13T11:12:00-03:00",
+   "counts_as_class": true,
+   "legacy_mobile_id": "les-1",
+   "scheduled_end_at": "2026-10-13T11:00:00-03:00",
+   "actual_started_at": "2026-10-13T10:02:00-03:00",
+   "holiday_exception": false,
+   "homework_due_date": "2026-10-20",
+   "source_event_type": "clase_dictada",
+   "calendar_lesson_id": "5641991f-0c9d-4dc3-a958-db98833f42ab",
+   "scheduled_start_at": "2026-10-13T10:00:00-03:00",
+   "homework_description": "ZQ tarea común",
+   "actual_duration_minutes": 70,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 60,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  },
+  {
+   "id": "61bfce04-194c-4ec2-8c8e-4103336bd19c",
+   "status": "in_progress",
+   "topics": [
+    {
+     "id": "top-3",
+     "text": "ZQ tema grupal",
+     "status": "visto"
+    }
+   ],
+   "outcome": "clase_dictada",
+   "modality": "online",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "activities": [],
+   "created_at": "2026-10-14T18:40:00-03:00",
+   "objectives": [],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "is_billable": true,
+   "material_ids": [],
+   "operation_id": null,
+   "activity_kind": "class",
+   "billed_amount": null,
+   "source_extras": {
+    "formDate": "2026-10-14",
+    "formTime": "17:00",
+    "endSource": null,
+    "startSource": null,
+    "appliedPolicy": null,
+    "studentArrival": null,
+    "effectiveStartAt": null,
+    "profileAppliedAt": null,
+    "sessionUpdatedAt": null,
+    "scheduleAdjustment": null,
+    "calendarRegistration": null,
+    "billedAmountByStudent": null,
+    "calendarReservationKey": null
+   },
+   "activity_notes": "",
+   "internal_notes": "",
+   "actual_ended_at": "2026-10-14T18:30:00-03:00",
+   "counts_as_class": true,
+   "legacy_mobile_id": "les-2",
+   "scheduled_end_at": "2026-10-14T18:30:00-03:00",
+   "actual_started_at": "2026-10-14T17:00:00-03:00",
+   "holiday_exception": false,
+   "homework_due_date": null,
+   "source_event_type": "clase_dictada",
+   "calendar_lesson_id": "582bdde5-8ebd-4ebf-a289-cc4c285800dc",
+   "scheduled_start_at": "2026-10-14T17:00:00-03:00",
+   "homework_description": null,
+   "actual_duration_minutes": 90,
+   "consumes_monthly_package": true,
+   "late_cancellation_policy": null,
+   "scheduled_duration_minutes": 90,
+   "late_cancellation_percentage": null,
+   "rescheduled_from_registration_id": null
+  }
+ ],
+ "material_library_items": [
+  {
+   "id": "13918d93-82bb-4719-a57b-a5203d6c7c89",
+   "name": "ZQ Unidad 3 - verbos irregulares",
+   "note": "ZQ nota del material",
+   "sha256": "a6f69fb5e34d7693fe88d64e7cff972d9a508e950ea342895f3ab089fd3ade9d",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-07-16T09:00:00-03:00",
+   "file_status": "disponible",
+   "imported_at": "2026-10-19T16:40:13.819178-03:00",
+   "storage_path": "00000000-0000-4000-8000-0000000000aa/materials/a6f69fb5e34d7693fe88d64e7cff972d9a508e950ea342895f3ab089fd3ade9d.pdf",
+   "attachment_kind": "pdf",
+   "attachment_name": "ZQ unidad3.pdf",
+   "legacy_mobile_id": "mat-1",
+   "stored_size_bytes": 4096,
+   "attachment_caption": null,
+   "attachment_added_at": "2026-07-16T09:00:00-03:00",
+   "attachment_mime_type": "application/pdf",
+   "attachment_size_bytes": 4096,
+   "attachment_source_uri": "file:///data/user/0/host.exp.exponent/files/attachments/matatt-1.pdf"
+  },
+  {
+   "id": "ad80acad-e41d-4335-b8e4-896d09a8268c",
+   "name": "ZQ Solo una nota",
+   "note": "ZQ material sin archivo",
+   "sha256": null,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-07-17T09:00:00-03:00",
+   "file_status": "sin_archivo",
+   "imported_at": "2026-10-19T16:40:13.819178-03:00",
+   "storage_path": null,
+   "attachment_kind": null,
+   "attachment_name": null,
+   "legacy_mobile_id": "mat-2",
+   "stored_size_bytes": null,
+   "attachment_caption": null,
+   "attachment_added_at": null,
+   "attachment_mime_type": null,
+   "attachment_size_bytes": null,
+   "attachment_source_uri": null
+  }
+ ],
+ "monthly_amount_corrections": [
+  {
+   "id": "a308f8db-44af-40ad-9a72-a037c75ab48f",
+   "reason": "ZQ actualización de precio",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "changed_at": "2026-08-02T09:00:00-03:00",
+   "new_amount": 41000.37,
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "billing_period": "2026-08",
+   "effective_from": "this_month",
+   "previous_amount": 38000.25,
+   "legacy_mobile_id": "mac-1"
+  }
+ ],
+ "package_credit_movements": [
+  {
+   "id": "23c4665c-1d06-4f18-9192-926f1491230f",
+   "amount": 1,
+   "reason": null,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-05-10T09:00:00-03:00",
+   "package_id": "d4e4cc1b-3e14-410b-adae-ec21e4815d25",
+   "student_id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a",
+   "void_reason": null,
+   "movement_type": "consumo",
+   "saved_lesson_id": "179a72ca-f8de-4f38-ade8-ca4271df3926",
+   "legacy_mobile_id": "mov-1"
+  },
+  {
+   "id": "470d0edc-68e8-4b8e-8431-290ca9502c2b",
+   "amount": 2,
+   "reason": "ZQ ajuste manual de paquete",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": "2026-05-12T09:00:00-03:00",
+   "created_at": "2026-05-11T09:00:00-03:00",
+   "package_id": "d4e4cc1b-3e14-410b-adae-ec21e4815d25",
+   "student_id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a",
+   "void_reason": "ZQ ajuste anulado",
+   "movement_type": "ajuste_manual",
+   "saved_lesson_id": null,
+   "legacy_mobile_id": "mov-2"
+  }
+ ],
+ "package_purchases": [
+  {
+   "id": "d4e4cc1b-3e14-410b-adae-ec21e4815d25",
+   "amount": 80000.43,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-05-01T09:00:00-03:00",
+   "student_id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a",
+   "valid_from": "2026-05-01",
+   "valid_until": "2026-12-31",
+   "void_reason": null,
+   "included_classes": 10,
+   "legacy_mobile_id": "pkg-1"
+  }
+ ],
+ "payment_adjustments": [
+  {
+   "id": "6de54f71-542e-40e7-ae4a-bb56f72cd072",
+   "reason": "ZQ ajuste de cobro",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "charge_id": "54754f42-2531-45cc-854a-5e0c193ad97c",
+   "voided_at": null,
+   "created_at": "2026-10-15T09:10:00-03:00",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "void_reason": null,
+   "legacy_mobile_id": "adj-1"
+  }
+ ],
+ "payment_allocations": [
+  {
+   "id": "2e40c2c4-8735-4a09-8579-12b1403fe815",
+   "amount": 41000.37,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "charge_id": "28ca6a7c-0611-42a4-b627-4f8571a621ba",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "payment_id": "c59c8b43-580e-4507-8f08-da098e6aa6c0",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "legacy_mobile_id": "alo-1"
+  },
+  {
+   "id": "c919185d-2067-4560-b731-ec8dfc86e4cc",
+   "amount": 4000.07,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "charge_id": "54754f42-2531-45cc-854a-5e0c193ad97c",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "payment_id": "4056c11b-4e63-40a5-8517-d31612da2a1c",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "legacy_mobile_id": "alo-2"
+  },
+  {
+   "id": "9029cff2-4fac-4271-9785-84fb9fc99610",
+   "amount": 4500.31,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "charge_id": "80324c65-b93d-46d1-9bbc-96f1e72dafdf",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "payment_id": "f63f0687-d394-4a24-9419-218bf073cc09",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "legacy_mobile_id": "alo-3"
+  }
+ ],
+ "payment_charges": [
+  {
+   "id": "13cbfee3-6b6f-453c-8f33-c89e50dea216",
+   "currency": "ARS",
+   "due_date": "2026-05-01",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-05-01T09:00:00-03:00",
+   "package_id": "d4e4cc1b-3e14-410b-adae-ec21e4815d25",
+   "student_id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a",
+   "charge_type": "paquete",
+   "void_reason": null,
+   "billing_period": null,
+   "original_amount": 80000.43,
+   "saved_lesson_id": null,
+   "legacy_mobile_id": "chg-3",
+   "calendar_lesson_id": null,
+   "training_series_name": null,
+   "training_billing_agreement_id": null
+  },
+  {
+   "id": "f7a0b2c3-c8b6-4c41-b6fc-7d6db7447b57",
+   "currency": "ARS",
+   "due_date": "2026-09-10",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": "2026-09-15T09:00:00-03:00",
+   "created_at": "2026-09-01T00:00:00-03:00",
+   "package_id": null,
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "charge_type": "mensual",
+   "void_reason": "ZQ cobro cargado por error",
+   "billing_period": "2026-09",
+   "original_amount": 39000.77,
+   "saved_lesson_id": null,
+   "legacy_mobile_id": "chg-5",
+   "calendar_lesson_id": null,
+   "training_series_name": null,
+   "training_billing_agreement_id": null
+  },
+  {
+   "id": "80324c65-b93d-46d1-9bbc-96f1e72dafdf",
+   "currency": "ARS",
+   "due_date": "2026-10-09",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-09T12:01:00-03:00",
+   "package_id": null,
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "charge_type": "por_clase",
+   "void_reason": null,
+   "billing_period": null,
+   "original_amount": 4500.31,
+   "saved_lesson_id": "932f5432-c8a6-4e8e-82ab-f9997c65fd91",
+   "legacy_mobile_id": "chg-6",
+   "calendar_lesson_id": null,
+   "training_series_name": null,
+   "training_billing_agreement_id": null
+  },
+  {
+   "id": "28ca6a7c-0611-42a4-b627-4f8571a621ba",
+   "currency": "ARS",
+   "due_date": "2026-10-10",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-01T00:00:00-03:00",
+   "package_id": null,
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "charge_type": "mensual",
+   "void_reason": null,
+   "billing_period": "2026-10",
+   "original_amount": 41000.37,
+   "saved_lesson_id": null,
+   "legacy_mobile_id": "chg-1",
+   "calendar_lesson_id": null,
+   "training_series_name": null,
+   "training_billing_agreement_id": null
+  },
+  {
+   "id": "5a1881e4-3405-472f-a9fe-4321632c8aea",
+   "currency": "ARS",
+   "due_date": "2026-10-10",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-01T00:00:00-03:00",
+   "package_id": null,
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "charge_type": "entrenamiento",
+   "void_reason": null,
+   "billing_period": "2026-10",
+   "original_amount": 20000.19,
+   "saved_lesson_id": null,
+   "legacy_mobile_id": "chg-4",
+   "calendar_lesson_id": null,
+   "training_series_name": "ZQ Entrenamiento",
+   "training_billing_agreement_id": "395f3cc4-3e5d-4a7a-9929-56af2cb1904f"
+  },
+  {
+   "id": "54754f42-2531-45cc-854a-5e0c193ad97c",
+   "currency": "ARS",
+   "due_date": "2026-10-14",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-14T18:41:00-03:00",
+   "package_id": null,
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "charge_type": "por_clase",
+   "void_reason": null,
+   "billing_period": null,
+   "original_amount": 9000.61,
+   "saved_lesson_id": "61bfce04-194c-4ec2-8c8e-4103336bd19c",
+   "legacy_mobile_id": "chg-2",
+   "calendar_lesson_id": "582bdde5-8ebd-4ebf-a289-cc4c285800dc",
+   "training_series_name": null,
+   "training_billing_agreement_id": null
+  }
+ ],
+ "payments": [
+  {
+   "id": "c59c8b43-580e-4507-8f08-da098e6aa6c0",
+   "notes": "ZQ nota del pago uno",
+   "amount": 41000.37,
+   "method": "transferencia",
+   "source": null,
+   "paid_at": "2026-10-05",
+   "currency": "ARS",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "recorded_at": "2026-10-05T15:30:00-03:00",
+   "void_reason": null,
+   "operation_id": null,
+   "legacy_mobile_id": "pay-1",
+   "replaces_payment_id": null
+  },
+  {
+   "id": "1250d57a-d381-42b4-9d8b-b25ea35f146e",
+   "notes": null,
+   "amount": 500.5,
+   "method": "otro",
+   "source": "initial_student_setup",
+   "paid_at": "2026-03-02",
+   "currency": "ARS",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": "2026-03-03T09:00:00-03:00",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "recorded_at": "2026-03-02T12:35:00-03:00",
+   "void_reason": "ZQ pago anulado",
+   "operation_id": null,
+   "legacy_mobile_id": "pay-3",
+   "replaces_payment_id": null
+  },
+  {
+   "id": "f63f0687-d394-4a24-9419-218bf073cc09",
+   "notes": null,
+   "amount": 4500.31,
+   "method": "efectivo",
+   "source": null,
+   "paid_at": "2026-10-09",
+   "currency": "ARS",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "recorded_at": "2026-10-09T12:05:00-03:00",
+   "void_reason": null,
+   "operation_id": null,
+   "legacy_mobile_id": "pay-4",
+   "replaces_payment_id": "1250d57a-d381-42b4-9d8b-b25ea35f146e"
+  },
+  {
+   "id": "4056c11b-4e63-40a5-8517-d31612da2a1c",
+   "notes": null,
+   "amount": 4000.07,
+   "method": "efectivo",
+   "source": null,
+   "paid_at": "2026-10-15",
+   "currency": "ARS",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "voided_at": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "recorded_at": "2026-10-15T09:00:00-03:00",
+   "void_reason": null,
+   "operation_id": null,
+   "legacy_mobile_id": "pay-2",
+   "replaces_payment_id": null
+  }
+ ],
+ "pending_training_billing_operations": [],
+ "phone_extraction_results": [
+  {
+   "id": "594c4c4c-cc6b-45e0-9d66-a3b80508b257",
+   "summary": {
+    "gates": {
+     "pendingOperations": 0,
+     "activeClassSession": false
+    },
+    "trial": false,
+    "counts": {
+     "material": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 1,
+      "alreadyThere": 0,
+      "missingAtOrigin": 0
+     },
+     "report_pdf": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 1,
+      "alreadyThere": 0,
+      "missingAtOrigin": 0
+     },
+     "lesson_attachment": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 1,
+      "alreadyThere": 0,
+      "missingAtOrigin": 0
+     }
+    },
+    "failed": [],
+    "complete": true,
+    "unreadable": [],
+    "deviceKeysSaved": 3,
+    "missingAtOrigin": [],
+    "materialsInserted": 2,
+    "materialsReceived": 2
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "finished_at": "2026-10-19T16:40:13.851237-03:00"
+  },
+  {
+   "id": "4f14e1b1-4d02-43cd-b23d-155750a9895b",
+   "summary": {
+    "gates": {
+     "pendingOperations": 0,
+     "activeClassSession": false
+    },
+    "trial": false,
+    "counts": {
+     "material": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 0,
+      "alreadyThere": 1,
+      "missingAtOrigin": 0
+     },
+     "report_pdf": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 0,
+      "alreadyThere": 1,
+      "missingAtOrigin": 0
+     },
+     "lesson_attachment": {
+      "total": 1,
+      "failed": 0,
+      "uploaded": 0,
+      "alreadyThere": 1,
+      "missingAtOrigin": 0
+     }
+    },
+    "failed": [],
+    "complete": true,
+    "unreadable": [],
+    "deviceKeysSaved": 3,
+    "missingAtOrigin": [],
+    "materialsInserted": 0,
+    "materialsReceived": 2
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "finished_at": "2026-10-19T16:40:13.857233-03:00"
+  }
+ ],
+ "recurrence_exceptions": [
+  {
+   "id": "9aa38c19-ba27-4ec1-be7d-78c37bbb4031",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-14T08:00:00-03:00",
+   "recurrence_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "exception_type": "cancelled",
+   "occurrence_key": "rule-1:2026-10-15:0",
+   "replacement_lesson_id": null
+  },
+  {
+   "id": "9f7f2798-0f55-4c2c-8fb0-92021f68c9ad",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-10T08:00:00-03:00",
+   "recurrence_id": "5fb37961-7530-473a-a09b-7ffb1d32a2ad",
+   "exception_type": "rescheduled",
+   "occurrence_key": "rule-2:2026-10-12:0",
+   "replacement_lesson_id": "0ec8f098-ddb5-4f91-8520-525c78bcee60"
+  },
+  {
+   "id": "a81bbdce-af0e-4c30-a1cf-db3a6896801a",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-14T08:05:00-03:00",
+   "recurrence_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "exception_type": "excluded",
+   "occurrence_key": "rule-1:2026-10-22:0",
+   "replacement_lesson_id": null
+  }
+ ],
+ "recurrence_rule_participants": [
+  {
+   "id": "43f265ec-c26f-4d26-8314-c66bc88f5eed",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "recurrence_rule_id": "fa2e4c70-8056-4461-806f-6e06a0ac7046"
+  },
+  {
+   "id": "f50404be-0b5b-4afa-89d4-4730fd9309c6",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "recurrence_rule_id": "5fb37961-7530-473a-a09b-7ffb1d32a2ad"
+  }
+ ],
+ "recurrence_rules": [
+  {
+   "id": "fa2e4c70-8056-4461-806f-6e06a0ac7046",
+   "weeks": [
+    {
+     "sessions": [
+      {
+       "hour": 10,
+       "minute": 0,
+       "weekday": 1,
+       "durationMinutes": 60
+      },
+      {
+       "hour": 10,
+       "minute": 0,
+       "weekday": 4,
+       "durationMinutes": 60
+      }
+     ],
+     "weekIndex": 0
+    }
+   ],
+   "status": "active",
+   "end_date": null,
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "timezone": "America/Argentina/Buenos_Aires",
+   "rule_type": "weekly",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "start_date": "2026-03-02",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": "ZQ Conversación",
+   "operation_id": null,
+   "activity_kind": "class",
+   "legacy_mobile_id": "rule-1",
+   "cycle_length_weeks": 1,
+   "primary_student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "effective_from_date": "2026-03-02",
+   "supersedes_recurrence_id": null,
+   "superseded_by_recurrence_id": null,
+   "training_billing_agreement_id": null
+  },
+  {
+   "id": "17a4854e-a7d3-4557-acca-df38e08c19ea",
+   "weeks": [
+    {
+     "sessions": [
+      {
+       "hour": 19,
+       "minute": 0,
+       "weekday": 1,
+       "durationMinutes": 45
+      }
+     ],
+     "weekIndex": 0
+    }
+   ],
+   "status": "ended",
+   "end_date": "2026-04-05",
+   "modality": "mixta",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "timezone": "America/Argentina/Buenos_Aires",
+   "rule_type": "weekly",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "start_date": "2026-02-02",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": null,
+   "operation_id": null,
+   "activity_kind": "training",
+   "legacy_mobile_id": "rule-0",
+   "cycle_length_weeks": 1,
+   "primary_student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "effective_from_date": null,
+   "supersedes_recurrence_id": null,
+   "superseded_by_recurrence_id": "5fb37961-7530-473a-a09b-7ffb1d32a2ad",
+   "training_billing_agreement_id": "395f3cc4-3e5d-4a7a-9929-56af2cb1904f"
+  },
+  {
+   "id": "5fb37961-7530-473a-a09b-7ffb1d32a2ad",
+   "weeks": [
+    {
+     "sessions": [
+      {
+       "hour": 19,
+       "minute": 0,
+       "weekday": 1,
+       "durationMinutes": 60
+      }
+     ],
+     "weekIndex": 0
+    },
+    {
+     "sessions": [],
+     "weekIndex": 1
+    }
+   ],
+   "status": "paused",
+   "end_date": "2026-12-14",
+   "modality": "mixta",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "timezone": "America/Argentina/Buenos_Aires",
+   "rule_type": "custom",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "start_date": "2026-04-06",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "class_title": "ZQ Entrenamiento",
+   "operation_id": null,
+   "activity_kind": "training",
+   "legacy_mobile_id": "rule-2",
+   "cycle_length_weeks": 2,
+   "primary_student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "effective_from_date": "2026-04-06",
+   "supersedes_recurrence_id": "17a4854e-a7d3-4557-acca-df38e08c19ea",
+   "superseded_by_recurrence_id": null,
+   "training_billing_agreement_id": "395f3cc4-3e5d-4a7a-9929-56af2cb1904f"
+  }
+ ],
+ "report_records": [
+  {
+   "id": "b4a23813-61f5-474e-81ea-83ef9feae406",
+   "title": "ZQ Reporte septiembre",
+   "pdf_url": "00000000-0000-4000-8000-0000000000aa/1b49790b-4b98-432c-952b-2fdfa33d776e/b4a23813-61f5-474e-81ea-83ef9feae406.pdf",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "snapshot": {
+    "data": {
+     "strengths": [],
+     "attendance": {
+      "classesHeld": 8,
+      "ratePercent": 100,
+      "classesAbsent": 0,
+      "classesAttended": 8
+     },
+     "skillNotes": [],
+     "classesHeld": 8,
+     "hoursTaught": 8,
+     "punctuality": {
+      "lateCount": 0,
+      "onTimeCount": 0,
+      "averageLateMinutes": null,
+      "classesWithAttendanceData": 0
+     },
+     "lessonDetails": [],
+     "areasToImprove": [],
+     "homeworkAssigned": [],
+     "generalAverageGrade": 8.5
+    },
+    "studentName": "ZQ Alumna Uno",
+    "teacherNotes": {
+     "generalComment": "",
+     "nextObjectives": "",
+     "recommendations": "",
+     "behaviorAndParticipation": ""
+    },
+    "_mobileRecord": {
+     "snapshot": {
+      "data": {
+       "period": {
+        "label": "Septiembre",
+        "endDate": "2026-09-30",
+        "startDate": "2026-09-01"
+       },
+       "strengths": [],
+       "studentId": "stu-1",
+       "attendance": {
+        "classesHeld": 8,
+        "ratePercent": 100,
+        "classesAbsent": 0,
+        "classesAttended": 8
+       },
+       "skillNotes": [],
+       "topicsSeen": [
+        "ZQ tema del reporte"
+       ],
+       "hoursTaught": 8,
+       "studentName": "ZQ Alumna Uno",
+       "lessonDetails": [],
+       "areasToImprove": [],
+       "homeworkAssigned": [],
+       "evidenceCandidates": [],
+       "generalAverageGrade": 8.5
+      },
+      "narrativeText": "ZQ narrativa del reporte",
+      "includeClassDetail": true,
+      "selectedEvidenceIds": []
+     },
+     "schemaVersion": 1,
+     "permanentPdfUri": "file:///data/user/0/host.exp.exponent/files/ZQ-reporte.pdf"
+    },
+    "narrativeText": "ZQ narrativa del reporte",
+    "includeClassDetail": true,
+    "monthsSummaryLabel": "Septiembre",
+    "includePunctualitySummary": false
+   },
+   "period_end": "2026-09-30",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "generated_at": "2026-10-01T09:00:00-03:00",
+   "operation_id": null,
+   "period_start": "2026-09-01",
+   "schema_version": 1,
+   "selected_months": [
+    "2026-09"
+   ],
+   "legacy_mobile_id": "rep-1"
+  }
+ ],
+ "student_level_history": [
+  {
+   "id": "2ba1ea14-5d40-470d-ad76-daa4b1bd6299",
+   "note": "ZQ nota nivel",
+   "level": "A2",
+   "origin": "manual",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "from_level": null,
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "achieved_on": "2026-03-02",
+   "recorded_at": "2026-03-02T12:30:00-03:00",
+   "duration_days": null,
+   "legacy_mobile_id": "lvl-1",
+   "previous_milestone_at": null
+  },
+  {
+   "id": "723a52df-4539-4104-afe1-2e6ad47c93f0",
+   "note": null,
+   "level": "B1",
+   "origin": null,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "from_level": "A2",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "achieved_on": "2026-09-01",
+   "recorded_at": "2026-09-01T09:00:00-03:00",
+   "duration_days": 183,
+   "legacy_mobile_id": "lvl_c7596605",
+   "previous_milestone_at": "2026-03-02T12:30:00-03:00"
+  }
+ ],
+ "student_price_history": [
+  {
+   "id": "1c16f89c-75e8-478b-ab29-4a7d98525b2a",
+   "price": 38000.25,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "effective_on": "2026-03-02",
+   "source_entry": {
+    "date": "2026-03-02T15:30:00.000Z",
+    "price": 38000.25
+   }
+  },
+  {
+   "id": "8a08958c-8f28-4b6c-93e3-7ec7e38a5713",
+   "price": 41000.37,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "effective_on": "2026-08-01",
+   "source_entry": {
+    "date": "2026-08-01T03:00:00.000Z",
+    "price": 41000.37
+   }
+  },
+  {
+   "id": "91f5896b-b697-4c10-b8dc-8a6ec275105d",
+   "price": 9000.61,
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "effective_on": "2026-04-01",
+   "source_entry": {
+    "date": "2026-04-01",
+    "price": 9000.61
+   }
+  }
+ ],
+ "student_source_extras": [
+  {
+   "id": "5a6eac1b-da9e-4332-b6e7-d48a810ed794",
+   "extras": {
+    "card": {
+     "nextClassAt": "2026-10-20T13:00:00.000Z",
+     "averageGrade": 8.5,
+     "lastPaymentAt": "2026-10-05",
+     "paymentStatus": "verde",
+     "nextClassEndAt": "2026-10-20T14:00:00.000Z",
+     "classesThisMonth": 3,
+     "hasPendingReport": true,
+     "overdueDebtLabel": null,
+     "hasOverduePayment": false,
+     "monthlyStatusKind": "paid",
+     "hasPendingHomework": true,
+     "monthlyStatusLabel": "Al día",
+     "monthlyStatusBalance": 0,
+     "monthlyStatusColorKey": "verde"
+    },
+    "profile": {
+     "lastClassAt": "2026-10-13T13:00:00.000Z",
+     "nextClassAt": "2026-10-20T13:00:00.000Z",
+     "averageGrade": 8.5,
+     "totalClasses": 14,
+     "paymentStatus": "verde",
+     "totalInvested": 574000.5,
+     "attendanceRate": 91.5,
+     "nextClassEndAt": "2026-10-20T14:00:00.000Z",
+     "totalHoursTaken": 14.75,
+     "classesThisMonth": 3,
+     "skillGradesHistory": [
+      {
+       "date": "2026-10-13",
+       "grades": {
+        "grammar": 7.5,
+        "speaking": 8.5
+       }
+      }
+     ]
+    }
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e"
+  },
+  {
+   "id": "956a13bc-a950-4d45-871b-32d39432d198",
+   "extras": {
+    "card": {
+     "nextClassAt": null,
+     "averageGrade": null,
+     "lastPaymentAt": null,
+     "paymentStatus": "amarillo",
+     "classesThisMonth": 1,
+     "hasPendingReport": false,
+     "hasOverduePayment": true,
+     "hasPendingHomework": false
+    },
+    "profile": {
+     "lastClassAt": "2026-10-13T13:00:00.000Z",
+     "nextClassAt": "2026-10-20T13:00:00.000Z",
+     "averageGrade": 8.5,
+     "totalClasses": 14,
+     "paymentStatus": "verde",
+     "totalInvested": 574000.5,
+     "attendanceRate": 91.5,
+     "nextClassEndAt": "2026-10-20T14:00:00.000Z",
+     "totalHoursTaken": 14.75,
+     "classesThisMonth": 3,
+     "skillGradesHistory": []
+    }
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "2786e55f-7b02-451a-9abf-61dd7f989b85"
+  },
+  {
+   "id": "08d1889e-1703-4133-8a07-738ac4639af2",
+   "extras": {
+    "card": {
+     "nextClassAt": null,
+     "averageGrade": null,
+     "lastPaymentAt": null,
+     "paymentStatus": "rojo",
+     "classesThisMonth": 0,
+     "hasPendingReport": false,
+     "hasOverduePayment": false,
+     "hasPendingHomework": false
+    },
+    "profile": {
+     "lastClassAt": "2026-10-13T13:00:00.000Z",
+     "nextClassAt": "2026-10-20T13:00:00.000Z",
+     "averageGrade": 8.5,
+     "totalClasses": 14,
+     "paymentStatus": "verde",
+     "totalInvested": 574000.5,
+     "attendanceRate": 91.5,
+     "nextClassEndAt": "2026-10-20T14:00:00.000Z",
+     "totalHoursTaken": 14.75,
+     "classesThisMonth": 3,
+     "skillGradesHistory": []
+    }
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a"
+  },
+  {
+   "id": "838b4876-db05-40ef-8f86-a0f428b1cda4",
+   "extras": {
+    "card": {
+     "nextClassAt": null,
+     "averageGrade": 9,
+     "lastPaymentAt": "2026-08-10",
+     "paymentStatus": "naranja",
+     "classesThisMonth": 0,
+     "hasPendingReport": false,
+     "hasOverduePayment": false,
+     "hasPendingHomework": false
+    },
+    "profile": {
+     "lastClassAt": "2026-10-13T13:00:00.000Z",
+     "nextClassAt": "2026-10-20T13:00:00.000Z",
+     "averageGrade": 8.5,
+     "totalClasses": 14,
+     "paymentStatus": "verde",
+     "totalInvested": 574000.5,
+     "attendanceRate": 91.5,
+     "nextClassEndAt": "2026-10-20T14:00:00.000Z",
+     "totalHoursTaken": 14.75,
+     "classesThisMonth": 3,
+     "skillGradesHistory": []
+    }
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be"
+  }
+ ],
+ "student_status_history": [
+  {
+   "id": "701826e5-11ac-4aa6-9496-005a657e96a5",
+   "reason": "ZQ alta",
+   "status": "activo",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "occurred_on": "2026-03-02",
+   "operation_id": null,
+   "internal_note": "ZQ nota interna de estado",
+   "payload_snapshot": {
+    "date": "2026-03-02T15:30:00.000Z",
+    "reason": "ZQ alta",
+    "status": "activo",
+    "internalNote": "ZQ nota interna de estado"
+   }
+  },
+  {
+   "id": "3f7456d8-46f3-437c-9add-0710fa69f2b2",
+   "reason": "ZQ vacaciones largas",
+   "status": "pausado",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "student_id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "occurred_on": "2026-09-20",
+   "operation_id": null,
+   "internal_note": null,
+   "payload_snapshot": {
+    "date": "2026-09-20",
+    "reason": "ZQ vacaciones largas",
+    "status": "pausado"
+   }
+  }
+ ],
+ "students": [
+  {
+   "id": "ed59b077-a0e0-4fec-8443-51b55bf0b0be",
+   "name": "ZQ Alumna Tres",
+   "email": null,
+   "notes": null,
+   "phone": null,
+   "price": 0,
+   "alerts": [],
+   "is_new": false,
+   "levels": [
+    "C1"
+   ],
+   "status": "pausado",
+   "category": "profesorado_ingles",
+   "modality": "mixta",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "whatsapp": null,
+   "strengths": [],
+   "birth_date": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "usual_days": [],
+   "usual_time": null,
+   "date_joined": "2026-03-02",
+   "is_featured": false,
+   "billing_plan": {
+    "type": "complimentary"
+   },
+   "billing_type": "mensual",
+   "current_goals": [],
+   "initial_level": "A2",
+   "areas_to_improve": [],
+   "legacy_mobile_id": "stu-3",
+   "pending_homework": null,
+   "weekly_frequency": 2,
+   "status_change_date": "2026-09-20",
+   "last_reactivated_at": "2026-02-01",
+   "usual_duration_minutes": 60
+  },
+  {
+   "id": "1b49790b-4b98-432c-952b-2fdfa33d776e",
+   "name": "ZQ Alumna Uno",
+   "email": "zq.uno@example.invalid",
+   "notes": "ZQ nota privada de la alumna uno",
+   "phone": "+54 9 11 5550-0001",
+   "price": 41000.37,
+   "alerts": [
+    "ZQ alerta uno"
+   ],
+   "is_new": false,
+   "levels": [
+    "B1"
+   ],
+   "status": "activo",
+   "category": "adulto_interes_personal",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "whatsapp": "+54 9 11 5550-0002",
+   "strengths": [
+    "ZQ fortaleza uno"
+   ],
+   "birth_date": "1990-05-17",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "usual_days": [
+    "lunes",
+    "jueves"
+   ],
+   "usual_time": "10:00",
+   "date_joined": "2026-03-02",
+   "is_featured": true,
+   "billing_plan": {
+    "type": "monthly",
+    "amount": 41000.37,
+    "dueDay": 10,
+    "startPeriod": "2026-03",
+    "pendingAmount": 45000.12,
+    "pendingAmountEffectiveFrom": "2026-12"
+   },
+   "billing_type": "mensual",
+   "current_goals": [
+    "ZQ objetivo uno"
+   ],
+   "initial_level": "A2",
+   "areas_to_improve": [
+    "ZQ aspecto a mejorar uno"
+   ],
+   "legacy_mobile_id": "stu-1",
+   "pending_homework": "ZQ tarea pendiente uno",
+   "weekly_frequency": 2,
+   "status_change_date": null,
+   "last_reactivated_at": null,
+   "usual_duration_minutes": 60
+  },
+  {
+   "id": "627fb9fe-077a-4ee6-a048-9759d1eb7f9a",
+   "name": "ZQ Alumno Cuatro",
+   "email": null,
+   "notes": null,
+   "phone": null,
+   "price": 41000.37,
+   "alerts": [],
+   "is_new": false,
+   "levels": [
+    "A1"
+   ],
+   "status": "archivado",
+   "category": "otro",
+   "modality": "presencial",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "whatsapp": null,
+   "strengths": [],
+   "birth_date": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "usual_days": [],
+   "usual_time": null,
+   "date_joined": "2026-03-02",
+   "is_featured": false,
+   "billing_plan": {
+    "type": "class_package",
+    "amount": 80000.43,
+    "validFrom": "2026-05-01",
+    "validUntil": "2026-12-31",
+    "includedClasses": 10
+   },
+   "billing_type": "por_clase",
+   "current_goals": [],
+   "initial_level": "A2",
+   "areas_to_improve": [],
+   "legacy_mobile_id": "stu-4",
+   "pending_homework": null,
+   "weekly_frequency": 2,
+   "status_change_date": "2026-07-01",
+   "last_reactivated_at": null,
+   "usual_duration_minutes": 60
+  },
+  {
+   "id": "2786e55f-7b02-451a-9abf-61dd7f989b85",
+   "name": "ZQ Alumno Dos",
+   "email": null,
+   "notes": null,
+   "phone": null,
+   "price": 9000.61,
+   "alerts": [],
+   "is_new": true,
+   "levels": [
+    "A2",
+    "Intermedio ZQ"
+   ],
+   "status": "activo",
+   "category": "secundaria",
+   "modality": "online",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "whatsapp": null,
+   "strengths": [],
+   "birth_date": null,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "usual_days": [
+    "martes"
+   ],
+   "usual_time": null,
+   "date_joined": "2026-03-02",
+   "is_featured": false,
+   "billing_plan": {
+    "type": "per_class",
+    "amount": 9000.61
+   },
+   "billing_type": "por_clase",
+   "current_goals": [],
+   "initial_level": "A2",
+   "areas_to_improve": [],
+   "legacy_mobile_id": "stu-2",
+   "pending_homework": null,
+   "weekly_frequency": 1,
+   "status_change_date": null,
+   "last_reactivated_at": null,
+   "usual_duration_minutes": 60
+  }
+ ],
+ "surcharge_settings": [
+  {
+   "enabled": false,
+   "pending": {
+    "enabled": false,
+    "graceDay": 12,
+    "lastLateDay": 23,
+    "firstLateDay": 13,
+    "secondLateDay": 18,
+    "lastLatePercentage": 16,
+    "firstLatePercentage": 6,
+    "secondLatePercentage": 11
+   },
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "grace_day": 10,
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "last_late_day": 21,
+   "first_late_day": 11,
+   "second_late_day": 16,
+   "last_late_percentage": 15,
+   "first_late_percentage": 5,
+   "pending_effective_from": "2027-01",
+   "second_late_percentage": 10
+  }
+ ],
+ "teacher_availability": [
+  {
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "timezone": "America/Argentina/Buenos_Aires",
+   "created_at": "2026-10-19T16:40:13.367652-03:00",
+   "exceptions": [
+    {
+     "id": "exc-1",
+     "date": "2026-12-21",
+     "note": "ZQ vacaciones",
+     "type": "unavailable_full_day",
+     "reason": "vacation",
+     "endDate": "2027-01-04"
+    },
+    {
+     "id": "exc-2",
+     "date": "2026-11-02",
+     "type": "unavailable_block",
+     "reason": "other",
+     "endTime": "12:00",
+     "startTime": "09:00"
+    },
+    {
+     "id": "exc-3",
+     "date": "2026-11-07",
+     "type": "available_extra",
+     "reason": "other",
+     "endTime": "13:00",
+     "startTime": "10:00"
+    }
+   ],
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "weekly_blocks": [
+    {
+     "id": "blk-1",
+     "note": "ZQ almuerzo",
+     "reason": "personal",
+     "endTime": "14:30",
+     "weekday": 2,
+     "startTime": "13:00"
+    }
+   ]
+  }
+ ],
+ "teacher_profiles": [
+  {
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-03-01T09:00:00-03:00",
+   "updated_at": "2026-10-19T16:40:13.367652-03:00",
+   "display_name": "ZQ Profesora Demo",
+   "source_updated_at": "2026-09-01T09:00:00-03:00",
+   "tutorial_completed_at": "2026-03-05T09:00:00-03:00",
+   "completed_tutorial_version": 2
+  }
+ ],
+ "training_billing_agreements": [
+  {
+   "id": "395f3cc4-3e5d-4a7a-9929-56af2cb1904f",
+   "owner_id": "00000000-0000-4000-8000-0000000000aa",
+   "created_at": "2026-02-01T09:00:00-03:00",
+   "monthly_fee": 20000.19,
+   "start_period": "2026-02",
+   "legacy_mobile_id": "agr-1",
+   "pending_monthly_fee": 22000.88,
+   "pending_monthly_fee_effective_from": "2027-01"
+  }
+ ]
+}

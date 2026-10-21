@@ -17,6 +17,8 @@
 //    datos (`self.__next_f.push(...)`) con contenido distinto en cada respuesta, así que no se pueden fijar con hashes. El paso
 //    siguiente es un *nonce* por solicitud desde `proxy.ts` (implica renderizado dinámico de las páginas hoy estáticas) y
 //    entonces se QUITA `'unsafe-inline'`. Nunca `'unsafe-eval'`: la versión de producción de Next no lo necesita.
+//  - `'wasm-unsafe-eval'` en `script-src`: sólo permite COMPILAR WebAssembly (no `eval` de texto, no es `'unsafe-eval'`). Lo necesita la vista previa de fotos HEIC
+//    (decodificador `libheif`, que se descarga únicamente al abrir una foto HEIC). Sin esto, al pasar la política a bloqueante esa vista previa dejaría de funcionar.
 //  - `style-src 'self' 'unsafe-inline'`: TEMPORAL. React/Next y los estilos dinámicos de Tailwind usan atributos `style` y
 //    <style> en línea; se revisará junto con el nonce.
 //  - `img-src 'self' data: blob:`: íconos propios y SVG/imágenes embebidas. `font-src 'self'`: no hay fuentes externas (las de
@@ -35,7 +37,7 @@ function cspReportOnly(captchaOrigin = null) {
   const extra = captchaOrigin ? ` ${captchaOrigin}` : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${extra}`,
+    `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${extra}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",

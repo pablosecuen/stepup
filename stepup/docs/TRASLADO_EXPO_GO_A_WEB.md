@@ -1,0 +1,231 @@
+# Traslado del usuario activo: de la app (Expo Go) a la web
+
+Estado: **preparado y ensayado con datos sintéticos; NO ejecutado sobre ninguna cuenta real.** Las migraciones R9, R10 y R11 **no están aplicadas en Production**. No se leyó ningún dato real.
+
+## 0. Principio
+
+Un dato está **migrado** cuando vive en una columna o tabla de la cuenta (con las mismas reglas de acceso que el resto) y la comparación origen ↔ destino lo verificó **campo por campo**. Que el dato esté guardado en la copia del respaldo (`import_source_archives`) **no es migrarlo**: el comparador lo lista aparte y el veredicto no queda «completo».
+
+## 1. Dónde está cada cosa
+
+| Qué | Dónde |
+|---|---|
+| App vigente | `TeacherFlow_NuevaClase/TeacherFlow` (Expo SDK 54), corre en Expo Go contra el servidor de desarrollo de esa carpeta |
+| Datos de la app | AsyncStorage del teléfono (`@teacherflow/*`) |
+| Respaldo en la nube (única copia fuera del teléfono) | tabla `cloud_backups` del **mismo proyecto Supabase** que la web (10 copias, automático) |
+| Sólo en el teléfono, **fuera** del respaldo | adjuntos de clases (`Paths.document/attachments/<id>.<ext>`), PDF de reportes (`Paths.document/reports/<id>.pdf`), biblioteca de materiales (`@teacherflow/materials_library`) y claves locales (cola de operaciones pendientes, avisos, clase en curso, preferencias) |
+
+## 2. Qué se construyó (todo local, sin aplicar)
+
+- **Adaptador** (`lib/backup/mobile-adapter.ts`): el formato real de la app (series sin `id`, clases con `start`/`end`, cada clase registrada como un `form` anidado, fechas como instante) no coincidía con el que lee la importación; un respaldo real con series se rechazaba. Convierte sin inventar y lista (y bloquea) lo que no puede convertir. Una ficha sin alumno en la lista **no** recrea un alumno (la app borra la ficha con el alumno).
+- **R9** (`20261019100000`): copia íntegra del origen por importación (`import_source_archives`, no se purga, se conserva al deshacer), historial de estados y de precios, correcciones mensuales.
+- **R10** (`20261019110000`, rollback en `supabase/repairs/r10_transfer_complete_rollback.sql`): cada dato que antes sólo quedaba en el archivo ahora tiene destino real:
+  - clase registrada: temas con estado, objetivos, actividades, notas de actividades, notas internas, materiales usados, marcas «facturable» y «consume paquete», resultado original («alumno ausente» queda como clase dictada + asistencia «ausente» **y** el resultado original en `source_event_type`), duraciones, cronómetro, puntualidad, reserva de calendario e importes por alumno (`source_extras`; cualquier campo nuevo de la app se conserva ahí y se informa);
+  - **estado de registros grupales**: registro «en curso» + estado y orden de cada participante (el mismo mecanismo que la app). Antes la importación dejaba a **todos** los participantes «pendientes», incluso en clases finalizadas; ahora un registro finalizado deja a todos «completados», como lo deja la web;
+  - **fechas originales** (nunca reemplazadas por la de la importación): creación/edición de la clase, creación de cobros, ajustes, paquetes, acuerdos, niveles y excepciones, `recorded_at` de pagos, creación de reportes, creación del perfil;
+  - historial de ediciones de cada clase, adjuntos de clase (`lesson_attachments`), grupo de superposición de clases (original + uuid derivado), «serie reemplazada por» (la importación por conjuntos sólo cargaba «reemplaza a»), snapshot de series del primer mes proporcional, avance del tutorial, datos calculados por la app y entradas de historial inválidas (tabla `student_source_extras`: aparte de `students` porque esa fila tiene un tope de 64 KB por cuota);
+  - **reportes generados**: llegan a `report_records` con el snapshot en el formato de la web (para volver a generar el PDF) y el registro original completo adentro;
+  - **notas fuera de 1–10**: la nota válida queda vacía **pero el valor original se conserva** (`source_grades`: general y por habilidad) con banderas para revisión (`0` = «sin calificar», según la propia app; lo demás = «fuera de rango»); nunca se corrige en silencio;
+  - biblioteca de materiales (`material_library_items`), datos locales del teléfono (`device_local_snapshots`), resultado de cada extracción (`phone_extraction_results`) y bucket privado `lesson-files` (agregar, leer y borrar lo propio; nunca actualizar);
+  - `_import_undo_analyze` compara cada fila sólo con las columnas que tenía al importarse: **una importación hecha antes de R10 se puede deshacer después de aplicarla** (probado).
+- **Pantalla de contenido de la clase** (`components/registro/lesson-content-card.tsx`, sólo lectura): temas, objetivos, actividades, notas, materiales y adjuntos en las pantallas de registro, con «Abrir» para los archivos disponibles (URL firmada de 5 minutos). La eliminación de la cuenta también vacía `lesson-files`.
+- **Comparador campo por campo** (`lib/backup/transfer-compare.ts`): por entidad (32), identificador de origen, campo y relación (se traduce el uuid de destino al identificador de origen; no se compara «que el texto aparezca en algún lado»). Detecta valores intercambiados entre alumnos o clases, importes distintos (un centavo), fechas reemplazadas, estados reiniciados, notas originales perdidas, filas faltantes o duplicadas, claves del origen sin destino y archivos pendientes. **Sus informes no llevan valores**: sólo identificadores de origen, nombres de campo, tipo, largo y una huella.
+- **Extracción de archivos del teléfono** (`lib/phone-extraction`, parche en `tools/phone-extraction`): ver §5.
+- **Copias cifradas** (`lib/secure-copy`, `tools/secure-copy`, `tools/transfer`): ver §6.
+
+## 3. Cobertura por entidad
+
+Cada fila del origen se compara con su destino: alumnos y fichas (todos los campos, incluidos los calculados, en `student_source_extras`), historiales de niveles / estados / precios, niveles propios, acuerdos de entrenamiento, series e integrantes, clases de calendario e integrantes, excepciones, clases registradas con integrantes, asistencias, evaluaciones, revisiones de tarea, historial de ediciones y adjuntos, cobros, pagos, asignaciones, ajustes, paquetes y movimientos, correcciones de importe mensual y de recargo inicial, decisiones de primer mes, reportes, perfil, disponibilidad, recargos (con el cambio programado), distribución 50/30/20.
+
+**Conversiones declaradas** (nada se transforma sin quedar a la vista en el informe del adaptador): instantes → día civil de Argentina (la fecha original viaja en la entrada del historial); «alumno ausente»; horas reales derivadas de la duración cuando faltaban; `enabled` de recargos siempre apagado (decisión de negocio vigente); estructura del snapshot de reportes.
+
+**Técnico, sin valor para la profesora y declarado como tal:** los números de versión del esquema de almacenamiento de la app (`schemaVersion` del perfil y de la disponibilidad).
+
+## 4. Pruebas (datos sintéticos)
+
+- `transfer_rehearsal.cjs` (Postgres real): importa, compara **~950 campos** sin diferencias, corre la extracción con el código real y un teléfono simulado, vuelve a comparar (veredicto COMPLETO) y comprueba que el comparador **nota** 12 alteraciones a propósito; deshace y deja la cuenta vacía: **92/92**.
+- `r10_migration_rehearsal.cjs`: BEGIN…ROLLBACK idéntico a la huella inicial, idempotente, compatible con importaciones y vistas previas anteriores, rollback exacto: **26/26**. `r9_migration_rehearsal.cjs`: **24/24**.
+- Baterías existentes con R9 y R10 presentes: `r61_import`, `r5_hygiene`, `r6_import`, `r8_retire`, `r3_quotas`, `r4_retention` (ver el informe de la sesión para los números de la última corrida). Una comprobación de escala de `r6_import` (lecturas secuenciales de la vista previa) fluctuó en 2 de 7 corridas bajo carga y pasó en las 5 limpias; no depende de R10 (la vista previa no cambió).
+- Pruebas unitarias: adaptador, comparador (contra el volcado de referencia), mapeo del contenido, extractor, parche del teléfono (no destructivo, al día con el código probado), copias cifradas y herramientas de comparación.
+
+## 5. Archivos que sólo existen en el teléfono
+
+**Cómo se recuperan.** No hay otra forma que ejecutar código **dentro de la app** (el almacenamiento de Expo Go no es accesible desde fuera: ni por cable, ni por la Files app, ni por copia de seguridad del sistema). Por eso se prepara un parche mínimo y aislado:
+
+- `tools/phone-extraction/mobile-patch/` agrega una pantalla temporal «Traslado a la web» (un botón al final de Protección de datos). **No está aplicado** en la app (la carpeta de la app es de sólo lectura para esta tarea). El código de la extracción (`plan.ts`, `runner.ts`) es el mismo que se prueba en Node; sus tipos se comprobaron contra los tipos reales de la app en una copia temporal (`tsc` sin errores).
+- **No destructivo por construcción**: las capacidades que recibe sólo leen claves y archivos y suben **copias** a la cuenta de la propia profesora (sin pisar: `upsert: false`); no existe ninguna operación de borrar, mover ni escribir en el teléfono (una prueba lo verifica sobre el código fuente). Idempotente: repetirla no duplica.
+- Cada archivo se sube a `lesson-files/<cuenta>/attachments|materials/<SHA-256>.<ext>` (los PDF de reportes, a su ruta de siempre `report-pdfs/<cuenta>/<alumno>/<reporte>.pdf`) y se **registra** con su huella; el servidor verifica que el objeto exista en el almacenamiento y que el tamaño coincida. Hasta que eso ocurre el archivo figura **«pendiente»**, nunca «disponible». Lo que el teléfono ya no tenía queda declarado (no queda pendiente para siempre).
+- Trae además la biblioteca de materiales (que nunca viajó en el respaldo) y las claves locales. Si hay operaciones de facturación pendientes o una clase en curso, la pantalla lo avisa (conviene resolverlas antes del traslado final).
+
+**Veredicto:** una diferencia de tamaño o un archivo que no se pudo copiar impide «Copia completa»; un archivo ausente se declara aparte y no se presenta como migrado (§7).
+
+**Paso físico exacto (cuando se autorice aplicar el parche, coordinado con la copia y la pausa de carga):** con la app abierta en Expo Go y la sesión de siempre → *Protección de datos* → *Traslado a la web* → **1. Probar con un solo archivo** (esperar el resultado) → **2. Copiar todo** (dejar la app abierta hasta que muestre «Copia completa»). Contar sólo las cantidades que muestra la pantalla. No hay que borrar ni desinstalar nada. **Requisito:** que la importación ya esté confirmada en la web (los adjuntos y reportes necesitan su fila de destino).
+
+Verificación física pendiente: el extractor (subida desde React Native) no se probó en un dispositivo; por eso la prueba con un solo archivo viene primero.
+
+## 6. Copias fuera de la base: cifradas, con recuperación comprobada y compatibles con el esquema de HOY
+
+- `tools/transfer/export-account.mjs origin|destination <copia.tfsc>` — **en tu terminal**: pide correo y contraseña (oculta) y una frase de paso; lee con la sesión de tu cuenta (mismas reglas de acceso que la web; clave pública, nunca la de servicio), **cifra directamente** (AES-256-GCM, clave scrypt, sal e IV por archivo, encabezado autenticado), vuelve a descifrar lo ESCRITO en disco y exige la misma huella antes de dejar el archivo. Nunca escribe nada en claro; cierra sólo su propia sesión (alcance local): no toca el teléfono ni otras sesiones.
+- **Detección explícita del esquema** (`lib/transfer/export-destination.ts`): el volcado del destino funciona con Production **anterior a R9/R10**. Sólo las cinco tablas que agregan esas migraciones pueden faltar y se declaran «no disponibles en esta versión» (`unavailable`, esquema «anterior»); una tabla que ya existía y falta, un error de permisos, de red o de consulta **abortan** (nunca se convierten en tablas vacías ni dejan un volcado parcial). Probado con un cliente simulado y en Postgres real: esquema anterior → exportación → cifrado → recuperación; permiso revocado, tabla renombrada y red caída abortan; con R9/R10 aplicadas el volcado usa el esquema nuevo y lo que ya existía no cambia (`export_schema_rehearsal.cjs`, 11/11).
+- `tools/secure-copy/secure-copy.mjs encrypt|verify|decrypt` — cifrar un archivo existente, verificar («recuperación comprobada», sin escribir) o recuperar. La salida debe estar **fuera de cualquier repositorio** y nunca pisa un archivo; `*.tfsc` está en `.gitignore`.
+- `tools/transfer/compare-copies.mjs <origen.tfsc> <destino.tfsc>` — descifra en memoria, compara y muestra sólo ids, campos y cantidades; avisa si el destino es del esquema anterior y informa aparte los archivos que el teléfono ya no tenía.
+- `tools/transfer/origin-delta.mjs <origen-usado.tfsc> <origen-más-reciente.tfsc>` — qué se cargó, cambió o quitó en Expo Go después de la copia usada (colección + id + nombres de campo; nunca valores).
+- Ningún dato personal real está en el repositorio, en los logs ni en los informes. La frase de paso la guarda la usuaria en su gestor de contraseñas: **sin ella la copia no se recupera**.
+
+## 7. Veredicto de la extracción de archivos (corregido)
+
+- **«Copia completa»** sólo si ningún archivo falló. Una **diferencia de tamaño** (el archivo cambió desde que se adjuntó o se leyó a medias) es un fallo: ese archivo **no se copia ni se registra**, queda «pendiente» y la extracción **no** es completa (antes se subía igual y sólo se avisaba).
+- Un archivo que el teléfono **ya no tiene** se declara **ausente** (`missingAtOrigin`): no cuenta como copiado ni disponible, la pantalla lo dice («NO se copiaron») y el cotejo lo informa SIEMPRE aparte (`absentAtOrigin`), aun con veredicto completo. Quién decide si esa ausencia es aceptable es la usuaria, no el sistema.
+
+## 8. Ensayos antes de tocar la cuenta real
+
+1. **Con el respaldo real, en un Postgres local aislado** (obligatorio antes del traslado definitivo): `node supabase/tests/postgres/real_rehearsal.cjs <copia-origen.tfsc>` (frase de paso con pantalla oculta). Descifra el origen en memoria, levanta un Postgres temporal con TODAS las migraciones, importa con el mismo código que usará la web, coteja campo por campo y comprueba que «deshacer» deja la cuenta vacía. Informa sólo ids, campos y cantidades. El Postgres guarda los datos en claro en una carpeta de `%TEMP%`: se **borra** al terminar, ante un error y ante Ctrl+C (`--clean` si el proceso se mató a la fuerza). Probado con una copia sintética cifrada (969 campos, sin diferencias).
+2. **El extractor contra un destino aislado** (`extractor_destination_rehearsal.cjs`, 12/12): un Postgres real con un servidor local con la forma de Supabase (sesión, funciones, lectura con RLS y almacenamiento con sus reglas) y, delante, el cliente REAL `@supabase/supabase-js` ejecutando el MISMO código de cuenta que correrá en el teléfono (`supabase-deps.ts`) más el runner. Verifica: prueba previa con un archivo, tamaño distinto (no se copia, no es completa), caída del servidor, «ya existe» real del almacenamiento, idempotencia, contenido idéntico en las rutas previstas, cotejo COMPLETO, ausentes declarados, y que una cuenta no puede escribir en la carpeta de otra. **Lo que no puede probar:** la lectura de archivos de Expo, el SHA-256 de expo-crypto y la subida desde React Native: por eso la prueba con UN archivo en el teléfono sigue siendo obligatoria.
+3. **¿Se puede consultar en la web?** `lib/transfer/__tests__/web-readable.test.ts` aplica los mapeadores que usa la web para leer cada fila (alumnos, cobros, pagos, registros, contenido de la clase, series, calendario, reportes, historiales) a lo que deja el traslado: no fallan y devuelven lo que tenía el origen. Además, revisión visual con la usuaria (§10, punto 3).
+
+## 9. Condiciones del traslado (obligatorias) y cómo se cumplen
+
+1. **No se borra, vacía, sobrescribe ni desinstala nada del origen** (teléfono, almacenamiento local, archivos, respaldos). El extractor sólo lee; las copias cifradas son nuevas; R11 **agrega** una copia permanente de los respaldos de la nube y no borra nada.
+2. **Cotejo origen contra destino** (datos, relaciones, importes, fechas y archivos) y consulta en la web (§8).
+3. **No se declara terminado** hasta que el cotejo no tenga diferencias y la usuaria confirme que todo está correcto: `freeze-legacy.mjs freeze` rechaza el cierre sin veredicto COMPLETO y pide escribir CONFIRMO; la base (R11) exige además el cotejo atestiguado.
+4. **Pausa de carga para la copia final.** La usuaria deja de cargar; se toma la copia final del origen. Antes de cerrar se toma OTRA copia del origen y `origin-delta.mjs` dice si algo se cargó después: si hay diferencias, se incorpora (nueva copia → nueva importación → nuevo cotejo). La base lo refuerza: `freeze_legacy_source` sólo cierra si la huella indicada es la del **último** respaldo de la app anterior.
+5. **Después de la validación y la confirmación (R11, preparada, no aplicada):**
+   - la web es la única fuente: con la cuenta congelada **no se puede importar otra copia** (ni vista previa ni aplicación; mensaje claro, reabrible);
+   - los datos antiguos quedan conservados y quietos: la app anterior **no puede guardar respaldos nuevos** en la nube, así que tampoco puede rotar ni pisar los viejos; su copia local en el teléfono no se toca;
+   - **sin tocar** la cuenta, la sesión, la autenticación, el dispositivo activo ni ningún servicio compartido; el congelamiento es **por cuenta** y se puede **reabrir** (queda registrado);
+   - las copias cifradas verificadas se conservan (§6).
+6. **Retención que podía borrar respaldos antiguos — identificada y resuelta antes del corte:**
+   - `upload_cloud_backup` (de la app anterior) conserva sólo las **10** copias más nuevas por cuenta y **borra** el resto al subir una distinta → R11 agrega `legacy_cloud_backup_archive`: copia **permanente e inmodificable** de cada respaldo (por huella). Ninguna función, trabajo ni rol de la API puede cambiarla o borrarla (se probó incluso con el rol de servicio). Hay que **archivar ya** (`freeze-legacy.mjs archive`) y de nuevo en la pausa de carga: lo que la rotación borre antes de archivarse no se puede recuperar de la nube (queda en las copias cifradas).
+   - El trabajo por hora de R4 (`purge_expired_import_data`) vacía a los 30 días el respaldo retenido y las instantáneas de cada importación: **no toca el origen** (R9 guarda la copia íntegra en `import_source_archives`; R11 la copia permanente). Probado.
+   - Eliminar la cuenta (decisión explícita de la usuaria) borra todo, también las copias de la base: por eso las copias **cifradas** se guardan aparte.
+   - **No se programa ninguna limpieza ni eliminación automática del legado.**
+7. **Qué ve la usuaria en la app anterior tras el cierre:** su respaldo automático deja de poder guardarse (la app probablemente muestre un aviso de respaldo; no se verificó en el dispositivo); los datos locales siguen intactos. Es lo esperado: ya no se usa.
+
+## 10. Procedimiento y siguiente paso
+
+1. **Hoy, sin cambiar nada:** los dos comandos de §6 en tu terminal → `export-account.mjs origin copia-origen.tfsc` y `export-account.mjs destination copia-destino-previa.tfsc` (el destino previo sirve de referencia del esquema de hoy). **Siguiente paso exacto:** abrí una terminal en `tf-web-xfer\stepup`, corré el primero y escribí tu correo, tu contraseña y una frase de paso larga cuando te lo pida; guardá la frase en tu gestor de contraseñas; avisame sólo «hecho» (no me pases ninguna de esas tres cosas ni el archivo). Antes, confirmá en el panel de Supabase que «una sola sesión por usuario» **no** esté activada.
+2. **Ensayo con el respaldo real** en el Postgres local aislado (§8.1) → debe dar «SIN DIFERENCIAS».
+3. Con autorización: aplicar R9, R10 y R11 → `freeze-legacy.mjs archive` → pausa de carga → copia final del origen → importar → parche del teléfono y extracción (prueba con 1 archivo → copiar todo) → copia final del destino → `compare-copies.mjs` (COMPLETO) → revisión en la web **con la usuaria** (clases por registrar, un alumno con clases, cobros y saldos, un reporte con su PDF, un adjunto y un material, el calendario de la semana) → `origin-delta.mjs` (sin diferencias) → `freeze-legacy.mjs freeze` (CONFIRMO).
+4. **Si algo falla** en cualquier paso: «Deshacer» de R6/R10 (exacto por fila) deja la cuenta como estaba; el origen nunca se tocó; los rollbacks (`supabase/repairs/r9_…`, `r10_…`, `r11_…`) revierten las migraciones (borran columnas y tablas nuevas: exportar antes si ya hubo importación real).
+5. La carga sigue **sólo** en la web desde el cierre.
+
+## 11. Bloqueantes restantes
+
+1. **Autorización** para aplicar R9, R10 y R11 en Production y para importar sobre la cuenta real.
+2. **Autorización para aplicar el parche en la app** (carpeta de sólo lectura hoy) y coordinar el paso físico de §5 con la copia y la pausa de carga.
+3. **Las copias cifradas** (§10.1): las genera la usuaria o Joaquín en su terminal.
+4. Verificación física del extractor (un archivo) y, con el reporte real, que el PDF regenerado desde el snapshot convertido se vea bien (el original se sube tal cual cuando el teléfono lo tiene).
+5. Política de privacidad: debe reflejar la copia del respaldo importado por cuenta, la copia permanente de los respaldos y los archivos de clases en `lesson-files`.
+
+## 12. Comandos exactos de las copias (carpeta privada fuera del repositorio)
+
+Carpeta creada: `C:\Users\joaqu\TeacherFlow-copias-privadas` (acceso sólo de tu usuario; no está en ningún repositorio). Desde una terminal PowerShell **tuya**, en `C:\Users\joaqu\tf-web-xfer\stepup`:
+
+```powershell
+$env:TF_ENV_FILE = "C:\Users\joaqu\OneDrive\Desktop\teachpagina\stepup\stepup\.env.local"   # sólo la URL y la clave PÚBLICA
+node tools/transfer/export-account.mjs both "$env:USERPROFILE\TeacherFlow-copias-privadas"
+```
+
+Pide el correo, la contraseña (oculta) y la frase de paso (dos veces). Escribe `origen-AAAAMMDD-HHMM.tfsc` y `destino-AAAAMMDD-HHMM.tfsc` (no pisa nada), verifica la recuperación sobre lo escrito y **informa la antigüedad del último respaldo de la nube** (aviso si pasó de 15 min). Después: `node supabase/tests/postgres/real_rehearsal.cjs "$env:USERPROFILE\TeacherFlow-copias-privadas\origen-….tfsc"` (pide la frase de paso).
+
+**Pausa breve de carga:** dejá de cargar en Expo Go → abrí la app anterior → esperá «Protección automática activa» con la hora actual → recién entonces corré el comando. La pausa definitiva (y una copia más) se repite en el corte final.
+
+Entrada interactiva: las cuatro herramientas (`export-account`, `compare-copies`, `origin-delta`, `freeze-legacy`) leen el teclado con un único módulo (`tools/transfer/prompt.mjs`): una sola sesión de lectura por comando, contraseña y frase ocultas, y lo pegado de más no se pierde. Probado en una terminal real (ConPTY) con datos ficticios y sin red. El aviso `MODULE_TYPELESS_PACKAGE_JSON` que Node imprime al arrancar es inofensivo.
+
+## 13. Aceptar (o no) los archivos ausentes en el teléfono
+
+Un archivo que el teléfono ya no tiene queda **ausente**: no se migra, el cotejo lo informa aparte y nunca se afirma «sin pérdidas». `freeze-legacy.mjs freeze` pide, además de `CONFIRMO`, escribir `ACEPTO` si hay ausentes; sin eso no congela. La aceptación queda en la auditoría del cierre (`absent_accepted_by_user`). Resolverlos (recuperar el archivo desde otra fuente y volver a extraer) también es válido.
+
+## 14. Modo consulta de la app anterior (preparado, NO aplicado; la carpeta de la app sigue de sólo lectura)
+
+Bloquear respaldos viejos (R11) no impide cargas locales en Expo Go; por eso el cierre incluye dejar la app anterior en modo consulta. Núcleo ya probado: `tools/legacy-readonly/mobile-patch/src/features/transfer/legacyReadOnly/core.ts` (`legacy-readonly.test.ts`, 5/5).
+
+- **Quién decide:** el servidor (`get_transfer_state()`, por cuenta). Sólo `frozen` activa el modo; `open` (reapertura registrada) lo desactiva. Una respuesta rara o un corte de red **no** lo reabre si ya se supo congelado (bandera local pegajosa `@teacherflow-legacy/read-only-v1`), y si nunca se supo **no** bloquea.
+- **Cómo frena:** una guarda única sobre AsyncStorage (los 19 archivos que escriben usan el mismo módulo) que **no ejecuta** `setItem/mergeItem/removeItem/multi*/clear` sobre claves `@teacherflow/…`; no borra nada, no toca claves de sesión (`sb-…`) ni el cierre/inicio de sesión ni el dispositivo activo.
+- **Puntos de cableado (diff a preparar y aprobar antes de aplicar):** `App.tsx` (instalar la guarda antes de cualquier uso; omitir los arreglos y generadores automáticos de arranque y de cambio de día, que escriben solos), `AuthGate.tsx` (consultar `get_transfer_state` tras iniciar sesión; no montar `CloudBackupRecoveryGate` en modo consulta: la recuperación de la nube no debe pisar nada), `useCloudBackupSync` (no subir respaldos), aviso fijo con `READ_ONLY_BANNER_TEXT` (texto, no sólo color) y los botones de alta/edición/pago deshabilitados con el mismo texto (nunca un botón que no funcione).
+- **Activación:** únicamente después del cotejo COMPLETO y tu confirmación final (misma `freeze-legacy.mjs freeze`). Para verlo en el teléfono hace falta un build/Expo Go con el parche: requiere tu autorización y coordinar el paso físico.
+- **Límite honesto:** la guarda evita que la app **anterior** escriba; no puede impedir que alguien reinstale/limpie la app o use una versión sin el parche. Por eso las copias cifradas y la copia permanente de la base (R11) siguen siendo la conservación real.
+
+## 15. Iniciador único (Windows): exportar, verificar y ensayar de una vez
+
+`tools	ransferIniciar-traslado.cmd` (doble clic, o desde cualquier terminal) abre un formulario con correo y contraseña (oculta, con casilla «Mostrar contraseña») y ejecuta todo el circuito con una sola autenticación:
+
+1. **Conexión y sesión primero.** Comprueba que Supabase responde y que acepta la clave pública; recién después intenta el inicio de sesión. Distingue y explica: credenciales rechazadas, correo sin confirmar, cuenta bloqueada, demasiados intentos, sin red, servicio caído y clave pública de otro proyecto. Si falla, el formulario sigue abierto para corregir. Nunca restablece la contraseña ni cierra la sesión del teléfono (al terminar cierra sólo su propia sesión local).
+2. **Exporta** el último respaldo de la nube (origen) y lo que tiene la web hoy (destino), sólo lectura.
+3. **Cifra con Windows DPAPI (CurrentUser)**, sin frase manual: clave aleatoria por copia, envuelta por DPAPI, AES-256-GCM. Las copias se llaman `origen-dpapi-<fecha>.tfdp` y `destino-dpapi-<fecha>.tfdp` en `%USERPROFILE%TeacherFlow-copias-privadas`; se verifica la recuperación **leyendo el archivo ya escrito**. **Sólo se abren con ESTE usuario de Windows en ESTE equipo**: si se reinstala el perfil o se cambia de equipo no hay forma de recuperarlas (por eso conviene conservar también las copias con frase anteriores). Nada se pisa ni se borra; las copias `.tfsc` previas siguen igual y las herramientas (`compare-copies`, `origin-delta`, `freeze-legacy`, `real_rehearsal`) abren los dos tipos y piden frase sólo para las antiguas.
+4. **Ensayo aislado** en un Postgres local descartable (`%TEMP%epg`, se prepara solo si falta) y **resultado breve**: copias verificadas, diferencias y archivos pendientes/ausentes. El informe completo (sólo ids, campos y cantidades) queda junto a las copias.
+
+Las credenciales pasan al proceso de Node **por su entrada estándar** (no por argumentos, variables ni archivos), viven sólo en memoria y se sueltan al iniciar sesión. No hay migraciones, importaciones en Production, congelamiento ni borrados. Probado de punta a punta con datos ficticios contra un Supabase local de mentira (`lib/transfer/__tests__/run-transfer.test.ts`, `launcher.test.ts`; `TF_TEST_FULL=1` incluye el ensayo con Postgres real).
+
+
+## 16. Hallazgos del ensayo con el respaldo real y su tratamiento (vigente)
+
+Ensayo aislado con el respaldo real (copia DPAPI del 19/10/2026), **con las validaciones reales y sin controles relajados**: 343/343 registros, 33.964 campos comparados, 0 diferencias, balance por entidad que cierra (origen 3.643 = omitidas 0 + esperadas 3.643 = destino 3.643). Ninguna fila se omite: lo que el modelo anterior no podía guardar ahora tiene destino explícito.
+
+**Defectos del traslado** (lo que el traslado hacía mal) **vs. inconsistencias del origen** (lo que ya estaba mal en la app y se conserva sin falsearlo):
+
+- **Registros ↔ clases del calendario.** La app guarda una ocurrencia materializada como `calendar_<completed|cancelled|rescheduled|restored>_<clave>` (nota «Registro pedagógico: <id>») pero el registro conserva el id virtual `calendar_<clave>`. `lib/backup/calendar-refs.ts` los enlaza SÓLO con evidencia inequívoca (misma clave, inicio y alumno; nota que no contradiga; nadie más la reclama): 286 registros y 18 cobros por clase (esto era un defecto del traslado, resuelto). Los 21 registros restantes (28/07–13/08/2026, anteriores a toda clase del calendario del respaldo) apuntan a clases que **no existen en el respaldo**: se importan COMPLETOS, sin clase de calendario ni clase inventada, con la referencia original y la marca `calendarLessonMissingAtOrigin` en `source_extras`. Es una inconsistencia del origen, no una omisión.
+- **Incidencias del origen (`origin_incidents`, R13).** Las referencias que ya estaban rotas en la app quedan como filas explícitas con su referencia original: 21 registros, 1 cobro por clase, 4 «clase que liberó», 18 reemplazos de excepciones, 1 alumno y 2 pagos de una corrección. Se verifican en el cotejo (campo por campo) y no bloquean el cierre: no son defectos.
+- **Pagos anulados (R12).** El invariante de cobros suma sólo las asignaciones de pagos **no anulados** (regla de `calculatePaidAmountForCharge`); explicaba 14 de los 16 cobros señalados.
+- **Exceso pagado (R13).** 2 cobros mensuales superan su importe base con pagos vigentes. El exceso se **separa en la asignación que lo produce** (`excess_amount`, ya incluido en su `amount`, que no cambia; vinculada a su pago) con `excess_status` y `excess_evidence`. Se clasifica como `recargo_confirmado` SÓLO si el motor de recargos de la app vigente en la época del pago (`lib/backup/surcharge-evidence.ts`: `determineDueStage` + `calculateSurchargeAmount` + `simulateChargeSettlement`, con la configuración del respaldo) lo explica exactamente; coincidir con un porcentaje no alcanza. Resultado real: **ninguno de los 2 se confirma** (uno de ×1,20 se pagó en la etapa del 15 % y con la configuración del período siguiente ya deshabilitada; el otro de ×1,10 se pagó en término), así que quedan **pendientes de clasificación**, sin atribuirles causa. El invariante de importes compara la parte base (monto − exceso) con el importe original: un exceso no separado SIGUE deteniendo la importación.
+- **Cobro de importe 0** (clase «cancelada con aviso» sin precio) **y su condonación automática**: se conservan (`original_amount >= 0`); un cobro de 0 no agrega deuda ni saldo.
+- **Corrección de recargo inicial** cuyo alumno y pagos no existen en el respaldo: se conserva con las relaciones vacías y las referencias originales (`student_missing_ref`, `*_payment_missing_ref`). No se crea ningún alumno ni pago.
+
+**Archivos.** 80 adjuntos confirmados contra el respaldo: 80 imágenes en 44 registros (64 HEIC, 14 JPEG, 2 PNG), 80 rutas `file://` distintas, 170,6 MB declarados. Materiales: 0 referenciados por registros (la biblioteca de materiales vive sólo en el teléfono: su total real NO está comprobado). PDF de reportes: 0 (idem). **«0 ausentes» no está comprobado hasta leer el teléfono**: el cotejo lo marca `absentAtOriginVerified: false` y `freeze-legacy` se niega a congelar hasta que la extracción del teléfono esté registrada.
+
+**Conciliación de filas.** El «3.593/3.594 con 3 omitidas» del informe anterior era una sola cuenta contada de dos maneras: esperadas 3.594 = origen 3.596 − 2 omitidas declaradas (cobro de importe 0 y su condonación); encontradas 3.593 = 1 faltante (la corrección de recargo), que en la corrida siguiente se declaró como la tercera omisión. Ahora las tres se conservan y el balance es exacto: origen = omitidas + esperadas y esperadas = encontradas + pendientes (`reconciliation` del cotejo; tabla por entidad en el ensayo).
+
+Migraciones nuevas, SÓLO locales (nada aplicado en Production): R12 `20261020100000` y R13 `20261020110000` (rollbacks en `supabase/repairs/`; el de R13 se niega a ejecutarse si ya hay datos nuevos).
+
+## 17. Extracción del teléfono: capacidad, prueba y procedimiento
+
+**Qué se ve en la web (incidencias y exceso).** Las incidencias heredadas se muestran en la ficha de cada clase registrada (tarjeta «Incidencias heredadas»), como aviso en el historial de clases del alumno y en el cobro afectado. Los dos excesos pendientes se muestran en el cobro y en el pago que los produjo, con el texto «Pendiente de clasificación» y la aclaración de que no están confirmados como recargo; el importe original, lo pagado y los saldos se calculan igual que siempre. Sin las migraciones en la base (Production hoy) ambas lecturas devuelven vacío y las pantallas quedan como antes.
+
+**Capacidad.** Lo declarado por la app: 80 imágenes, 170,57 MB (promedio 2,13 MB; la más grande 4,59 MB; ninguna sobre 10 MiB). El bucket `lesson-files` (R10) admite 20 MiB por archivo (JPEG, PNG, WebP, PDF, HEIC, HEIF); `report-pdfs`, 10 MiB por PDF. Ningún archivo declarado se acerca al tope. El nombre de cada copia es su huella SHA-256: un archivo repetido no ocupa dos veces. **No verificable desde acá**: el plan del proyecto y su espacio libre (hace falta que lo confirmes en el panel: Storage → Settings, Project → Usage; el repositorio sólo fija 50 MiB como tope global local). Materiales y PDF de reportes **todavía no tienen total**: el respaldo de la nube no los trae (la biblioteca de materiales y los PDF generados viven sólo en el teléfono); la revisión sin copiar los cuenta.
+
+**HEIC.** 64 de las 80 fotos figuran como `image/heic` con nombre «.HEIC», pero 78 de 80 rutas guardadas terminan en `.jpg`: la app elige las fotos con `quality: 0.9` y el selector las transcodifica a JPEG, conservando el nombre y el tipo originales. La extracción ahora reconoce el formato REAL por los primeros bytes y sube cada copia con su formato verdadero (un «HEIC» que es JPEG se guarda como `.jpg` / `image/jpeg`, y la cuenta conserva lo que la app declaraba); un HEIC de verdad se conserva ORIGINAL (`image/heic`, mismos bytes). Verificado con un HEIC real (HEVC): Chromium 152 NO lo muestra (`naturalWidth = 0`) y `sharp` (el de Next) no puede convertirlo; `libheif-js` (WASM, LGPL-3.0) sí lo decodifica en el navegador. Por eso, si la revisión encuentra HEIC de verdad, la web los mostrará con una vista previa generada en el navegador con ese decodificador (original intacto en el almacenamiento, botón de descarga); si son todos JPEG, no hace falta nada.
+
+**Migraciones en Production.** Sí hace falta aplicar antes, para COPIAR (no para revisar): R9 y R10 (bucket `lesson-files`, tabla `lesson_attachments`, funciones `import_phone_extraction` / `register_transfer_file`; sin ellas la copia se detiene en la primera llamada sin subir nada) y R12 + R13 (la importación completa con el respaldo real: sin R12 el invariante de pagos anulados la aborta y sin R13 no hay dónde guardar el exceso, el cobro de importe 0 ni las incidencias). Además, los adjuntos se registran contra filas que crea la importación: primero migraciones, luego importación confirmada, recién entonces la copia. R11 sólo es para el cierre. La **revisión sin copiar no necesita ninguna migración**: no habla con la cuenta.
+
+**Prueba de un solo archivo contra el destino aislado** (`supabase/tests/postgres/phone_single_file_rehearsal.cjs`, 13 comprobaciones): Postgres real con todas las migraciones + servidor local con la forma de Supabase + el cliente real de supabase-js. Sube UNA foto declarada HEIC que es JPEG (como `.jpg`, huella y tamaño exactos, contenido idéntico), repetir no duplica, un HEIC de verdad se conserva original, un archivo de más de 20 MiB no se sube ni se registra, la revisión no sube nada y no queda constancia de resultado.
+
+**Procedimiento mínimo de la prueba física** (la carpeta de la app sigue de sólo lectura hasta que lo autorices):
+1. Copia de seguridad del único archivo existente que se toca: `TeacherFlow-copias-privadas\codigo-app-antes-del-parche\BackupScreen.tsx` (SHA-256 8D7D9D64…A256, idéntico al original).
+2. Copiar `tools/phone-extraction/mobile-patch/src/features/transfer/` a `src/features/transfer/` de la app (carpeta nueva: no pisa nada) y aplicar `tools/phone-extraction/BackupScreen.cambio.diff` (dos líneas agregadas, ninguna quitada). Comprobado: el typecheck de la app con el parche, sobre una copia temporal, da 0 errores.
+3. Recargar Expo Go. En *Protección de datos* → *Traslado a la web* → **0. Revisar sin copiar**. En esta primera prueba la copia está APAGADA (`COPY_ENABLED = false`): no hay botones que suban, no se habla con la cuenta, no se borra ni cambia nada del teléfono, no se cierra ninguna sesión.
+4. Anotar y pasar los números que muestra (sólo cantidades): encontrados / no encontrados, tamaño medido vs declarado, el más grande, formatos reales, HEIC declarados que son JPEG, materiales y reportes.
+5. Retiro: quitar las dos líneas de `BackupScreen.tsx` (o restaurar la copia) y la carpeta `src/features/transfer/`.
+
+## 18. Vista previa de fotos HEIC en la web (hecha y probada, 20/10/2026)
+
+**Hallazgo del teléfono que la originó:** la revisión real (sólo lectura) encontró 80/80 fotos: **64 HEIC de verdad**, 14 JPEG y 2 PNG. La suposición del §17 («un HEIC declarado es un JPEG transcodificado») era falsa para esas 64: el reconocimiento por bytes lo detectó, y la copia las conserva ORIGINALES (`image/heic`, mismos bytes). Nota: el comentario de `lib/phone-extraction/sniff.ts` que habla de transcodificación quedó desactualizado; el código no cambia.
+
+**Qué se construyó** (sólo lectura; nada de Production):
+- `components/registro/lesson-photo-viewer.tsx`: «Ver foto» en la ficha de la clase. JPEG/PNG/WebP los muestra el navegador; una foto HEIC se convierte ACÁ, en el navegador de quien mira. Estados: «Cargando la foto…», «Preparando la foto para mostrarla…», error con mensaje simple + «Reintentar», y **«Descargar el original»** siempre disponible. El archivo guardado nunca se modifica.
+- Decodificador `libheif-js@1.23.5` (fijado, `wasm-bundle.js`): importación dinámica en `lib/images/heic-decode.ts` → fragmento aparte (~2 MB) que se descarga SÓLO al abrir una foto HEIC (comprobado en el build de producción: 0 fragmentos pesados al cargar la página o abrir un JPEG; 1 al abrir un HEIC). Aplica la rotación/espejado del contenedor (`irot`/`imir`); tope de 100 megapíxeles y de 25 MiB por archivo.
+- Entrega por el propio servidor (el navegador sigue sin hablar con Supabase, regla de la política de seguridad del sitio): `GET /api/archivos/adjunto/<id>` (`?descargar=1` para bajar el original). Exige sesión (401), sólo adjuntos de la cuenta y disponibles (404 si no), nunca confía en un identificador de cuenta del cliente, tipos de contenido de una lista cerrada, `private, no-store`, respuesta en streaming.
+- Política de seguridad (Report-Only): `script-src` suma `'wasm-unsafe-eval'` (sólo permite compilar WebAssembly; no es `'unsafe-eval'`) para que la vista previa siga funcionando cuando la política pase a bloqueante. Las dos pruebas que prohibían `unsafe-eval` ahora prohíben el real y exigen el `wasm-`.
+
+**Licencia:** `libheif` y `libde265` (dentro de `libheif-js`) son **LGPL-3.0**. Se usa SIN modificar, como fragmento separado y reemplazable (no mezclado con el código propio), y el aviso está en `docs/LICENCIAS_TERCEROS.md`. Antes de la publicación comercial (fase 5, legal) conviene confirmar el texto del aviso visible al usuario; no cambia el funcionamiento.
+
+**Pruebas:** 12 de unidad con archivos SINTÉTICOS (cuadrantes de color; generador `tools/images/make-fixtures.py`, requiere `pillow-heif` sólo para regenerarlos): plan por bytes, colores y dimensiones decodificadas, orientación (rotación 90° del contenedor), HEIC inválido/vacío, tipos y nombres de la entrega, ruta (200/401/404/500) con una base simulada. Navegador real (Chromium del panel, servidor de desarrollo y **build de producción con su política de seguridad**): JPEG, JPEG con orientación EXIF 6, PNG, HEIC, HEIC rotado, HEIC inválido, texto con nombre `.jpg`, vacío, JPEG cortado y fallo de red; ancho móvil de 375 px sin desborde; 0 violaciones de la política. No se usó ninguna foto del usuario. **Pendiente (sólo posible tras la aprobación):** abrir UNA foto real ya importada en la web desplegada para confirmar el recorrido completo con el almacenamiento real.
+
+## 19. Orquestador del traslado (pasos 1 a 7) y copia del teléfono, probados de punta a punta (20/10/2026)
+
+**Qué es.** `tools/transfer/Ejecutar-traslado.cmd` (formulario único, `Iniciar-traslado.ps1 -Modo traslado`) lanza `tools/transfer/execute-transfer.mjs`, que corre la lógica de `lib/transfer/orchestrator.ts` con **una sola sesión** de la cuenta: las credenciales entran una vez por la entrada estándar, sólo viven en la memoria del proceso (se reutilizan en memoria únicamente si la sesión caduca) y se sueltan al cerrar. Fases: `backup` (paso 1) → `esquema` (espera a que estén las migraciones, pasos 2) → `archivo` (paso 3) → `despliegue` (puerta: espera `despliegue-verificado.txt` en la carpeta privada, paso 4) → `importar` (paso 5) → `archivos` (paso 6) → `final` (paso 7). `--fases` elige un subconjunto y `--rehacer` deshace la importación (sólo si es seguro) y vuelve a importar la copia más reciente. Registro de avance: `estado-traslado.json` (sólo ids, huellas, fechas y cantidades; perderlo no duplica nada porque cada fase mira primero la cuenta).
+
+**Copia del teléfono (paso 6).** `tools/transfer/phone-copy.mjs`: instala en la app el módulo temporal `autoCopyTemp.ts` (generado por `lib/transfer/phone-copy-module.ts`), abre un receptor local de un solo uso (clave aleatoria, red local), pide a Metro la recarga y espera. El teléfono corre el mismo `runPhoneExtraction` con la sesión de su propia cuenta (no destructivo, sin pisar archivos) y devuelve sólo cantidades; primero UNA prueba (se prefiere HEIC) y después todo. Al terminar —con éxito, error o Ctrl+C— se borra el módulo y se comprueba que la app quedó idéntica. Después **el orquestador descarga cada archivo de la cuenta y verifica huella, tamaño y formato** (`lib/transfer/stored-files.ts`): no se confía en lo que informa el teléfono.
+
+**Capacidad.** `lib/transfer/storage-capacity.ts`: se usa el piso garantizado por cualquier plan (1 GB; 10 % siempre libre; tope por archivo 20 MiB). Con lo medido en el teléfono (170,6 MB) ocupa ≈ 16,7 %. Se repite con los datos reales de la cuenta justo antes de llamar al teléfono.
+
+**Copia final actualizada.** La copia del ensayo no se usa para el corte: la importación toma el último respaldo de la nube en ese momento; el paso 7 vuelve a leerlo y compara el CONTENIDO (no la huella) con lo importado; si cambió, «CAMBIOS POSTERIORES» y `--rehacer`.
+
+**R14** (`20261020120000_r14_unavailable_file_keeps_undo_safe.sql`, rollback `supabase/repairs/r14_unavailable_file_rollback.sql`, ensayo `r14_unavailable_file_rehearsal.cjs`): `mark_transfer_file_unavailable` no refrescaba la instantánea de la importación, de modo que declarar UN archivo ausente bloqueaba deshacer. Defecto hallado por el recorrido de interrupciones; ensayado con y sin la migración.
+
+**Pruebas.** `supabase/tests/postgres/orchestrator_rehearsal.cjs` (32 comprobaciones; requiere `NODE_PATH=%TEMP%\epg\node_modules`): Postgres real + servidor con la forma de Supabase (`storage_shim.cjs`, ahora con sesión por contraseña/refresco, filtros, orden, recuento y descarga) + cliente real de supabase-js + DPAPI real + canal real con el teléfono simulado + el ejecutable como proceso aparte. Unidad: `lib/transfer/__tests__/{orchestrator,phone-copy,launcher}.test.ts`. Los ensayos de R9–R13 y del extractor siguen pasando (se actualizaron sus controles de «última migración»).
+
+**Límites conocidos.** (1) Al rehacer, un PDF de reporte ya copiado se vuelve a subir con el id nuevo del reporte y el anterior queda huérfano (se avisa; hoy hay 0 PDF). (2) Lo único no probado de punta a punta es el teléfono REAL ejecutando el módulo de copia: el mecanismo de módulo temporal + receptor + recarga ya funcionó con la revisión de sólo lectura en el teléfono real, el módulo compila en la app y su lógica es la del extractor probado; la prueba con UN archivo del paso 6 es la verificación física.
+
+**Pausa de carga verificada (fase `proteccion`, también al inicio de `final`).** Antes de importar y antes de la copia final, el orquestador lee del teléfono (módulo temporal de SÓLO lectura, sin tocar la cuenta) el marcador `@teacherflow/protection_state` de la app: `localRevision` (crece con cada cambio) y `lastProtectedRevision` (la que el servidor confirmó). Sólo avanza si son iguales y no hay racha pendiente; si no, espera (hasta 30 min) pidiendo dejar Expo Go abierto. Así la copia que se importa y la final incluyen las últimas cargas del teléfono. Fases: `backup,esquema,archivo,despliegue,proteccion,importar,archivos,final`.
+
+**Respaldo previo de Production (todas las cuentas):** `tools/transfer/production-snapshot.mjs` (sólo lectura con la CLI enlazada): todas las tablas de `public`, cifradas con DPAPI y recuperación comprobada, más un resumen sin datos personales (filas y md5 por tabla, huella de cada función, política, disparador y columna) que es la línea base de las migraciones.

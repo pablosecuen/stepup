@@ -271,6 +271,10 @@ export interface PaymentAllocationRow {
   charge_id: UUID;
   student_id: UUID;
   amount: number;
+  /** R13: parte de `amount` que supera el importe base del cobro (separada y clasificada; el monto de la asignación no cambia). */
+  excess_amount: number;
+  excess_status: "recargo_confirmado" | "pendiente_de_clasificacion" | null;
+  excess_evidence: Record<string, unknown> | null;
   created_at: ISODateTimeString;
 }
 
@@ -333,13 +337,32 @@ export interface InitialPaidSurchargeCorrectionRow {
   id: UUID;
   owner_id: UUID;
   legacy_mobile_id: string | null;
-  student_id: UUID;
+  /** R13: `null` cuando el alumno ya no existía en el origen (ver `student_missing_ref`). */
+  student_id: UUID | null;
   billing_period: string;
   previous_surcharge_amount: number;
   voided_payment_id: UUID | null;
   new_payment_id: UUID | null;
+  /** R13: referencias originales a un alumno/pago que no existían en el respaldo (no se inventa ninguno). */
+  student_missing_ref: string | null;
+  voided_payment_missing_ref: string | null;
+  new_payment_missing_ref: string | null;
   corrected_at: ISODateTimeString;
   reason: string;
+}
+
+/** R13: referencias que ya estaban rotas en la app anterior (apuntan a algo que no existe en el respaldo), con su referencia original. */
+export interface OriginIncidentRow {
+  id: UUID;
+  owner_id: UUID;
+  legacy_mobile_id: string;
+  entity: string;
+  row_legacy_id: string;
+  field: string;
+  original_reference: string;
+  kind: "referencia_inexistente_en_origen";
+  detail: Record<string, unknown>;
+  created_at: ISODateTimeString;
 }
 
 export interface FirstMonthProrationDecisionRow {

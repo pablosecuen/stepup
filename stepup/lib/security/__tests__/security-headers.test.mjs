@@ -34,7 +34,8 @@ test("la CSP completa sólo viaja como Report-Only (nunca bloqueante) y sólo en
 });
 
 test("CSP Report-Only: sin unsafe-eval, unsafe-inline sólo en script/style (temporal), sin comodines ni orígenes externos", () => {
-  assert.doesNotMatch(CSP_REPORT_ONLY, /unsafe-eval/);
+  assert.doesNotMatch(CSP_REPORT_ONLY, /(?<!wasm-)unsafe-eval/, "nunca 'unsafe-eval' ('wasm-unsafe-eval' sólo permite compilar WebAssembly: lo usa la vista previa de fotos HEIC)");
+  assert.match(CSP_REPORT_ONLY, /script-src [^;]*'wasm-unsafe-eval'/);
   const directives = Object.fromEntries(CSP_REPORT_ONLY.split("; ").map((part) => [part.split(" ")[0], part]));
   for (const [name, text] of Object.entries(directives)) {
     if (/unsafe-inline/.test(text)) assert.ok(name === "script-src" || name === "style-src", `unsafe-inline sólo se tolera (temporalmente) en script-src/style-src, no en ${name}`);

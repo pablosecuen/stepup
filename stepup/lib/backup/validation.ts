@@ -1,4 +1,5 @@
 import { BACKUP_IMPORT_LIMITS } from "./limits.ts";
+import { adaptMobileBackup, type AdaptReport } from "./mobile-adapter.ts";
 import { BACKUP_SCHEMA_VERSION_V1, BACKUP_SCHEMA_VERSION_V2, type TeacherFlowBackup } from "./types.ts";
 
 /**
@@ -16,8 +17,8 @@ export interface BackupValidationError {
 }
 
 export type BackupValidationResult =
-  | { ok: true; backup: TeacherFlowBackup; excludedCollections: ExcludedCollectionsSummary }
-  | { ok: false; errors: BackupValidationError[] };
+  | { ok: true; backup: TeacherFlowBackup; excludedCollections: ExcludedCollectionsSummary; adaptation: AdaptReport }
+  | { ok: false; errors: BackupValidationError[]; adaptation?: AdaptReport };
 
 export interface ExcludedCollectionsSummary {
   studentStatusHistory: { count: number; reason: string };
@@ -57,6 +58,7 @@ const ARRAY_COLLECTIONS = [
   "firstMonthProrationDecisions",
   "trainingBillingAgreements",
   "customLevels",
+  "originIncidents",
 ] as const;
 
 function findDangerousKeysDeep(value: unknown, path = "$"): string | null {
@@ -152,7 +154,7 @@ function arrayLength(value: unknown): number {
 
 /**
  * Filas ANIDADAS que `countRows` no ve (lo que se escribe además de las filas principales): historial de niveles, integrantes de clases y de
- * series, y roster / asistencias / evaluaciones / revisiones de tarea de cada registro. Mismo criterio que `_import_check_payload` en la base.
+ * series, y roster / asistencias / evaluaciones / revisiones de tarea / adjuntos / historial de ediciones / estado de participantes de cada registro. Mismo criterio que `_import_check_payload` en la base.
  */
 export function countNestedRows(backup: Record<string, unknown>): number {
   let nested = 0;
@@ -168,6 +170,8 @@ export function countNestedRows(backup: Record<string, unknown>): number {
   for (const rule of items("recurrenceRules")) nested += arrayLength(rule.participantStudentIds);
   for (const registration of items("pedagogicalLessons")) {
     nested += arrayLength(registration.roster) + arrayLength(registration.attendance) + arrayLength(registration.evaluations) + arrayLength(registration.homeworkReviews);
+    // R10: adjuntos, historial de ediciones y estado de participantes también se escriben (una fila cada uno).
+    nested += arrayLength(registration.attachments) + arrayLength(registration.editHistory) + arrayLength(registration.participantProgress);
   }
   return nested;
 }
@@ -187,7 +191,7 @@ function isObjectItem(item: unknown): boolean {
  * encima de los límites, elementos sin identificador y referencias obligatorias ausentes. La base repite estos mismos controles
  * (`_import_check_payload`) como defensa en profundidad.
  */
-export function checkImportWorkLimits(doc: Record<string, unknown>): BackupValidationError[] {
+export function checkImportWorkLimits(doc: Record<string, unknown>, options: { skipItemKeys?: readonly string[] } = {}): BackupValidationError[] {
   const errors: BackupValidationError[] = [];
   for (const key of ARRAY_COLLECTIONS) {
     const value = doc[key];
@@ -215,10 +219,10 @@ export function checkImportWorkLimits(doc: Record<string, unknown>): BackupValid
     errors.push({ code: "too_much_work", message: `El backup suma ${total + nested} filas entre principales y anidadas, supera el máximo de ${BACKUP_IMPORT_LIMITS.MAX_WORK_UNITS}.` });
   }
   if (errors.length > 0) return errors;
-
   for (const key of ARRAY_COLLECTIONS) {
     const value = doc[key];
-    if (!Array.isArray(value)) continue;
+    // Las series de la app móvil se identifican con `recurrenceId`: su forma se controla sobre el documento ya adaptado.
+    if (!Array.isArray(value) || options.skipItemKeys?.includes(key)) continue;
     const valid = key === "recurrenceExceptions" ? value.every(isObjectItem) : value.every(hasStringId);
     if (!valid) errors.push({ code: "invalid_item", message: "Un elemento del backup no tiene el formato esperado.", path: key });
   }
@@ -235,41 +239,49 @@ export function checkImportWorkLimits(doc: Record<string, unknown>): BackupValid
   return errors;
 }
 
-export function validateBackupPayload(raw: unknown): BackupValidationResult {
+function structuralErrors(raw: unknown): BackupValidationError[] {
   const errors: BackupValidationError[] = [];
-
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { ok: false, errors: [{ code: "not_an_object", message: "El backup no es un objeto JSON válido." }] };
-  }
-
-  // Rechazo temprano y barato: cantidad de filas / trabajo y forma de los elementos, ANTES de serializar o recorrer el documento entero.
-  const early = checkImportWorkLimits(raw as Record<string, unknown>);
-  if (early.length > 0) return { ok: false, errors: early };
-
   const sizeBytes = new TextEncoder().encode(JSON.stringify(raw)).length;
   if (sizeBytes > BACKUP_IMPORT_LIMITS.MAX_PAYLOAD_BYTES) {
     errors.push({ code: "too_large", message: `El backup supera el tamaño máximo permitido (${BACKUP_IMPORT_LIMITS.MAX_PAYLOAD_BYTES} bytes).` });
   }
-
   const depth = maxDepth(raw);
   if (depth > BACKUP_IMPORT_LIMITS.MAX_JSON_DEPTH) {
     errors.push({ code: "too_deep", message: `El backup tiene una estructura anidada más profunda de lo esperado (${depth} niveles).` });
   }
-
-  const dangerousPath = findDangerousKeysDeep(raw);
-  if (dangerousPath) {
-    errors.push({ code: "dangerous_key", message: "El backup contiene una clave no permitida." });
-  }
-
+  if (findDangerousKeysDeep(raw)) errors.push({ code: "dangerous_key", message: "El backup contiene una clave no permitida." });
   const overlongPath = findOverlongString(raw);
   if (overlongPath) {
     errors.push({ code: "string_too_long", message: `Un campo de texto supera los ${BACKUP_IMPORT_LIMITS.MAX_FREE_TEXT_LENGTH} caracteres permitidos.`, path: overlongPath });
   }
+  return errors;
+}
 
-  // Si alguno de los tres chequeos estructurales de arriba falló, no tiene
-  // sentido seguir leyendo colecciones sobre un documento potencialmente
-  // hostil — se corta acá, mismo criterio que el móvil.
+export function validateBackupPayload(input: unknown): BackupValidationResult {
+  const errors: BackupValidationError[] = [];
+
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, errors: [{ code: "not_an_object", message: "El backup no es un objeto JSON válido." }] };
+  }
+
+  // 1) Controles de un documento hostil SOBRE EL ORIGINAL (el adaptador nunca recorre un documento que no pasó esto): cantidad de filas / trabajo, tamaño,
+  //    profundidad, claves peligrosas y textos desmedidos.
+  const early = checkImportWorkLimits(input as Record<string, unknown>, { skipItemKeys: ["recurrenceRules"] });
+  if (early.length > 0) return { ok: false, errors: early };
+  errors.push(...structuralErrors(input));
+  // Si alguno de los chequeos estructurales falló, no tiene sentido seguir leyendo colecciones sobre un documento potencialmente hostil.
   if (errors.length > 0) return { ok: false, errors };
+
+  // 2) Un respaldo REAL de la app móvil trae otros nombres de campo que los que lee la importación (series sin `id`, clases con `start`/`end`, cada clase
+  //    registrada como un `form` anidado…): se adapta. Un documento ya en formato canónico no se toca. Lo adaptado se controla de nuevo (el tamaño pudo cambiar).
+  const adaptation = adaptMobileBackup(input);
+  const raw: unknown = adaptation.report.shape === "canonical" ? input : adaptation.payload;
+  if (raw !== input) {
+    const again = checkImportWorkLimits(raw as Record<string, unknown>);
+    if (again.length > 0) return { ok: false, errors: again, adaptation: adaptation.report };
+    errors.push(...structuralErrors(raw));
+    if (errors.length > 0) return { ok: false, errors, adaptation: adaptation.report };
+  }
 
   const doc = raw as Record<string, unknown>;
 
@@ -294,7 +306,7 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
     }
   }
 
-  if (errors.length > 0) return { ok: false, errors };
+  if (errors.length > 0) return { ok: false, errors, adaptation: adaptation.report };
 
   // (Cantidad de filas y de trabajo: ya controlada al principio por `checkImportWorkLimits`, antes de recorrer el documento.)
 
@@ -329,6 +341,8 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
     // Corrige un gap real del cliente móvil: se exporta pero el propio
     // restore del móvil nunca lo lee de vuelta (ver auditoría Fase 9).
     customLevels: (doc.customLevels as TeacherFlowBackup["customLevels"]) ?? [],
+    // Sólo existe en copias adaptadas del traslado: referencias que ya estaban rotas en la app anterior.
+    originIncidents: (doc.originIncidents as TeacherFlowBackup["originIncidents"]) ?? [],
   };
 
   const profilesArray = Object.values(doc.profiles as Record<string, { statusHistory?: unknown[]; priceHistory?: unknown[] }>);
@@ -347,5 +361,5 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
     },
   };
 
-  return { ok: true, backup: normalized, excludedCollections };
+  return { ok: true, backup: normalized, excludedCollections, adaptation: adaptation.report };
 }

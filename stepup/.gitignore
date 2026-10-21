@@ -36,3 +36,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# traslado desde la app móvil: copias cifradas y archivos parciales (contienen datos personales aunque estén cifradas: nunca al repositorio)
+*.tfsc
+*.tfsc.parcial
+*.tfdp
+*.tfdp.parcial
+copias-traslado/

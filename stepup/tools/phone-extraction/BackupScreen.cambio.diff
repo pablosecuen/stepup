@@ -1,0 +1,20 @@
+diff --git a/a/src/features/backup/BackupScreen.tsx b/b/src/features/backup/BackupScreen.tsx
+index a759cb5..e574efc 100644
+--- a/a/src/features/backup/BackupScreen.tsx
++++ b/b/src/features/backup/BackupScreen.tsx
+@@ -16,6 +16,7 @@ import { useCloudBackupSyncContext } from './CloudBackupSyncContext';
+ import { shouldShowManualRetryButton } from '../../shared/backup/cloud/retryBackoff';
+ import { useAuthSessionContext } from '../account/AuthSessionContext';
+ import { BrandedScreenHeader } from '../../shared/components/BrandedScreenHeader';
++import { PhoneTransferEntry } from '../transfer/PhoneTransferEntry';
+ 
+ interface Props {
+   onClose: () => void;
+@@ -554,6 +555,7 @@ export function BackupScreen({ onClose }: Props) {
+             <Text style={styles.infoText}>{cleanupLessonsMessage}</Text>
+           </View>
+         )}
++        <PhoneTransferEntry />
+       </ScrollView>
+     </SafeAreaView>
+   );

@@ -49,3 +49,20 @@ tamaño de fila, acciones costosas por ventana, `anon`/sin sesión y configuraci
     node supabase/tests/postgres/m3_lifecycle.mjs                   (M3: ciclo de vida completo con el adaptador falso: checkout → pago → renovación con trabajador caído y con aviso perdido → rechazo → gracia → limitado → reintento; cancelación idempotente; aviso duplicado y ajeno; aislamiento)
     node supabase/tests/billing/domain_mutations.mjs                (mutaciones del dominio puro lib/billing contra la batería unitaria)
     node supabase/tests/billing/bundle_scan.mjs .next               (tras «npm run build»: navegador sin credenciales, interruptores, planes ni funciones de facturación; servidor sin valores secretos)
+
+## R9 + R10 — Traslado desde la app móvil (docs/TRASLADO_EXPO_GO_A_WEB.md)
+
+    # Usar embedded-postgres 17.x (npm i embedded-postgres pg fuera del repo; NODE_PATH apunta a su node_modules). Datos SINTÉTICOS (lib/backup/__fixtures__).
+    node supabase/tests/postgres/transfer_rehearsal.cjs                 (traslado completo: adaptar → vista previa → confirmar → comparar CAMPO POR CAMPO origen ↔ destino → extracción de archivos del teléfono
+                                                                         (el mismo código que corre en el teléfono, con un teléfono simulado) → comparar de nuevo → alterar el volcado a propósito (el comparador tiene que
+                                                                         notarlo) → deshacer; 92 comprobaciones)
+    node supabase/tests/postgres/transfer_rehearsal.cjs --write-golden  (además regenera lib/backup/__fixtures__/mobile-real-shape.destination.json: el volcado de referencia de las pruebas sin Postgres)
+    node supabase/tests/postgres/transfer_rehearsal.cjs --before-r10    (sólo hasta R9: muestra lo que R10 cierra; termina con error A PROPÓSITO)
+    node supabase/tests/postgres/transfer_rehearsal.cjs --before-r9     (la base de Production de hoy: muestra lo que R9 y R10 cierran; termina con error A PROPÓSITO)
+    node supabase/tests/postgres/r9_migration_rehearsal.cjs             (R9: BEGIN…ROLLBACK, idempotencia, compatibilidad con importaciones anteriores y rollback exacto)
+    node supabase/tests/postgres/r10_migration_rehearsal.cjs            (R10: ídem; además una importación hecha ANTES de R10 se puede deshacer después de aplicarla y la API no puede escribir en las tablas nuevas)
+    node supabase/tests/postgres/r11_freeze_rehearsal.cjs               (R11: migración idempotente y reversible; retención resuelta —la copia permanente conserva todos los respaldos aunque la app anterior rote los 10 más nuevos, el trabajo de R4 no toca el origen—;
+                                                                         cierre que exige el último respaldo, el cotejo COMPLETO y la confirmación; congelada: la app anterior no guarda respaldos y no se importa, sin afectar sesión ni escrituras de la web; reabrir)
+    node supabase/tests/postgres/export_schema_rehearsal.cjs            (exportación del destino sobre el esquema ANTERIOR a R9/R10 y el nuevo: «no disponible en esta versión» sólo para las tablas nuevas; aborta ante permisos, red o tabla existente faltante; cifrado y recuperación)
+    node supabase/tests/postgres/extractor_destination_rehearsal.cjs    (el extractor con el cliente real de Supabase contra un destino aislado con la forma de Supabase: prueba de un archivo, tamaño distinto, caída del servidor, «ya existe», idempotencia, ausentes, aislamiento)
+    node supabase/tests/postgres/real_rehearsal.cjs <copia-origen.tfsc>  (ENSAYO CON EL RESPALDO REAL en un Postgres local aislado y descartable: importa, coteja, deshace y borra todo; informa sólo ids y cantidades)

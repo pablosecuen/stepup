@@ -278,6 +278,13 @@ export function translateImportError(raw: string, context: ImportErrorContext): 
   if (NETWORK_PREFIX.test(text)) return { message: networkMessage(context), code: "network_unreachable" };
   if (/No hay una sesión autenticada/i.test(text)) return { message: SESSION_ERROR, code: "session_required" };
   if (isQuotaMessage(text)) return { message: text, code: "quota_exceeded" }; // límite de cuenta (R3): el texto ya es claro
+  // R11: el traslado ya se cerró (la web es la única fuente): no se importa otra copia hasta reabrirlo.
+  if (/El traslado desde la app anterior ya se cerró/i.test(text)) {
+    return {
+      message: "El traslado de tus datos anteriores ya se cerró: la web es ahora tu única fuente y por eso no se importa otra copia. No se cambió nada. Si falta algo, avisanos y lo reabrimos.",
+      code: "transfer_closed",
+    };
+  }
   if (/No encontramos ningún respaldo en la nube/i.test(text)) {
     return {
       message:
@@ -417,6 +424,18 @@ const VALIDATION_CODE_MAP: Record<string, string> = {
  * Errores de la validación del respaldo (por su `code`, nunca por su texto ni su `path`, que nombra colecciones internas).
  * Varios errores se resumen en una sola frase; la clasificación interna lista los distintos, separados por coma (sólo para el log).
  */
+/**
+ * El adaptador del traslado desde la app no pudo convertir algunas filas sin inventar datos (por ejemplo, un alumno sin ficha).
+ * Se bloquea ANTES de importar: nada se descarta en silencio. El mensaje sólo lleva cantidades, nunca nombres ni identificadores.
+ */
+export function translateAdaptationOmitted(count: number): TranslatedImportError {
+  const plural = count === 1;
+  return {
+    message: `${plural ? "Hay 1 dato" : `Hay ${formatCount(count)} datos`} de tu copia que no se puede pasar a la web sin inventar información (por ejemplo, un alumno al que le falta su ficha). No se cambió nada y tu copia en la nube sigue intacta. Contactanos y lo revisamos antes de importar.`,
+    code: "backup_adaptation_omitted",
+  };
+}
+
 export function translateValidationErrors(errors: ReadonlyArray<{ code: string }>): TranslatedImportError {
   const mapped = [...new Set(errors.map((e) => VALIDATION_CODE_MAP[e.code] ?? "backup_format_invalid"))];
   const first = validationMessage(mapped[0] ?? "backup_format_invalid");

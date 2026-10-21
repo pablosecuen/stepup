@@ -11,6 +11,12 @@ import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "./registration-workspace";
+import { LessonContentCard } from "@/components/registro/lesson-content-card";
+import { getLessonContent } from "@/lib/repositories/lesson-content";
+import { loadRegistrationIncidents } from "@/lib/repositories/origin-incidents";
+import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
+import { OriginIncidentsCard } from "@/components/registro/origin-incidents-card";
+import type { LessonContent } from "@/lib/repositories/lesson-content-mapping";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +32,8 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
   let calendarLesson;
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
+  let lessonContent: LessonContent | null = null;
+  let incidents: OriginIncidentView[] = [];
   try {
     const ctx = await requireAuthenticatedDbContext();
     [detail, calendarLesson] = await Promise.all([
@@ -40,6 +48,10 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
         const student = studentById.get(p.studentId);
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
       });
+
+      lessonContent = await getLessonContent(ctx, detail.registration.id);
+      // Las incidencias heredadas son información complementaria: si no se pueden leer, la pantalla sigue como siempre.
+      incidents = (await loadRegistrationIncidents(ctx, [detail.registration.id]).catch(() => ({}) as Record<string, OriginIncidentView[]>))[detail.registration.id] ?? [];
 
       if (activityKindSupportsHomework(detail.registration.activityKind)) {
         const entries = await Promise.all(
@@ -77,6 +89,8 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
       subtitle={formatInstantDayLongTime(calendarLesson.startAt)}
       kindLabel={ACTIVITY_KIND_LABEL[detail.registration.activityKind]}
     >
+      <OriginIncidentsCard incidents={incidents} />
+      {lessonContent && <LessonContentCard content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
         registration={detail.registration}
         participants={participantsInfo}

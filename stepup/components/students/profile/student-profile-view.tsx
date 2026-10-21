@@ -18,6 +18,7 @@ import { ClasesTabContent } from "@/components/students/profile/clases-tab";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
+import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 
 export interface StudentProfileData {
@@ -31,6 +32,9 @@ export interface StudentProfileData {
   charges: PaymentChargeRecord[];
   payments: PaymentRecord[];
   allocations: PaymentAllocationRecord[];
+  /** Incidencias heredadas del traslado, por clase registrada y por cobro (vacío si no hay). */
+  registrationIncidents?: Record<string, OriginIncidentView[]>;
+  chargeIncidents?: Record<string, OriginIncidentView[]>;
   monthsWithClasses: string[];
   reportHistory: ReportRecordSummary[];
   stats: ProfileClassStats;
@@ -60,11 +64,11 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
             <ChangeStatusForm studentId={student.id} currentStatus={student.status} />
           </div>
         )}
-        {tab === "clases" && <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} />}
+        {tab === "clases" && <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />}
         {tab === "progreso" && <ProgresoTabContent entries={data.evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
         {tab === "cobros" && (
-          <CobrosTabContent studentId={student.id} studentName={student.name} charges={data.charges} payments={data.payments} allocations={data.allocations} todayDateKey={data.todayDateKey} />
+          <CobrosTabContent studentId={student.id} studentName={student.name} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />
         )}
         {tab === "reportes" && (
           <ReportesTabContent studentId={student.id} studentName={student.name} monthsWithClasses={data.monthsWithClasses} initialHistory={data.reportHistory} />

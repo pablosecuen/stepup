@@ -11,6 +11,8 @@ import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
 import { StudentProfileView } from "@/components/students/profile/student-profile-view";
 import { listChargesForStudent, listPaymentsForStudent, listAllocationsForStudent } from "@/lib/repositories/payments";
+import { loadChargeIncidents, loadRegistrationIncidents } from "@/lib/repositories/origin-incidents";
+import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 import { ChargeGenerationTrigger } from "@/components/payments/charge-generation-trigger";
 import { ReportCleanupTrigger } from "@/components/students/profile/report-cleanup-trigger";
 import { localDateKeyInTimeZone, billingPeriodOfDateKey } from "@/lib/payments/dates";
@@ -51,6 +53,8 @@ export default async function AlumnoProfilePage({
   let charges: Awaited<ReturnType<typeof listChargesForStudent>> = [];
   let payments: Awaited<ReturnType<typeof listPaymentsForStudent>> = [];
   let allocations: Awaited<ReturnType<typeof listAllocationsForStudent>> = [];
+  let registrationIncidents: Record<string, OriginIncidentView[]> = {};
+  let chargeIncidents: Record<string, OriginIncidentView[]> = {};
   let monthsWithClasses: string[] = [];
   let reportHistory: Awaited<ReturnType<typeof listReportRecordsForStudent>> = [];
   let stats: ProfileClassStats = buildProfileClassStats([]);
@@ -81,6 +85,8 @@ export default async function AlumnoProfilePage({
     if (student && tab === "clases") {
       const [all, held] = await Promise.all([listLessonRegistrationsForStudent(ctx, id), listCompletedRegistrationsForStudentReport(ctx, id)]);
       registrations = all;
+      // Información complementaria: si no se puede leer, el historial se muestra igual.
+      registrationIncidents = await loadRegistrationIncidents(ctx, all.map((r) => r.id)).catch(() => ({}));
       attendanceByRegistrationId = Object.fromEntries(held.flatMap((r) => (r.attendance ? [[r.registrationId, r.attendance.status] as const] : [])));
     }
     if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
@@ -93,6 +99,7 @@ export default async function AlumnoProfilePage({
         listPaymentsForStudent(ctx, id),
         listAllocationsForStudent(ctx, id),
       ]);
+      chargeIncidents = await loadChargeIncidents(ctx, charges.map((c) => c.id)).catch(() => ({}));
     }
     if (student && tab === "reportes") {
       // R2: sólo lectura. El reintento oportunista de la cola de limpieza de PDFs huérfanos (que borra objetos de Storage)
@@ -141,6 +148,8 @@ export default async function AlumnoProfilePage({
           charges,
           payments,
           allocations,
+          registrationIncidents,
+          chargeIncidents,
           monthsWithClasses,
           reportHistory,
           stats,

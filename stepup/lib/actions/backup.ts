@@ -20,7 +20,7 @@ import {
   type ApplyRunSummary,
 } from "@/lib/repositories/backup-import";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
-import { translateImportError, translateImportTimeout, translateValidationErrors, type ImportErrorContext, type TranslatedImportError } from "@/lib/backup/import-copy";
+import { translateImportError, translateAdaptationOmitted, translateImportTimeout, translateValidationErrors, type ImportErrorContext, type TranslatedImportError } from "@/lib/backup/import-copy";
 import { describeLoadFailure } from "@/lib/errors/load-failure";
 import { formatInstantDateTime } from "@/lib/format/date-format";
 import { actionErrorMessage } from "@/lib/errors/action-error";
@@ -93,6 +93,10 @@ export async function analyzeLatestCloudBackupAction(): Promise<ActionResult<{ p
     if (!validation.ok) {
       const translated = translateValidationErrors(validation.errors);
       return reply(translated, "analyze");
+    }
+    // Traslado desde la app: si el adaptador tuvo que dejar filas afuera para no inventar datos, no se importa nada hasta revisarlo.
+    if (validation.adaptation.omitted.length > 0) {
+      return reply(translateAdaptationOmitted(validation.adaptation.omitted.length), "analyze");
     }
 
     const result = await previewBackupImport(

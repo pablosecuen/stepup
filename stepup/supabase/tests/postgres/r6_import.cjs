@@ -814,7 +814,8 @@ async function sectionScaling(pg) {
     const stats = async () => {
       const t = (await s.query(`select coalesce(sum(seq_scan),0)::int seq, coalesce(sum(idx_scan),0)::int idx from pg_stat_xact_user_tables`)).rows[0];
       const f = (await s.query(`select funcid::regproc::text f, calls::int calls from pg_stat_xact_user_functions`)).rows;
-      return { seq: t.seq, idx: t.idx, calls: Object.fromEntries(f.map((r) => [r.f.replace("public.", ""), r.calls])) };
+      const top = (await s.query(`select relname, seq_scan::int seq from pg_stat_xact_user_tables where seq_scan > 0 order by seq_scan desc limit 4`)).rows.map((r) => `${r.relname}:${r.seq}`).join(",");
+      return { seq: t.seq, idx: t.idx, top, calls: Object.fromEntries(f.map((r) => [r.f.replace("public.", ""), r.calls])) };
     };
     out.preview = await stats();
     await s.query("rollback");
@@ -828,7 +829,7 @@ async function sectionScaling(pg) {
   }
   const small = await profile(400);
   const large = await profile(1600);
-  check("escala (vista previa): las lecturas secuenciales de tabla crecen mucho menos que el tamaño (4x filas → ≤ 3x; antes: 313 → 4.572, es decir 14x)", large.preview.seq <= small.preview.seq * 3 + 30 && large.preview.seq <= 400, `${small.preview.seq} → ${large.preview.seq}`);
+  check("escala (vista previa): las lecturas secuenciales de tabla crecen mucho menos que el tamaño (4x filas → ≤ 3x; antes: 313 → 4.572, es decir 14x)", large.preview.seq <= small.preview.seq * 3 + 30 && large.preview.seq <= 400, `${small.preview.seq} → ${large.preview.seq} (mayores: ${small.preview.top} → ${large.preview.top})`);
   check("escala (vista previa): ya no hay una llamada por elemento a la comprobación de referencias", (large.preview.calls._external_ref_available || 0) === 0 && (large.preview.calls._classify_students || 0) === 0);
   check("escala (aplicación): el disparador de cuotas de R3 corre UNA vez por tabla, no una vez por fila (antes: una por fila)", (large.apply.calls.tf_quota_after_insert || 0) <= 60 && (large.apply.calls.tf_quota_after_insert || 0) <= (small.apply.calls.tf_quota_after_insert || 0) + 6, `${small.apply.calls.tf_quota_after_insert} → ${large.apply.calls.tf_quota_after_insert}`);
   check("escala (aplicación): las funciones por elemento de la versión anterior ya no se usan", ["_apply_students", "_apply_calendar_lessons", "_apply_financial_components", "_apply_lesson_registrations"].every((f) => !(large.apply.calls[f] > 0)));

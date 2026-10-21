@@ -1,4 +1,7 @@
-import { BanknotesIcon, CheckCircleIcon, ClockIcon, ExclamationCircleIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, CheckCircleIcon, ClockIcon, ExclamationCircleIcon, NoSymbolIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import { EXCESS_STATUS_LABEL, excessExplanation, excessLinesForCharge, excessLinesForPayment, sumExcess } from "@/lib/payments/excess";
+import { OriginIncidentNote } from "@/components/registro/origin-incidents-card";
+import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 import { calculatePaidAmountForCharge, calculateChargeBalance } from "@/lib/payments/charge-balance";
 import { determineDueStage, isChargeOverdueForDisplay } from "@/lib/payments/due-stage";
 import { EmptyState } from "@/components/ui/states";
@@ -35,6 +38,7 @@ export function CobrosTabContent({
   charges,
   payments,
   allocations,
+  chargeIncidents = {},
   todayDateKey,
 }: {
   studentId: string;
@@ -42,9 +46,12 @@ export function CobrosTabContent({
   charges: PaymentChargeRecord[];
   payments: PaymentRecord[];
   allocations: PaymentAllocationRecord[];
+  /** Incidencias heredadas del traslado por cobro (opcional). */
+  chargeIncidents?: Record<string, OriginIncidentView[]>;
   todayDateKey: string;
 }) {
   const voidedAtByPaymentId = new Map(payments.map((p) => [p.id, p.voidedAt]));
+  const paymentsById = new Map(payments.map((p) => [p.id, p]));
   const allocationsLike = allocations.map((a) => ({ chargeId: a.chargeId, amount: a.amount, paymentVoidedAt: voidedAtByPaymentId.get(a.paymentId) ?? null }));
 
   const sortedCharges = [...charges].sort((a, b) => (a.dueDate < b.dueDate ? 1 : a.dueDate > b.dueDate ? -1 : 0));
@@ -68,6 +75,7 @@ export function CobrosTabContent({
               const balance = calculateChargeBalance(charge, paidAmount);
               const stage = determineDueStage(charge.chargeType, charge.dueDate, todayDateKey);
               const isOverdue = isChargeOverdueForDisplay(charge.chargeType, charge.dueDate, stage, todayDateKey);
+              const excessLines = excessLinesForCharge(charge.id, allocations, voidedAtByPaymentId);
               const partial = !charge.voidedAt && !balance.isFullyPaid && paidAmount > 0 && charge.originalAmount > 0;
               return (
                 <li
@@ -118,6 +126,30 @@ export function CobrosTabContent({
                     </div>
                   )}
                   {charge.voidedAt && charge.voidReason && <p className="mt-2 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Motivo: {charge.voidReason}</p>}
+                  {excessLines.length > 0 && (
+                    <div className="mt-3 rounded-md border border-border bg-background p-3 text-[14px] text-textSecondary" role="note">
+                      <p className="flex flex-wrap items-center gap-2">
+                        <Badge tone={excessLines.every((l) => l.status === "recargo_confirmado") ? "info" : "warn"} icon={<QuestionMarkCircleIcon className={ICON} aria-hidden />}>
+                          {excessLines.every((l) => l.status === "recargo_confirmado") ? EXCESS_STATUS_LABEL.recargo_confirmado : EXCESS_STATUS_LABEL.pendiente_de_clasificacion}
+                        </Badge>
+                        <span>
+                          Se cobró <span className="font-bold tf-num text-textPrimary">{formatMoney(sumExcess(excessLines))}</span> por encima del importe base.
+                        </span>
+                      </p>
+                      <p className="mt-1 [overflow-wrap:anywhere]">{excessExplanation(excessLines.some((l) => l.status === "pendiente_de_clasificacion") ? "pendiente_de_clasificacion" : "recargo_confirmado")}</p>
+                      <ul className="mt-1 space-y-0.5 text-[13.5px] text-textMuted">
+                        {excessLines.map((line) => {
+                          const payment = paymentsById.get(line.paymentId);
+                          return (
+                            <li key={line.allocationId}>
+                              {formatMoney(line.amount)} en el pago{payment ? " del " + formatDateValue(payment.paidAt) + " (" + (METHOD_LABEL[payment.method] ?? payment.method) + ")" : ""} · {EXCESS_STATUS_LABEL[line.status]}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                  <OriginIncidentNote incidents={chargeIncidents[charge.id] ?? []} />
                   {!charge.voidedAt && !balance.isFullyPaid && <ChargeActions
                       chargeId={charge.id}
                       studentId={studentId}
@@ -157,6 +189,11 @@ export function CobrosTabContent({
                   <p className="text-[15px] text-textPrimary [overflow-wrap:anywhere]">
                     <span className="font-bold tf-num">{formatMoney(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
                   </p>
+                  {excessLinesForPayment(payment.id, allocations, voidedAtByPaymentId).map((line) => (
+                    <p key={line.allocationId} className="mt-0.5 text-[13.5px] text-textSecondary [overflow-wrap:anywhere]">
+                      Incluye <span className="font-bold tf-num">{formatMoney(line.amount)}</span> por encima del importe base de una obligación · {EXCESS_STATUS_LABEL[line.status]}
+                    </p>
+                  ))}
                   {payment.notes && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">{payment.notes}</p>}
                   {payment.voidedAt && payment.voidReason && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Anulado: {payment.voidReason}</p>}
                 </div>
