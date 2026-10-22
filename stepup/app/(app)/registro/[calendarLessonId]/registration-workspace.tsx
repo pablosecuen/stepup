@@ -36,7 +36,9 @@ import { Notice } from "@/components/ui/notice";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { InternalNotesCard, PedagogicalContentEditor } from "@/components/registro/pedagogical-content-editor";
 import { RegistrationOutcomeField } from "@/components/registro/registration-outcome-field";
-import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, type ParticipantForm } from "@/components/registro/registration-form-parts";
+import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
+import { DraftsProvider, applyPendingToList, pendingText, useDraftsStore } from "@/components/registro/draft-items";
+import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import { validatePedagogicalContent } from "@/lib/lessons/pedagogical-content";
 import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
@@ -132,7 +134,7 @@ export function ParticipantCard({
   isOpen: boolean;
   onToggle: () => void;
   form: ParticipantForm;
-  onFormChange: (patch: Partial<ParticipantForm>) => void;
+  onFormChange: (patch: ParticipantFormPatch) => void;
   supportsHomework: boolean;
   pendingHomework: PendingHomeworkTask[];
   attendanceError: boolean;
@@ -190,7 +192,7 @@ export function ParticipantCard({
             />
           )}
 
-          <EvaluationFields studentName={name} form={form} onChange={onFormChange} />
+          <EvaluationFields studentName={name} studentId={studentId} form={form} onChange={onFormChange} />
 
           {supportsHomework && <PersonalizedHomework studentName={name} form={form} onChange={onFormChange} />}
 
@@ -273,9 +275,41 @@ export function RegistrationWorkspace({
     materialIds: initialContent?.materials.map((m) => m.legacyId) ?? [],
   }));
   const [progressSaved, setProgressSaved] = useState(false);
-  function handleContentChange(next: PedagogicalContentInput) {
+  function handleContentChange(next: PedagogicalContentInput | ((previous: PedagogicalContentInput) => PedagogicalContentInput)) {
     setContent(next);
     setProgressSaved(false);
+  }
+
+  // Textos escritos en los campos «agregar» (y ediciones de etiquetas en curso) que todavía no están en la lista: viven acá para que ningún guardado los pierda.
+  const draftsStore = useDraftsStore();
+  /**
+   * Incorpora a las listas lo que quedó escrito sin confirmar (borradores de «agregar» y ediciones abiertas) y devuelve el contenido y los formularios YA
+   * completos — los guardados usan esto, no el estado de la pantalla, que todavía no se repintó. Sin nada pendiente devuelve el estado actual.
+   */
+  function takePendingDrafts(): { content: PedagogicalContentInput; forms: Record<string, ParticipantForm> } {
+    const pending = draftsStore.snapshot();
+    if (!Object.values(pending).some((value) => value.trim())) return { content, forms: formByStudentId };
+    const addedTopic = pendingText(pending, CONTENT_DRAFT_KEYS.topics);
+    const nextContent: PedagogicalContentInput = {
+      ...content,
+      topics: addedTopic ? [...content.topics, { id: crypto.randomUUID(), text: addedTopic, status: "planificado" }] : content.topics,
+      objectives: applyPendingToList(content.objectives, pending, CONTENT_DRAFT_KEYS.objectives),
+      activities: applyPendingToList(content.activities, pending, CONTENT_DRAFT_KEYS.activities),
+    };
+    const nextForms = Object.fromEntries(
+      Object.entries(formByStudentId).map(([studentId, form]) => [
+        studentId,
+        {
+          ...form,
+          strengths: applyPendingToList(form.strengths, pending, participantDraftKey(studentId, "strengths")),
+          areasToImprove: applyPendingToList(form.areasToImprove, pending, participantDraftKey(studentId, "areasToImprove")),
+        },
+      ])
+    ) as Record<string, ParticipantForm>;
+    setContent(nextContent);
+    setFormByStudentId(nextForms);
+    draftsStore.clear();
+    return { content: nextContent, forms: nextForms };
   }
 
   const supportsHomework = activityKindSupportsHomework(registration.activityKind);
@@ -289,9 +323,10 @@ export function RegistrationWorkspace({
   const countsAsClass = registration.countsAsClass;
   const contentTitle = registration.activityKind === "training" ? "Contenido del entrenamiento" : "Contenido pedagógico";
 
-  function handleParticipantFormChange(studentId: string, patch: Partial<ParticipantForm>) {
-    setFormByStudentId((prev) => ({ ...prev, [studentId]: { ...prev[studentId], ...patch } }));
+  function handleParticipantFormChange(studentId: string, patch: ParticipantFormPatch) {
+    setFormByStudentId((prev) => ({ ...prev, [studentId]: { ...prev[studentId], ...(typeof patch === "function" ? patch(prev[studentId]) : patch) } }));
     setProgressSaved(false);
+    if (typeof patch === "function") return;
     if ("attendanceStatus" in patch && attendanceErrorId === studentId) setAttendanceErrorId(null);
     if ("homeworkReviews" in patch && homeworkErrorId === studentId) setHomeworkErrorId(null);
   }
@@ -328,11 +363,13 @@ export function RegistrationWorkspace({
   function saveParticipant(studentId: string, nextStatus: "completed" | "omitted") {
     setError(null);
     setProgressSaved(false);
-    if (!validatePedagogicalContent(content)) {
+    // Lo escrito en los campos «agregar» se incorpora ANTES de guardar (nunca se pierde un texto pendiente).
+    const { content: liveContent, forms: liveForms } = takePendingDrafts();
+    if (!validatePedagogicalContent(liveContent)) {
       setError("Completá o eliminá los temas, objetivos o actividades que quedaron vacíos.");
       return;
     }
-    const form = formByStudentId[studentId];
+    const form = liveForms[studentId];
     if (nextStatus === "completed") {
       if (!hasResolvedAttendanceStatus(form.attendanceStatus)) {
         setAttendanceErrorId(studentId);
@@ -349,7 +386,7 @@ export function RegistrationWorkspace({
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setBusyParticipantId(studentId);
     startTransition(async () => {
-      const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, studentId, form, nextStatus, content)));
+      const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, studentId, form, nextStatus, liveContent)));
       setBusyParticipantId(null);
       if (result.error) {
         setError(result.error);
@@ -365,14 +402,15 @@ export function RegistrationWorkspace({
   function handleSaveProgress() {
     setError(null);
     setProgressSaved(false);
-    if (!validatePedagogicalContent(content)) {
+    const { content: liveContent, forms: liveForms } = takePendingDrafts();
+    if (!validatePedagogicalContent(liveContent)) {
       setError("Completá o eliminá los temas, objetivos o actividades que quedaron vacíos.");
       return;
     }
     startTransition(async () => {
       const draft = await guardNetwork(() => saveLessonContentDraftAction({
         lessonRegistrationId: registration.id,
-        content,
+        content: liveContent,
         homeworkDescription: homeworkFields.common ? commonHomeworkDescription.trim() || null : undefined,
         homeworkDueDate: homeworkFields.common ? commonHomeworkDueDate || null : undefined,
         ...headerTimes,
@@ -382,7 +420,7 @@ export function RegistrationWorkspace({
         return;
       }
       for (const p of participants) {
-        const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, formByStudentId[p.studentId], null)));
+        const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, liveForms[p.studentId], null)));
         if (result.error) {
           setError(result.error);
           return;
@@ -395,7 +433,8 @@ export function RegistrationWorkspace({
 
   function handleFinalize() {
     setError(null);
-    if (countsAsClass && !validatePedagogicalContent(content)) {
+    const { content: liveContent, forms: liveForms } = takePendingDrafts();
+    if (countsAsClass && !validatePedagogicalContent(liveContent)) {
       setError("Completá o eliminá los temas, objetivos o actividades que quedaron vacíos.");
       return;
     }
@@ -410,7 +449,7 @@ export function RegistrationWorkspace({
     }
     startTransition(async () => {
       const headerFields = {
-        content: countsAsClass ? content : undefined,
+        content: countsAsClass ? liveContent : undefined,
         homeworkDescription: countsAsClass && supportsHomework ? commonHomeworkDescription.trim() || null : undefined,
         homeworkDueDate: countsAsClass && supportsHomework ? commonHomeworkDueDate || null : undefined,
         actualDurationMinutes: countsAsClass ? Number(durationMinutes) || null : null,
@@ -426,7 +465,7 @@ export function RegistrationWorkspace({
           lessonRegistrationId: registration.id,
           editOperationId,
           ...headerFields,
-          participants: participants.map((p) => buildEditParticipantInput(p.studentId, formByStudentId[p.studentId])),
+          participants: participants.map((p) => buildEditParticipantInput(p.studentId, liveForms[p.studentId])),
         }));
         if (result.error) {
           setError(result.error);
@@ -443,7 +482,7 @@ export function RegistrationWorkspace({
       // vuelca el formulario vigente una última vez (estado intacto) para no perder un ajuste de último momento. En una clase individual este
       // mismo paso es el que completa al único alumno. `finalizeRegistrationAction` sólo toca el encabezado (no hay «antes» que conservar).
       for (const p of participants) {
-        const form = formByStudentId[p.studentId];
+        const form = liveForms[p.studentId];
         const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, p.studentId, form, countsAsClass && !isGroup ? "completed" : null)));
         if (result.error) {
           setError(result.error);
@@ -467,6 +506,7 @@ export function RegistrationWorkspace({
   const savedAttendanceNote = !isGroup && singleForm.attendanceStatus && singleForm.attendanceStatus !== "presente" ? ATTENDANCE_STATUS_LABEL[singleForm.attendanceStatus] : null;
 
   return (
+    <DraftsProvider value={draftsStore.api}>
     <div className="flex flex-col gap-4">
       {outcomeField && !isFinalized && (
         <RegistrationOutcomeField
@@ -527,7 +567,7 @@ export function RegistrationWorkspace({
       {/* 3) Clase individual: la evaluación del único alumno. */}
       {countsAsClass && !isGroup && (
         <Block title="Evaluación">
-          <EvaluationFields studentName={single.name} form={singleForm} onChange={(patch) => handleParticipantFormChange(single.studentId, patch)} />
+          <EvaluationFields studentName={single.name} studentId={single.studentId} form={singleForm} onChange={(patch) => handleParticipantFormChange(single.studentId, patch)} />
         </Block>
       )}
 
@@ -624,5 +664,6 @@ export function RegistrationWorkspace({
         )}
       </div>
     </div>
+    </DraftsProvider>
   );
 }

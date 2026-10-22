@@ -3,10 +3,12 @@ import type { ComponentProps, ReactNode } from "react";
 
 // Campos del rediseño (docs/design/web-v1/02-componentes-y-navegacion.md §3). El borde del control es `borderStrong` (3:1,
 // WCAG 1.4.11); el foco cambia el borde a tinta y suma un halo terracota. Alto 46 px (≥ 44 px, B8).
+// Letra de 16 px: iOS Safari AMPLÍA la página al enfocar un campo con letra menor y, al soltarlo, puede dejarla ampliada (contenido cortado a la
+// derecha y la pantalla que se corre al tocar controles). Con 16 px no amplía; no se desactiva el zoom del usuario (maximum-scale).
 
 /** Clases comunes de campo, selector y área de texto. */
 export const inputClass =
-  "w-full min-h-[46px] rounded-md border-[1.5px] border-borderStrong bg-surface px-3.5 text-[15px] text-textPrimary transition-[border-color,box-shadow] duration-150 ease-premium placeholder:text-[#7D7260] hover:border-ink focus:outline-none focus-visible:border-ink focus-visible:shadow-focus disabled:cursor-not-allowed disabled:border-borderMid disabled:bg-paperDeep disabled:text-textMuted aria-[invalid=true]:border-bad aria-[invalid=true]:bg-[#FFFBFA] aria-[invalid=true]:shadow-focusError";
+  "w-full min-h-[46px] rounded-md border-[1.5px] border-borderStrong bg-surface px-3.5 text-[16px] text-textPrimary transition-[border-color,box-shadow] duration-150 ease-premium placeholder:text-[#7D7260] hover:border-ink focus:outline-none focus-visible:border-ink focus-visible:shadow-focus disabled:cursor-not-allowed disabled:border-borderMid disabled:bg-paperDeep disabled:text-textMuted aria-[invalid=true]:border-bad aria-[invalid=true]:bg-[#FFFBFA] aria-[invalid=true]:shadow-focusError";
 
 export const selectClass = `${inputClass} tf-select-arrow appearance-none pr-10`;
 
