@@ -7,7 +7,7 @@ import { CARD_TEXT_COLORS } from "@/lib/calendar-theme";
 import type { CardTip } from "./real-lesson-card";
 
 /**
- * PROPUESTA (entorno de revisión): barra exacta + rótulo de una clase corta. La barra conserva la hora y la duración reales (sin altura mínima inventada) y lleva sólo el número de asociación cuando hay
+ * Barra exacta + rótulo de una clase corta. La barra conserva la hora y la duración reales (sin altura mínima inventada) y lleva sólo el número de asociación cuando hay
  * simultáneas; el rótulo lleva el mismo número, la hora, el estado y el nombre en letra de 11 px. El rótulo es sólo visual (`aria-hidden`): el nombre accesible lo da la barra, que es el botón.
  */
 export function ShortBar({

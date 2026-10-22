@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { CalendarViewItem } from "../occurrences";
 import { layoutDayItems } from "../layout.ts";
-import { LABEL_HEIGHT_PX, SHORT_BAR_MAX_HEIGHT_PX, planShortLabels, placeLabels, shortLabelsNeedPx, type LabelSource } from "../short-labels.ts";
+import { LABEL_HEIGHT_PX, SHORT_BAR_MAX_HEIGHT_PX, fitWeekColumns, needsLabel, planShortLabels, placeLabels, shortLabelsNeedPx, type LabelSource } from "../short-labels.ts";
 
 const at = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -83,4 +83,33 @@ test("el ancho que pide un día con cortas incluye hora, estado y la primera pal
   assert.ok(need > 60 && need <= 210, String(need));
   assert.equal(shortLabelsNeedPx(layoutDayItems([lesson("x", "10:00", 60)], 50), sourcesOf([lesson("x", "10:00", 60)])), 0);
   assert.ok(SHORT_BAR_MAX_HEIGHT_PX === 15);
+});
+
+test("fitWeekColumns: sin días que pidan más no cambia nada; un día que pide más lo recibe de los demás sin superar el ancho y sin bajar de 118 px", () => {
+  assert.equal(fitWeekColumns(1000, [0, 0, 0, 0, 0, 0, 0]), null);
+  assert.equal(fitWeekColumns(1000, [140, 0, 120, 0, 0, 0, 0]), null, "todos entran con el ancho común (142 px)");
+  const widths = fitWeekColumns(1000, [0, 0, 0, 0, 0, 230, 0])!;
+  assert.ok(Math.abs(widths.reduce((a, b) => a + b, 0) - 1000) < 0.001, "reparte exactamente el ancho disponible (sin desplazamiento horizontal)");
+  assert.equal(widths[5], 230);
+  assert.ok(widths.filter((_, i) => i !== 5).every((w) => w >= 118 && Math.abs(w - widths[0]) < 0.001), "el resto queda igual entre sí");
+});
+
+test("fitWeekColumns: si todos los días piden más de lo que hay, ninguno baja de 118 px y se achican en proporción a lo que piden por encima", () => {
+  const widths = fitWeekColumns(1000, [240, 240, 200, 200, 200, 240, 160])!;
+  assert.ok(widths.every((w) => w >= 118));
+  assert.ok(widths[0] > widths[6], "el que más pide conserva más ancho");
+  assert.ok(Math.abs(widths.reduce((a, b) => a + b, 0) - 1000) < 0.001);
+});
+
+test("needsLabel: < 15 px siempre; 15–27 px sólo si comparte carril o su estado desplazaría la hora; una clase larga nunca", () => {
+  const sources = new Map<string, LabelSource>([
+    ["c", { id: "c", title: "Ana", timeText: "10:00", stateText: "Cancel." }],
+    ["n", { id: "n", title: "Ana", timeText: "10:00", stateText: null }],
+  ]);
+  const p = (id: string, height: number, laneCount: number) => ({ item: { id }, height, laneCount }) as never;
+  assert.equal(needsLabel(p("n", 10, 1), sources), true);
+  assert.equal(needsLabel(p("n", 25, 1), sources), false, "una línea con hora y nombre alcanza");
+  assert.equal(needsLabel(p("c", 25, 1), sources), true, "«Cancel.» ocuparía el lugar de la hora");
+  assert.equal(needsLabel(p("n", 25, 2), sources), true, "carril compartido");
+  assert.equal(needsLabel(p("c", 40, 1), sources), false);
 });

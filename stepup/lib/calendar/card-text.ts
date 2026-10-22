@@ -89,10 +89,10 @@ export function mobileNameWords(title: string, heightPx: number): string[] {
   return words(title).slice(0, heightPx >= TWO_NAME_LINES_MIN_HEIGHT_PX ? 2 : 1);
 }
 
-/** Letra del nombre: 10,5 px para nombres cortos (hasta 7 letras) y 9,5 px para los largos, para que entren enteros siempre que se pueda. */
+/** Letra del nombre en la semana del teléfono: 10,5 px siempre (nunca menos de 10: la columna se ensancha para que el nombre entre, en vez de achicar la letra). */
 export function mobileNameFontPx(shown: readonly string[]): number {
-  const longest = Math.max(0, ...shown.map((word) => Array.from(word).length));
-  return longest <= 7 ? 10.5 : 9.5;
+  void shown;
+  return 10.5;
 }
 
 const NARROW_GLYPHS = new Set(Array.from("iljtfrI.,'’:;!|1"));
@@ -117,7 +117,7 @@ export function estimateBoldTextWidthPx(text: string, fontPx: number): number {
  */
 export const SINGLE_LINE_BELOW_HEIGHT_PX = 27;
 /** Letra de la hora o del estado en la línea de un solo renglón. */
-export const INLINE_META_FONT_PX = 9.5;
+export const INLINE_META_FONT_PX = 10;
 const INLINE_META_GAP_PX = 4;
 /** Techo del ancho de un carril de una línea con hora o estado: más que eso el nombre vale más que el dato y el dato queda en el eje de horas y en el cuadro de información. */
 export const LANE_MAX_WITH_META_PX = 124;

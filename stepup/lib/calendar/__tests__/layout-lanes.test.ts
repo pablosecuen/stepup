@@ -196,13 +196,16 @@ test("cableado: la grilla dibuja TODAS las clases posicionadas (sin filtros) y c
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
   const grid = read("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /positioned\.map\(\(positionedItem\) => \(\s*<RealLessonCard\s+key=\{positionedItem\.item\.id\}/, "una tarjeta por clase, en el orden estable (también el de tabulación)");
+  // Cada clase posicionada se dibuja siempre: como tarjeta (`RealLessonCard`) o, si es corta, como barra exacta (el botón accesible, en el mismo orden estable) con su rótulo; ninguna se filtra.
+  assert.match(grid, /positioned\.map\(\(positionedItem\) => \{\s*const planned = labelPlan\?\.items\.get\(positionedItem\.item\.id\);\s*if \(!planned\) \{\s*return \(\s*<RealLessonCard\s+key=\{positionedItem\.item\.id\}/, "una tarjeta por clase, en el orden estable (también el de tabulación)");
+  assert.match(grid, /<ShortBar\s+key=\{item\.id\}/, "la clase corta conserva su botón (la barra) en el mismo orden");
+  assert.match(grid, /<ShortLabel key=\{`label-\$\{item\.id\}`\}/, "y su rótulo con nombre, hora y estado");
   assert.doesNotMatch(grid, /dayColumnMinWidth|LANE_MIN_WIDTH_PX|minWidth/, "los carriles no ensanchan la columna");
   assert.match(grid, /repeat\(\$\{dayKeys\.length\}, minmax\(0, 1fr\)\)/);
   const card = read("components/calendar/real-lesson-card.tsx");
   assert.match(card, /top: hitTop,\s*height: hitHeight,/, "el botón ocupa la zona interactiva");
   assert.match(card, /top: blockOffset, height, boxSizing/, "el bloque visual conserva su alto exacto");
-  assert.match(card, /left: `calc\(\$\{\(lane \* 100\) \/ laneCount\}% \+ \$\{inset\}px\)`/);
+  assert.match(card, /`calc\(\$\{\(lane \* 100\) \/ laneCount\}% \+ \$\{inset\}px\)`/);
   assert.match(card, /aria-label=\{ariaLabelOf\(/);
   assert.match(card, /onTip\?\.\(\{ id: tipId, text: fullInfo/, "nombre, hora, modalidad y estado completos al pasar el puntero o enfocar");
   // La agenda móvil no cambió: sigue dibujando la misma lista, sin carriles.

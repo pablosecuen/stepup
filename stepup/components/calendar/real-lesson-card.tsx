@@ -198,7 +198,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
                 <span className="min-w-0 truncate">{narrowName}</span>
               )}
             </span>
-            <span className={`flex min-w-0 items-center gap-0.5 font-semibold leading-3 ${mobileWeek ? "text-[9.5px]" : cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
+            <span className={`flex min-w-0 items-center gap-0.5 font-semibold leading-3 text-[10px]`} style={{ color: secondaryColor }}>
               {mobileWeek && icons}
               <span className="min-w-0 truncate">{narrowMeta({ timeLabel, facts: stateFacts })}</span>
             </span>

@@ -2,7 +2,7 @@ import { estimateBoldTextWidthPx, firstWord } from "./card-text.ts";
 import type { PositionedItem } from "./layout.ts";
 
 /**
- * PROPUESTA (entorno de revisión, no publicada): identificar las clases cortas sin texto diminuto, sin superposiciones y sin falsear su duración.
+ * Identificar las clases cortas sin texto diminuto, sin superposiciones y sin falsear su duración.
  *
  * Una clase de menos de `SHORT_BAR_MAX_HEIGHT_PX` de alto no tiene lugar para una línea de texto legible DENTRO de su bloque (a 50 px/h una de 15 minutos mide 10,5 px). Su bloque conserva la hora y la duración
  * EXACTAS (una barra) y su nombre, hora y estado van en un RÓTULO de 11 px en una columna a la derecha del día. Reglas:
@@ -15,12 +15,14 @@ import type { PositionedItem } from "./layout.ts";
 export const SHORT_BAR_MAX_HEIGHT_PX = 15;
 export const LABEL_HEIGHT_PX = 13;
 export const LABEL_FONT_PX = 11;
-export const CHAIN_BAR_WIDTH_PX = 26;
-export const SIMULTANEOUS_LANE_PX = 15;
+export const CHAIN_BAR_WIDTH_PX = 14;
+export const SIMULTANEOUS_LANE_PX = 14;
 export const LABEL_GAP_PX = 6;
-const MAX_AREA_SHARE = 0.5;
+const MAX_AREA_SHARE = 0.45;
 /** Ancho que reserva el rótulo para que el nombre se lea (la hora, el estado y la primera palabra del nombre) y techo del ensanche de una columna del teléfono. */
-export const LABEL_NEED_MAX_PX = 210;
+export const LABEL_NEED_MAX_PX = 240;
+/** Una clase que comparte carril y mide menos que esto no tiene lugar para hora y nombre en dos líneas: pasa a barra + rótulo, así su hora no se pierde. */
+export const SHARED_LANE_SHORT_HEIGHT_PX = 27;
 
 export interface LabelSource {
   id: string;
@@ -67,13 +69,20 @@ export interface DayLabelPlan {
 const textWidth = (parts: { time: string; state: string | null; word: string; numbered: boolean }): number =>
   9 + (parts.numbered ? 15 : 0) + estimateBoldTextWidthPx(parts.time, LABEL_FONT_PX - 1) + 4 + (parts.state ? estimateBoldTextWidthPx(parts.state, LABEL_FONT_PX - 1) + 4 : 0) + estimateBoldTextWidthPx(parts.word, LABEL_FONT_PX);
 
+/** ¿Esta clase se escribe como barra + rótulo? Sí si no entra una línea legible en su bloque (< 15 px), si comparte carril y no entran dos líneas, o si es de una línea y su estado («Cancel.», «Reemp.») desplazaría a la hora de la tarjeta. */
+export function needsLabel(p: PositionedItem, sources: ReadonlyMap<string, LabelSource>): boolean {
+  if (p.height < SHORT_BAR_MAX_HEIGHT_PX) return true;
+  if (p.height >= SHARED_LANE_SHORT_HEIGHT_PX) return false;
+  return p.laneCount > 1 || Boolean(sources.get(p.item.id)?.stateText);
+}
+
 interface Cluster {
   items: PositionedItem[];
   laneCount: number;
   hasShort: boolean;
 }
 
-function clustersOf(positioned: readonly PositionedItem[]): Cluster[] {
+function clustersOf(positioned: readonly PositionedItem[], sources: ReadonlyMap<string, LabelSource>): Cluster[] {
   const sorted = [...positioned].sort((a, b) => a.top - b.top || a.lane - b.lane);
   const clusters: Cluster[] = [];
   let bottom = -Infinity;
@@ -85,27 +94,27 @@ function clustersOf(positioned: readonly PositionedItem[]): Cluster[] {
     const cluster = clusters[clusters.length - 1];
     cluster.items.push(p);
     cluster.laneCount = Math.max(cluster.laneCount, p.laneCount);
-    cluster.hasShort = cluster.hasShort || p.height < SHORT_BAR_MAX_HEIGHT_PX;
+    cluster.hasShort = cluster.hasShort || needsLabel(p, sources);
     bottom = Math.max(bottom, p.top + p.height);
   }
   return clusters;
 }
 
-/** Ancho que necesita un día para que cada rótulo muestre hora, estado y al menos la primera palabra del nombre (para ensanchar la columna en el teléfono). 0 si el día no tiene clases cortas. */
+/** Ancho que necesita un día para que cada rótulo muestre hora, estado y el nombre COMPLETO (con techo `LABEL_NEED_MAX_PX`; para ensanchar la columna del teléfono y repartir el ancho en escritorio). 0 si el día no tiene clases cortas. */
 export function shortLabelsNeedPx(positioned: readonly PositionedItem[], sources: ReadonlyMap<string, LabelSource>): number {
-  const clusters = clustersOf(positioned).filter((c) => c.hasShort);
+  const clusters = clustersOf(positioned, sources).filter((c) => c.hasShort);
   if (clusters.length === 0) return 0;
   const area = Math.max(...clusters.map((c) => (c.laneCount > 1 ? c.laneCount * SIMULTANEOUS_LANE_PX : CHAIN_BAR_WIDTH_PX)));
   let widest = 0;
   for (const c of clusters) {
     for (const p of c.items) {
-      if (c.laneCount === 1 && p.height >= SHORT_BAR_MAX_HEIGHT_PX) continue;
+      if (c.laneCount === 1 && !needsLabel(p, sources)) continue;
       const s = sources.get(p.item.id);
-      if (s) widest = Math.max(widest, textWidth({ time: s.timeText, state: s.stateText, word: firstWord(s.title), numbered: c.laneCount > 1 }));
+      if (s) widest = Math.max(widest, textWidth({ time: s.timeText, state: s.stateText, word: s.title, numbered: c.laneCount > 1 }));
     }
   }
-  // +12 px de margen: la estimación de ancho de las letras es aproximada y la primera palabra NUNCA debe quedar cortada.
-  return Math.min(LABEL_NEED_MAX_PX, Math.ceil(area + LABEL_GAP_PX + widest + 12));
+  // +8 px de margen: la estimación de ancho de las letras es aproximada.
+  return Math.min(LABEL_NEED_MAX_PX, Math.ceil(area + LABEL_GAP_PX + widest + 8));
 }
 
 /**
@@ -166,7 +175,7 @@ export function placeLabels(ideal: readonly number[], forbidden: ReadonlyArray<R
 export const MAX_LABEL_OFFSET_PX = 14;
 
 export function planShortLabels(positioned: readonly PositionedItem[], sources: ReadonlyMap<string, LabelSource>, colWidthPx: number, gridHeightPx: number): DayLabelPlan | null {
-  const clusters = clustersOf(positioned);
+  const clusters = clustersOf(positioned, sources);
   const withLabels = clusters.filter((c) => c.hasShort);
   if (withLabels.length === 0) return null;
 
@@ -185,7 +194,7 @@ export function planShortLabels(positioned: readonly PositionedItem[], sources: 
     const entries: Entry[] = [];
     for (const cluster of withLabels) {
       const simultaneous = cluster.laneCount > 1;
-      const members = simultaneous ? cluster.items : cluster.items.filter((p) => p.height < SHORT_BAR_MAX_HEIGHT_PX);
+      const members = simultaneous ? cluster.items : cluster.items.filter((p) => needsLabel(p, sources));
       const ordered = [...members].sort((a, b) => a.top - b.top || a.lane - b.lane);
       const barsTop = Math.min(...ordered.map((p) => p.top));
       const barsBottom = Math.max(...ordered.map((p) => p.top + p.height));
@@ -250,4 +259,32 @@ export function planShortLabels(positioned: readonly PositionedItem[], sources: 
     });
   });
   return { areaPx, labelX, labelW, items, narrowed };
+}
+
+/**
+ * Escritorio: reparte el ancho de la semana SIN desplazamiento horizontal, según lo que pide cada día (`needPx`: rótulos de clases cortas; 0 si no tiene). Si todos entran con el ancho común no cambia nada (`null`).
+ * Si no, los días que piden más reciben lo que piden y los demás se reparten, por igual, lo que queda; ningún día baja de `MIN_DONOR_COLUMN_PX`. Si ni así alcanza, cada día cede en proporción a lo que
+ * pide por encima de ese mínimo.
+ */
+export const MIN_DONOR_COLUMN_PX = 118;
+
+export function fitWeekColumns(availablePx: number, needPx: readonly number[]): number[] | null {
+  const n = needPx.length;
+  if (n < 2 || availablePx <= 0) return null;
+  const equal = availablePx / n;
+  if (needPx.every((need) => need <= equal + 0.5)) return null;
+  const wanted = needPx.map((need) => Math.max(MIN_DONOR_COLUMN_PX, need));
+  const needy = needPx.map((need) => need > equal + 0.5);
+  const needySum = wanted.reduce((sum, w, i) => sum + (needy[i] ? w : 0), 0);
+  const donors = needy.filter((x) => !x).length;
+  if (donors > 0 && (availablePx - needySum) / donors >= MIN_DONOR_COLUMN_PX) {
+    const share = (availablePx - needySum) / donors;
+    return wanted.map((w, i) => (needy[i] ? w : share));
+  }
+  const excess = wanted.map((w) => w - MIN_DONOR_COLUMN_PX);
+  const excessSum = excess.reduce((sum, e) => sum + e, 0);
+  const budget = availablePx - n * MIN_DONOR_COLUMN_PX;
+  if (excessSum <= 0 || budget <= 0) return null;
+  const scale = Math.min(1, budget / excessSum);
+  return wanted.map((w, i) => MIN_DONOR_COLUMN_PX + excess[i] * scale);
 }

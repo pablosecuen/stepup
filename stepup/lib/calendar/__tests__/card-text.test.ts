@@ -57,7 +57,7 @@ test("semana en el teléfono: una línea lleva la primera palabra y desde 38 px 
   assert.deepEqual(mobileNameWords("  Ana  ", 100), ["Ana"]);
   assert.deepEqual(mobileNameWords("", 100), []);
   assert.equal(mobileNameFontPx(["Ana"]), 10.5);
-  assert.equal(mobileNameFontPx(["Guadalupe"]), 9.5, "8 letras o más bajan un punto de letra");
+  assert.equal(mobileNameFontPx(["Guadalupe"]), 10.5, "la letra del nombre nunca baja de 10 px: se ensancha la columna");
 });
 
 test("ancho que necesita el carril: crece con la palabra más larga que se ve, con piso y techo, y es generoso (quedarse corto corta la palabra)", () => {
