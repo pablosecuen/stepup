@@ -1,4 +1,5 @@
 import "server-only";
+import { attachmentBelongsToStudent } from "../lessons/attachment-scope.ts";
 import { homeworkTaskAliases, pendingHomeworkWithReviews } from "../lessons/homework-identity.ts";
 import { pedagogicalContentPayload, type PedagogicalContentInput } from "../lessons/pedagogical-content.ts";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
@@ -637,7 +638,7 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
       topicsByRegistrationId.set(row.id, seen);
     }
     for (const row of attachmentRows) {
-      if (row.student_id !== null && row.student_id !== studentId) continue; // el adjunto de otro alumno nunca entra al reporte de este
+      if (!attachmentBelongsToStudent(row.student_id, studentId)) continue; // el adjunto de otro alumno nunca entra al reporte de este
       const list = attachmentsByRegistrationId.get(row.lesson_registration_id) ?? [];
       list.push({ attachmentId: row.id, kind: row.kind === "image" ? "image" : "pdf", name: row.name, caption: row.caption && row.caption.trim() !== "" ? row.caption.trim() : null });
       attachmentsByRegistrationId.set(row.lesson_registration_id, list);

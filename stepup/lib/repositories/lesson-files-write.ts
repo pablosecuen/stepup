@@ -56,13 +56,17 @@ export interface RegisterAttachmentInput {
   size: number;
   path: string;
   caption: string | null;
+  /** Clases grupales: el alumno al que pertenece el archivo. Ausente / `null` = común a toda la clase. La base verifica que sea participante de ESTE registro. */
+  studentId?: string | null;
 }
 
 export async function registerAttachment(ctx: AuthenticatedDbContext, input: RegisterAttachmentInput): Promise<{ id: string; deduplicated: boolean }> {
   if (!isUuid(input.registrationId) || !isUuid(input.attachmentId)) throw new LessonFileInputError("Adjunto inválido.");
+  const studentId = input.studentId ?? null;
+  if (studentId !== null && !isUuid(studentId)) throw new LessonFileInputError("Participante inválido.");
   const { data, error } = await ctx.supabase.rpc("add_lesson_attachment", {
     p_registration_id: input.registrationId,
-    p_attachment: { id: input.attachmentId, name: cleanFileName(input.name), kind: input.kind, mime_type: input.mimeType, size_bytes: input.size, caption: input.caption, storage_path: input.path },
+    p_attachment: { id: input.attachmentId, name: cleanFileName(input.name), kind: input.kind, mime_type: input.mimeType, size_bytes: input.size, caption: input.caption, storage_path: input.path, student_id: studentId },
   });
   if (error) throw error;
   const result = data as { id: string; deduplicated: boolean };

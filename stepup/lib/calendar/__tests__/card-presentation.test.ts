@@ -10,7 +10,9 @@ import {
   FULL_CARD_MIN_WIDTH_PX,
   HOURS,
   MIN_DAY_COLUMN_WIDTH_PX,
+  MICRO_CARD_MIN_HEIGHT_PX,
   MIN_TEXT_HEIGHT_PX,
+  microFontPx,
   START_HOUR,
   STACK_CARD_MIN_HEIGHT_PX,
   STACK_CARD_MIN_WIDTH_PX,
@@ -29,6 +31,7 @@ import {
   type PositionedItem,
 } from "../layout.ts";
 import { fitHourHeight } from "../density.ts";
+import { mobileCalendarHourFit } from "../mobile-density.ts";
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
@@ -63,7 +66,15 @@ test("cardPresentation: cuatro modos según el tamaño real; los umbrales son ex
   assert.equal(cardPresentation({ heightPx: STACK_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "title", "no entran dos líneas: una sola línea");
   assert.equal(cardPresentation({ heightPx: 300, widthPx: STACK_CARD_MIN_WIDTH_PX - 0.01 }), "title", "demasiado angosta para la hora: una sola línea con las iniciales");
   assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX, widthPx: TITLE_CARD_MIN_WIDTH_PX }), "title");
-  assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "block", "muy bajo: bloque de color");
+  assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "micro", "clase de ~15 minutos: una línea de letra chica, sin estirar el bloque");
+  assert.equal(cardPresentation({ heightPx: MICRO_CARD_MIN_HEIGHT_PX, widthPx: TITLE_CARD_MIN_WIDTH_PX }), "micro");
+  assert.equal(cardPresentation({ heightPx: MICRO_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "block", "menos de 9 px de alto no entra ni una línea de 8 px: bloque de color con su cuadro de información");
+  assert.equal(cardPresentation({ heightPx: 12, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "block", "bajo y angosto: sólo el color");
+  assert.equal(microFontPx(9), 8);
+  assert.equal(microFontPx(10.5), 9.5);
+  assert.equal(microFontPx(14.9), 10, "nunca pasa de 10 px");
+  assert.ok(microFontPx(MICRO_CARD_MIN_HEIGHT_PX) >= 8, "la letra más chica es de 8 px");
+  assert.ok(microFontPx(MICRO_CARD_MIN_HEIGHT_PX) + 1 <= MICRO_CARD_MIN_HEIGHT_PX, "la letra entra en el alto del bloque");
   assert.equal(cardPresentation({ heightPx: 300, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "vertical", "carril muy angosto (semana en el teléfono): la primera palabra, girada");
   assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "vertical");
   assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX - 0.01, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "block", "bajo para el texto girado");
@@ -88,13 +99,27 @@ test("Compacta en cada pantalla: TODA clase de 30 minutos o más muestra su nomb
       const [p] = layoutDayItems([lesson("x", "12:00", minutes)], px);
       const mode = cardPresentation({ heightPx: p.height, widthPx: cardWidthPx(column, p.laneCount) });
       assert.equal(p.top, (12 - START_HOUR) * px, `${name} ${minutes} min: misma hora`);
-      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px));
+      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px, minutes));
       assert.equal(p.height, minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exact) : exact, `${name} ${minutes} min: misma duración (con el piso de lectura desde 30 min)`);
       assert.ok(p.hitHeight >= p.height - 0.001 && p.hitHeight >= 44 - 0.001, `${name} ${minutes} min: sin vecinos la zona llega a 44 px`);
       if (minutes >= 30) assert.notEqual(mode, "block", `${name}: ${minutes} min se lee (modo ${mode})`);
       if (minutes >= 60 && px >= 35) assert.ok(mode === "full" || mode === "stack", `${name}: 60 min muestra nombre y hora`);
       if (minutes === 15) assert.equal(p.height, exact, `${name}: 15 min no se estira`);
+      if (minutes === 15) assert.equal(mode, p.height >= MICRO_CARD_MIN_HEIGHT_PX ? "micro" : "block", `${name}: 15 min lleva su nombre en una línea cuando el alto exacto lo permite (alto ${p.height.toFixed(1)} px)`);
     }
+  }
+});
+
+test("teléfono, Semana compacta: la clase de 15 minutos se reconoce por su nombre en cualquier alto de pantalla, con el alto exacto y sin pisar a la de al lado", () => {
+  for (const available of [420, 520, 600, 700, 800]) {
+    const { hourHeightPx } = mobileCalendarHourFit(available, 7);
+    const items = [lesson("a", "10:00", 15), lesson("b", "10:15", 15), lesson("c", "10:30", 30)];
+    const out = layoutDayItems(items, hourHeightPx);
+    const [a, b] = out;
+    assert.equal(a.height, Math.max(4, hourHeightPx / 4 - cardGapPx(hourHeightPx, 15)), `${available}: 15 min no se estira`);
+    assert.equal(cardPresentation({ heightPx: a.height, widthPx: cardWidthPx(48, a.laneCount, true) }), "micro", `${available}: se lee con su nombre`);
+    assert.ok(a.hitTop + a.hitHeight <= b.hitTop + 0.001, `${available}: la zona de la primera no pisa a la consecutiva`);
+    assert.ok(a.laneCount === 1 && b.laneCount === 1, `${available}: consecutivas, un solo carril`);
   }
 });
 

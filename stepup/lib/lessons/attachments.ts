@@ -6,6 +6,8 @@ import { formatDecimal } from "../format/number-format.ts";
  */
 export const PDF_MAX_BYTES = 20 * 1024 * 1024;
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+/** Tope de lo que se intenta reducir en el navegador antes de subir una foto (cámaras de muchos megapíxeles): más que eso se rechaza sin intentarlo. */
+export const IMAGE_PICK_MAX_BYTES = 80 * 1024 * 1024;
 export const MAX_NAME_LENGTH = 200;
 export const MAX_CAPTION_LENGTH = 500;
 

@@ -39,9 +39,12 @@ const CARD_GAP_PX = 6;
 const COMPACT_CARD_GAP_PX = 2;
 const COMPACT_GAP_BELOW_HOUR_HEIGHT_PX = 56;
 
-/** Separación vertical entre bloques para un alto por hora dado. */
-export function cardGapPx(hourHeightPx: number): number {
-  return hourHeightPx < COMPACT_GAP_BELOW_HOUR_HEIGHT_PX ? COMPACT_CARD_GAP_PX : CARD_GAP_PX;
+/**
+ * Separación vertical entre bloques para un alto por hora dado. Una clase de menos de 30 minutos usa siempre la separación chica: con la de 6 px una clase de 15 minutos
+ * quedaría de 8 px de alto en una escala de 57 a 63 px por hora (más chico que con una escala más ajustada) y ya no entraría su nombre; la duración del bloque sigue siendo la exacta.
+ */
+export function cardGapPx(hourHeightPx: number, durationMinutes = Infinity): number {
+  return hourHeightPx < COMPACT_GAP_BELOW_HOUR_HEIGHT_PX || durationMinutes < 30 ? COMPACT_CARD_GAP_PX : CARD_GAP_PX;
 }
 /** Sólo evita un bloque invisible para duraciones absurdas; cualquier clase real (≥ 5 min) usa su alto exacto. */
 const MIN_VISUAL_HEIGHT_PX = 4;
@@ -96,7 +99,6 @@ function compareItems(a: { startMs: number; endMs: number; item: CalendarViewIte
  */
 export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number = HOUR_HEIGHT_PX): PositionedItem[] {
   const gridBottomPx = (END_HOUR - START_HOUR) * hourHeightPx;
-  const gapPx = cardGapPx(hourHeightPx);
 
   const sorted = items
     .map((item) => ({ item, startMs: new Date(item.start).getTime(), endMs: new Date(item.end).getTime() }))
@@ -107,7 +109,7 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
     const durationPx = ((endMs - startMs) / 3_600_000) * hourHeightPx;
     // Alto exacto de la duración (menos la separación). Una clase de 30 minutos o más nunca baja del alto de UNA línea de texto: con la escala
     // más ajustada (ventanas bajas, zoom) 30 minutos medirían menos que eso y la clase quedaría sin nombre; la hora de inicio sigue siendo exacta.
-    const exactHeight = Math.max(MIN_VISUAL_HEIGHT_PX, Math.min(durationPx - gapPx, gridBottomPx - top));
+    const exactHeight = Math.max(MIN_VISUAL_HEIGHT_PX, Math.min(durationPx - cardGapPx(hourHeightPx, (endMs - startMs) / 60_000), gridBottomPx - top));
     const height = endMs - startMs >= 30 * 60_000 ? Math.max(MIN_TEXT_HEIGHT_PX, exactHeight) : exactHeight;
     const displayTop = Math.max(0, Math.min(top, gridBottomPx - height));
     // `laneBottom`: hasta dónde llega la clase en el tiempo (el bloque real, sin el piso de lectura): dos clases consecutivas nunca se reparten carriles por ese píxel de más.
@@ -211,11 +213,12 @@ export function gridFitsWidth(areaWidthPx: number, dayCount: number): boolean {
  *  - `full`: nombre y datos (hora, quiénes si es un grupo, estado), una línea cada uno;
  *  - `stack`: dos líneas en una tarjeta angosta pero alta — nombre (primera palabra o iniciales) y, debajo, el estado o la hora;
  *  - `title`: UNA línea («09:00 Nombre» si entra la hora; si no, el nombre), truncada con elipsis — las clases cortas;
- *  - `block`: bloque de color sin texto (sólo clases de ~15 minutos o carriles de menos de 28 px); el nombre accesible y el tooltip siguen completos.
+ *  - `micro`: UNA línea de letra chica en una clase de ~15 minutos (bloque de 9 a 15 px de alto), sin estirar el bloque;
+ *  - `block`: bloque de color sin texto (sólo carriles de menos de 11 px o bloques de menos de 9 px de alto); el nombre accesible y el tooltip siguen completos.
  * Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto: el texto se adapta al bloque. Los alturas mínimas salen de las líneas reales
  * (11–12 px de letra, interlineado 13–14 px) más el borde: ver `card-presentation.test.ts`.
  */
-export type CardPresentation = "full" | "stack" | "title" | "vertical" | "block";
+export type CardPresentation = "full" | "stack" | "title" | "micro" | "vertical" | "block";
 export const FULL_CARD_MIN_HEIGHT_PX = 32;
 export const FULL_CARD_MIN_WIDTH_PX = 84;
 export const STACK_CARD_MIN_HEIGHT_PX = 27;
@@ -230,10 +233,22 @@ export const TITLE_CARD_MIN_WIDTH_PX = 22;
 export const VERTICAL_CARD_MIN_WIDTH_PX = 11;
 export const VERTICAL_CARD_MIN_HEIGHT_PX = 30;
 
+/**
+ * `micro`: la clase de ~15 minutos. Su bloque conserva el alto EXACTO de la duración (no se estira ni pisa a otra) y el nombre se escribe en UNA línea con letra más chica (de 8 px a 10 px). El borde de
+ * esta tarjeta se dibuja hacia adentro con una sombra (no ocupa alto), así que todo el alto del bloque es de la letra. Con menos de 9 px de alto (escalas muy apretadas de escritorio) ya no entra ni una
+ * línea legible y queda el bloque de color con su cuadro de información.
+ */
+export const MICRO_CARD_MIN_HEIGHT_PX = 9;
+/** Letra de una tarjeta `micro`: la que entra en el alto del bloque (con 1 px de aire), de 10 px como máximo. */
+export function microFontPx(heightPx: number): number {
+  return Math.max(0, Math.min(10, Math.floor((heightPx - 1) * 2) / 2));
+}
+
 /** El texto girado sólo existe en escritorio, en carriles de menos de 22 px, donde el puntero ya muestra todo en el cuadro de información; el teléfono ensancha la columna en vez de girar el nombre (`mobileWeekColumns`). */
 export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
   const { heightPx, widthPx } = input;
   if (heightPx >= VERTICAL_CARD_MIN_HEIGHT_PX && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < TITLE_CARD_MIN_WIDTH_PX) return "vertical";
+  if (heightPx >= MICRO_CARD_MIN_HEIGHT_PX && heightPx < TITLE_CARD_MIN_HEIGHT_PX && widthPx >= TITLE_CARD_MIN_WIDTH_PX) return "micro";
   if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
   if (heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX) return "full";
   return heightPx >= STACK_CARD_MIN_HEIGHT_PX && widthPx >= STACK_CARD_MIN_WIDTH_PX ? "stack" : "title";

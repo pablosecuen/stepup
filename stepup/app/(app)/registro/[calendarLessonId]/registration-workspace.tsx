@@ -507,7 +507,7 @@ export function RegistrationWorkspace({
 
       {/* 4) Contenido pedagógico (temas, objetivos, actividades, notas, evidencias y materiales). */}
       {countsAsClass && (
-        <PedagogicalContentEditor title={contentTitle} value={content} onChange={handleContentChange} files={{ registrationId: registration.id, attachments: initialContent?.attachments ?? [], library: materialLibrary ?? [] }} />
+        <PedagogicalContentEditor title={contentTitle} value={content} onChange={handleContentChange} files={{ registrationId: registration.id, attachments: initialContent?.attachments ?? [], library: materialLibrary ?? [], participants: isGroup ? participants.map((p) => ({ studentId: p.studentId, name: p.name })) : undefined }} />
       )}
 
       {/* 5) Grupo: los participantes, uno por vez. */}

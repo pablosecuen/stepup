@@ -53,7 +53,7 @@ test("Semana y Día conservan la grilla también en móvil y comparten datos y a
   const layout = code("lib/calendar/layout.ts");
   assert.match(layout, /export const MIN_TARGET_PX = 44;/);
   assert.match(layout, /box\.hitHeight = Math\.min\(Math\.max\(box\.height, MIN_TARGET_PX\), limit - box\.displayTop\);/, "la zona llega a 44 px cuando hay lugar y nunca pisa a la clase de al lado");
-  assert.match(layout, /Math\.min\(durationPx - gapPx, gridBottomPx - top\)/, "la altura del bloque es la duración menos la separación (2 px en Compacta, 6 px en las escalas altas)");
+  assert.match(layout, /Math\.min\(durationPx - cardGapPx\(hourHeightPx, \(endMs - startMs\) \/ 60_000\), gridBottomPx - top\)/, "la altura del bloque es la duración menos la separación (2 px en Compacta y en las clases de menos de 30 minutos, 6 px en las demás de las escalas altas)");
 });
 
 test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sólo con color) y la fila de agenda mide ≥ 56 px sin cortar textos", () => {

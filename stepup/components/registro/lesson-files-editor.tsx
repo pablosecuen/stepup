@@ -2,16 +2,17 @@
 
 import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, TextArea, TextInput } from "@/components/ui/field";
+import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import { addMaterialAction, prepareAttachmentUploadAction, prepareMaterialUploadAction, registerAttachmentAction, removeAttachmentAction, setAttachmentCaptionAction } from "@/lib/actions/lesson-files";
-import { checkPickedFile, cleanFileName, MAX_CAPTION_LENGTH, type AttachmentKind } from "@/lib/lessons/attachments";
+import { checkPickedFile, cleanFileName, IMAGE_MAX_BYTES, IMAGE_PICK_MAX_BYTES, MAX_CAPTION_LENGTH, type AttachmentKind } from "@/lib/lessons/attachments";
 import { SignedUploadError, uploadToSignedUrl } from "@/lib/lessons/signed-upload";
 import { prepareImageForUpload } from "@/lib/images/client-prepare";
 import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { availabilityLabel } from "@/lib/repositories/lesson-content-mapping";
+import { LessonPhotoThumbnail } from "./lesson-photo-thumbnail";
 import { LessonPhotoViewer } from "./lesson-photo-viewer";
 import { OpenLessonFileButton } from "./open-lesson-file-button";
 
@@ -26,7 +27,7 @@ function uploadErrorMessage(error: unknown): string {
 
 type Phase = { text: string } | null;
 
-function AttachmentRow({ attachment, onChange, onRemoved }: { attachment: LessonContentAttachment; onChange: (a: LessonContentAttachment) => void; onRemoved: (id: string) => void }) {
+function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attachment: LessonContentAttachment; ownerLabel: string | null; onChange: (a: LessonContentAttachment) => void; onRemoved: (id: string) => void }) {
   const id = useId();
   const [caption, setCaption] = useState(attachment.caption ?? "");
   const [savedCaption, setSavedCaption] = useState(attachment.caption ?? "");
@@ -61,10 +62,14 @@ function AttachmentRow({ attachment, onChange, onRemoved }: { attachment: Lesson
   return (
     <li className="min-w-0 space-y-2 rounded-md border-[1.5px] border-border bg-surface2 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 text-[15px] font-medium [overflow-wrap:anywhere]">
-          {attachment.name} <span className="text-[13px] font-normal text-textMuted">· {attachment.kind === "image" ? "Foto" : "PDF"}</span>
-          {attachment.availability !== "disponible" && <span className="block text-[13px] font-normal text-textMuted">{availabilityLabel(attachment.availability)}</span>}
-        </p>
+        <div className="flex min-w-0 items-center gap-3">
+          {attachment.kind === "image" && attachment.availability === "disponible" && <LessonPhotoThumbnail id={attachment.id} name={attachment.name} />}
+          <p className="min-w-0 text-[15px] font-medium [overflow-wrap:anywhere]">
+            {attachment.name} <span className="text-[13px] font-normal text-textMuted">· {attachment.kind === "image" ? "Foto" : "PDF"}</span>
+            {ownerLabel && <span className="block text-[13px] font-normal text-textMuted">Para: {ownerLabel}</span>}
+            {attachment.availability !== "disponible" && <span className="block text-[13px] font-normal text-textMuted">{availabilityLabel(attachment.availability)}</span>}
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {attachment.availability === "disponible" && (attachment.kind === "image" ? <LessonPhotoViewer id={attachment.id} name={attachment.name} /> : <OpenLessonFileButton kind="attachment" id={attachment.id} label={`Abrir el archivo ${attachment.name}`} />)}
           {!confirming && (
@@ -228,13 +233,18 @@ export function LessonFilesEditor({
   library: initialLibrary,
   materialIds,
   onMaterialIdsChange,
+  participants = [],
 }: {
   registrationId: string;
   attachments: LessonContentAttachment[];
   library: LibraryMaterial[];
   materialIds: string[];
   onMaterialIdsChange: (ids: string[]) => void;
+  /** Clase grupal: los participantes, para que cada archivo pueda pertenecer a uno (o a toda la clase). */
+  participants?: { studentId: string; name: string }[];
 }) {
+  const targetId = useId();
+  const [target, setTarget] = useState("");
   const [attachments, setAttachments] = useState(initialAttachments);
   const [library, setLibrary] = useState(initialLibrary);
   const [phase, setPhase] = useState<Phase>(null);
@@ -243,14 +253,12 @@ export function LessonFilesEditor({
   const photoInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
-  /** Sube UN archivo; devuelve si quedó guardado (varias fotos elegidas juntas se suben de a una y se frenan en la primera que falla). */
-  async function upload(picked: File, expect: AttachmentKind, prefix = ""): Promise<boolean> {
-    const fail = (message: string) => {
-      setError(`${prefix}${message}`);
-      return false;
-    };
-    setError(null);
-    const first = checkPickedFile({ name: picked.name, type: picked.type, size: picked.size }, expect);
+  /** Sube UN archivo; devuelve `null` si quedó guardado o el motivo si no (varias fotos elegidas juntas se suben de a una: una que falla no descarta las demás). */
+  async function upload(picked: File, expect: AttachmentKind, prefix = "", studentId: string | null = null): Promise<string | null> {
+    const fail = (message: string) => `${prefix}${message}`;
+    // Una foto que pasa del tope todavía puede reducirse a JPEG en el navegador: acá sólo se revisan el tipo y un tope de seguridad; el tamaño final se revisa después de preparar.
+    if (expect === "image" && picked.size > IMAGE_PICK_MAX_BYTES) return fail(`La foto pesa demasiado (${Math.round(picked.size / (1024 * 1024))} MB). Elegí una más liviana.`);
+    const first = checkPickedFile({ name: picked.name, type: picked.type, size: expect === "image" ? Math.min(picked.size, IMAGE_MAX_BYTES) : picked.size }, expect);
     if (!first.ok) return fail(first.message);
     const attachmentId = crypto.randomUUID();
     try {
@@ -258,17 +266,17 @@ export function LessonFilesEditor({
       if (expect === "image") setPhase({ text: "Preparando la foto…" });
       const file = expect === "image" ? await prepareImageForUpload(picked) : picked;
       const check = checkPickedFile({ name: file.name, type: file.type, size: file.size }, expect);
-      if (!check.ok) return fail(check.message);
+      if (!check.ok) return fail(expect === "image" && file.size > IMAGE_MAX_BYTES ? `${check.message} No pudimos reducirla desde este navegador: probá con una foto más liviana.` : check.message);
       setPhase({ text: "Preparando la subida…" });
       const prepared = await guardNetwork(() => prepareAttachmentUploadAction({ registrationId, attachmentId, name: file.name, type: file.type, size: file.size }));
       if (prepared.error || !prepared.data) return fail(prepared.error ?? "No se pudo preparar la subida.");
       setPhase({ text: "Subiendo… 0 %" });
       await uploadToSignedUrl({ signedUrl: prepared.data.signedUrl, file, mimeType: prepared.data.mimeType, onProgress: (f) => setPhase({ text: `Subiendo… ${Math.round(f * 100)} %` }) });
       setPhase({ text: "Guardando…" });
-      const registered = await guardNetwork(() => registerAttachmentAction({ registrationId, attachmentId, name: file.name, kind: prepared.data!.kind, mimeType: prepared.data!.mimeType, size: file.size, path: prepared.data!.path, caption: null }));
+      const registered = await guardNetwork(() => registerAttachmentAction({ registrationId, attachmentId, name: file.name, kind: prepared.data!.kind, mimeType: prepared.data!.mimeType, size: file.size, path: prepared.data!.path, caption: null, studentId }));
       if (registered.error || !registered.data) return fail(registered.error ?? "No se pudo guardar el archivo.");
-      setAttachments((current) => [...current, { id: registered.data!.id, name: cleanFileName(file.name), kind: prepared.data!.kind, caption: null, studentId: null, availability: "disponible" }]);
-      return true;
+      setAttachments((current) => [...current, { id: registered.data!.id, name: cleanFileName(file.name), kind: prepared.data!.kind, caption: null, studentId, availability: "disponible" }]);
+      return null;
     } catch (e) {
       return fail(uploadErrorMessage(e));
     } finally {
@@ -276,14 +284,19 @@ export function LessonFilesEditor({
     }
   }
 
-  // Se elige el archivo y el campo se vacía enseguida: así se puede volver a elegir el mismo archivo. La galería admite varias fotos a la vez: se suben una tras otra.
+  // Se elige el archivo y el campo se vacía enseguida: así se puede volver a elegir el mismo archivo. La galería admite varias fotos a la vez: se suben una tras otra y las que fallan se avisan
+  // por nombre, sin descartar las demás.
   async function picked(event: React.ChangeEvent<HTMLInputElement>, expect: AttachmentKind) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
+    const studentId = target === "" ? null : target;
+    const failures: string[] = [];
+    setError(null);
     for (const file of files) {
-      const saved = await upload(file, expect, files.length > 1 ? `${cleanFileName(file.name)}: ` : "");
-      if (!saved) break;
+      const failure = await upload(file, expect, files.length > 1 ? `${cleanFileName(file.name)}: ` : "", studentId);
+      if (failure) failures.push(failure);
     }
+    if (failures.length > 0) setError(files.length > 1 ? `${files.length - failures.length} de ${files.length} se guardaron. ${failures.join(" ")}` : failures[0]);
   }
 
   const busy = phase !== null;
@@ -294,9 +307,21 @@ export function LessonFilesEditor({
         {attachments.length > 0 && (
           <ul className="space-y-2">
             {attachments.map((attachment) => (
-              <AttachmentRow key={attachment.id} attachment={attachment} onChange={(next) => setAttachments((current) => current.map((a) => (a.id === next.id ? next : a)))} onRemoved={(id) => setAttachments((current) => current.filter((a) => a.id !== id))} />
+              <AttachmentRow key={attachment.id} attachment={attachment} ownerLabel={participants.length > 1 ? (attachment.studentId ? `Sólo ${participants.find((p) => p.studentId === attachment.studentId)?.name ?? "un participante"}` : "Toda la clase") : null} onChange={(next) => setAttachments((current) => current.map((a) => (a.id === next.id ? next : a)))} onRemoved={(id) => setAttachments((current) => current.filter((a) => a.id !== id))} />
             ))}
           </ul>
+        )}
+        {participants.length > 1 && (
+          <Field label="Los archivos que agregues son para" htmlFor={targetId} hint="Una foto de un alumno sólo puede salir en el reporte de ese alumno. «Toda la clase» sale en el de todos.">
+            <SelectInput id={targetId} value={target} disabled={busy} onChange={(e) => setTarget(e.target.value)}>
+              <option value="">Toda la clase</option>
+              {participants.map((p) => (
+                <option key={p.studentId} value={p.studentId}>
+                  Sólo {p.name}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
         )}
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" disabled={busy} onClick={() => pdfInput.current?.click()} aria-label="Adjuntar PDF">

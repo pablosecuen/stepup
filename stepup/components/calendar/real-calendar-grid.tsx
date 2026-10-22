@@ -152,18 +152,24 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   const nowMs = (now ?? new Date()).getTime();
   const todayIndex = todayKey === null ? -1 : dayKeys.indexOf(todayKey);
 
-  // Con la grilla ensanchada, al abrir la semana el día de hoy queda a la vista (si no, se empieza en el lunes).
-  const expandedSignature = expandedColumns ? expandedColumns.trackPx.join(",") : "";
+  // Con la grilla ensanchada, al abrir una semana el día de hoy queda a la vista (si hoy no está en esa semana, se empieza en el primer día, siempre igual). Sólo se reposiciona al CAMBIAR
+  // de semana o al pasar a una grilla ensanchada: un cambio de alto de pantalla (barra del navegador, giro) no mueve lo que la profesora ya desplazó.
+  const tracksRef = useRef<number[]>([]);
+  const expandedTracks = expandedColumns ? expandedColumns.trackPx : null;
+  const isExpanded = expandedTracks !== null;
+  useEffect(() => {
+    tracksRef.current = expandedTracks ?? [];
+  });
   useEffect(() => {
     const scroller = scrollerRef.current;
-    if (!scroller || !expandedSignature) return;
-    const tracks = expandedSignature.split(",").map(Number);
+    const tracks = tracksRef.current;
+    if (!scroller || !isExpanded) return;
     const left = todayIndex < 0 ? 0 : tracks.slice(0, todayIndex).reduce((sum, width) => sum + width, 0);
     const right = todayIndex < 0 ? 0 : left + tracks[todayIndex];
     const visibleWidth = scroller.clientWidth - timeColumnPx;
     if (todayIndex < 0 || right <= visibleWidth) scroller.scrollLeft = 0;
     else scroller.scrollLeft = Math.min(left, right - visibleWidth + 8);
-  }, [dayKeys[0], expandedSignature, todayIndex, timeColumnPx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dayKeys[0], isExpanded, todayIndex, timeColumnPx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stateOf = (item: CalendarViewItem) => ({
     isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,

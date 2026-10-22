@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params;
-  const download = new URL(request.url).searchParams.get("descargar") === "1";
-  return serveLessonAttachment(requireAuthenticatedDbContext, id, download);
+  const query = new URL(request.url).searchParams;
+  return serveLessonAttachment(requireAuthenticatedDbContext, id, query.get("descargar") === "1", query.get("miniatura") === "1");
 }

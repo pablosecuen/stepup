@@ -2,8 +2,8 @@
 
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
-import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
-import { firstWord, INLINE_TIME_MIN_WIDTH_PX, mobileNameFontPx, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
+import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/calendar/layout";
+import { estimateBoldTextWidthPx, firstWord, INLINE_TIME_MIN_WIDTH_PX, mobileNameFontPx, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -109,8 +109,13 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const twoNameLines = mobileWeek && presentation === "stack" && height >= TWO_NAME_LINES_MIN_HEIGHT_PX;
   // Nombres de 8 letras o más bajan un punto de letra para que entren enteros.
   const nameFontPx = mobileWeek ? mobileNameFontPx(shownWords) : undefined;
+  // Clase de ~15 minutos (`micro`): una línea de la altura del bloque; en el teléfono nunca más grande que la letra de la semana.
+  const microFont = Math.min(microFontPx(height), nameFontPx ?? 10);
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
-  const borderClass = mobileWeek ? "rounded-[5px] border border-l-[3px]" : `rounded-md ${presentation === "full" ? "border-[1.5px]" : "border"}`;
+  // La de ~15 minutos (`micro`) dibuja su borde hacia adentro con una sombra: así el borde no gasta alto y toda la altura exacta del bloque es de la letra.
+  const micro = presentation === "micro";
+  const borderClass = micro ? (mobileWeek ? "rounded-[5px]" : "rounded-md") : mobileWeek ? "rounded-[5px] border border-l-[3px]" : `rounded-md ${presentation === "full" ? "border-[1.5px]" : "border"}`;
+  const microEdge = micro ? { boxShadow: `inset 0 0 0 1px ${colors.border}${mobileWeek ? `, inset 3px 0 0 0 ${colors.border}` : ""}` } : undefined;
   const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.filter((tag) => tag !== MODALITY_LABELS[item.modality]).join(" · ")}` : ""}`;
   const iconSize = presentation === "full" ? "h-3 w-3" : "h-2.5 w-2.5";
   // En un carril de menos de 36 px las iniciales valen más que el ícono (el grupo y el entrenamiento siguen en el cuadro de información y en el nombre accesible).
@@ -158,7 +163,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
       <span
         aria-hidden="true"
         className={`absolute inset-x-0 min-w-0 overflow-hidden ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
-        style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border }}
+        style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border, ...microEdge }}
       >
         {presentation === "full" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
@@ -191,14 +196,28 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
           </span>
         )}
         {presentation === "title" && (
-          <span className="flex h-full min-w-0 items-center gap-1 overflow-hidden px-1.5">
-            {icons}
+          <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "px-[3px]" : "px-1.5"}`}>
+            {/* Teléfono: el ícono de grupo/entrenamiento sólo si sobra lugar después del nombre entero (el nombre manda; el dato sigue en el cuadro de información y en el nombre accesible). */}
+            {(!mobileWeek || cardWidth >= estimateBoldTextWidthPx(narrowName, nameFontPx ?? 10.5) + 22) && icons}
             {cardWidth >= INLINE_TIME_MIN_WIDTH_PX && (
               <span className="shrink-0 text-[10.5px] font-semibold leading-[13px]" style={{ color: secondaryColor, textDecorationLine: strike }}>
                 {narrowMeta({ timeLabel, facts: stateFacts })}
               </span>
             )}
-            <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
+            <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike, fontSize: nameFontPx }}>
+              {narrowName}
+            </span>
+          </span>
+        )}
+        {presentation === "micro" && (
+          // Clase de ~15 minutos: el bloque conserva su alto exacto y el nombre va en UNA línea de letra chica (del alto del bloque menos los bordes); la hora se suma si el carril es ancho.
+          <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "pl-1.5 pr-[3px]" : "px-1"}`} style={{ color: textColor, textDecorationLine: strike }}>
+            {cardWidth >= INLINE_TIME_MIN_WIDTH_PX && (
+              <span className="shrink-0 font-semibold leading-none" style={{ color: secondaryColor, fontSize: microFont }}>
+                {narrowMeta({ timeLabel, facts: stateFacts })}
+              </span>
+            )}
+            <span className="min-w-0 truncate font-bold leading-none" style={{ fontSize: microFont }}>
               {narrowName}
             </span>
           </span>

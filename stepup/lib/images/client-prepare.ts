@@ -34,7 +34,9 @@ export function jpegName(name: string): string {
   return `${base === "" ? "foto" : base}.jpg`;
 }
 
-async function encode(bitmap: ImageBitmap, step: { quality: number; maxEdgePx: number }): Promise<Blob | null> {
+type Drawable = CanvasImageSource & { width: number; height: number };
+
+async function encode(bitmap: Drawable, step: { quality: number; maxEdgePx: number }): Promise<Blob | null> {
   const scale = Math.min(1, step.maxEdgePx / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(bitmap.width * scale));
@@ -47,21 +49,50 @@ async function encode(bitmap: ImageBitmap, step: { quality: number; maxEdgePx: n
   return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", step.quality));
 }
 
+async function toJpegFile(source: Drawable, file: File): Promise<File | null> {
+  for (const step of JPEG_STEPS) {
+    const blob = await encode(source, step);
+    if (blob && blob.size > 0 && blob.size <= IMAGE_MAX_BYTES) return new File([blob], jpegName(file.name), { type: "image/jpeg", lastModified: file.lastModified });
+  }
+  return null;
+}
+
+/** HEIC que el navegador no sabe leer (todos menos Safari): se decodifica con el mismo decodificador que usa el visor (se descarga sólo en este momento). */
+async function heicToJpeg(file: File): Promise<File | null> {
+  const { decodeHeic } = await import("./heic-decode");
+  const photo = await decodeHeic(new Uint8Array(await file.arrayBuffer()));
+  const canvas = document.createElement("canvas");
+  canvas.width = photo.width;
+  canvas.height = photo.height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.putImageData(new ImageData(new Uint8ClampedArray(photo.rgba), photo.width, photo.height), 0, 0);
+  return toJpegFile(canvas, file);
+}
+
 /** La foto lista para subir: convertida a JPEG si hace falta y se puede; si no, la original. */
 export async function prepareImageForUpload(file: File): Promise<File> {
-  if (!needsClientConversion(file) || typeof createImageBitmap !== "function") return file;
-  try {
-    const bitmap = await createImageBitmap(file);
+  if (!needsClientConversion(file)) return file;
+  if (typeof createImageBitmap === "function") {
     try {
-      for (const step of JPEG_STEPS) {
-        const blob = await encode(bitmap, step);
-        if (blob && blob.size > 0 && blob.size <= IMAGE_MAX_BYTES) return new File([blob], jpegName(file.name), { type: "image/jpeg", lastModified: file.lastModified });
+      const bitmap = await createImageBitmap(file);
+      try {
+        const converted = await toJpegFile(bitmap, file);
+        if (converted) return converted;
+      } finally {
+        bitmap.close();
       }
-    } finally {
-      bitmap.close();
+    } catch {
+      // El navegador no sabe leer esta foto: si es HEIC se prueba con el decodificador propio; si no, se sube la original.
     }
-  } catch {
-    // El navegador no sabe leer esta foto: se sube la original.
+  }
+  if (isHeic(file)) {
+    try {
+      const converted = await heicToJpeg(file);
+      if (converted) return converted;
+    } catch {
+      // HEIC dañada o ilegible: se sube la original y el servidor/visor explican el problema.
+    }
   }
   return file;
 }

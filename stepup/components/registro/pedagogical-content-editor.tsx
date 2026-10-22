@@ -34,6 +34,8 @@ export interface PedagogicalFilesProps {
   registrationId: string;
   attachments: LessonContentAttachment[];
   library: LibraryMaterial[];
+  /** Clase grupal: los participantes, para que cada archivo pueda ser «sólo de» uno. */
+  participants?: { studentId: string; name: string }[];
 }
 
 /**
@@ -68,7 +70,7 @@ export function PedagogicalContentEditor({ value, onChange, files, title = "Cont
         <TextList label="Objetivos" singular="Objetivo" items={value.objectives} onChange={(objectives) => onChange({ ...value, objectives })} />
         <TextList label="Actividades" singular="Actividad" items={value.activities} onChange={(activities) => onChange({ ...value, activities })} />
         <Field label="Notas de actividades" htmlFor={`${id}-notes`}><TextArea id={`${id}-notes`} rows={4} placeholder="Qué se hizo en esta clase, en texto libre" value={value.activityNotes} onChange={(e) => onChange({ ...value, activityNotes: e.target.value })} /></Field>
-        {files && <LessonFilesEditor registrationId={files.registrationId} attachments={files.attachments} library={files.library} materialIds={value.materialIds ?? []} onMaterialIdsChange={(materialIds) => onChange({ ...value, materialIds })} />}
+        {files && <LessonFilesEditor registrationId={files.registrationId} attachments={files.attachments} library={files.library} participants={files.participants} materialIds={value.materialIds ?? []} onMaterialIdsChange={(materialIds) => onChange({ ...value, materialIds })} />}
       </div>
     </Card>
   </section>;

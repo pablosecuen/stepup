@@ -140,7 +140,7 @@ test("la densidad sólo cambia la escala: la posición temporal y la duración d
       const minutesFromStart = (h - START_HOUR) * 60 + m;
       assert.equal(p.top, (minutesFromStart / 60) * px, `${key} ${from}: la posición es minutos × px/hora`);
       assert.ok(Math.abs(p.top / px - minutesFromStart / 60) < 1e-9, "misma posición en horas en cualquier densidad");
-      const exactHeight = Math.max(4, Math.min((minutes / 60) * px - cardGapPx(px), (END_HOUR - START_HOUR) * px - p.top));
+      const exactHeight = Math.max(4, Math.min((minutes / 60) * px - cardGapPx(px, minutes), (END_HOUR - START_HOUR) * px - p.top));
       const expectedHeight = minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exactHeight) : exactHeight;
       assert.equal(p.height, expectedHeight, `${key} ${from}+${minutes}: el alto del bloque sigue la duración (piso de una línea de texto desde 30 min)`);
       assert.equal(p.item, item, "la clase no se modifica: mismas fechas, horas y duración");
@@ -169,7 +169,7 @@ test("clases de 15, 30, 45 y 60 minutos: sin vecinos la zona interactiva llega a
     for (const minutes of [15, 30, 45, 60]) {
       const [p] = layoutDayItems([lesson("x", "12:00", minutes)], px);
       assert.ok(p.hitHeight >= MIN_TARGET_PX, `${px}px/h ${minutes} min`);
-      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px));
+      const exact = Math.max(4, (minutes / 60) * px - cardGapPx(px, minutes));
       assert.equal(p.height, minutes >= 30 ? Math.max(MIN_TEXT_HEIGHT_PX, exact) : exact, "la geometría visible NO se estira para alcanzar 44 px");
       assert.equal(p.hitHeight, Math.max(p.height, MIN_TARGET_PX));
     }

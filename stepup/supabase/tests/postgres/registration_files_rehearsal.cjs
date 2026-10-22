@@ -174,6 +174,28 @@ const content = (extra = {}) => ({ topics: [], objectives: [], activities: ["Boo
     ok("también se puede adjuntar a un registro ya finalizado");
     assert.equal((await attachmentsOf()).length, 3);
 
+
+    // clase grupal: cada participante puede tener sus propios archivos; el reporte de uno nunca ofrece los del otro
+    const { attachmentBelongsToStudent } = await import("../../../lib/lessons/attachment-scope.ts");
+    await rejects((async () => { const id = att(9); const path = attachmentStoragePath(A, R, id, "image/jpeg"); await putObject(path, MB); return rpc(a, "add_lesson_attachment", R, { id, name: "de-alumna-dos.jpg", kind: "image", mime_type: "image/jpeg", size_bytes: MB, student_id: S2, storage_path: path }); })(), /no forma parte de este registro/, "un archivo para un alumno que todavía no es participante del registro se rechaza");
+    await admin.query("insert into public.lesson_registration_students (owner_id,lesson_registration_id,student_id,participant_status) values ($1,$2,$3,'pending')", [A, R, S2]);
+    const groupAdd = async (n, name, studentId) => { const id = att(n); const path = attachmentStoragePath(A, R, id, "image/jpeg"); await putObject(path, MB); return (await rpc(a, "add_lesson_attachment", R, { id, name, kind: "image", mime_type: "image/jpeg", size_bytes: MB, student_id: studentId, storage_path: path })).rows[0].r; };
+    await groupAdd(9, "de-alumna-dos.jpg", S2);
+    await groupAdd(7, "comun-a-la-clase.jpg", null);
+    const visibleTo = async (studentId) => (await admin.query("select name, student_id from public.lesson_attachments where lesson_registration_id=$1 and removed_at is null and file_status='disponible' order by name", [R])).rows.filter((row) => attachmentBelongsToStudent(row.student_id, studentId)).map((row) => row.name);
+    { const all = await attachmentsOf(); check("el archivo de la alumna dos queda guardado con su alumna y el común sin alumno", () => { assert.equal(all.find((x) => x.name === "de-alumna-dos.jpg").student_id, S2); assert.equal(all.find((x) => x.name === "comun-a-la-clase.jpg").student_id, null); }); }
+    const forS1 = await visibleTo(S1);
+    const forS2 = await visibleTo(S2);
+    check("el reporte de la alumna uno ofrece lo común y lo suyo, NUNCA lo de la alumna dos", () => { assert.ok(forS1.includes("comun-a-la-clase.jpg") && forS1.includes("ejercicios.pdf") && !forS1.includes("de-alumna-dos.jpg")); });
+    check("el reporte de la alumna dos ofrece lo común y lo suyo, NUNCA lo de la alumna uno", () => { assert.ok(forS2.includes("comun-a-la-clase.jpg") && forS2.includes("de-alumna-dos.jpg") && !forS2.includes("ejercicios.pdf")); });
+    const dosRow = (await attachmentsOf()).find((x) => x.name === "de-alumna-dos.jpg");
+    await rpc(a, "remove_lesson_attachment", dosRow.id);
+    { const all = await attachmentsOf(); check("quitar el archivo de un participante sólo oculta ese archivo (la fila sigue, los demás no cambian)", () => { assert.notEqual(all.find((x) => x.id === dosRow.id).removed_at, null); assert.equal(all.filter((x) => x.removed_at === null && (x.name === "comun-a-la-clase.jpg" || x.name === "ejercicios.pdf")).length, 2); }); }
+    assert.deepEqual(await visibleTo(S2), ["comun-a-la-clase.jpg", "pizarron.jpg"]);
+    ok("…y la alumna dos deja de verlo; lo común a la clase sigue");
+    assert.ok((await visibleTo(S1)).includes("ejercicios.pdf") && (await visibleTo(S1)).includes("comun-a-la-clase.jpg"));
+    ok("…y la alumna uno conserva sus archivos");
+
     assert.equal(await fp(), unrelatedBefore);
     ok("ningún otro registro de la base cambió");
     console.log(`\n${checks} comprobaciones correctas contra PostgreSQL aislado. Ninguna conexión a Production.`);

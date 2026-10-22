@@ -108,7 +108,7 @@ test("duraciones de 15, 30, 45 y 60 minutos: bloque exacto y zona interactiva de
   for (const minutes of [15, 30, 45, 60]) {
     const [p] = layout([lesson("x", "12:00", minutes)]);
     assert.equal(p.top, px(240), `${minutes} min: la posición es exacta`);
-    assert.equal(p.height, px(minutes) - 6, `${minutes} min: el alto refleja la duración real`);
+    assert.equal(p.height, px(minutes) - (minutes < 30 ? 2 : 6), `${minutes} min: el alto refleja la duración real`);
     assert.equal(p.hitHeight, Math.max(p.height, MIN_TARGET_PX), `${minutes} min: la zona se amplía sólo si hace falta`);
     assert.ok(p.hitHeight >= 44);
     assert.equal(p.hitTop, p.top, "la zona nace en la hora de inicio");
@@ -128,7 +128,7 @@ test("dos clases consecutivas de 30 minutos con 96 px por hora (o más): las dos
 test("clases consecutivas de 15 y 30 minutos: comparten carril y ancho completo (no se parten en carriles sólo por la zona de toque); la zona de la primera termina donde empieza la segunda", () => {
   const out = layout([lesson("a", "10:00", 15), lesson("b", "10:15", 15), lesson("c", "10:30", 30), lesson("d", "11:00", 30)]);
   assert.deepEqual(out.map((p) => [p.item.id, p.lane, p.laneCount]), [["a", 0, 1], ["b", 0, 1], ["c", 0, 1], ["d", 0, 1]]);
-  assert.equal(out[0].height, px(15) - 6, "la duración sigue siendo exacta");
+  assert.equal(out[0].height, px(15) - 2, "la duración sigue siendo exacta");
   assert.equal(out[0].hitTop + out[0].hitHeight, out[1].hitTop, "la zona de la primera llega justo hasta la segunda");
   assert.ok(out[3].hitHeight >= MIN_TARGET_PX, "la última, con lugar libre debajo, sí llega a 44 px");
   assertTargets(out);
@@ -208,4 +208,12 @@ test("cableado: la grilla dibuja TODAS las clases posicionadas (sin filtros) y c
   // La agenda móvil no cambió: sigue dibujando la misma lista, sin carriles.
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /lane|hitTop|blockOffset/);
+});
+
+test("la clase de menos de 30 minutos usa siempre la separación chica (su alto exacto no depende de la escala); desde 30 minutos manda la escala", () => {
+  assert.equal(cardGapPx(64, 15), 2);
+  assert.equal(cardGapPx(80, 25), 2);
+  assert.equal(cardGapPx(64, 30), 6);
+  assert.equal(cardGapPx(64), 6);
+  assert.equal(cardGapPx(40, 60), 2);
 });

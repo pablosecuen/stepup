@@ -92,3 +92,27 @@ test("la ruta es sólo lectura y el visor no habla con Supabase desde el navegad
   assert.match(viewer, /await import\("@\/lib\/images\/heic-decode"\)/, "el decodificador se carga sólo al abrir una foto HEIC");
   assert.equal(/^import .*heic-decode/m.test(viewer), false);
 });
+
+test("con ?miniatura=1 se entrega un JPEG chico hecho por el servidor (también de una HEIC) y un archivo que no es foto no tiene miniatura", async () => {
+  const photo = readFileSync(join(import.meta.dirname, "fixtures", "plana.jpg"));
+  const heic = readFileSync(join(import.meta.dirname, "fixtures", "plana.heic"));
+  const withBytes = (bytes: Uint8Array, row: Row) => {
+    const { ctx } = fakeContext(row);
+    (ctx.supabase.storage as unknown as { from: () => unknown }).from = () => ({ download: async () => ({ data: new Blob([new Uint8Array(bytes)]), error: null }) });
+    return ctx;
+  };
+  const ok = await serveLessonAttachment(async () => withBytes(photo, { ...available, name: "foto.jpg", mime_type: "image/jpeg" }) as never, "att-1", false, true);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get("content-type"), "image/jpeg");
+  assert.equal(ok.headers.get("cache-control"), "private, no-store");
+  const sharp = (await import("sharp")).default;
+  const meta = await sharp(new Uint8Array(await ok.arrayBuffer())).metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height], ["jpeg", 160, 160]);
+  const fromHeic = await serveLessonAttachment(async () => withBytes(heic, available) as never, "att-1", false, true);
+  assert.equal(fromHeic.status, 200);
+  assert.equal((await sharp(new Uint8Array(await fromHeic.arrayBuffer())).metadata()).format, "jpeg");
+  const text = await serveLessonAttachment(async () => withBytes(new TextEncoder().encode("no soy una foto"), available) as never, "att-1", false, true);
+  assert.equal(text.status, 404);
+  assert.equal(await text.text(), "");
+  assert.equal((await serveLessonAttachment(async () => { throw new Error("sin sesión"); }, "att-1", false, true)).status, 401);
+});

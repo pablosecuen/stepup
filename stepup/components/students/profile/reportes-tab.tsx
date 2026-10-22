@@ -12,6 +12,7 @@ import {
   type StudentReportPreview,
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
+import { LessonPhotoThumbnail } from "@/components/registro/lesson-photo-thumbnail";
 import { MAX_REPORT_PHOTOS } from "@/lib/reports/evidence";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import { ArrowDownTrayIcon, ArrowPathIcon, CheckIcon, DocumentTextIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -165,6 +166,7 @@ export function ReportPreviewCard({
               <li key={candidate.attachmentId}>
                 <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
                   <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={selectedEvidenceIds.includes(candidate.attachmentId)} disabled={photosFull && candidate.kind === "image" && !selectedEvidenceIds.includes(candidate.attachmentId)} onChange={() => onToggleEvidence(candidate.attachmentId)} />
+                  {candidate.kind === "image" && <LessonPhotoThumbnail id={candidate.attachmentId} name={candidate.name} />}
                   <span className="min-w-0 [overflow-wrap:anywhere]">
                     <span className="font-[650] text-textPrimary">{candidate.name}</span> · {candidate.kind === "image" ? "Foto" : "PDF"} · {formatCivilDate(candidate.dateKey)}
                     {candidate.caption && <span className="block text-[13px] text-textMuted">{candidate.caption}</span>}

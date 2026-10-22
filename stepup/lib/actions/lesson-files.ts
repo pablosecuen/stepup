@@ -41,7 +41,7 @@ export async function prepareAttachmentUploadAction(input: { registrationId: str
   }
 }
 
-export async function registerAttachmentAction(input: { registrationId: string; attachmentId: string; name: string; kind: AttachmentKind; mimeType: string; size: number; path: string; caption: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function registerAttachmentAction(input: { registrationId: string; attachmentId: string; name: string; kind: AttachmentKind; mimeType: string; size: number; path: string; caption: string | null; studentId?: string | null }): Promise<ActionResult<{ id: string }>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const result = await registerAttachment(ctx, input);
