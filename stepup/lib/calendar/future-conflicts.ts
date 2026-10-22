@@ -35,9 +35,7 @@ export function findFutureRecurrenceConflicts(input: {
 }): FutureRecurrenceConflict[] {
   const { successor, effectiveDate, todayDate } = input;
   const timeZone = successor.timezone;
-  const rangeStart = new Date(localDateTimeToInstantIso({ date: effectiveDate, hour: 0, minute: 0, timeZone }));
-  const horizonBase = effectiveDate > todayDate ? effectiveDate : todayDate;
-  const rangeEnd = new Date(localDateTimeToInstantIso({ date: addDaysToDateKey(horizonBase, FUTURE_VALIDATION_HORIZON_DAYS), hour: 23, minute: 59, timeZone }));
+  const { rangeStart, rangeEnd } = futureValidationRange(effectiveDate, todayDate, timeZone);
   const occurrences = generateOccurrences({ ...successor, status: "active" }, rangeStart, rangeEnd);
 
   const result: FutureRecurrenceConflict[] = [];
@@ -72,4 +70,26 @@ export function describeFutureConflicts(conflicts: readonly FutureRecurrenceConf
   });
   const more = conflicts.length > shown.length ? ` (y ${conflicts.length - shown.length} más)` : "";
   return `El nuevo horario choca en ${conflicts.length} clase${conflicts.length === 1 ? "" : "s"}${more}: ${shown.join("; ")}. Todavía no se guardó nada.`;
+}
+
+/** El rango que se valida: desde la medianoche local de la fecha efectiva hasta 60 días después de la fecha efectiva o de hoy, la que caiga más tarde. */
+export function futureValidationRange(effectiveDate: string, todayDate: string, timeZone: string): { rangeStart: Date; rangeEnd: Date } {
+  const rangeStart = new Date(localDateTimeToInstantIso({ date: effectiveDate, hour: 0, minute: 0, timeZone }));
+  const horizonBase = effectiveDate > todayDate ? effectiveDate : todayDate;
+  const rangeEnd = new Date(localDateTimeToInstantIso({ date: addDaysToDateKey(horizonBase, FUTURE_VALIDATION_HORIZON_DAYS), hour: 23, minute: 59, timeZone }));
+  return { rangeStart, rangeEnd };
+}
+
+/** Las clases que generaría una serie hipotética, como candidatos de choque (para validar dos series que cambian a la vez entre sí). */
+export function occurrencesAsCandidates(rule: RecurrenceRuleForEngine, rangeStart: Date, rangeEnd: Date, label: string): ConflictCandidateLesson[] {
+  return generateOccurrences({ ...rule, status: "active" }, rangeStart, rangeEnd).map((occurrence) => ({
+    id: `hipotetica:${occurrence.occurrenceKey}`,
+    start: occurrence.start,
+    end: occurrence.end,
+    status: "scheduled" as const,
+    isRecurring: true,
+    lessonType: "individual" as const,
+    overlapAllowed: false,
+    label,
+  }));
 }

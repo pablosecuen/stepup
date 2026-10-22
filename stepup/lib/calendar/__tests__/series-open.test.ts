@@ -136,7 +136,6 @@ test("cableado: «Editar futuras» corta el tramo que cubre la fecha, hereda el 
   const actions = read("lib/actions/calendar.ts");
   assert.match(actions, /resolveEditableSegment\(allRules, originalRecurrenceId, effectiveDate\)/);
   assert.match(actions, /originalRecurrenceId: target\.id,/);
-  assert.match(actions, /successorEndDate,\n    \}\);/);
-  assert.match(actions, /for \(const replaced of segment\.superseded\) \{\s*await setRecurrenceRuleStatus\(ctx, replaced\.id, "ended"\);/);
+  assert.match(actions, /successorEndDate,\n      \/\/ [^\n]*\n      endRuleIds: segment\.superseded\.map\(\(rule\) => rule\.id\),/);
   assert.match(read("lib/repositories/recurrence-split.ts"), /if \(input\.successorEndDate !== undefined\) plan\.successorEndDate = input\.successorEndDate;/);
 });

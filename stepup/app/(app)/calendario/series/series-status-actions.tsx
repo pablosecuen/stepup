@@ -50,6 +50,9 @@ export function SeriesStatusActions({
   const [error, setError] = useState<string | null>(null);
   // Aviso de choque de horario del nuevo patrón: se puede cambiar el horario o guardar igual a propósito.
   const [overlapWarning, setOverlapWarning] = useState<string | null>(null);
+  // Cambios ya programados que este cambio reemplazaría (tramos posteriores a la fecha): se muestran y se confirman, nunca se finalizan en silencio.
+  const [replaceWarning, setReplaceWarning] = useState<string | null>(null);
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
   const [editingFuture, setEditingFuture] = useState(false);
   const [editingParticipants, setEditingParticipants] = useState(false);
   const initialCycle = (weeks.length > 0 ? weeks.length : 1) as 1 | 2 | 3 | 4;
@@ -120,17 +123,20 @@ export function SeriesStatusActions({
     });
   }
 
-  function submitEditFuture(formData: FormData, allowOverlap = false) {
+  function submitEditFuture(formData: FormData, allowOverlap = false, confirmReplace = replaceConfirmed) {
     setError(null);
     setOverlapWarning(null);
+    setReplaceWarning(null);
     if (allowOverlap) formData.set("allowOverlap", "true");
+    if (confirmReplace) formData.set("confirmReplace", "true");
     formData.set("originalRecurrenceId", ruleId);
     formData.set("weeksJson", weekCyclesToWeeksJson(weekCycles));
     participantIds.forEach((id) => formData.append("participantIds", id));
     startTransition(async () => {
       const result = await guardNetwork(() => editFutureRecurrenceAction({}, formData));
       if (result.error) {
-        if (result.conflict) setOverlapWarning(result.error);
+        if (result.replaces) setReplaceWarning(result.error);
+        else if (result.conflict) setOverlapWarning(result.error);
         else setError(result.error);
         return;
       }
@@ -215,8 +221,8 @@ export function SeriesStatusActions({
           </div>
           <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
             <div className="flex flex-wrap items-center gap-2">
-              <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => setFutureDate(e.target.value)} className="min-w-0 flex-1" />
-              <Button variant="secondary" onClick={() => setFutureDate(today)} disabled={futureDate === today}>
+              <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0 flex-1" />
+              <Button variant="secondary" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
                 Hoy
               </Button>
             </div>
@@ -226,6 +232,29 @@ export function SeriesStatusActions({
           </p>
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
           <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
+          {replaceWarning && (
+            <Notice tone="warn" title="Este cambio reemplaza cambios ya programados">
+              <p className="[overflow-wrap:anywhere]">{replaceWarning}</p>
+              <p className="mt-1.5">Si confirmás, esos cambios futuros dejan de regir y el nuevo patrón los reemplaza desde la fecha elegida. Las clases pasadas no se tocan.</p>
+              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={(event) => {
+                    const form = (event.currentTarget as HTMLElement).closest("form");
+                    if (!form) return;
+                    setReplaceConfirmed(true);
+                    submitEditFuture(new FormData(form), false, true);
+                  }}
+                >
+                  Confirmar y reemplazar
+                </Button>
+                <Button variant="ghost" onClick={() => setReplaceWarning(null)}>
+                  Cambiar la fecha
+                </Button>
+              </div>
+            </Notice>
+          )}
           {overlapWarning && (
             <Notice tone="warn" title="El nuevo horario se superpone con otra clase">
               <p className="[overflow-wrap:anywhere]">{overlapWarning}</p>

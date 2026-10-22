@@ -12,6 +12,7 @@ import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { SeriesStatusActions } from "@/app/(app)/calendario/series/series-status-actions";
 import { ScrollToLastSeries } from "@/components/calendar/scroll-to-last-series";
 import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
+import { SeriesSwapPanel, type SwapOption } from "@/components/calendar/series-swap-panel";
 
 const WEEKDAY_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
@@ -30,6 +31,14 @@ type RuleWithLineageId = RecurrenceRuleRecord & { recurrenceId: string };
 /** `lineage.ts` usa `recurrenceId` (nombre del móvil); el repositorio usa `id` (mismo criterio que el resto de la web) — se adapta acá, nunca se renombra el campo real de la tabla. */
 export function withLineageIds(rules: RecurrenceRuleRecord[]): RuleWithLineageId[] {
   return rules.map((rule) => ({ ...rule, recurrenceId: rule.id }));
+}
+
+/** Las series que se pueden intercambiar (vigentes y activas), con su horario para reconocerlas. */
+export function swapOptionsOf(manageable: RuleWithLineageId[], students: StudentRecord[]): SwapOption[] {
+  const nameOf = (id: string) => students.find((student) => student.id === id)?.name ?? "Alumno";
+  return manageable
+    .filter((rule) => rule.status === "active")
+    .map((rule) => ({ id: rule.id, label: rule.classTitle || rule.participantIds.map(nameOf).join(", ") || "Serie", schedule: scheduleOf(rule.weeks) }));
 }
 
 function scheduleOf(weeks: RecurrenceRuleRecord["weeks"]): string {
@@ -111,6 +120,7 @@ export function SeriesListView({ rules, students, nowIso }: { rules: RecurrenceR
   // principal, quedan siempre como tarjetas independientes.
   const rulesForLineage = withLineageIds(rules);
   const manageable = selectManageableRecurrenceSeries(rulesForLineage, nowIso);
+  const swapOptions = swapOptionsOf(manageable, students);
 
   return (
     <div className={PAGE_WIDTH.wide}>
@@ -124,6 +134,8 @@ export function SeriesListView({ rules, students, nowIso }: { rules: RecurrenceR
         </div>
         {manageable.length > 4 && <ScrollToLastSeries lastRuleId={manageable[manageable.length - 1].id} />}
       </div>
+
+      {swapOptions.length >= 2 && <SeriesSwapPanel options={swapOptions} />}
 
       {manageable.length === 0 ? (
         <div className="mt-6">

@@ -13,7 +13,9 @@ import { ErrorState } from "@/components/ui/states";
 import { Notice } from "@/components/ui/notice";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { BackLink, PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
-import { SeriesCard, withLineageIds } from "@/components/calendar/series-list-view";
+import { SeriesCard, swapOptionsOf, withLineageIds } from "@/components/calendar/series-list-view";
+import { SeriesSwapPanel } from "@/components/calendar/series-swap-panel";
+import { selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Serie · TeacherFlow" };
@@ -93,6 +95,7 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
   const today = getLocalDateKey(nowIso, exact.timezone);
   const exactEnded = exact.status === "ended" || (exact.endDate !== null && exact.endDate < today);
   const shown = head ?? { ...exact, status: exactEnded ? ("ended" as const) : exact.status };
+  const swapOptions = swapOptionsOf(selectManageableRecurrenceSeries(rulesForLineage, nowIso), students);
   const namesOf = (ids: string[]) => ids.map((participantId) => students.find((student) => student.id === participantId)?.name ?? "Alumno").join(", ") || "Sin alumnos";
 
   return (
@@ -120,6 +123,7 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
           </Notice>
         )}
         <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} highlighted />
+        {head && swapOptions.length >= 2 && swapOptions.some((option) => option.id === head.id) && <SeriesSwapPanel options={swapOptions} fixedId={head.id} />}
       </div>
     </div>
   );

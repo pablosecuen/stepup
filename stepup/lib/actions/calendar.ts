@@ -5,14 +5,17 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
 import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
-import { splitRecurrenceThisAndFuture } from "@/lib/repositories/recurrence-split";
+import { splitRecurrenceThisAndFuture, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
+import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
 import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { listStudents } from "@/lib/repositories/students";
 import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/availability";
 import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { toConflictCandidates } from "@/lib/calendar/conflict-candidates";
-import { describeFutureConflicts, findFutureRecurrenceConflicts, FUTURE_VALIDATION_HORIZON_DAYS } from "@/lib/calendar/future-conflicts";
+import { describeFutureConflicts, findFutureRecurrenceConflicts, futureValidationRange, occurrencesAsCandidates, FUTURE_VALIDATION_HORIZON_DAYS } from "@/lib/calendar/future-conflicts";
+import { formatCivilDayLabelShort, instantDateKey, instantTimeLabel } from "@/lib/calendar/civil-calendar";
+import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
 import { addDaysToDateKey } from "@/lib/calendar/timezone";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
@@ -36,6 +39,8 @@ export interface FormState {
    * pueden intercambiar horarios en dos pasos (cada paso avisa) en vez de quedar bloqueadas una contra la otra.
    */
   conflict?: boolean;
+  /** El cambio reemplazaría cambios ya programados de la serie (tramos posteriores): se muestran y hay que confirmarlos (`confirmReplace`). */
+  replaces?: boolean;
   values?: NewLessonFormValues;
   /**
    * Señal de creación canónica (clase única / serie): el servidor confirma que la
@@ -127,6 +132,12 @@ async function checkFuturePatternConflicts(
   const candidates = toConflictCandidates(items, { excludeRecurrenceIds: input.replacedRuleIds });
   const conflicts = findFutureRecurrenceConflicts({ successor, effectiveDate, todayDate, candidates, availability });
   return conflicts.length > 0 ? describeFutureConflicts(conflicts, original.timezone) : null;
+}
+
+/** «viernes 20:00 desde 23/11»: los cambios ya programados que un cambio desde una fecha anterior reemplazaría. */
+function describeReplacedSegments(superseded: { weeks: RecurrenceWeek[]; effectiveFromDate: string | null; startDate: string }[]): string {
+  const list = superseded.map((rule) => `${describeWeeks(rule.weeks)} desde el ${formatCivilDate(rule.effectiveFromDate ?? rule.startDate)}`).join("; ");
+  return `Este cambio reemplaza ${superseded.length === 1 ? "un cambio ya programado" : `${superseded.length} cambios ya programados`} de la serie: ${list}. Todavía no se guardó nada.`;
 }
 
 async function checkConflictsAndAvailability(
@@ -536,6 +547,12 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     const replacedRuleIds = [target.id, ...segment.superseded.map((rule) => rule.id)];
     const successorEndDate = segment.superseded.length > 0 ? currentRule.endDate : target.endDate;
 
+    // Nada se finaliza en silencio: si el cambio reemplaza cambios futuros ya programados (tramos posteriores a la fecha), se muestran y la
+    // profesora los confirma. La finalización de esos tramos va en la MISMA transacción que el corte.
+    if (segment.superseded.length > 0 && readString(formData, "confirmReplace") !== "true") {
+      return { error: describeReplacedSegments(segment.superseded), replaces: true };
+    }
+
     // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
     // Se valida ANTES de guardar; si choca no se escribe nada.
     // La profesora puede aceptar el choque a propósito (`allowOverlap`, tras ver el aviso): nunca queda un conflicto en silencio.
@@ -555,11 +572,9 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       participantIds,
       primaryStudentId: currentRule.primaryStudentId,
       successorEndDate,
+      // Los tramos posteriores al de la fecha ya no generan clases: los reemplaza la sucesora (mismo RPC, misma transacción).
+      endRuleIds: segment.superseded.map((rule) => rule.id),
     });
-    // Los tramos posteriores al de la fecha ya no generan clases: los reemplaza la sucesora. Si esto fallara, repetir el cambio es seguro (el corte es idempotente).
-    for (const replaced of segment.superseded) {
-      await setRecurrenceRuleStatus(ctx, replaced.id, "ended");
-    }
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }
@@ -626,6 +641,154 @@ export async function changeParticipantsAction(input: ChangeParticipantsActionIn
   revalidatePath("/calendario");
   revalidatePath("/calendario/series");
   return {};
+}
+
+// ---------------------------------------------------------------------------
+// Intercambio de horarios entre dos series
+// ---------------------------------------------------------------------------
+
+export interface SeriesSwapInput {
+  seriesAId: string;
+  seriesBId: string;
+  effectiveDate: string;
+}
+
+export interface SwapPreviewSide {
+  seriesId: string;
+  label: string;
+  before: string;
+  after: string;
+  /** «viernes, 23 de octubre, 19:00». */
+  firstClass: string | null;
+  /** Cambios ya programados de esa serie que el intercambio reemplaza (se muestran antes de confirmar). */
+  replaces: string[];
+}
+
+export interface SeriesSwapResult {
+  error?: string;
+  preview?: { effectiveDate: string; sides: [SwapPreviewSide, SwapPreviewSide] };
+}
+
+/**
+ * Arma el intercambio y valida el RESULTADO FINAL de las dos series contra el resto del calendario (terceras clases y disponibilidad) y entre sí:
+ * el choque entre ambas HOY es justamente lo que el intercambio resuelve, pero ninguna de las dos puede quedar superpuesta con una tercera.
+ * No hay forma de ignorar un conflicto. Devuelve el error o la vista previa y las entradas del RPC.
+ */
+async function prepareSeriesSwap(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, input: SeriesSwapInput) {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const todayDate = getLocalDateKey(nowIso, TIMEZONE);
+  const [records, students] = await Promise.all([listRecurrenceRules(ctx), listStudents(ctx)]);
+  const rules = records.map((rule) => ({ ...rule, recurrenceId: rule.id }));
+  const plan = planSeriesSwap(rules, input.seriesAId, input.seriesBId, input.effectiveDate, todayDate, nowIso);
+  if (!plan.ok) return { error: plan.error } as const;
+
+  const { a, b } = plan;
+  const timeZone = a.head.timezone;
+  const studentName = (id: string) => students.find((student) => student.id === id)?.name ?? "Alumno";
+  const labelOf = (head: typeof a.head) => head.classTitle || head.participantIds.map(studentName).join(", ") || "Serie";
+  const successorOf = (side: typeof a): RecurrenceRuleForEngine => ({
+    recurrenceId: `nuevo-${side.head.id}`,
+    studentId: side.head.primaryStudentId,
+    participantIds: side.head.participantIds,
+    cycleLengthWeeks: side.newWeeks.length,
+    weeks: side.newWeeks,
+    modality: side.head.modality,
+    timezone: side.head.timezone,
+    startDate: mondayOfWeekContaining(input.effectiveDate),
+    endDate: side.successorEndDate,
+    status: "active",
+    classTitle: side.head.classTitle,
+    activityKind: side.head.activityKind,
+  });
+  const successorA = successorOf(a);
+  const successorB = successorOf(b);
+
+  const { rangeStart, rangeEnd } = futureValidationRange(input.effectiveDate, todayDate, timeZone);
+  const [items, availability] = await Promise.all([
+    loadCalendarViewForRange(ctx, rangeStart, new Date(rangeEnd.getTime() + 86_400_000), undefined, { includeTestData: true }),
+    getTeacherAvailability(ctx),
+  ]);
+  // Las dos series dejan de generar sus patrones viejos desde la fecha efectiva: no cuentan como ocupación; el resultado final de cada una sí.
+  const replacedIds = [a.target, ...a.superseded, b.target, ...b.superseded].map((rule) => rule.id);
+  const thirdParties = toConflictCandidates(items, { excludeRecurrenceIds: replacedIds });
+  const problems: string[] = [];
+  for (const [side, successor, other, otherSuccessor] of [
+    [a, successorA, b, successorB],
+    [b, successorB, a, successorA],
+  ] as const) {
+    const candidates = [...thirdParties, ...occurrencesAsCandidates(otherSuccessor, rangeStart, rangeEnd, labelOf(other.head))];
+    const conflicts = findFutureRecurrenceConflicts({ successor, effectiveDate: input.effectiveDate, todayDate, candidates, availability });
+    if (conflicts.length > 0) problems.push(`${labelOf(side.head)}: ${describeFutureConflicts(conflicts, timeZone).replace(" Todavía no se guardó nada.", "")}`);
+  }
+  if (problems.length > 0) {
+    return { error: `Con ese intercambio quedaría un choque con otra clase o con tu disponibilidad. ${problems.join(" ")} No se cambió ninguna de las dos series.` } as const;
+  }
+
+  const firstClassOf = (successor: RecurrenceRuleForEngine): string | null => {
+    const [first] = generateOccurrences(successor, rangeStart, rangeEnd);
+    return first ? `${formatCivilDayLabelShort(instantDateKey(first.start))}, ${instantTimeLabel(first.start)}` : null;
+  };
+  const sideOf = (side: typeof a, successor: RecurrenceRuleForEngine): SwapPreviewSide => ({
+    seriesId: side.head.id,
+    label: labelOf(side.head),
+    before: describeWeeks(side.target.weeks),
+    after: describeWeeks(side.newWeeks),
+    firstClass: firstClassOf(successor),
+    replaces: side.superseded.map((rule) => `${describeWeeks(rule.weeks)} desde el ${formatCivilDate(rule.effectiveFromDate ?? rule.startDate)}`),
+  });
+  return {
+    plan,
+    todayDate,
+    preview: { effectiveDate: input.effectiveDate, sides: [sideOf(a, successorA), sideOf(b, successorB)] as [SwapPreviewSide, SwapPreviewSide] },
+  } as const;
+}
+
+/** Vista previa del intercambio (no escribe nada): cómo queda cada serie, su primera clase y qué cambios ya programados reemplaza. */
+export async function previewSeriesSwapAction(input: SeriesSwapInput): Promise<SeriesSwapResult> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const prepared = await prepareSeriesSwap(ctx, input);
+    if ("error" in prepared) return { error: prepared.error };
+    return { preview: prepared.preview };
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+}
+
+/**
+ * Intercambia los horarios de dos series desde la fecha efectiva: los dos cambios (y la finalización de los tramos que reemplazan) se guardan
+ * en UNA transacción — ambos o ninguno. Se recalcula y se valida todo en el servidor; la vista previa del navegador es sólo informativa.
+ */
+export async function swapSeriesAction(input: SeriesSwapInput): Promise<SeriesSwapResult> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const prepared = await prepareSeriesSwap(ctx, input);
+    if ("error" in prepared) return { error: prepared.error };
+    const { a, b } = prepared.plan;
+    if (!a.head.primaryStudentId || !b.head.primaryStudentId) return { error: "Alguna de las series no tiene alumno principal: arreglalo con «Modificar participantes» primero." };
+    const sideInput = (side: typeof a) => ({
+      input: {
+        originalRecurrenceId: side.target.id,
+        effectiveDate: input.effectiveDate,
+        todayDate: prepared.todayDate,
+        ruleType: (side.newWeeks.length > 1 ? "custom" : "weekly") as "weekly" | "custom",
+        cycleLengthWeeks: side.newWeeks.length as 1 | 2 | 3 | 4,
+        weeks: side.newWeeks,
+        participantIds: side.head.participantIds,
+        primaryStudentId: side.head.primaryStudentId as string,
+        successorEndDate: side.successorEndDate,
+      },
+      endRuleIds: side.superseded.map((rule) => rule.id),
+    });
+    await swapRecurrencePatterns(ctx, [sideInput(a), sideInput(b)]);
+    revalidatePath("/calendario");
+    revalidatePath("/calendario/series");
+    return { preview: prepared.preview };
+  } catch (error) {
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "Una de las series ya no existe. No se cambió ninguna." };
+    return { error: `${friendlyErrorMessage(error)} No se cambió ninguna de las dos series.` };
+  }
 }
 
 // ---------------------------------------------------------------------------
