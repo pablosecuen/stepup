@@ -20,6 +20,16 @@ import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
 import { todayInArgentina } from "@/lib/format/date-format";
 
+/**
+ * Envío de los formularios de esta pantalla SIN `action={…}`: con `action`, React 19 reinicia el formulario al terminar la acción (incluso si
+ * devolvió un error) y las casillas de los días volvían a mostrar el patrón ANTERIOR mientras el estado ya tenía el nuevo (vista previa y
+ * envío distintos de lo que se veía). Con `onSubmit` la validación nativa (`required`) sigue funcionando y los campos conservan lo elegido.
+ */
+function submitWithoutReset(event: React.FormEvent<HTMLFormElement>, submit: (formData: FormData) => void) {
+  event.preventDefault();
+  submit(new FormData(event.currentTarget));
+}
+
 export function SeriesStatusActions({
   ruleId,
   status,
@@ -198,7 +208,7 @@ export function SeriesStatusActions({
       {error && <FormErrorBox message={error} />}
 
       {editingFuture && (
-        <form action={submitEditFuture} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+        <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
           <div>
             <h3 className="font-display text-card font-semibold">Dividir: «esta y las siguientes»</h3>
             <p className="mt-0.5 text-[13.5px] text-textMuted">El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
@@ -249,7 +259,7 @@ export function SeriesStatusActions({
       )}
 
       {editingParticipants && (
-        <form action={submitChangeParticipants} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+        <form onSubmit={(event) => submitWithoutReset(event, submitChangeParticipants)} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
           <h3 className="font-display text-card font-semibold">Modificar participantes</h3>
           <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
             <div className="flex flex-wrap items-center gap-2">
