@@ -73,8 +73,9 @@ export function AddItemRow({ draftKey, id, label, placeholder, onAdd }: { draftK
   }
   return (
     <div className="flex min-w-0 items-stretch gap-2">
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1">
         <TextInput
+          className="h-full"
           id={id}
           aria-label={label}
           placeholder={placeholder}
