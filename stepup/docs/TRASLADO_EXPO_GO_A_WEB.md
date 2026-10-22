@@ -488,3 +488,27 @@ Límites conocidos: más de ~7 carriles en un mismo horario superan el tope de 3
 ### 38. Corrección de criterios (22/oct/2026)
 
 La usuaria NO aprobó: (a) identificar clases sólo por iniciales o por la primera palabra del nombre; (b) perder el horario o el estado visibles de una clase; (c) dar por buena una tarjeta por no tener «…» si su texto es diminuto o directamente no tiene texto. Un nombre accesible para lectores de pantalla (`aria-label`) y el cuadro de información al pasar el puntero no reemplazan la información visual. Las frases de §37 (y cualquier otra anterior) que presentaban lo contrario como «aprobado» o «aceptable» quedan corregidas por este apartado y por las ediciones de §37. La propuesta v2 (§37) tiene dos problemas reconocidos —corta nombres a 147 px y desplaza rótulos hasta 26 px— y que una línea de color los una a su barra NO es una asociación inequívoca (varias clases comparten color). Pendiente: propuesta con los componentes reales en un entorno de revisión sin publicar; no se cambia la distribución general sin aprobación.
+
+### 39. Propuesta v3 de clases cortas con componentes reales — SIN publicar (22/oct/2026)
+
+**Estado:** producción sigue en `d5ee2b2`. La propuesta vive en la rama local `calendario-propuesta-rotulos` (commit `a96ada9`, worktree `tf-web-prop`, NO empujada, NO desplegada). Se ve sólo en el entorno de desarrollo con `?rotulos=1` (el flag no existe en producción). Capturas en `docs/qa-propuesta-rotulos-20261022/` (emulación con datos sintéticos; no es verificación física).
+
+**Qué hace.** Las clases de menos de 15 px se dibujan como barra exacta (hora y duración reales). Su nombre, hora y estado van en un rótulo de texto de 11 px en una columna a la derecha de la barra; las simultáneas se numeran 1..n en la barra y en el rótulo. La asociación NO depende del color: se apoya en número (simultáneas) y en la alineación/adyacencia (consecutivas). Las clases largas conservan su bloque con nombre; sólo una larga simultánea con cortas pasa a barra + rótulo si su carril quedaría demasiado angosto, y se marca.
+
+**Mejoras de 4aac00e que se conservan (no tocan escala ni reparto de ancho):** hora/estado delante del nombre en tarjetas de una línea; letra y relleno ajustados al carril; ícono sólo si entra; techo de carril 92 px con estimación de cifras; sin tarjeta completa en la semana del teléfono. **Quedan afuera:** la escala automática de 68–80 px/h y el reparto de ancho de escritorio (`desktopWeekColumns`). Escalas acordadas intactas: 50 px/h en teléfono, Compacta con ajuste en escritorio.
+
+**Mediciones y límites (semana densa sintética, sin ocultar nada):**
+- Teléfono 390 px: grilla de hasta ~1033 px (se ve ≈38 % de la semana a la vez; hay que desplazar). 0 superposiciones, 0 cortes de primera palabra, 15 apellidos cortados con «…», desplazamiento máximo del rótulo respecto de su barra 26 px (5 simultáneas).
+- Escritorio 1366×768 (35,8 px/h): 8 cortes de primera palabra (columna de 147 px), 4 bloques largos convertidos a barra + rótulo para no superar 14 px de desplazamiento.
+- Escritorio 1440×900: 4 cortes de primera palabra, 2 bloques convertidos.
+- Texto: rótulos de 11 px (no hay texto diminuto); los bloques largos con nombres de 8+ letras siguen en 9,5 px (preexistente, sin resolver).
+- Conjunto «estrés»: 4 tarjetas de una línea de 30 min en carril múltiple siguen sin hora visible.
+- 3 y 5 simultáneas de 15 min en 147 px: el nombre completo no entra.
+
+**Los requisitos no coexisten del todo en 147 px.** Alternativas con su costo:
+- A. Esta propuesta tal cual: nombres, hora y estado visibles; costo = más ancho en teléfono (desplazamiento horizontal), 8/4 cortes de primera palabra en escritorio con 5 simultáneas, rótulos hasta 26 px de su barra.
+- B. Sólo restaurar hora/estado en tarjetas de una línea (item 2 de 4aac00e): ~+44 px por día con cortas; no resuelve 15 min ni simultáneas (siguen barras sin texto).
+- C. Rótulos sólo en teléfono (donde la columna puede ensancharse) y escritorio como hoy: no empeora el ancho de escritorio, pero no corrige simultáneas allí.
+- D. Ensanchar sólo los días con muchas cortas, o una lista/agenda del día al tocar: conserva toda la información, a costa de interacción extra o columnas desiguales.
+
+Nada de esto se publica hasta que la usuaria elija. Siguen pendientes las pruebas autenticadas (registro, niveles, edición, fotos, reportes) hasta tener la sesión de QA, además de paridad e iPhone anclado.
