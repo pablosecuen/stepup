@@ -433,3 +433,22 @@ Límites conocidos: más de ~7 carriles en un mismo horario superan el tope de 3
 **Fotos ilegibles.** Una HEIC con cabecera correcta y contenido roto (o un texto con nombre .jpg, o un archivo vacío) ya NO se sube: el navegador la rechaza con un error claro y las demás fotos elegidas se guardan; el servidor, además, sólo registra una foto si puede generar su miniatura (mismo camino que visor y reporte) y, si no, responde un error sin registrarla (el objeto subido queda, nada se borra). Las fotos ilegibles ya guardadas (p. ej. subidas antes): la miniatura responde 422, la lista de evidencias del reporte las muestra «No se puede usar en el reporte», deshabilitadas y fuera de la selección, y la fila de la clase ofrece «Descargar el original» y «Quitar» en vez de «Ver foto». Un error pasajero de red NO marca una foto como ilegible (botón «Reintentar»).
 
 **Probado con datos sintéticos / respuestas simuladas:** en Edge real con respuestas simuladas del servidor: HEIC válido sintético → JPEG; HEIC inválido, texto .jpg y archivo vacío rechazados con su mensaje; selección de evidencias con 3 miniaturas, 1 ilegible deshabilitada con aviso, PDF; fila de clase grupal con «Para: Sólo Beto» ilegible. Calendario a 375/390/430 px y 1366×768, 1440×900, 1920×1080: encabezados y columnas alineados, sin textos cortados con «…» en el teléfono. **No probado:** subir/abrir/quitar/finalizar/editar con sesión real, reporte PDF real con evidencias, HEIC de cámara de iPhone, iPhone real.
+
+### 34. Comparación con el origen, límites de la escala automática y camino para la prueba autenticada (22/oct/2026)
+
+**La escala automática de 4aac00e (68–80 px/h en semanas con clases cortas) NO cumple el requisito previo de no cambiar el comportamiento de Compacta.** Queda publicada pero no se presenta como cumplimiento completo; no se cambia nada más hasta que se elija entre las alternativas de abajo.
+
+**Comparación (mismo teléfono de 390 px, zona de grilla de 479 px, semana 19–25/10 sintética).** El origen se ejecutó con sus componentes reales (`WeekTimeGrid`, `CalendarLessonCard`) en web con `react-native-web` desde un entorno aparte (`C:Usersjoaqu	f-compare`, sin copiar ni tocar el origen). Diferencias del entorno: fuente del sistema en vez de la de la app y hora en formato 12 h («a. m.») por el idioma del navegador; la geometría y los textos que se cortan son los del origen. Figuras en `docs/qa-comparacion-origen-20261022/`.
+
+| | Origen | Web b435e9c (50 px/h) | Web 4aac00e (68–80 px/h) |
+|---|---|---|---|
+| Días a la vista | 7 de 7 | 4 de 7 completos (el resto, desplazando) | 4 de 7 |
+| Horario a la vista | 08:00–~16:30 (≈ 8,5 h) | ≈ 8,5 h | ≈ 6,4 h (68 px/h); ≈ 5,4 h (80 px/h) |
+| Nombre | partido por letras («Agostin/a»); en carriles compartidos «An t…» | palabra entera, sin cortes | palabra entera |
+| Hora y estado | hora cortada («09:00 a.…»); sin estado en tarjeta angosta | en las de 2 líneas | también delante del nombre en las de 15 min |
+| Clase de 15 min | mide 30 px (mínimo de la tarjeta): pisa a la siguiente y falsea la duración | 10,5 px exactos, letra de 9,5 px | 15 px exactos, letra de 11 px |
+| Menores de 13 min | mínimo de 30 px: una de 5 min se ve como una de 30 y tapa a las vecinas | 10–12 min: letra de 8–9,5 px; 5 min: bloque sin texto | 10–12 min: letra de 10 px (80 px/h); 5 min: bloque sin texto |
+
+**Limitación que exige elegir:** leer el nombre de una clase de 15 minutos en una línea de 11 px pide ≥ ~68 px/h; con 50 px/h (como el origen) cabe una línea de 9,5 px. Alternativas: (A) escala fija de 50 px/h (b435e9c): 8,5 h a la vista, letra de 8–9,5 px en las cortas; (B) automática 68–80 px/h (actual): letra de 10–11 px, 6,4 h a la vista y escala que cambia según la semana; (C) A por defecto y un control opcional «ampliar escala» que la profesora elige; (D) intermedia automática hasta ~56 px/h: ≈ 7,5 h, letra de 10 px en 15 min. Sin decidir.
+
+**Prueba autenticada:** sin Docker ni WSL no hay Supabase local; crear una cuenta en Production no corresponde hacerlo por la usuaria. Paso necesario: que la usuaria cree en `/crear-cuenta` (navegador integrado) una cuenta de QA y avise.
