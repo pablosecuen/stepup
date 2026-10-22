@@ -7,6 +7,8 @@ import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrencePartic
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
 import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
+import { affectedFutureLessons, type AffectedLessons } from "@/lib/calendar/affected-lessons";
+import { listCalendarLessonsForRecurrence } from "@/lib/repositories/calendar-lessons";
 import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { listStudents } from "@/lib/repositories/students";
 import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/availability";
@@ -134,10 +136,25 @@ async function checkFuturePatternConflicts(
   return conflicts.length > 0 ? describeFutureConflicts(conflicts, original.timezone) : null;
 }
 
-/** «viernes 20:00 desde 23/11»: los cambios ya programados que un cambio desde una fecha anterior reemplazaría. */
-function describeReplacedSegments(superseded: { weeks: RecurrenceWeek[]; effectiveFromDate: string | null; startDate: string }[]): string {
-  const list = superseded.map((rule) => `${describeWeeks(rule.weeks)} desde el ${formatCivilDate(rule.effectiveFromDate ?? rule.startDate)}`).join("; ");
-  return `Este cambio reemplaza ${superseded.length === 1 ? "un cambio ya programado" : `${superseded.length} cambios ya programados`} de la serie: ${list}. Todavía no se guardó nada.`;
+/** Lo que un cambio «desde una fecha» reemplaza o deja registrado: tramos posteriores ya programados, clases reprogramadas y canceladas. */
+function describeReplacements(
+  superseded: { weeks: RecurrenceWeek[]; effectiveFromDate: string | null; startDate: string }[],
+  affected: AffectedLessons
+): string {
+  const parts: string[] = [];
+  if (superseded.length > 0) {
+    const list = superseded.map((rule) => `${describeWeeks(rule.weeks)} desde el ${formatCivilDate(rule.effectiveFromDate ?? rule.startDate)}`).join("; ");
+    parts.push(`Este cambio reemplaza ${superseded.length === 1 ? "un cambio ya programado" : `${superseded.length} cambios ya programados`} de la serie: ${list}.`);
+  }
+  if (affected.rescheduled.length > 0) parts.push(`Se reemplazan por el nuevo patrón ${affected.rescheduled.length === 1 ? "esta clase reprogramada" : "estas clases reprogramadas"}: ${affected.rescheduled.join("; ")}.`);
+  if (affected.cancelled.length > 0) parts.push(`Siguen registradas como canceladas: ${affected.cancelled.join("; ")}.`);
+  return `${parts.join(" ")} Todavía no se guardó nada.`;
+}
+
+/** Clases reprogramadas y canceladas de los tramos que reemplaza un cambio, desde la fecha efectiva. */
+async function loadAffectedLessons(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, ruleIds: string[], effectiveDate: string, timeZone: string): Promise<AffectedLessons> {
+  const lessons = (await Promise.all(ruleIds.map((ruleId) => listCalendarLessonsForRecurrence(ctx, ruleId)))).flat();
+  return affectedFutureLessons(lessons, effectiveDate, timeZone);
 }
 
 async function checkConflictsAndAvailability(
@@ -549,8 +566,9 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
 
     // Nada se finaliza en silencio: si el cambio reemplaza cambios futuros ya programados (tramos posteriores a la fecha), se muestran y la
     // profesora los confirma. La finalización de esos tramos va en la MISMA transacción que el corte.
-    if (segment.superseded.length > 0 && readString(formData, "confirmReplace") !== "true") {
-      return { error: describeReplacedSegments(segment.superseded), replaces: true };
+    const affected = await loadAffectedLessons(ctx, replacedRuleIds, effectiveDate, target.timezone);
+    if ((segment.superseded.length > 0 || affected.rescheduled.length > 0) && readString(formData, "confirmReplace") !== "true") {
+      return { error: describeReplacements(segment.superseded, affected), replaces: true };
     }
 
     // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
@@ -662,6 +680,9 @@ export interface SwapPreviewSide {
   firstClass: string | null;
   /** Cambios ya programados de esa serie que el intercambio reemplaza (se muestran antes de confirmar). */
   replaces: string[];
+  /** Clases reprogramadas que el nuevo patrón reemplaza, y canceladas que siguen registradas como tales. */
+  rescheduledReplaced: string[];
+  cancelledKept: string[];
 }
 
 export interface SeriesSwapResult {
@@ -729,18 +750,23 @@ async function prepareSeriesSwap(ctx: Awaited<ReturnType<typeof requireAuthentic
     const [first] = generateOccurrences(successor, rangeStart, rangeEnd);
     return first ? `${formatCivilDayLabelShort(instantDateKey(first.start))}, ${instantTimeLabel(first.start)}` : null;
   };
-  const sideOf = (side: typeof a, successor: RecurrenceRuleForEngine): SwapPreviewSide => ({
+  const [affectedA, affectedB] = await Promise.all(
+    [a, b].map((side) => loadAffectedLessons(ctx, [side.target, ...side.superseded].map((rule) => rule.id), input.effectiveDate, timeZone))
+  );
+  const sideOf = (side: typeof a, successor: RecurrenceRuleForEngine, affected: AffectedLessons): SwapPreviewSide => ({
     seriesId: side.head.id,
     label: labelOf(side.head),
     before: describeWeeks(side.target.weeks),
     after: describeWeeks(side.newWeeks),
     firstClass: firstClassOf(successor),
     replaces: side.superseded.map((rule) => `${describeWeeks(rule.weeks)} desde el ${formatCivilDate(rule.effectiveFromDate ?? rule.startDate)}`),
+    rescheduledReplaced: affected.rescheduled,
+    cancelledKept: affected.cancelled,
   });
   return {
     plan,
     todayDate,
-    preview: { effectiveDate: input.effectiveDate, sides: [sideOf(a, successorA), sideOf(b, successorB)] as [SwapPreviewSide, SwapPreviewSide] },
+    preview: { effectiveDate: input.effectiveDate, sides: [sideOf(a, successorA, affectedA), sideOf(b, successorB, affectedB)] as [SwapPreviewSide, SwapPreviewSide] },
   } as const;
 }
 

@@ -115,7 +115,7 @@ test("cableado: el intercambio valida el resultado final en el servidor, sin opc
   assert.match(swapBlock, /thirdParties = toConflictCandidates\(items, \{ excludeRecurrenceIds: replacedIds \}\)/);
   assert.match(swapBlock, /await swapRecurrencePatterns\(ctx, \[sideInput\(a\), sideInput\(b\)\]\)/);
   assert.match(actions, /readString\(formData, "confirmReplace"\) !== "true"/);
-  assert.match(actions, /return \{ error: describeReplacedSegments\(segment\.superseded\), replaces: true \}/);
+  assert.match(actions, /describeReplacements\(segment\.superseded, affected\)/);
   assert.match(actions, /endRuleIds: segment\.superseded\.map\(\(rule\) => rule\.id\),/);
   assert.doesNotMatch(actions, /await setRecurrenceRuleStatus\(ctx, replaced\.id, "ended"\)/, "la finalización de los tramos ya no es una llamada aparte");
   const repo = read("lib/repositories/recurrence-split.ts");
@@ -126,4 +126,27 @@ test("cableado: el intercambio valida el resultado final en el servidor, sin opc
   assert.match(panel, /Ver vista previa/);
   assert.match(read("components/calendar/series-list-view.tsx"), /<SeriesSwapPanel options=\{swapOptions\}/);
   assert.match(read("app/(app)/calendario/series/[id]/page.tsx"), /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{head\.id\}/);
+});
+
+test("clases ya decididas que un cambio desde una fecha afecta: las reprogramadas se reemplazan y las canceladas siguen registradas; las completadas y las anteriores a la fecha no cuentan", async () => {
+  const { affectedFutureLessons } = await import("../affected-lessons.ts");
+  const lessons = [
+    { status: "cancelled" as const, startAt: "2026-11-06T21:00:00.000Z", recurrenceOriginalStart: "2026-11-06T21:00:00.000Z" },
+    { status: "scheduled" as const, startAt: "2026-11-14T13:00:00.000Z", recurrenceOriginalStart: "2026-11-13T21:00:00.000Z" },
+    { status: "completed" as const, startAt: "2026-11-20T21:00:00.000Z", recurrenceOriginalStart: "2026-11-20T21:00:00.000Z" },
+    { status: "cancelled" as const, startAt: "2026-10-30T21:00:00.000Z", recurrenceOriginalStart: null },
+    { status: "scheduled" as const, startAt: "2026-11-27T21:00:00.000Z", recurrenceOriginalStart: "2026-11-27T21:00:00.000Z" },
+  ];
+  const result = affectedFutureLessons(lessons, "2026-11-04", BA);
+  assert.deepEqual(result.cancelled, ["viernes, 6 de noviembre 18:00"]);
+  assert.deepEqual(result.rescheduled, ["viernes, 13 de noviembre 18:00 → sábado, 14 de noviembre 10:00"]);
+  assert.deepEqual(affectedFutureLessons(lessons, "2026-12-01", BA), { rescheduled: [], cancelled: [] });
+});
+
+test("cableado: lo reprogramado y lo cancelado que afecta un cambio se muestra y se confirma antes de guardar (edición y intercambio)", () => {
+  const actions = read("lib/actions/calendar.ts");
+  assert.match(actions, /\(segment\.superseded\.length > 0 \|\| affected\.rescheduled\.length > 0\) && readString\(formData, "confirmReplace"\) !== "true"/);
+  assert.match(actions, /return \{ error: describeReplacements\(segment\.superseded, affected\), replaces: true \}/);
+  assert.match(actions, /rescheduledReplaced: affected\.rescheduled,/);
+  assert.match(read("components/calendar/series-swap-panel.tsx"), /estas clases reprogramadas/);
 });

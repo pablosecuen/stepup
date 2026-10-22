@@ -138,6 +138,8 @@ export function SeriesSwapPanel({ options, fixedId }: { options: SwapOption[]; f
                   </p>
                   <p className="text-[14px] text-textMuted">{side.firstClass ? `Primera clase con el nuevo horario: ${side.firstClass}.` : "Sin clases en los próximos 60 días."}</p>
                   {side.replaces.length > 0 && <p className="mt-1 text-[13.5px] font-semibold text-textPrimary">Reemplaza un cambio ya programado: {side.replaces.join("; ")}.</p>}
+                  {side.rescheduledReplaced.length > 0 && <p className="mt-1 text-[13.5px] font-semibold text-textPrimary">Se reemplazan por el nuevo patrón estas clases reprogramadas: {side.rescheduledReplaced.join("; ")}.</p>}
+                  {side.cancelledKept.length > 0 && <p className="mt-1 text-[13.5px] text-textSecondary">Siguen registradas como canceladas: {side.cancelledKept.join("; ")}.</p>}
                 </div>
               ))}
               <p className="text-[13.5px] text-textMuted">Se verificó que ninguna de las dos choque con otra clase ni con tu disponibilidad. Las clases pasadas no se tocan.</p>
