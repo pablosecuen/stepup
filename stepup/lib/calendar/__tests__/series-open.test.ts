@@ -101,7 +101,7 @@ test("cableado: la fecha efectiva de los formularios de series arranca en HOY (h
   assert.match(form, /Primera clase con el nuevo horario/);
   // Sin `action={…}`: React 19 reinicia el formulario al terminar la acción y las casillas de los días volvían al patrón anterior.
   assert.doesNotMatch(form, /<form action=/);
-  assert.equal([...form.matchAll(/<form onSubmit={(event) => submitWithoutReset(event, /g)].length, 2);
+  assert.equal(form.split("<form onSubmit={(event) => submitWithoutReset(event, ").length - 1, 2);
   const actions = read("lib/actions/calendar.ts");
   assert.match(actions, /checkFuturePatternConflicts\(ctx, \{ original: currentRule/);
   assert.match(actions, /listPredecessorsRunningFrom\(/);
