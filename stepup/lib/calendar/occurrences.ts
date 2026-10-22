@@ -21,6 +21,11 @@ export interface CalendarViewItem {
   isMaterialized: boolean;
   studentId: string | null;
   participantIds: string[];
+  /**
+   * Nombres de TODOS los alumnos de esta clase (el principal primero), para mostrarlos en el detalle: `studentName` es sólo el del principal,
+   * así que una clase compartida parecía de un único alumno. Sólo alumnos conocidos; ausente = usar `studentName`.
+   */
+  participantNames?: string[];
   studentName: string;
   level: string;
   lessonType: CalendarLessonType;
@@ -33,6 +38,20 @@ export interface CalendarViewItem {
   isRecurring: boolean;
   freedByLessonId: string | null;
   notes: string | null;
+}
+
+/** Nombres de los participantes, el principal primero; sin repetir y sólo de alumnos conocidos. */
+export function resolveParticipantNames(primaryStudentId: string | null, participantIds: readonly string[], students: ReadonlyMap<string, { name: string }>): string[] {
+  const ordered = primaryStudentId ? [primaryStudentId, ...participantIds.filter((id) => id !== primaryStudentId)] : [...participantIds];
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const id of ordered) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const student = students.get(id);
+    if (student) names.push(student.name);
+  }
+  return names;
 }
 
 /** Forma mínima real de una fila de `calendar_lessons` para el merge. */
@@ -123,6 +142,7 @@ export function buildCalendarViewForRange(input: {
         isMaterialized: false,
         studentId: occurrence.studentId,
         participantIds: occurrence.participantIds,
+        participantNames: resolveParticipantNames(label.primaryStudentId, occurrence.participantIds, students),
         studentName: label.studentName,
         level: label.level,
         lessonType: occurrence.participantIds.length > 1 ? "group" : "individual",
@@ -151,6 +171,7 @@ export function buildCalendarViewForRange(input: {
       isMaterialized: true,
       studentId: lesson.primaryStudentId,
       participantIds: lesson.participantIds,
+      participantNames: resolveParticipantNames(lesson.primaryStudentId, lesson.participantIds, students),
       studentName: lesson.studentName,
       level: lesson.level,
       lessonType: lesson.lessonType,

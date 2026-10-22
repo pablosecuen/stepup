@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowPathIcon, ArrowRightIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { editRegistrationHref } from "@/lib/registro/return-path";
+import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -78,6 +79,9 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const isPast = now !== null && start.getTime() <= now;
   const canEdit = item.status !== "cancelled" && item.status !== "completed";
   const lessonTitle = item.title?.trim() || item.studentName || "Serie sin alumnos";
+  // Todos los alumnos de la clase (el principal primero): `studentName` es sólo el del principal, y una clase compartida parecía de uno solo.
+  const participantNames = item.participantNames && item.participantNames.length > 0 ? item.participantNames : item.studentName ? [item.studentName] : [];
+  const otherParticipantNames = participantNames.slice(item.studentName && participantNames[0] === item.studentName ? 1 : 0);
 
   function handleCancel() {
     setError(null);
@@ -256,11 +260,20 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <>
             {item.studentId && (
               <section>
-                <h3 className="text-label font-bold uppercase text-textMuted">Alumno</h3>
+                <h3 className="text-label font-bold uppercase text-textMuted">{participantNames.length > 1 ? "Alumnos" : "Alumno"}</h3>
                 <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" block className="mt-2 !justify-between">
                   <span className="min-w-0 text-left [overflow-wrap:anywhere]">{item.studentName || "Ver perfil"}</span>
                   <ArrowRightIcon className="h-4 w-4 shrink-0" aria-hidden />
                 </PrivateButtonLink>
+                {otherParticipantNames.length > 0 && (
+                  <ul aria-label="Otros alumnos de la clase" className="mt-2 flex flex-col gap-1.5">
+                    {otherParticipantNames.map((name, index) => (
+                      <li key={`${name}-${index}`} className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-2 text-[15px] font-[650] text-textPrimary [overflow-wrap:anywhere]">
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
             )}
 
@@ -300,7 +313,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 </Button>
               )}
               {item.recurrenceId && (
-                <PrivateButtonLink href="/calendario/series" variant="secondary" block>
+                <PrivateButtonLink href={seriesDetailHref(item.recurrenceId, calendarPath)} variant="secondary" block>
                   Administrar esta serie
                   <ArrowRightIcon className="h-4 w-4" aria-hidden />
                 </PrivateButtonLink>

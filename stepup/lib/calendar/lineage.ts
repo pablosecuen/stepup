@@ -78,3 +78,49 @@ export function selectManageableRecurrenceSeries<T extends RuleForLineage>(rules
 
   return result;
 }
+
+/** Raíz del linaje de una serie (siguiendo `supersedesRecurrenceId` hacia atrás); corta ante un ciclo o un antecesor desconocido. */
+export function lineageRootId<T extends RuleForLineage>(rules: T[], ruleId: string): string {
+  const byId = new Map(rules.map((rule) => [rule.recurrenceId, rule]));
+  const visited = new Set<string>();
+  let currentId = ruleId;
+  for (;;) {
+    visited.add(currentId);
+    const current = byId.get(currentId);
+    const previousId = current?.supersedesRecurrenceId;
+    if (!previousId || visited.has(previousId) || !byId.has(previousId)) return currentId;
+    currentId = previousId;
+  }
+}
+
+/**
+ * La serie VIGENTE (la que se administra) del linaje al que pertenece `ruleId` — el mismo criterio que la lista de Series
+ * (`selectManageableRecurrenceSeries`). Sirve para abrir la serie exacta de una clase aunque esa clase sea de un tramo anterior: la
+ * pantalla muestra el tramo y deja editar la vigente. `null` si el linaje entero ya terminó (no hay nada vigente que administrar).
+ */
+export function findManageableForRule<T extends RuleForLineage>(rules: T[], ruleId: string, nowIso: string): T | null {
+  const root = lineageRootId(rules, ruleId);
+  return selectManageableRecurrenceSeries(rules, nowIso).find((candidate) => lineageRootId(rules, candidate.recurrenceId) === root) ?? null;
+}
+
+/**
+ * Tramos ANTERIORES de un linaje que todavía generan clases en o después de `effectiveDate` (no finalizados y con `endDate` vacía o
+ * no anterior a esa fecha). Un cambio de alumnos «desde una fecha» tiene que aplicarse también a ellos: si sólo se cambiara la serie
+ * vigente (la sucesora), las clases del tramo anterior que caen entre esa fecha y el inicio de la vigente seguirían con los alumnos
+ * viejos.
+ */
+export function listPredecessorsRunningFrom<T extends RuleForLineage>(rules: T[], headId: string, effectiveDate: string): T[] {
+  const byId = new Map(rules.map((rule) => [rule.recurrenceId, rule]));
+  const result: T[] = [];
+  const visited = new Set<string>([headId]);
+  let current = byId.get(headId);
+  let previousId = current?.supersedesRecurrenceId ?? null;
+  while (previousId && !visited.has(previousId)) {
+    visited.add(previousId);
+    current = byId.get(previousId);
+    if (!current) break;
+    if (current.status !== "ended" && (!current.endDate || current.endDate >= effectiveDate)) result.push(current);
+    previousId = current.supersedesRecurrenceId;
+  }
+  return result;
+}

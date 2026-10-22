@@ -13,6 +13,7 @@ import { buildParticipantFreezePayload } from "@/lib/calendar/participants-freez
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
 import { listStudents } from "./students";
+import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
 import { readTable, readTableByIds } from "@/lib/db/read";
 
 /**
@@ -148,7 +149,7 @@ export async function changeRecurrenceParticipantsFromDate(
   const rule = await getRecurrenceRule(ctx, input.ruleId);
   if (!rule) throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
 
-  const [lessons, students] = await Promise.all([listCalendarLessonsForRecurrence(ctx, input.ruleId), listStudents(ctx)]);
+  const [lessons, students, exceptions] = await Promise.all([listCalendarLessonsForRecurrence(ctx, input.ruleId), listStudents(ctx), listRecurrenceExceptionsForRules(ctx, [input.ruleId])]);
   const studentsById = new Map(students.map((s) => [s.id, s]));
 
   const engineRule: RecurrenceRuleForEngine = {
@@ -176,6 +177,7 @@ export async function changeRecurrenceParticipantsFromDate(
       recurrenceOccurrenceKey: lesson.recurrenceOccurrenceKey,
       status: lesson.status,
     })),
+    exceptionKeys: new Set(exceptions.map((exception) => exception.occurrenceKey)),
   });
 
   // El principal de las ocurrencias que se CONGELAN (roster viejo, antes de la fecha efectiva) es el que la regla ya tiene

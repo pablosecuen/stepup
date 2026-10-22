@@ -14,6 +14,7 @@ import {
 } from "./students-mapping";
 import { listActiveRecurrenceRulesForStudent, listRuleParticipantsWithCreatedAt } from "./recurrence-rules";
 import { listCalendarLessonsForRecurrence, listLooseFutureScheduledLessonsForStudent, listLessonParticipantRows } from "./calendar-lessons";
+import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
 import {
   planArchiveStudentPrune,
   type RuleForPrune,
@@ -251,12 +252,17 @@ export async function archiveStudentAndPruneFuture(
 
     const rules = await listActiveRecurrenceRulesForStudent(ctx, id);
     const ruleIds = rules.map((r) => r.id);
-    const [ruleParticipantRows, lessonsPerRule, looseLessons, studentsList] = await Promise.all([
+    const [ruleParticipantRows, lessonsPerRule, looseLessons, studentsList, exceptions] = await Promise.all([
       listRuleParticipantsWithCreatedAt(ctx, ruleIds),
       Promise.all(ruleIds.map((ruleId) => listCalendarLessonsForRecurrence(ctx, ruleId))),
       listLooseFutureScheduledLessonsForStudent(ctx, id, effectiveInstantIso),
       listStudents(ctx),
+      listRecurrenceExceptionsForRules(ctx, ruleIds),
     ]);
+    const exceptionKeysByRule: Record<string, string[]> = {};
+    exceptions.forEach((exception) => {
+      (exceptionKeysByRule[exception.recurrenceId] ??= []).push(exception.occurrenceKey);
+    });
 
     const studentsById = new Map(studentsList.map((s) => [s.id, s]));
     const lessonsByRule: Record<string, typeof lessonsPerRule[number]> = {};
@@ -309,6 +315,7 @@ export async function archiveStudentAndPruneFuture(
       ruleParticipants: ruleParticipantsForPrune,
       lessonsByRule,
       looseLessons: looseLessonsForPrune,
+      exceptionKeysByRule,
     });
 
     payload = {

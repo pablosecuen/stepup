@@ -1,4 +1,4 @@
-import { addDaysToDateKey, daysBetweenDateKeys } from "./timezone.ts";
+import { addDaysToDateKey, daysBetweenDateKeys, localDateTimeToInstantIso } from "./timezone.ts";
 import { mondayOfWeekContaining } from "./weekday.ts";
 import { generateOccurrences } from "./recurrence-engine.ts";
 import type { RecurrenceRuleForEngine, RecurrenceWeek } from "./types.ts";
@@ -102,11 +102,11 @@ export function buildExcludedOccurrenceKeys(input: {
     activityKind: input.activityKind,
   };
 
-  const rangeStart = new Date(`${input.successorStartDate}T00:00:00.000Z`);
-  // effectiveDate exclusivo: la última medianoche ANTES de effectiveDate en UTC crudo
-  // alcanza como límite superior generoso — generateOccurrences igual filtra por
-  // rango+timezone real; acá sólo se necesita "antes del día efectivo".
-  const rangeEndExclusive = new Date(`${input.effectiveDate}T00:00:00.000Z`);
-  const preEffective = generateOccurrences(hypotheticalRule, rangeStart, new Date(rangeEndExclusive.getTime() - 1));
+  // Medianoche LOCAL de la cuenta (nunca UTC): con la medianoche UTC el límite caía a las 21:00 del día anterior en Buenos Aires,
+  // así que una clase de las 21:00 a las 23:59 de ese día —anterior a la fecha efectiva— no se excluía y la sucesora la
+  // generaba además de la serie original (que llega hasta el día anterior inclusive).
+  const rangeStart = new Date(localDateTimeToInstantIso({ date: input.successorStartDate, hour: 0, minute: 0, timeZone: input.timezone }));
+  const effectiveStart = new Date(localDateTimeToInstantIso({ date: input.effectiveDate, hour: 0, minute: 0, timeZone: input.timezone }));
+  const preEffective = generateOccurrences(hypotheticalRule, rangeStart, new Date(effectiveStart.getTime() - 1));
   return preEffective.map((occurrence) => occurrence.occurrenceKey);
 }

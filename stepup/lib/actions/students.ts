@@ -186,13 +186,24 @@ export async function changeStudentStatusAction(
   try {
     const ctx = await requireAuthenticatedDbContext();
 
-    if (status === "archivado") {
-      // Elección obligatoria, nunca preseleccionada — el servidor nunca
-      // confía en que la UI la haya exigido: sin un valor explícito
-      // "true"/"false" acá, se rechaza en vez de asumir un default.
-      const removeFromFutureRaw = readString(formData, "removeFromFuture").trim();
-      if (removeFromFutureRaw !== "true" && removeFromFutureRaw !== "false") {
-        return { error: "Elegí si conservás o quitás al alumno de la agenda futura." };
+    if (status === "archivado" || status === "inactivo") {
+      // Archivar: elección obligatoria, nunca preseleccionada — el servidor nunca confía en que la UI la haya exigido: sin un
+      // valor explícito "true"/"false" acá, se rechaza en vez de asumir un default.
+      // Dar de baja (inactivo): NO hay elección — el alumno sale siempre de las series y clases por venir, desde la fecha de baja,
+      // en la misma transacción que el cambio de estado (si no, un alumno inactivo seguiría apareciendo en el Calendario).
+      let removeFromFuture: boolean;
+      if (status === "inactivo") {
+        removeFromFuture = true;
+      } else {
+        const removeFromFutureRaw = readString(formData, "removeFromFuture").trim();
+        if (removeFromFutureRaw !== "true" && removeFromFutureRaw !== "false") {
+          return { error: "Elegí si conservás o quitás al alumno de la agenda futura." };
+        }
+        removeFromFuture = removeFromFutureRaw === "true";
+      }
+      // La baja o el archivado con poda nunca tocan el pasado: la fecha efectiva es hoy o una fecha futura.
+      if (removeFromFuture && occurredOn < todayInArgentina()) {
+        return { error: "La fecha no puede ser anterior a hoy: las clases pasadas no se modifican." };
       }
       const operationId = readString(formData, "operationId").trim();
       if (!operationId) {
@@ -203,7 +214,7 @@ export async function changeStudentStatusAction(
         occurredOn,
         reason,
         internalNote,
-        removeFromFuture: removeFromFutureRaw === "true",
+        removeFromFuture,
         now: new Date(),
         operationId,
       });

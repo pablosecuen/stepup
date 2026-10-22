@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
-import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { listPredecessorsRunningFrom } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture } from "@/lib/repositories/recurrence-split";
 import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { listStudents } from "@/lib/repositories/students";
@@ -11,6 +12,9 @@ import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/a
 import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { toConflictCandidates } from "@/lib/calendar/conflict-candidates";
+import { describeFutureConflicts, findFutureRecurrenceConflicts, FUTURE_VALIDATION_HORIZON_DAYS } from "@/lib/calendar/future-conflicts";
+import { addDaysToDateKey } from "@/lib/calendar/timezone";
+import { formatCivilDate } from "@/lib/format/date-format";
 import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
 import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
@@ -85,6 +89,39 @@ async function buildConflictCandidates(
   const rangeEnd = new Date(center.getTime() + 90 * 24 * 60 * 60 * 1000);
   const items = await loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true });
   return toConflictCandidates(items, { excludeRecurrenceId });
+}
+
+/**
+ * «Editar futuras»: el nuevo patrón se valida ANTES de guardar contra el resto del calendario (clases sueltas, otras series y la
+ * disponibilidad), igual que la app original. Devuelve el mensaje para la profesora o null si no choca con nada.
+ */
+async function checkFuturePatternConflicts(
+  ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>,
+  input: { original: Awaited<ReturnType<typeof getRecurrenceRule>> & object; effectiveDate: string; todayDate: string; weeks: RecurrenceWeek[]; participantIds: string[] }
+): Promise<string | null> {
+  const { original, effectiveDate, todayDate, weeks } = input;
+  const successor = {
+    recurrenceId: "nuevo-patron",
+    studentId: original.primaryStudentId,
+    participantIds: input.participantIds,
+    cycleLengthWeeks: weeks.length,
+    weeks,
+    modality: original.modality,
+    timezone: original.timezone,
+    startDate: mondayOfWeekContaining(effectiveDate),
+    endDate: original.endDate,
+    status: "active" as const,
+    classTitle: original.classTitle,
+    activityKind: original.activityKind,
+  };
+  const rangeStart = new Date(localDateTimeToInstantIso({ date: effectiveDate, hour: 0, minute: 0, timeZone: original.timezone }));
+  const horizonBase = effectiveDate > todayDate ? effectiveDate : todayDate;
+  const rangeEnd = new Date(localDateTimeToInstantIso({ date: addDaysToDateKey(horizonBase, FUTURE_VALIDATION_HORIZON_DAYS + 1), hour: 0, minute: 0, timeZone: original.timezone }));
+  const [items, availability] = await Promise.all([loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true }), getTeacherAvailability(ctx)]);
+  // La serie que se reemplaza deja de generar clases desde la fecha efectiva: no cuenta como ocupación.
+  const candidates = toConflictCandidates(items, { excludeRecurrenceId: original.id });
+  const conflicts = findFutureRecurrenceConflicts({ successor, effectiveDate, todayDate, candidates, availability });
+  return conflicts.length > 0 ? describeFutureConflicts(conflicts, original.timezone) : null;
 }
 
 async function checkConflictsAndAvailability(
@@ -482,6 +519,17 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       return { error: "El alumno principal de la serie ya no forma parte del grupo — usá \"Modificar participantes\" primero." };
     }
 
+    if (effectiveDate < currentRule.startDate) {
+      return {
+        error: `Esta serie vigente empieza el ${formatCivilDate(currentRule.startDate)}: un cambio desde antes tocaría un tramo anterior. Elegí esa fecha o una posterior.`,
+      };
+    }
+
+    // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
+    // Se valida ANTES de guardar; si choca no se escribe nada.
+    const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, effectiveDate, todayDate, weeks, participantIds });
+    if (conflictMessage) return { error: conflictMessage };
+
     await splitRecurrenceThisAndFuture(ctx, {
       originalRecurrenceId,
       effectiveDate,
@@ -526,6 +574,24 @@ export async function changeParticipantsAction(input: ChangeParticipantsActionIn
     const ctx = await requireAuthenticatedDbContext();
     const now = new Date();
     const effectiveDateIso = localDateTimeToInstantIso({ date: input.effectiveDate, hour: 0, minute: 0, timeZone: TIMEZONE });
+    // El cambio rige `desde una fecha` para TODA la serie: también para los tramos anteriores que siguen generando clases desde esa
+    // fecha (la serie vigente puede ser la sucesora de otra que todavía llega hasta su inicio). Primero los anteriores y al final la
+    // vigente: si algo falla a mitad, reintentar es seguro (reemplazar el grupo por el mismo grupo no cambia nada más).
+    const allRules = await listRecurrenceRules(ctx);
+    const predecessors = listPredecessorsRunningFrom(
+      allRules.map((rule) => ({ ...rule, recurrenceId: rule.id })),
+      input.ruleId,
+      input.effectiveDate
+    );
+    for (const predecessor of predecessors) {
+      await changeRecurrenceParticipantsFromDate(ctx, {
+        ruleId: predecessor.id,
+        effectiveDateIso,
+        now,
+        newParticipantIds: input.newParticipantIds,
+        newPrimaryStudentId: primaryResult.primaryStudentId,
+      });
+    }
     await changeRecurrenceParticipantsFromDate(ctx, {
       ruleId: input.ruleId,
       effectiveDateIso,

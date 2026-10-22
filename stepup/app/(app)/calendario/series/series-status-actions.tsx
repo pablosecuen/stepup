@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, type FormState } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
@@ -13,6 +13,11 @@ import type { RecurrenceRuleStatus } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { nextPrimaryAfterToggle } from "@/lib/calendar/primary-selection";
+import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
+import { CALENDAR_TIMEZONE, formatCivilDayLabel, formatCivilDayLabelShort, instantDateKey, instantTimeLabel } from "@/lib/calendar/civil-calendar";
+import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
+import { todayInArgentina } from "@/lib/format/date-format";
 
 export function SeriesStatusActions({
   ruleId,
@@ -41,6 +46,39 @@ export function SeriesStatusActions({
   // "al editar, debe mostrarse el principal realmente guardado" — se
   // inicializa SIEMPRE desde el valor real de la regla, nunca recalculado.
   const [selectedPrimaryId, setSelectedPrimaryId] = useState<string>(() => primaryStudentId ?? "");
+  // Fecha efectiva: por defecto HOY (hora civil de la cuenta), nunca vacía ni de otro día; la profesora la ve escrita en palabras antes de confirmar.
+  const today = useMemo(() => todayInArgentina(), []);
+  const [futureDate, setFutureDate] = useState(today);
+  const [participantsDate, setParticipantsDate] = useState(today);
+  // Primera clase que tendrá el nuevo patrón desde la fecha elegida: así se ve de entrada si el cambio cae en el día que se espera.
+  const firstNewClass = useMemo(() => {
+    try {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(futureDate)) return null;
+      const weeksOfPattern = JSON.parse(weekCyclesToWeeksJson(weekCycles)) as RecurrenceWeek[];
+      const rangeStart = new Date(localDateTimeToInstantIso({ date: futureDate, hour: 0, minute: 0, timeZone: CALENDAR_TIMEZONE }));
+      const [first] = generateOccurrences(
+        {
+          recurrenceId: "vista-previa",
+          studentId: null,
+          participantIds: [],
+          cycleLengthWeeks: weeksOfPattern.length,
+          weeks: weeksOfPattern,
+          modality: "online",
+          timezone: CALENDAR_TIMEZONE,
+          startDate: mondayOfWeekContaining(futureDate),
+          endDate: null,
+          status: "active",
+          classTitle: null,
+          activityKind: "class",
+        },
+        rangeStart,
+        new Date(rangeStart.getTime() + 60 * 86_400_000)
+      );
+      return first ? `${formatCivilDayLabelShort(instantDateKey(first.start))}, ${instantTimeLabel(first.start)}` : null;
+    } catch {
+      return null;
+    }
+  }, [futureDate, weekCycles]);
 
   function handleCycleLengthChange(next: 1 | 2 | 3 | 4) {
     setCycleLengthWeeks(next);
@@ -159,9 +197,17 @@ export function SeriesStatusActions({
             <h3 className="font-display text-card font-semibold">Dividir: «esta y las siguientes»</h3>
             <p className="mt-0.5 text-[13.5px] text-textMuted">El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
           </div>
-          <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`}>
-            <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required />
+          <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
+            <div className="flex flex-wrap items-center gap-2">
+              <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => setFutureDate(e.target.value)} className="min-w-0 flex-1" />
+              <Button variant="secondary" onClick={() => setFutureDate(today)} disabled={futureDate === today}>
+                Hoy
+              </Button>
+            </div>
           </Field>
+          <p role="status" aria-live="polite" className="text-[14px] font-[650] text-textPrimary">
+            {firstNewClass ? `Primera clase con el nuevo horario: ${firstNewClass}.` : futureDate ? "Con ese patrón no hay clases en los próximos 60 días desde esa fecha." : "Elegí la fecha desde la que rige el nuevo patrón."}
+          </p>
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
           <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -178,8 +224,13 @@ export function SeriesStatusActions({
       {editingParticipants && (
         <form action={submitChangeParticipants} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
           <h3 className="font-display text-card font-semibold">Modificar participantes</h3>
-          <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`}>
-            <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required />
+          <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
+            <div className="flex flex-wrap items-center gap-2">
+              <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0 flex-1" />
+              <Button variant="secondary" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
+                Hoy
+              </Button>
+            </div>
           </Field>
           <fieldset className="min-w-0">
             <legend className="text-sm font-[650] text-textSecondary">Alumnos *</legend>

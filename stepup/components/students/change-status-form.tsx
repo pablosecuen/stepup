@@ -81,13 +81,14 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
   }
 
   const isArchiving = selectedStatus === "archivado";
+  const isDeactivating = selectedStatus === "inactivo";
   const canSubmit = !isArchiving || removeFromFuture !== "";
 
   return (
     <Card padded={false}>
       <CardHeader title="Cambiar estado" />
       <form action={formAction} className="flex flex-col gap-4 px-4 pb-4 nav:px-5 nav:pb-5">
-        <input type="hidden" name="occurredOn" value={today} />
+        {!isDeactivating && <input type="hidden" name="occurredOn" value={today} />}
         <input type="hidden" name="operationId" value={operationId} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Cambiar estado a" htmlFor="status">
@@ -152,7 +153,23 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
           </fieldset>
         )}
 
-        {!isArchiving && <p className="text-[13.5px] text-textMuted">El historial de clases y cobros nunca se borra al cambiar de estado.</p>}
+        {isDeactivating && (
+          <fieldset className="flex min-w-0 flex-col gap-2.5 rounded-md border-[1.5px] border-warnLine bg-warnSoft p-3.5">
+            <legend className="px-1 text-sm font-[650] text-textPrimary">Agenda futura</legend>
+            <Field label="Fecha de baja" htmlFor="occurredOn" hint="Desde ese día el alumno sale de las clases y series. Si hoy tiene una clase que todavía no registraste, elegí mañana.">
+              <TextInput id="occurredOn" name="occurredOn" type="date" min={today} defaultValue={today} required />
+            </Field>
+            <p className="text-[13.5px] text-textSecondary">
+              Desde esa fecha se lo quita de todas las series y clases por venir. Donde hay otros alumnos, la actividad de ellos sigue igual (se promueve a otro como principal). Las series en las que
+              era el único alumno terminan y sus clases por venir se cancelan.
+            </p>
+            <p className="text-[13.5px] text-textSecondary">
+              Las clases dictadas, los registros, tareas, fotos, reportes y cobros nunca se borran. Restaurar más adelante vuelve el estado a activo, pero no reconstruye sola la agenda que se haya quitado.
+            </p>
+          </fieldset>
+        )}
+
+        {!isArchiving && !isDeactivating && <p className="text-[13.5px] text-textMuted">El historial de clases y cobros nunca se borra al cambiar de estado.</p>}
 
         {state.error && <FormErrorBox message={state.error} />}
         {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}

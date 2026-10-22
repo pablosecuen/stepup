@@ -48,6 +48,8 @@ export interface ConflictCandidateLesson {
   isRecurring: boolean;
   lessonType: "individual" | "group";
   overlapAllowed: boolean;
+  /** Texto para mostrar con qué clase choca (opcional; nunca interviene en el cálculo). */
+  label?: string;
 }
 
 export interface CalendarConflict {

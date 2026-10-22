@@ -61,6 +61,8 @@ export interface ArchivePrunePlanInput {
   lessonsByRule: Record<string, CalendarLessonForEngine[]>;
   /** Clases sueltas futuras `scheduled` (sin recurrencia) donde el alumno es primario o participante. */
   looseLessons: LooseLessonForPrune[];
+  /** Claves de ocurrencia con excepción (cancelada, reprogramada o excluida) por serie: nunca se congelan. */
+  exceptionKeysByRule?: Record<string, string[]>;
 }
 
 export interface SeriesEndPlan {
@@ -105,6 +107,10 @@ function pickPromotionCandidate(candidates: RuleParticipantForPrune[]): RulePart
   })[0];
 }
 
+function exceptionKeysFor(input: ArchivePrunePlanInput, ruleId: string): ReadonlySet<string> {
+  return new Set(input.exceptionKeysByRule?.[ruleId] ?? []);
+}
+
 export function planArchiveStudentPrune(input: ArchivePrunePlanInput): ArchivePrunePlan {
   const { studentId, now, effectiveDateIso, rules, ruleParticipants, lessonsByRule, looseLessons } = input;
 
@@ -132,6 +138,7 @@ export function planArchiveStudentPrune(input: ArchivePrunePlanInput): ArchivePr
         now,
         effectiveDateIso,
         existingLessons: lessonsByRule[rule.recurrenceId] ?? [],
+        exceptionKeys: exceptionKeysFor(input, rule.recurrenceId),
       });
       plan.seriesPromote.push({
         ruleId: rule.recurrenceId,
@@ -151,6 +158,7 @@ export function planArchiveStudentPrune(input: ArchivePrunePlanInput): ArchivePr
         now,
         effectiveDateIso,
         existingLessons: lessonsByRule[rule.recurrenceId] ?? [],
+        exceptionKeys: exceptionKeysFor(input, rule.recurrenceId),
       });
       plan.seriesParticipantRemoval.push({ ruleId: rule.recurrenceId, freezeOccurrences });
     }

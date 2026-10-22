@@ -1,7 +1,7 @@
 import type { ConflictCandidateLesson } from "../calendar-conflicts.ts";
 import type { CalendarViewItem } from "./occurrences.ts";
 
-type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId">;
+type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId"> & Partial<Pick<CalendarViewItem, "studentName" | "title">>;
 
 /**
  * Candidatos de solapamiento a partir de la vista real del calendario.
@@ -16,13 +16,17 @@ export function toConflictCandidates(items: ViewItemForConflict[], options: { ex
   const { excludeRecurrenceId } = options;
   return items
     .filter((item) => !excludeRecurrenceId || item.recurrenceId !== excludeRecurrenceId)
-    .map((item) => ({
-      id: item.id,
-      start: item.start,
-      end: item.end,
-      status: item.status,
-      isRecurring: item.isRecurring,
-      lessonType: item.lessonType,
-      overlapAllowed: false,
-    }));
+    .map((item) => {
+      const label = item.title?.trim() || item.studentName?.trim();
+      return {
+        id: item.id,
+        start: item.start,
+        end: item.end,
+        status: item.status,
+        isRecurring: item.isRecurring,
+        lessonType: item.lessonType,
+        overlapAllowed: false,
+        ...(label ? { label } : {}),
+      };
+    });
 }
