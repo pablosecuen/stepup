@@ -338,6 +338,9 @@ test("alcance: B8 no toca autenticación, B0, Inicio ni la lógica de datos", ()
 test("los enlaces cortos de la cabecera del Calendario también miden 44 px de ancho (Series, medido en Production: 37 px)", () => {
   const view = code("components/calendar/calendar-view.tsx");
   const nav = view.slice(view.indexOf('<nav aria-label="Secciones del calendario"'), view.indexOf("</nav>"));
-  assert.equal((nav.match(/className=\{linkClass\(\)\}/g) ?? []).length, 3, "Series, Disponibilidad y Clases por registrar: linkClass trae min-h-11 y el ícono fija el ancho");
+  assert.equal((nav.match(/className=\{`\$\{linkClass\(\)\} \$\{MOBILE_CHIP\}`\}/g) ?? []).length, 3, "Series, Disponibilidad y Clases por registrar: linkClass (44 px) + la ficha compacta del teléfono");
+  // La ficha se ve de 36 px pero su zona de toque sigue siendo de 44 px (pseudo-elemento invisible que se extiende 4 px arriba y abajo, sin tocar a los controles vecinos).
+  assert.match(view, /max-\[819px\]:before:-inset-y-1/);
+  assert.match(view, /max-\[819px\]:h-9/);
   assert.match(view, /<nav aria-label="Secciones del calendario"/);
 });

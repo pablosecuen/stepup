@@ -45,6 +45,12 @@
   --tf-focus-ring: #1C1812;
   /* Alto de la fila superior del área principal (escritorio) donde vive «Cerrar sesión»: las pantallas que miden 100dvh lo restan. */
   --tf-shell-top: 3.25rem;
+  /* Shell móvil: safe areas del iPhone (0 sin `viewport-fit=cover`) y alturas EXACTAS del encabezado y de la barra inferior. Las pantallas que ocupan todo el espacio
+     entre los dos (Calendario) se anclan a estos valores en vez de sumar medidas sueltas: nunca se superponen con el encabezado ni dejan un hueco debajo. */
+  --tf-safe-top: env(safe-area-inset-top, 0px);
+  --tf-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tf-m-header: 60px;
+  --tf-m-nav: 72px;
   --tf-focus-ring-on-dark: #F6F0E5;
   /* Ancho de la barra lateral del escritorio. */
   --tf-side-w: 236px;

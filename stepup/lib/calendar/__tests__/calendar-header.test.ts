@@ -205,5 +205,19 @@ test("móvil: controles de vista y creación comparten fila y la grilla reserva 
   assert.match(toolbar, /justify-between[\s\S]*nav:justify-end/, "en móvil la fila del mes ocupa el ancho; en escritorio va a la derecha");
   // El calendario también mide el área útil en el acceso anclado del teléfono.
   const view = code("components/calendar/calendar-view.tsx");
-  assert.match(view, /100dvh-58px-env\(safe-area-inset-top\)-4\.5rem-env\(safe-area-inset-bottom\)/);
+  // En el teléfono el calendario se ancla EXACTAMENTE entre el encabezado y la barra inferior (variables del shell con sus safe areas): sin página que se desplace, sin superposición y sin hueco.
+  assert.match(view, /fixed inset-x-0 top-\[calc\(var\(--tf-m-header\)\+var\(--tf-safe-top\)\)\] bottom-\[calc\(var\(--tf-m-nav\)\+var\(--tf-safe-bottom\)\)\]/);
+  assert.match(view, /nav:static/, "en escritorio vuelve al flujo normal");
+  const globals = read("app/globals.css");
+  assert.match(globals, /--tf-safe-top: env\(safe-area-inset-top, 0px\)/);
+  assert.match(globals, /--tf-safe-bottom: env\(safe-area-inset-bottom, 0px\)/);
+  assert.match(globals, /--tf-m-header: 60px/);
+  assert.match(globals, /--tf-m-nav: 72px/);
+});
+
+test("el contenedor fijo del calendario móvil queda por encima del encabezado (z-30) y la barra (z-20) para que el detalle de clase (z-50 dentro) no quede tapado", () => {
+  const view = read("components/calendar/calendar-view.tsx");
+  assert.match(view, /data-calendar-page className="fixed [^"]*\bz-40\b/);
+  assert.match(read("components/nav/primary-nav.tsx"), /sticky top-0 z-30/);
+  assert.match(read("components/nav/primary-nav.tsx"), /fixed inset-x-0 bottom-0 z-20/);
 });

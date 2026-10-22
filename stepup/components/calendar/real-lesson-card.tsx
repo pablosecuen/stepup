@@ -3,7 +3,7 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
-import { firstWord, INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, wideMeta } from "@/lib/calendar/card-text";
+import { firstWord, INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, softHyphenateEs, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -96,16 +96,20 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const textColor = colors.textPrimary ?? CARD_TEXT_COLORS.primary;
   const secondaryColor = colors.textSecondary ?? CARD_TEXT_COLORS.secondary;
   const strike = isCancelled ? "line-through" : "none";
-  const inset = cardInsetPx(laneCount);
-  const cardWidth = cardWidthPx(columnWidthPx, laneCount);
-  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
+  // Semana en el teléfono: la tarjeta de la app (esquina de 5 px, franja de color a la izquierda, primera palabra del nombre y la hora). Día usa la fila ancha.
+  const mobileWeek = mobile && !dayRow;
+  const inset = cardInsetPx(laneCount, mobile);
+  const cardWidth = cardWidthPx(columnWidthPx, laneCount, mobile);
+  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth, preferVertical: mobileWeek });
   // Same word-based identity as the native week card; mobile never substitutes two initials.
   const narrowName = mobile && !dayRow ? firstWord(title) : nameForWidth(title, cardWidth);
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
   // Dos líneas de nombre (10,5 px / 12) + la línea de la hora (9–10 px / 12) + el borde: desde 38 px de alto, la primera palabra se lee entera aunque la tarjeta sea angosta.
-  const twoNameLines = mobile && !dayRow && presentation === "stack" && height >= 38 && cardWidth < 84;
+  const twoNameLines = mobileWeek && presentation === "stack" && height >= 38 && cardWidth < 84;
+  // Nombres de 8 letras o más bajan un punto de letra para que entren enteros siempre que se pueda; si aun así no entran, se cortan en sílabas (con guion), nunca en una letra suelta.
+  const nameFontPx = mobileWeek ? (narrowName.length <= 7 ? 10.5 : 9.5) : undefined;
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
-  const borderClass = presentation === "full" ? "border-[1.5px]" : "border";
+  const borderClass = mobileWeek ? "rounded-[5px] border border-l-[3px]" : `rounded-md ${presentation === "full" ? "border-[1.5px]" : "border"}`;
   const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.filter((tag) => tag !== MODALITY_LABELS[item.modality]).join(" · ")}` : ""}`;
   const iconSize = presentation === "full" ? "h-3 w-3" : "h-2.5 w-2.5";
   // En un carril de menos de 36 px las iniciales valen más que el ícono (el grupo y el entrenamiento siguen en el cuadro de información y en el nombre accesible).
@@ -152,7 +156,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-x-0 min-w-0 overflow-hidden rounded-md ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
+        className={`absolute inset-x-0 min-w-0 overflow-hidden ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
         style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border }}
       >
         {presentation === "full" && (
@@ -167,20 +171,21 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
           </span>
         )}
         {presentation === "stack" && (
-          <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${cardWidth < 44 ? "px-0.5" : "px-1"}`}>
-            <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start text-[10.5px] leading-[12px]" : "items-center text-[11px] leading-[13px]"}`} style={{ color: textColor, textDecorationLine: strike }}>
-              {icons}
+          <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${mobileWeek ? "px-[3px]" : cardWidth < 44 ? "px-0.5" : "px-1"}`}>
+            <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start leading-[12px]" : "items-center text-[11px] leading-[13px]"}`} style={{ color: textColor, textDecorationLine: strike, fontSize: twoNameLines ? nameFontPx : undefined }}>
+              {!mobileWeek && icons}
               {twoNameLines ? (
-                // Igual que la tarjeta de semana de la app: la primera palabra en hasta dos líneas (parte la palabra si no entra), nunca recortada a una o dos letras.
-                <span className="min-w-0 flex-1" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
-                  {narrowName}
+                // Como la tarjeta de semana de la app: la primera palabra en hasta dos líneas; si no entra, se parte por sílabas con guion (guiones blandos en español), nunca recortada a una o dos letras ni cortada en medio de una sílaba.
+                <span lang="es" className="min-w-0 flex-1" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", hyphens: "manual", overflowWrap: "break-word" }}>
+                  {softHyphenateEs(narrowName)}
                 </span>
               ) : (
                 <span className="min-w-0 truncate">{narrowName}</span>
               )}
             </span>
-            <span className={`block min-w-0 truncate font-semibold leading-3 ${cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
-              {narrowMeta({ timeLabel, facts: stateFacts })}
+            <span className={`flex min-w-0 items-center gap-0.5 font-semibold leading-3 ${mobileWeek ? "text-[9.5px]" : cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
+              {mobileWeek && icons}
+              <span className="min-w-0 truncate">{narrowMeta({ timeLabel, facts: stateFacts })}</span>
             </span>
           </span>
         )}

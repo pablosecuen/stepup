@@ -60,8 +60,8 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b-[1.5px] border-border bg-background/95 pt-[env(safe-area-inset-top)] nav:hidden">
-        <div className="flex min-h-[58px] items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
+      <header className="sticky top-0 z-30 box-border h-[calc(var(--tf-m-header)+var(--tf-safe-top))] border-b-[1.5px] border-border bg-background pt-[var(--tf-safe-top)] nav:hidden">
+        <div className="flex h-full items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <Logo className="text-textPrimary" />
           <div className="flex items-center gap-1">
             <PrivateLink
@@ -79,7 +79,7 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
 
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-20 border-t-[1.5px] border-borderMid bg-surface pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] nav:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 box-border h-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] border-t-[1.5px] border-borderMid bg-surface pb-[var(--tf-safe-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] nav:hidden"
       >
         <ul className="grid grid-cols-5 px-1 pt-1.5">
           {PRIMARY_NAV_ITEMS.map((item) => {

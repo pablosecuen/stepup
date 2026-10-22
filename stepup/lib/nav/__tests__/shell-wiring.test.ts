@@ -80,8 +80,11 @@ test("objetivos táctiles de 44 px como mínimo (nav, logo, Configuración, Cerr
 });
 
 test("safe areas: arriba (muesca), abajo (barra de inicio) y laterales; viewport-fit=cover sólo en el área privada", () => {
-  assert.match(nav, /pt-\[env\(safe-area-inset-top\)\]/);
-  assert.match(nav, /pb-\[env\(safe-area-inset-bottom\)\]/);
+  // Las safe areas viven en variables (`--tf-safe-top`/`--tf-safe-bottom`, definidas desde `env()` en globals.css) para que el encabezado, la barra inferior y las pantallas que ocupan el espacio entre ambos usen EXACTAMENTE los mismos valores.
+  assert.match(nav, /pt-\[var\(--tf-safe-top\)\]/);
+  assert.match(nav, /pb-\[var\(--tf-safe-bottom\)\]/);
+  assert.match(nav, /h-\[calc\(var\(--tf-m-header\)\+var\(--tf-safe-top\)\)\]/, "alto exacto del encabezado");
+  assert.match(nav, /h-\[calc\(var\(--tf-m-nav\)\+var\(--tf-safe-bottom\)\)\]/, "alto exacto de la barra inferior");
   assert.match(nav, /pl-\[max\(1rem,env\(safe-area-inset-left\)\)\][^"]*pr-\[max\(1rem,env\(safe-area-inset-right\)\)\]/);
   assert.match(nav, /pl-\[env\(safe-area-inset-left\)\] pr-\[env\(safe-area-inset-right\)\]/);
   assert.match(layout, /export const viewport: Viewport = \{ viewportFit: "cover" \}/);

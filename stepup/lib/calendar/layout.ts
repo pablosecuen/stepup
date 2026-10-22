@@ -156,19 +156,24 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
  * Los carriles NUNCA ensanchan la columna del día: cada uno divide el ancho disponible. Lo que sí cambia es cuánto texto entra en
  * la tarjeta (`cardPresentation`): si no cabe, pasa a un modo más compacto en vez de ensanchar la grilla o desbordar.
  */
-export function cardInsetPx(laneCount: number): number {
+export function cardInsetPx(laneCount: number, tight = false): number {
+  // `tight` (teléfono): la columna ya mide ~50 px, así que el margen se reduce a 1 px para que el nombre tenga todo el ancho posible.
+  if (tight) return laneCount <= 2 ? 1 : 0.5;
   return laneCount === 1 ? 4 : laneCount === 2 ? 2 : 1;
 }
 
 /** Ancho real de una tarjeta: su carril dentro de la columna, menos el margen a cada lado. */
-export function cardWidthPx(columnWidthPx: number, laneCount: number): number {
-  return Math.max(0, columnWidthPx / Math.max(1, laneCount) - cardInsetPx(laneCount) * 2);
+export function cardWidthPx(columnWidthPx: number, laneCount: number, tight = false): number {
+  return Math.max(0, columnWidthPx / Math.max(1, laneCount) - cardInsetPx(laneCount, tight) * 2);
 }
 
+/** Ancho de la columna de horas en el teléfono: 34 px (48 px en escritorio; la app original usa 38 y sólo muestra la hora). */
+export const MOBILE_TIME_COLUMN_WIDTH_PX = 34;
+
 /** Ancho de la columna de un día según el ancho útil de la zona de agenda (sin la columna de horas ni los bordes de las columnas). */
-export function dayColumnWidthPx(areaWidthPx: number, dayCount: number): number {
-  const borders = 3 + dayCount; // marco de la zona + borde izquierdo de cada día
-  return Math.max(0, (areaWidthPx - TIME_COLUMN_WIDTH_PX - borders) / Math.max(1, dayCount));
+export function dayColumnWidthPx(areaWidthPx: number, dayCount: number, timeColumnPx: number = TIME_COLUMN_WIDTH_PX, frame = 3): number {
+  const borders = frame + dayCount; // marco de la zona + borde izquierdo de cada día
+  return Math.max(0, (areaWidthPx - timeColumnPx - borders) / Math.max(1, dayCount));
 }
 
 /** ¿La grilla horaria entra con columnas legibles? Si no, se usa la agenda por día (la misma de móvil). */
@@ -200,10 +205,18 @@ export const TITLE_CARD_MIN_WIDTH_PX = 22;
  */
 export const VERTICAL_CARD_MIN_WIDTH_PX = 11;
 export const VERTICAL_CARD_MIN_HEIGHT_PX = 30;
+export const MOBILE_VERTICAL_CARD_MIN_HEIGHT_PX = 22;
 
-export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
+/**
+ * `preferVertical` (semana en el teléfono): el texto girado se usa hasta los 30 px de ancho — una línea de iniciales («I..») identifica menos que la primera palabra completa de
+ * costado — y en escritorio sólo por debajo de los 22 px, donde el puntero ya muestra todo en el cuadro de información.
+ */
+export function cardPresentation(input: { heightPx: number; widthPx: number; preferVertical?: boolean }): CardPresentation {
   const { heightPx, widthPx } = input;
-  if (heightPx >= VERTICAL_CARD_MIN_HEIGHT_PX && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < TITLE_CARD_MIN_WIDTH_PX) return "vertical";
+  const verticalBelow = input.preferVertical ? STACK_CARD_MIN_WIDTH_PX : TITLE_CARD_MIN_WIDTH_PX;
+  // En el teléfono también las clases cortas (30 min ≈ 25 px) llevan el nombre girado: «Delf…» identifica más que «D».
+  const verticalMinHeight = input.preferVertical ? MOBILE_VERTICAL_CARD_MIN_HEIGHT_PX : VERTICAL_CARD_MIN_HEIGHT_PX;
+  if (heightPx >= verticalMinHeight && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < verticalBelow) return "vertical";
   if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
   if (heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX) return "full";
   return heightPx >= STACK_CARD_MIN_HEIGHT_PX && widthPx >= STACK_CARD_MIN_WIDTH_PX ? "stack" : "title";

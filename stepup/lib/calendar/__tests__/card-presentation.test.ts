@@ -67,6 +67,11 @@ test("cardPresentation: cuatro modos según el tamaño real; los umbrales son ex
   assert.equal(cardPresentation({ heightPx: 300, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "vertical", "carril muy angosto (semana en el teléfono): la primera palabra, girada");
   assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "vertical");
   assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX - 0.01, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "block", "bajo para el texto girado");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: 25, preferVertical: true }), "vertical", "teléfono: hasta los 30 px el texto girado vale más que las iniciales");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: 25 }), "title", "escritorio: de 22 a 30 px siguen las iniciales en una línea");
+  assert.equal(cardPresentation({ heightPx: 25, widthPx: 25, preferVertical: true }), "vertical", "teléfono: una clase de 30 min (≈ 25 px) también lleva el nombre girado");
+  assert.equal(cardPresentation({ heightPx: 25, widthPx: 25 }), "title", "escritorio: una clase corta sigue con las iniciales");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: STACK_CARD_MIN_WIDTH_PX, preferVertical: true }), "stack");
   assert.equal(cardPresentation({ heightPx: 300, widthPx: VERTICAL_CARD_MIN_WIDTH_PX - 0.01 }), "block", "más angosto que una línea de texto: sólo el color (el toque abre el detalle)");
   for (const bad of [NaN, -1, 0]) {
     assert.equal(cardPresentation({ heightPx: bad, widthPx: 100 }), "block", String(bad));
@@ -174,7 +179,7 @@ test("cableado de la tarjeta: texto sólo dentro del bloque, líneas truncadas, 
   assert.doesNotMatch(grid, /presentation === "block"/, "el modo bloque no dibuja texto");
   // todo el texto vive dentro del bloque (overflow-hidden), cada línea se trunca y los contenedores pueden encogerse
   const block = grid.slice(grid.indexOf('aria-hidden="true"'));
-  assert.match(block, /overflow-hidden rounded-md/);
+  assert.match(block, /overflow-hidden \$\{borderClass\}/, "el bloque recorta todo lo que no entra (la forma sale de borderClass: teléfono 5 px con franja, escritorio rounded-md)");
   assert.equal((block.match(/truncate/g) ?? []).length >= 4, true, "nombre y datos de cada modo: todos con elipsis");
   assert.equal((block.match(/min-w-0/g) ?? []).length >= 5, true);
   assert.doesNotMatch(block, /overflow-visible|whitespace-nowrap(?! )|\[overflow-wrap/, "sin desbordes visibles");
@@ -201,12 +206,12 @@ test("cableado de la tarjeta: texto sólo dentro del bloque, líneas truncadas, 
   assert.match(gridSource, /pointer-events-none fixed/);
   assert.match(gridSource, /event\.key === "Escape"/);
   assert.match(gridSource, /columnWidthPx=\{columnWidthPx\}/);
-  assert.match(gridSource, /dayColumnWidthPx\(areaWidthPx, dayKeys\.length\)/);
+  assert.match(gridSource, /dayColumnWidthPx\(areaWidthPx, dayKeys\.length, timeColumnPx, isMobile \? 0 : 3\)/, "el ancho de la columna descuenta la columna de horas del teléfono (34 px) o la de escritorio (48 px)");
 });
 
 test("zona de agenda: sin desplazamiento horizontal en ningún modo, la grilla cede el lugar a la agenda por día cuando no entra y Densidad se oculta", () => {
   const grid = code("components/calendar/real-calendar-grid.tsx");
-  assert.match(grid, /overflow-x-hidden rounded-lg/, "ni Compacta ni Media ni Amplia desplazan en horizontal");
+  assert.match(grid, /overflow-x-hidden rounded-none[^`"]* nav:rounded-lg/, "ni Compacta ni Media ni Amplia desplazan en horizontal (en el teléfono la grilla va a ras de los bordes)");
   assert.doesNotMatch(grid, /overflow-x-auto|overflow-x-scroll|minWidth/);
   assert.match(grid, /gridFitsWidth\(areaWidthPx, dayKeys\.length\)/);
   assert.match(grid, /gridFits \? "nav:block" : "nav:hidden"/);

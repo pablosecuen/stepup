@@ -6,6 +6,7 @@ import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurr
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
 import {
   HOURS,
+  MOBILE_TIME_COLUMN_WIDTH_PX,
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
   currentTimeTop,
@@ -99,7 +100,9 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
 
   const gridFits = isMobile || areaWidthPx === null ? true : gridFitsWidth(areaWidthPx, dayKeys.length);
   // Antes de medir (primer dibujo) se supone un ancho razonable para que el texto no «salte» al medir: una columna de semana ronda los 150 px y la vista de un día es ancha.
-  const columnWidthPx = areaWidthPx === null ? (dayKeys.length === 1 ? 640 : 150) : dayColumnWidthPx(areaWidthPx, dayKeys.length);
+  // Teléfono: columna de horas angosta y la grilla a ras de los bordes (sin marco), para que cada día tenga todo el ancho posible (≈ 50 px por día en un iPhone de 390 px).
+  const timeColumnPx = isMobile ? MOBILE_TIME_COLUMN_WIDTH_PX : TIME_COLUMN_WIDTH_PX;
+  const columnWidthPx = areaWidthPx === null ? (dayKeys.length === 1 ? 640 : isMobile ? 50 : 150) : dayColumnWidthPx(areaWidthPx, dayKeys.length, timeColumnPx, isMobile ? 0 : 3);
 
   useEffect(() => {
     onGridFitChange?.(gridFits);
@@ -132,7 +135,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta) y cada carril divide el
   // ancho disponible: los carriles NUNCA ensanchan la columna ni la grilla; la tarjeta pasa a un modo más compacto si no le cabe el texto.
   const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [], hourHeightPx)]));
-  const gridTemplateColumns = `${TIME_COLUMN_WIDTH_PX}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
+  const gridTemplateColumns = `${timeColumnPx}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
   const nowMs = (now ?? new Date()).getTime();
 
   const stateOf = (item: CalendarViewItem) => ({
@@ -149,7 +152,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
           ref={scrollerRef}
           data-calendar-scroller
           data-scrolls={scrollsVertically ? "true" : "false"}
-          className={`absolute inset-x-0 top-0 max-h-full overflow-x-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
+          className={`absolute inset-x-0 top-0 max-h-full overflow-x-hidden rounded-none border-x-0 border-y-[1.5px] border-border bg-surface shadow-none nav:rounded-lg nav:border-[1.5px] nav:shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
         >
           <div>
             <div ref={headerRef} data-calendar-days-header className="sticky top-0 z-20 grid border-b-[1.5px] border-border bg-surface" style={{ gridTemplateColumns }}>
@@ -157,12 +160,23 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
               {dayKeys.map((dayKey) => {
                 const today = todayKey === dayKey;
                 return (
-                  <div key={dayKey} className={`flex flex-col items-center gap-0.5 py-1.5 text-center ${today ? "bg-accentSoft" : ""}`}>
-                    {isWeek && <span className={`text-[10px] font-bold nav:text-label ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
-                    <span className={`font-display text-[22px] font-semibold leading-none tracking-tight ${today ? "text-accentDark" : "text-textPrimary"}`}>
-                      {dayHrefs?.[dayKey] ? <><PrivateLink href={dayHrefs[dayKey]} aria-label={`Ver día ${formatCivilDayLabelShort(dayKey)}`} className="inline-flex min-h-11 min-w-8 items-center justify-center nav:hidden">{dayOfMonth(dayKey)}</PrivateLink><span className="hidden nav:inline">{dayOfMonth(dayKey)}</span></> : dayOfMonth(dayKey)}
+                  <div key={dayKey} className={`relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1 text-center nav:min-h-0 nav:justify-start nav:py-1.5 ${today ? "bg-accentSoft" : ""}`}>
+                    {isWeek && <span className={`text-[9.5px] font-bold leading-3 nav:text-label ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
+                    <span className={`text-[16px] font-bold leading-[18px] nav:font-display nav:text-[22px] nav:font-semibold nav:leading-none nav:tracking-tight ${today ? "text-accentDark" : "text-textPrimary"}`}>
+                      {dayOfMonth(dayKey)}
                       {today && <span className="sr-only"> (hoy)</span>}
                     </span>
+                    {/* Teléfono: cuántas clases tiene el día (como la app) y toda la cabecera del día es el enlace a su vista Día (sin agrandarla). */}
+                    {isMobile && (positionedByDay.get(dayKey)?.length ?? 0) > 0 && (
+                      <span aria-hidden className="absolute right-0.5 top-0.5 inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-paperDeep px-0.5 text-[9px] font-bold leading-none text-textSecondary">
+                        {positionedByDay.get(dayKey)?.length}
+                      </span>
+                    )}
+                    {dayHrefs?.[dayKey] && (
+                      <PrivateLink href={dayHrefs[dayKey]} aria-label={`Ver día ${formatCivilDayLabelShort(dayKey)}${(positionedByDay.get(dayKey)?.length ?? 0) > 0 ? `, ${positionedByDay.get(dayKey)?.length} clases` : ""}`} className="absolute inset-0 z-10 min-h-11 nav:hidden">
+                        <span className="sr-only">{formatCivilDayLabelShort(dayKey)}</span>
+                      </PrivateLink>
+                    )}
                   </div>
                 );
               })}
@@ -173,7 +187,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                 {HOURS.map((hour, index) => (
                   <div key={hour} className="relative" style={{ height: hourHeightPx }}>
                     {/* La primera hora va adentro de su celda: arriba la taparía el encabezado fijo de los días. */}
-                    <span className={`absolute right-1.5 text-[11px] font-medium text-textMuted tf-num ${index === 0 ? "top-0.5" : "-top-2"}`}>{String(hour).padStart(2, "0")}:00</span>
+                    <span className={`absolute right-1 text-[10px] font-medium text-textMuted tf-num nav:right-1.5 nav:text-[11px] ${index === 0 ? "top-0.5" : "-top-2"}`}>{String(hour).padStart(2, "0")}:00</span>
                   </div>
                 ))}
               </div>

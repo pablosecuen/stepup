@@ -58,8 +58,8 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
   }
 
   return (
-    <div className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 nav:grid-cols-[1fr_auto_1fr] nav:gap-4">
+    <div className="mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 nav:grid-cols-[1fr_auto_1fr] nav:gap-4 nav:px-0">
         <div className="hidden nav:block nav:justify-self-start">
           {gridFits && <CalendarDensityPicker value={density} onChange={chooseDensity} />}
         </div>
@@ -75,7 +75,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
       </div>
 
       {visibleCalendarItems(items).length === 0 && (
-        <div className="mt-3">
+        <div className="mt-3 px-3 nav:px-0">
           <Notice tone="info">
             {view === "week" ? "No hay clases esta semana." : "No hay clases este día."}{" "}
             <PrivateLink href={newClassHref} className={linkClass()}>
@@ -85,7 +85,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
         </div>
       )}
 
-      <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-3 flex min-h-0 flex-1 flex-col nav:mt-2">
+      <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
         <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} dayHrefs={dayHrefs} />
       </EnterOnChange>
     </div>
