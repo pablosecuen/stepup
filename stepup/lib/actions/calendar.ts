@@ -31,6 +31,11 @@ import { actionErrorMessage } from "@/lib/errors/action-error";
 
 export interface FormState {
   error?: string;
+  /**
+   * El error es un choque de horario que la profesora puede aceptar a propósito (`allowOverlap`): la pantalla ofrece «Guardar igual». Así dos series
+   * pueden intercambiar horarios en dos pasos (cada paso avisa) en vez de quedar bloqueadas una contra la otra.
+   */
+  conflict?: boolean;
   values?: NewLessonFormValues;
   /**
    * Señal de creación canónica (clase única / serie): el servidor confirma que la
@@ -527,8 +532,12 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
 
     // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
     // Se valida ANTES de guardar; si choca no se escribe nada.
-    const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, effectiveDate, todayDate, weeks, participantIds });
-    if (conflictMessage) return { error: conflictMessage };
+    // La profesora puede aceptar el choque a propósito (`allowOverlap`, tras ver el aviso): nunca queda un conflicto en silencio.
+    const allowOverlap = readString(formData, "allowOverlap") === "true";
+    if (!allowOverlap) {
+      const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, effectiveDate, todayDate, weeks, participantIds });
+      if (conflictMessage) return { error: conflictMessage, conflict: true };
+    }
 
     await splitRecurrenceThisAndFuture(ctx, {
       originalRecurrenceId,

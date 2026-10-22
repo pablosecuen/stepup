@@ -38,7 +38,7 @@ test("mover una serie a una hora ya ocupada por otra: se informan los choques (s
   assert.equal(conflicts[0].start, "2026-10-23T22:00:00.000Z");
   const text = describeFutureConflicts(conflicts, BA);
   assert.match(text, /viernes, 23 de octubre 19:00: se superpone con Alumna B/);
-  assert.match(text, /No se guardó nada/);
+  assert.match(text, /Todavía no se guardó nada/);
   assert.match(text, /y \d+ más/, "muestra sólo las primeras 5");
 });
 

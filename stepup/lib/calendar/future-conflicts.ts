@@ -71,5 +71,5 @@ export function describeFutureConflicts(conflicts: readonly FutureRecurrenceConf
     return `${when}: bloqueado en tu disponibilidad (${conflict.detail})`;
   });
   const more = conflicts.length > shown.length ? ` (y ${conflicts.length - shown.length} más)` : "";
-  return `El nuevo horario choca en ${conflicts.length} clase${conflicts.length === 1 ? "" : "s"}${more}: ${shown.join("; ")}. No se guardó nada: elegí otro horario o cambiá primero la otra clase.`;
+  return `El nuevo horario choca en ${conflicts.length} clase${conflicts.length === 1 ? "" : "s"}${more}: ${shown.join("; ")}. Todavía no se guardó nada.`;
 }

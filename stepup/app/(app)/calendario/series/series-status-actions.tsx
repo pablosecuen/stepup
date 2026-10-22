@@ -6,6 +6,7 @@ import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipan
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 import { Field, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
 import { StudentPicker } from "@/components/students/student-picker";
 import { WeekdayScheduleEditor, defaultWeekCycles, resizeWeekCycles, weekCyclesToWeeksJson, type WeekRows } from "@/components/calendar/weekday-schedule-editor";
@@ -37,6 +38,8 @@ export function SeriesStatusActions({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Aviso de choque de horario del nuevo patrón: se puede cambiar el horario o guardar igual a propósito.
+  const [overlapWarning, setOverlapWarning] = useState<string | null>(null);
   const [editingFuture, setEditingFuture] = useState(false);
   const [editingParticipants, setEditingParticipants] = useState(false);
   const initialCycle = (weeks.length > 0 ? weeks.length : 1) as 1 | 2 | 3 | 4;
@@ -107,15 +110,18 @@ export function SeriesStatusActions({
     });
   }
 
-  function submitEditFuture(formData: FormData) {
+  function submitEditFuture(formData: FormData, allowOverlap = false) {
     setError(null);
+    setOverlapWarning(null);
+    if (allowOverlap) formData.set("allowOverlap", "true");
     formData.set("originalRecurrenceId", ruleId);
     formData.set("weeksJson", weekCyclesToWeeksJson(weekCycles));
     participantIds.forEach((id) => formData.append("participantIds", id));
     startTransition(async () => {
       const result = await guardNetwork(() => editFutureRecurrenceAction({}, formData));
       if (result.error) {
-        setError(result.error);
+        if (result.conflict) setOverlapWarning(result.error);
+        else setError(result.error);
         return;
       }
       setEditingFuture(false);
@@ -210,6 +216,27 @@ export function SeriesStatusActions({
           </p>
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
           <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
+          {overlapWarning && (
+            <Notice tone="warn" title="El nuevo horario se superpone con otra clase">
+              <p className="[overflow-wrap:anywhere]">{overlapWarning}</p>
+              <p className="mt-1.5">Si estás intercambiando horarios con otra serie, guardalo igual y después cambiá la otra: hasta entonces las dos clases se verán superpuestas en el Calendario.</p>
+              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={(event) => {
+                    const form = (event.currentTarget as HTMLElement).closest("form");
+                    if (form) submitEditFuture(new FormData(form), true);
+                  }}
+                >
+                  Guardar igual (queda superpuesto)
+                </Button>
+                <Button variant="ghost" onClick={() => setOverlapWarning(null)}>
+                  Cambiar el horario
+                </Button>
+              </div>
+            </Notice>
+          )}
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <Button type="submit" variant="primary" busy={pending}>
               {pending ? "Guardando..." : "Confirmar desde esa fecha"}

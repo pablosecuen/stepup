@@ -102,6 +102,11 @@ test("cableado: la fecha efectiva de los formularios de series arranca en HOY (h
   const actions = read("lib/actions/calendar.ts");
   assert.match(actions, /checkFuturePatternConflicts\(ctx, \{ original: currentRule/);
   assert.match(actions, /listPredecessorsRunningFrom\(/);
+  // Un intercambio de horarios entre dos series no puede quedar bloqueado una contra la otra: el choque se avisa y se puede aceptar a propósito.
+  assert.match(actions, /readString\(formData, "allowOverlap"\) === "true"/);
+  assert.match(actions, /return \{ error: conflictMessage, conflict: true \}/);
+  assert.match(form, /Guardar igual \(queda superpuesto\)/);
+  assert.match(form, /formData\.set\("allowOverlap", "true"\)/);
   // La validación corre ANTES de escribir.
   assert.ok(actions.indexOf("checkFuturePatternConflicts(ctx, { original: currentRule") < actions.indexOf("await splitRecurrenceThisAndFuture(ctx"), "valida antes de guardar");
 });
