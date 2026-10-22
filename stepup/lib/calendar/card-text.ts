@@ -78,9 +78,9 @@ export function wideMeta(input: { timeLabel: string; groupSize: number | null; t
  * o más de alto lleva las dos primeras palabras («Juan Pablo», «Grupo B2»), cada una en su línea si no entran juntas. El ancho que necesita el carril sale de la palabra más larga que se va a ver.
  */
 export const TWO_NAME_LINES_MIN_HEIGHT_PX = 38;
-/** Piso y techo del ancho de un carril (px): por debajo de 40 no entra ni una palabra corta con su margen; por encima de 92 el nombre se acorta con «…» en vez de ensanchar más la columna. */
+/** Piso y techo del ancho de un carril (px): por debajo de 40 no entra ni una palabra corta con su margen; por encima de 76 el nombre se acorta con «…» en vez de ensanchar más la columna. */
 export const LANE_MIN_PX = 40;
-export const LANE_MAX_PX = 92;
+export const LANE_MAX_PX = 76;
 /** Lo que gasta una tarjeta de la semana del teléfono fuera del texto: franja izquierda de 3 px, borde derecho de 1 px y 3 px de margen a cada lado, más 2 px de holgura. */
 const CARD_CHROME_PX = 12;
 
@@ -111,53 +111,10 @@ export function estimateBoldTextWidthPx(text: string, fontPx: number): number {
   return em * fontPx;
 }
 
-/**
- * Tarjeta de UNA línea (clases de menos de 27 px de alto: las cortas): además del nombre lleva, adelante, la hora de inicio o el estado importante («Cancel.», «Reprog.», «Reemp.») cuando el carril
- * es lo bastante ancho. En el teléfono la columna se ensancha para que entre; en escritorio decide el ancho que ya tiene el carril. Mismo cálculo en la grilla y en la tarjeta.
- */
-export const SINGLE_LINE_BELOW_HEIGHT_PX = 27;
-/** Letra de la hora o del estado en la línea de un solo renglón. */
-export const INLINE_META_FONT_PX = 9.5;
-const INLINE_META_GAP_PX = 4;
-/** Techo del ancho de un carril de una línea con hora o estado: más que eso el nombre vale más que el dato y el dato queda en el eje de horas y en el cuadro de información. */
-export const LANE_MAX_WITH_META_PX = 124;
-/** Ícono de grupo/entrenamiento de una tarjeta de una línea: 10 px de ícono y 4 de separación. */
-export const SINGLE_LINE_ICON_PX = 14;
-
-/** Ancho estimado del dato (hora o estado): los dígitos miden lo mismo entre sí (cifras tabulares), así que «11:30» no es más angosto que «09:00». */
-function estimateMetaWidthPx(meta: string, fontPx: number): number {
-  let em = 0;
-  for (const character of Array.from(meta)) em += /[0-9]/.test(character) ? 0.64 : character === ":" ? 0.32 : estimateBoldTextWidthPx(character, 1);
-  return em * fontPx;
-}
-
-/** Ancho (px) que necesita una línea «dato + nombre» con la letra dada, incluidos los márgenes de la tarjeta. */
-export function inlineMetaNeedPx(nameWords: readonly string[], nameFontPx: number, meta: string, chromePx: number = CARD_CHROME_PX): number {
-  const widest = Math.max(0, ...nameWords.map((word) => estimateBoldTextWidthPx(word, nameFontPx)));
-  return Math.ceil(estimateMetaWidthPx(meta, INLINE_META_FONT_PX) + INLINE_META_GAP_PX + widest + chromePx);
-}
-
-/** Ancho mínimo (px) del carril que muestra este nombre sin cortar ninguna palabra y, en las tarjetas de una línea, con su hora o estado si entran dentro de `LANE_MAX_WITH_META_PX`. */
-export function mobileLaneNeedPx(title: string, heightPx: number, meta?: string, iconPx = 0): number {
+/** Ancho mínimo (px) del carril que muestra este nombre sin cortar ninguna palabra. */
+export function mobileLaneNeedPx(title: string, heightPx: number): number {
   const shown = mobileNameWords(title, heightPx);
   const fontPx = mobileNameFontPx(shown);
   const widest = Math.max(0, ...shown.map((word) => estimateBoldTextWidthPx(word, fontPx)));
-  // `iconPx`: el ícono de grupo/entrenamiento va delante del nombre sólo en las tarjetas de una línea.
-  const singleLine = heightPx < SINGLE_LINE_BELOW_HEIGHT_PX;
-  const extra = singleLine ? iconPx : 0;
-  const nameOnly = Math.min(LANE_MAX_PX, Math.max(LANE_MIN_PX, Math.ceil(widest + CARD_CHROME_PX + extra)));
-  if (!meta || !singleLine) return nameOnly;
-  const withMeta = inlineMetaNeedPx(shown, fontPx, meta, CARD_CHROME_PX + extra);
-  return withMeta <= LANE_MAX_WITH_META_PX ? Math.max(nameOnly, withMeta) : nameOnly;
-}
-/** Escritorio: lo que gastan los márgenes de una tarjeta (borde, relleno y separación) y el ícono de grupo/entrenamiento, que va delante del nombre en los carriles que lo permiten. */
-const DESKTOP_CARD_CHROME_PX = 18;
-const DESKTOP_ICON_PX = 14;
-const DESKTOP_NAME_FONT_PX = 11;
-export const DESKTOP_LANE_MAX_PX = 150;
-
-/** Ancho mínimo (px) de un carril de escritorio para que se lea al menos la primera palabra del nombre entera (en los carriles angostos la tarjeta muestra la primera palabra). */
-export function desktopLaneNeedPx(title: string, hasIcon: boolean): number {
-  const word = firstWord(title);
-  return Math.min(DESKTOP_LANE_MAX_PX, Math.ceil(estimateBoldTextWidthPx(word, DESKTOP_NAME_FONT_PX) + DESKTOP_CARD_CHROME_PX + (hasIcon ? DESKTOP_ICON_PX : 0)));
+  return Math.min(LANE_MAX_PX, Math.max(LANE_MIN_PX, Math.ceil(widest + CARD_CHROME_PX)));
 }

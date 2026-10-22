@@ -92,33 +92,3 @@ export function moveActiveDensity(index: number, key: DensityPickerKey, count: n
   if (key === "End") return count - 1;
   return key === "ArrowDown" ? (index + 1) % count : (index - 1 + count) % count;
 }
-
-/**
- * Clases cortas: una clase de menos de 30 minutos tiene que poder LEERSE sin que la profesora cambie de densidad ni dependa del cuadro de información. Su bloque conserva el alto EXACTO de la duración
- * (nunca se estira ni pisa a otra), así que lo que se ajusta es la escala vertical de ESA semana: se sube lo justo para que la clase más corta llegue a una línea de texto de 11 px (15 px de alto más la
- * separación chica de 2 px). La jornada deja de entrar sin desplazarse sólo en esas semanas; el resto de las semanas conserva la escala de siempre.
- */
-export const SHORT_CLASS_READABLE_BLOCK_PX = 15;
-const SHORT_CLASS_GAP_PX = 2;
-/** Techo de la escala automática (la de «Amplia»): una clase de menos de ~13 minutos queda con letra chica (`micro`) en vez de agrandar más toda la jornada. */
-export const SHORT_CLASS_MAX_HOUR_HEIGHT_PX = 80;
-/** Por debajo de esta duración (minutos) la escala no se agranda: son clases de transición o errores de carga, no se justifica ampliar la jornada entera. */
-export const SHORT_CLASS_MIN_MINUTES_FOR_SCALE = 10;
-
-/** La duración (en minutos) de la clase más corta de menos de 30 minutos, o `null` si no hay ninguna. */
-export function shortestShortClassMinutes(items: readonly { start: string; end: string }[]): number | null {
-  let shortest: number | null = null;
-  for (const item of items) {
-    const minutes = (new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000;
-    if (!(minutes >= SHORT_CLASS_MIN_MINUTES_FOR_SCALE) || minutes >= 30) continue;
-    if (shortest === null || minutes < shortest) shortest = minutes;
-  }
-  return shortest;
-}
-
-/** Alto por hora mínimo para que una clase de esa duración muestre su nombre en una línea legible; `null` si no hay clases cortas. */
-export function hourHeightForShortClasses(shortestMinutes: number | null): number | null {
-  if (shortestMinutes === null) return null;
-  const needed = ((SHORT_CLASS_READABLE_BLOCK_PX + SHORT_CLASS_GAP_PX) * 60) / shortestMinutes;
-  return Math.min(SHORT_CLASS_MAX_HOUR_HEIGHT_PX, Math.ceil(needed * 4) / 4);
-}

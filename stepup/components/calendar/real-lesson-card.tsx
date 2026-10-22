@@ -3,7 +3,7 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/calendar/layout";
-import { estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
+import { estimateBoldTextWidthPx, firstWord, INLINE_TIME_MIN_WIDTH_PX, mobileNameFontPx, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -100,9 +100,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const mobileWeek = mobile && !dayRow;
   const inset = cardInsetPx(laneCount, mobile);
   const cardWidth = cardWidthPx(columnWidthPx, laneCount, mobile);
-  // Semana en el teléfono: el ancho de cada columna se calcula para la tarjeta de dos líneas (`stack`, letra de 10,5/9,5 px); la completa (letra de 12 px) no entra en ese ancho, así que no se usa.
-  const sizedPresentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
-  const presentation = mobile && !dayRow && sizedPresentation === "full" ? "stack" : sizedPresentation;
+  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
   // Semana en el teléfono: palabras enteras en texto horizontal (la columna del día se ensancha para que entren, `mobileWeekColumns`); nunca iniciales, texto girado ni palabras partidas.
   const shownWords = mobileWeek ? mobileNameWords(title, height) : [];
   const narrowName = mobileWeek ? shownWords.join(" ") : nameForWidth(title, cardWidth);
@@ -113,11 +111,6 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const nameFontPx = mobileWeek ? mobileNameFontPx(shownWords) : undefined;
   // Clase de ~15 minutos (`micro`): una línea de la altura del bloque; en el teléfono nunca más grande que la letra de la semana.
   const microFont = Math.min(microFontPx(height), nameFontPx ?? 10);
-  // Tarjetas de UNA línea (clases cortas): la hora de inicio o el estado importante van ANTES del nombre cuando entran con la palabra completa (el teléfono ensancha la columna para eso: `mobileLaneNeedPx`).
-  const singleLineMeta = narrowMeta({ timeLabel, facts: stateFacts });
-  // Escritorio: el ícono de grupo/entrenamiento (si el carril lo muestra) también gasta ancho delante del nombre.
-  const inlineNeedPx = inlineMetaNeedPx(mobileWeek ? shownWords : [firstWord(narrowName)], mobileWeek ? (nameFontPx ?? 10.5) : 11, singleLineMeta, (mobileWeek ? 12 : 16) + ((groupSize || isTraining) && (mobileWeek || cardWidth >= 36) ? SINGLE_LINE_ICON_PX : 0));
-  const showInlineMeta = mobileWeek ? cardWidth + 2 >= inlineNeedPx && inlineNeedPx <= LANE_MAX_WITH_META_PX : cardWidth >= inlineNeedPx;
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
   // La de ~15 minutos (`micro`) dibuja su borde hacia adentro con una sombra: así el borde no gasta alto y toda la altura exacta del bloque es de la letra.
   const micro = presentation === "micro";
@@ -205,10 +198,10 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         {presentation === "title" && (
           <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "px-[3px]" : "px-1.5"}`}>
             {/* Teléfono: el ícono de grupo/entrenamiento sólo si sobra lugar después del nombre entero (el nombre manda; el dato sigue en el cuadro de información y en el nombre accesible). */}
-            {(!mobileWeek || cardWidth + 2 >= (showInlineMeta ? inlineNeedPx : estimateBoldTextWidthPx(narrowName, nameFontPx ?? 10.5) + 12 + SINGLE_LINE_ICON_PX)) && icons}
-            {showInlineMeta && (
-              <span className="shrink-0 text-[10.5px] font-semibold leading-[13px]" style={{ color: secondaryColor, textDecorationLine: strike, fontSize: mobileWeek ? INLINE_META_FONT_PX : undefined }}>
-                {singleLineMeta}
+            {(!mobileWeek || cardWidth >= estimateBoldTextWidthPx(narrowName, nameFontPx ?? 10.5) + 22) && icons}
+            {cardWidth >= INLINE_TIME_MIN_WIDTH_PX && (
+              <span className="shrink-0 text-[10.5px] font-semibold leading-[13px]" style={{ color: secondaryColor, textDecorationLine: strike }}>
+                {narrowMeta({ timeLabel, facts: stateFacts })}
               </span>
             )}
             <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike, fontSize: nameFontPx }}>
@@ -219,9 +212,9 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         {presentation === "micro" && (
           // Clase de ~15 minutos: el bloque conserva su alto exacto y el nombre va en UNA línea de letra chica (del alto del bloque menos los bordes); la hora se suma si el carril es ancho.
           <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "pl-1.5 pr-[3px]" : "px-1"}`} style={{ color: textColor, textDecorationLine: strike }}>
-            {showInlineMeta && (
-              <span className="shrink-0 font-semibold leading-none" style={{ color: secondaryColor, fontSize: Math.min(microFont, INLINE_META_FONT_PX) }}>
-                {singleLineMeta}
+            {cardWidth >= INLINE_TIME_MIN_WIDTH_PX && (
+              <span className="shrink-0 font-semibold leading-none" style={{ color: secondaryColor, fontSize: microFont }}>
+                {narrowMeta({ timeLabel, facts: stateFacts })}
               </span>
             )}
             <span className="min-w-0 truncate font-bold leading-none" style={{ fontSize: microFont }}>

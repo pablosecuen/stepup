@@ -14,14 +14,12 @@ import {
   gridFitsWidth,
   groupItemsByDayKey,
   layoutDayItems,
-  desktopWeekColumns,
   mobileWeekColumns,
 } from "@/lib/calendar/layout";
-import { compactStateTag, desktopLaneNeedPx, mobileLaneNeedPx, narrowMeta, SINGLE_LINE_ICON_PX } from "@/lib/calendar/card-text";
-import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
+import { mobileLaneNeedPx } from "@/lib/calendar/card-text";
 import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
-import { COMPACT_INITIAL_HOUR_HEIGHT_PX, fitHourHeight, hourHeightFor, hourHeightForShortClasses, shortestShortClassMinutes, type CalendarDensityKey, type HourFit } from "@/lib/calendar/density";
+import { COMPACT_INITIAL_HOUR_HEIGHT_PX, fitHourHeight, hourHeightFor, type CalendarDensityKey, type HourFit } from "@/lib/calendar/density";
 import { lessonTitle, RealLessonAgendaRow, RealLessonCard, type CardTip } from "./real-lesson-card";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 import PrivateLink from "@/components/nav/private-link";
@@ -123,16 +121,12 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   }, [tip]);
 
   const fixedHourHeight = hourHeightFor(density);
-  const visible = visibleCalendarItems(items);
-  const baseHourHeightPx = isMobile ? fit?.hourHeightPx ?? (dayKeys.length > 1 ? 50 : 34)
+  const hourHeightPx = isMobile ? fit?.hourHeightPx ?? (dayKeys.length > 1 ? 50 : 34)
     : fixedHourHeight ?? fit?.hourHeightPx ?? COMPACT_INITIAL_HOUR_HEIGHT_PX;
-  // Clases de menos de 30 minutos: la escala de la semana sube lo justo para que la más corta muestre su nombre en una línea legible (su bloque sigue midiendo la duración exacta). Sólo en el teléfono y
-  // en Compacta (Media y Amplia ya tienen su escala fija); en el resto de las semanas la escala es la de siempre.
-  const shortScalePx = isMobile || fixedHourHeight === null ? hourHeightForShortClasses(shortestShortClassMinutes(visible)) : null;
-  const scaledForShortClasses = shortScalePx !== null && shortScalePx > baseHourHeightPx;
-  const hourHeightPx = scaledForShortClasses ? shortScalePx : baseHourHeightPx;
-  // Media y Amplia se desplazan dentro de la zona; Compacta sólo si ni el piso de legibilidad entra (o si la semana pidió una escala mayor por sus clases cortas).
-  const scrollsVertically = isMobile || fixedHourHeight !== null || fit?.overflows === true || scaledForShortClasses;
+  // Media y Amplia se desplazan dentro de la zona; Compacta sólo si ni el piso de legibilidad entra.
+  const scrollsVertically = isMobile || fixedHourHeight !== null || fit?.overflows === true;
+
+  const visible = visibleCalendarItems(items);
   const isWeek = dayKeys.length > 1;
   const hourGridlinesStyle = { backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${hourHeightPx}px` };
 
@@ -143,20 +137,6 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta) y cada carril divide el
   // ancho disponible: los carriles NUNCA ensanchan la columna ni la grilla; la tarjeta pasa a un modo más compacto si no le cabe el texto.
   const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [], hourHeightPx)]));
-  const nowMs = (now ?? new Date()).getTime();
-  const stateOf = (item: CalendarViewItem) => ({
-    isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,
-    isActiveReplacement: isActiveReplacement(item, items),
-    isInProgress: now !== null && new Date(item.start).getTime() <= nowMs && nowMs < new Date(item.end).getTime(),
-  });
-
-  // Dato que se pide ANTES del nombre en una tarjeta de una línea: en un carril solo, la hora o el estado; en carriles compartidos sólo el ESTADO («Cancel.», «Reprog.», «Reemp.»), porque repetir la hora en cada
-  // carril ensancharía la semana entera (la hora de clases simultáneas se lee en el eje y, si el carril alcanza, en la propia tarjeta).
-  const laneMetaFor = (p: { item: CalendarViewItem; laneCount: number }) => {
-    const facts = { status: p.item.status, ...stateOf(p.item) };
-    const tag = compactStateTag(facts, true);
-    return tag ?? (p.laneCount === 1 ? narrowMeta({ timeLabel: instantTimeLabel(p.item.start), facts }) : undefined);
-  };
   // Semana en el teléfono: cada día ensancha su columna lo que necesitan sus carriles para escribir los nombres sin girarlos ni cortarlos; si la suma pasa del ancho de la pantalla, la grilla se desplaza
   // hacia los costados (la columna de horas y el encabezado de los días quedan fijos). Un día sin clases simultáneas conserva el ancho común.
   const mobileColumns =
@@ -164,22 +144,12 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
       ? mobileWeekColumns({
           areaWidthPx,
           timeColumnPx,
-          needPx: dayKeys.map((dayKey) => Math.max(0, ...(positionedByDay.get(dayKey) ?? []).map((p) => p.laneCount * mobileLaneNeedPx(lessonTitle(p.item), p.height, laneMetaFor(p), p.item.participantIds.length > 1 || p.item.activityKind === "training" ? SINGLE_LINE_ICON_PX : 0)))),
+          needPx: dayKeys.map((dayKey) => Math.max(0, ...(positionedByDay.get(dayKey) ?? []).map((p) => p.laneCount * mobileLaneNeedPx(lessonTitle(p.item), p.height)))),
         })
       : null;
-  // Semana en escritorio: el día con carriles apretados toma el ancho que le falta de los demás días (`desktopWeekColumns`); sólo si ni así alcanza, la grilla se desplaza hacia los costados.
-  const desktopColumns =
-    !isMobile && isWeek && gridFits && areaWidthPx !== null
-      ? desktopWeekColumns({
-          areaWidthPx,
-          timeColumnPx,
-          needPx: dayKeys.map((dayKey) => Math.max(0, ...(positionedByDay.get(dayKey) ?? []).filter((p) => p.laneCount > 1).map((p) => p.laneCount * desktopLaneNeedPx(lessonTitle(p.item), p.item.participantIds.length > 1 || p.item.activityKind === "training")))),
-        })
-      : null;
-  const customColumns = (mobileColumns?.custom ? mobileColumns : null) ?? (desktopColumns?.custom ? desktopColumns : null);
-  const expandedColumns = (mobileColumns?.expanded ? mobileColumns : null) ?? (desktopColumns?.expanded ? desktopColumns : null);
-  // Con la grilla desplazable los días miden px; si sólo se reparten el ancho entre sí, fr proporcionales (llenan la zona sin sobrar un píxel).
-  const gridTemplateColumns = customColumns ? `${timeColumnPx}px ${customColumns.trackPx.map((px) => (expandedColumns ? `${px}px` : `minmax(0, ${px}fr)`)).join(" ")}` : `${timeColumnPx}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
+  const expandedColumns = mobileColumns?.expanded ? mobileColumns : null;
+  const gridTemplateColumns = expandedColumns ? `${timeColumnPx}px ${expandedColumns.trackPx.map((px) => `${px}px`).join(" ")}` : `${timeColumnPx}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
+  const nowMs = (now ?? new Date()).getTime();
   const todayIndex = todayKey === null ? -1 : dayKeys.indexOf(todayKey);
 
   // Con la grilla ensanchada, al abrir una semana el día de hoy queda a la vista (si hoy no está en esa semana, se empieza en el primer día, siempre igual). Sólo se reposiciona al CAMBIAR
@@ -201,13 +171,11 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
     else scroller.scrollLeft = Math.min(left, right - visibleWidth + 8);
   }, [dayKeys[0], isExpanded, todayIndex, timeColumnPx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Con la escala ampliada por clases cortas la jornada se desplaza: al abrir una semana (o cambiar de día) la zona queda en la primera clase, media hora antes, y no en las 08:00 vacías.
-  const firstClassTopPx = Math.min(Infinity, ...dayKeys.flatMap((dayKey) => (positionedByDay.get(dayKey) ?? []).map((p) => p.top)));
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller || !scaledForShortClasses) return;
-    scroller.scrollTop = Number.isFinite(firstClassTopPx) ? Math.max(0, firstClassTopPx - hourHeightPx / 2) : 0;
-  }, [dayKeys[0], dayKeys.length, scaledForShortClasses]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stateOf = (item: CalendarViewItem) => ({
+    isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,
+    isActiveReplacement: isActiveReplacement(item, items),
+    isInProgress: now !== null && new Date(item.start).getTime() <= nowMs && nowMs < new Date(item.end).getTime(),
+  });
 
   return (
     <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
@@ -260,7 +228,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
               {dayKeys.map((dayKey, dayIndex) => {
                 const today = todayKey === dayKey;
                 const positioned = positionedByDay.get(dayKey) ?? [];
-                const dayColumnPx = customColumns ? customColumns.trackPx[dayIndex] - 1 : columnWidthPx;
+                const dayColumnPx = expandedColumns ? expandedColumns.trackPx[dayIndex] - 1 : columnWidthPx;
 
                 return (
                   <div key={dayKey} className={`relative z-0 min-w-0 border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
