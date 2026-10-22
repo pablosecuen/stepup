@@ -16,11 +16,15 @@ import {
   layoutDayItems,
   mobileWeekColumns,
 } from "@/lib/calendar/layout";
-import { mobileLaneNeedPx } from "@/lib/calendar/card-text";
+import { compactStateTag, mobileLaneNeedPx, narrowMeta, SINGLE_LINE_ICON_PX } from "@/lib/calendar/card-text";
+import { planShortLabels, shortLabelsNeedPx, SHORT_BAR_MAX_HEIGHT_PX, type DayLabelPlan, type LabelSource } from "@/lib/calendar/short-labels";
+import { CARD_TEXT_COLORS, resolveLessonColors } from "@/lib/calendar-theme";
+import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
 import { COMPACT_INITIAL_HOUR_HEIGHT_PX, fitHourHeight, hourHeightFor, type CalendarDensityKey, type HourFit } from "@/lib/calendar/density";
-import { lessonTitle, RealLessonAgendaRow, RealLessonCard, type CardTip } from "./real-lesson-card";
+import { ariaLabelOf, lessonTitle, RealLessonAgendaRow, RealLessonCard, type CardTip } from "./real-lesson-card";
+import { ShortBar, ShortLabel } from "./real-short-label";
 import { RealLessonDetailModal } from "./real-lesson-detail-modal";
 import PrivateLink from "@/components/nav/private-link";
 import { mobileCalendarHourFit } from "@/lib/calendar/mobile-density";
@@ -34,6 +38,8 @@ interface RealCalendarGridProps {
   /** Clase cuyo diálogo se abre directo en «Reprogramar» (resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
   dayHrefs?: Record<string, string>;
+  /** PROPUESTA (entorno de revisión): clases cortas como barra exacta + rótulo de 11 px. Apagado por defecto: nada cambia en producción. */
+  shortLabels?: boolean;
 }
 
 /**
@@ -44,7 +50,7 @@ interface RealCalendarGridProps {
  * y la escala horaria fijos. Móvil conserva la grilla de Semana y Día del origen, con su geometría propia y scroll dentro del
  * espacio útil del teléfono. La alternativa de lista sólo queda en escritorio angosto. Todos comparten datos, colores y detalle.
  */
-export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs, shortLabels: shortLabelsProp = false }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const [selected, setSelected] = useState<CalendarViewItem | null>(() => (rescheduleItemId ? (items.find((item) => item.id === rescheduleItemId) ?? null) : null));
   // Sólo la clase abierta por el enlace directo arranca en «Reprogramar»; cualquier otra que se elija después abre las acciones de siempre.
@@ -53,6 +59,9 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   const [areaWidthPx, setAreaWidthPx] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [tip, setTip] = useState<CardTip | null>(null);
+  // ENTORNO DE REVISIÓN: la propuesta se enciende con ?rotulos=1 sólo en desarrollo; en producción nunca (el valor por defecto es apagado y esto no se evalúa).
+  const [reviewFlag, setReviewFlag] = useState(false);
+  const shortLabels = shortLabelsProp || reviewFlag;
   const wrapRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +69,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (process.env.NODE_ENV !== "production") setReviewFlag(new URLSearchParams(window.location.search).get("rotulos") === "1");
     setNow(new Date());
     const interval = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(interval);
@@ -137,6 +147,35 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   // Carriles de cada día: las clases que se tocan se reparten dentro de su columna (ninguna queda oculta) y cada carril divide el
   // ancho disponible: los carriles NUNCA ensanchan la columna ni la grilla; la tarjeta pasa a un modo más compacto si no le cabe el texto.
   const positionedByDay = new Map(dayKeys.map((dayKey) => [dayKey, layoutDayItems(itemsByDayKey.get(dayKey) ?? [], hourHeightPx)]));
+  const nowMs = (now ?? new Date()).getTime();
+  const stateOf = (item: CalendarViewItem) => ({
+    isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,
+    isActiveReplacement: isActiveReplacement(item, items),
+    isInProgress: now !== null && new Date(item.start).getTime() <= nowMs && nowMs < new Date(item.end).getTime(),
+  });
+
+  // Dato que se pide ANTES del nombre en una tarjeta de una línea: en un carril solo, la hora o el estado; en carriles compartidos sólo el ESTADO.
+  const laneMetaFor = (p: { item: CalendarViewItem; laneCount: number }) => {
+    const facts = { status: p.item.status, ...stateOf(p.item) };
+    const tag = compactStateTag(facts, true);
+    return tag ?? (p.laneCount === 1 ? narrowMeta({ timeLabel: instantTimeLabel(p.item.start), facts }) : undefined);
+  };
+  // PROPUESTA: rótulos de las clases cortas (texto de cada una) y, por día, quiénes llevan rótulo (con un ancho holgado) para no contar su carril en el ancho que pide la columna.
+  const labelSources = new Map<string, LabelSource>();
+  if (shortLabels) {
+    for (const item of visible) {
+      const facts = { status: item.status, ...stateOf(item) };
+      labelSources.set(item.id, { id: item.id, title: lessonTitle(item), timeText: instantTimeLabel(item.start), stateText: compactStateTag(facts, true) });
+    }
+  }
+  const gridHeightPx = HOURS.length * hourHeightPx;
+  const labeledIdsByDay = new Map<string, Set<string>>();
+  if (shortLabels) {
+    for (const dayKey of dayKeys) {
+      const probe = planShortLabels(positionedByDay.get(dayKey) ?? [], labelSources, 600, gridHeightPx);
+      labeledIdsByDay.set(dayKey, new Set(probe ? Array.from(probe.items.keys()) : []));
+    }
+  }
   // Semana en el teléfono: cada día ensancha su columna lo que necesitan sus carriles para escribir los nombres sin girarlos ni cortarlos; si la suma pasa del ancho de la pantalla, la grilla se desplaza
   // hacia los costados (la columna de horas y el encabezado de los días quedan fijos). Un día sin clases simultáneas conserva el ancho común.
   const mobileColumns =
@@ -144,12 +183,16 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
       ? mobileWeekColumns({
           areaWidthPx,
           timeColumnPx,
-          needPx: dayKeys.map((dayKey) => Math.max(0, ...(positionedByDay.get(dayKey) ?? []).map((p) => p.laneCount * mobileLaneNeedPx(lessonTitle(p.item), p.height)))),
+          needPx: dayKeys.map((dayKey) => {
+            const dayItems = positionedByDay.get(dayKey) ?? [];
+            const labeled = labeledIdsByDay.get(dayKey);
+            const laneNeed = Math.max(0, ...dayItems.filter((p) => !labeled?.has(p.item.id)).map((p) => p.laneCount * mobileLaneNeedPx(lessonTitle(p.item), p.height, laneMetaFor(p), p.item.participantIds.length > 1 || p.item.activityKind === "training" ? SINGLE_LINE_ICON_PX : 0)));
+            return Math.max(laneNeed, shortLabels ? shortLabelsNeedPx(dayItems, labelSources) : 0);
+          }),
         })
       : null;
   const expandedColumns = mobileColumns?.expanded ? mobileColumns : null;
   const gridTemplateColumns = expandedColumns ? `${timeColumnPx}px ${expandedColumns.trackPx.map((px) => `${px}px`).join(" ")}` : `${timeColumnPx}px repeat(${dayKeys.length}, minmax(0, 1fr))`;
-  const nowMs = (now ?? new Date()).getTime();
   const todayIndex = todayKey === null ? -1 : dayKeys.indexOf(todayKey);
 
   // Con la grilla ensanchada, al abrir una semana el día de hoy queda a la vista (si hoy no está en esa semana, se empieza en el primer día, siempre igual). Sólo se reposiciona al CAMBIAR
@@ -170,12 +213,6 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
     if (todayIndex < 0 || right <= visibleWidth) scroller.scrollLeft = 0;
     else scroller.scrollLeft = Math.min(left, right - visibleWidth + 8);
   }, [dayKeys[0], isExpanded, todayIndex, timeColumnPx]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const stateOf = (item: CalendarViewItem) => ({
-    isElapsed: item.status !== "cancelled" && new Date(item.end).getTime() <= nowMs,
-    isActiveReplacement: isActiveReplacement(item, items),
-    isInProgress: now !== null && new Date(item.start).getTime() <= nowMs && nowMs < new Date(item.end).getTime(),
-  });
 
   return (
     <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
@@ -229,6 +266,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                 const today = todayKey === dayKey;
                 const positioned = positionedByDay.get(dayKey) ?? [];
                 const dayColumnPx = expandedColumns ? expandedColumns.trackPx[dayIndex] - 1 : columnWidthPx;
+                const labelPlan: DayLabelPlan | null = shortLabels ? planShortLabels(positioned, labelSources, dayColumnPx, gridHeightPx) : null;
 
                 return (
                   <div key={dayKey} className={`relative z-0 min-w-0 border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
@@ -240,19 +278,53 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                       </div>
                     )}
 
-                    {positioned.map((positionedItem) => (
-                      <RealLessonCard
-                        key={positionedItem.item.id}
-                        positioned={positionedItem}
-                        mobile={isMobile}
-                        dayRow={isMobile && !isWeek}
-                        {...stateOf(positionedItem.item)}
-                        columnWidthPx={dayColumnPx}
-                        onSelect={() => setSelected(positionedItem.item)}
-                        onTip={setTip}
-                        describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined}
-                      />
-                    ))}
+                    {positioned.map((positionedItem) => {
+                      const planned = labelPlan?.items.get(positionedItem.item.id);
+                      if (!planned) {
+                        return (
+                          <RealLessonCard
+                            key={positionedItem.item.id}
+                            positioned={positionedItem}
+                            mobile={isMobile}
+                            dayRow={isMobile && !isWeek}
+                            {...stateOf(positionedItem.item)}
+                            columnWidthPx={dayColumnPx}
+                            widthOverridePx={labelPlan?.narrowed.get(positionedItem.item.id)}
+                            onSelect={() => setSelected(positionedItem.item)}
+                            onTip={setTip}
+                            describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined}
+                          />
+                        );
+                      }
+                      const item = positionedItem.item;
+                      const facts = stateOf(item);
+                      const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement });
+                      const source = labelSources.get(item.id)!;
+                      const minutes = Math.round((new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000);
+                      return (
+                        <ShortBar
+                          key={item.id}
+                          positioned={positionedItem}
+                          planned={planned}
+                          colors={colors}
+                          ariaLabel={ariaLabelOf({ title: source.title, timeLabel: source.timeText, durationMinutes: minutes, item, ...facts })}
+                          tipText={`${source.title} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}${source.stateText ? ` · ${source.stateText}` : ""}`}
+                          onSelect={() => setSelected(item)}
+                          onTip={setTip}
+                          describedBy={tip?.id === `calendar-tip-${item.id}` ? TIP_ID : undefined}
+                        />
+                      );
+                    })}
+                    {labelPlan &&
+                      positioned.map((positionedItem) => {
+                        const planned = labelPlan.items.get(positionedItem.item.id);
+                        if (!planned) return null;
+                        const item = positionedItem.item;
+                        const facts = stateOf(item);
+                        const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement });
+                        const source = labelSources.get(item.id)!;
+                        return <ShortLabel key={`label-${item.id}`} planned={planned} colors={colors} title={source.title} timeText={source.timeText} stateText={source.stateText} strike={item.status === "cancelled"} onSelect={() => setSelected(item)} />;
+                      })}
                   </div>
                 );
               })}
