@@ -170,7 +170,7 @@ export function ResumenTabContent({
           <div className="px-4 pb-4 nav:px-5 nav:pb-5">
             <ul className="list-disc space-y-1.5 pl-5 text-[15px] text-textSecondary marker:text-borderStrong">
               {pendingTasks.slice(0, MAX_VISIBLE_TASKS).map((task) => (
-                <li key={task.taskId} className="[overflow-wrap:anywhere]">
+                <li key={task.taskId} className="whitespace-pre-wrap [overflow-wrap:anywhere]">
                   {task.description}
                 </li>
               ))}

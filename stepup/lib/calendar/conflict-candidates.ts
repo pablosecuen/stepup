@@ -1,7 +1,8 @@
 import type { ConflictCandidateLesson } from "../calendar-conflicts.ts";
 import type { CalendarViewItem } from "./occurrences.ts";
+import { isFullyExcluded, participantsOf } from "../data-exclusion/exclusion.ts";
 
-type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId"> & Partial<Pick<CalendarViewItem, "studentName" | "title">>;
+type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId"> & Partial<Pick<CalendarViewItem, "studentName" | "title" | "studentId" | "participantIds">>;
 
 /**
  * Candidatos de solapamiento a partir de la vista real del calendario.
@@ -12,12 +13,13 @@ type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "stat
  * serie (la ocurrencia se solapa consigo misma). Se excluye únicamente esa
  * serie — cualquier otra serie, o una clase suelta, sigue siendo candidata.
  */
-export function toConflictCandidates(items: ViewItemForConflict[], options: { excludeRecurrenceId?: string; excludeRecurrenceIds?: readonly string[] } = {}): ConflictCandidateLesson[] {
+export function toConflictCandidates(items: ViewItemForConflict[], options: { excludeRecurrenceId?: string; excludeRecurrenceIds?: readonly string[]; hiddenStudentIds?: ReadonlySet<string> } = {}): ConflictCandidateLesson[] {
   const excluded = new Set([...(options.excludeRecurrenceIds ?? []), ...(options.excludeRecurrenceId ? [options.excludeRecurrenceId] : [])]);
   return items
     .filter((item) => !item.recurrenceId || !excluded.has(item.recurrenceId))
     .map((item) => {
       const label = item.title?.trim() || item.studentName?.trim();
+      const hidden = options.hiddenStudentIds ? isFullyExcluded(participantsOf(item.studentId ?? null, item.participantIds ?? []), options.hiddenStudentIds) : false;
       return {
         id: item.id,
         start: item.start,
@@ -27,6 +29,7 @@ export function toConflictCandidates(items: ViewItemForConflict[], options: { ex
         lessonType: item.lessonType,
         overlapAllowed: false,
         ...(label ? { label } : {}),
+        ...(hidden ? { hiddenTestData: true } : {}),
       };
     });
 }

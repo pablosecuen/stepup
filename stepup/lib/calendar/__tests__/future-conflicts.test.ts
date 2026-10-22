@@ -91,3 +91,12 @@ test("buildExcludedOccurrenceKeys: la clase de las 21:00–23:59 del día ANTERI
   const kept = generateOccurrences(successorRule(weeks, "2026-10-19"), new Date("2026-10-24T03:00:00.000Z"), new Date("2026-10-25T02:59:00.000Z"));
   assert.equal(kept.length, 1);
 });
+
+test("si la clase que bloquea es un dato de prueba oculto, el aviso la nombra y dice dónde administrarla (sin dejar de bloquear)", () => {
+  const hidden = otherSeriesFridays19("2026-10-23", 12, "QA Alumno Dos").map((lesson) => ({ ...lesson, hiddenTestData: true }));
+  const conflicts = findFutureRecurrenceConflicts({ successor: successorRule(FRIDAY_19), effectiveDate: "2026-10-23", todayDate: "2026-10-22", candidates: hidden, availability: NO_AVAILABILITY_LIMITS });
+  assert.ok(conflicts.length > 0 && conflicts.every((conflict) => conflict.withHidden === true));
+  assert.match(describeFutureConflicts(conflicts, BA), /se superpone con QA Alumno Dos \(dato de prueba oculto en la agenda: en Configuración → Datos de prueba podés mostrarlo y administrarlo\)/);
+  const visible = findFutureRecurrenceConflicts({ successor: successorRule(FRIDAY_19), effectiveDate: "2026-10-23", todayDate: "2026-10-22", candidates: otherSeriesFridays19("2026-10-23", 3, "Alumna B"), availability: NO_AVAILABILITY_LIMITS });
+  assert.doesNotMatch(describeFutureConflicts(visible, BA), /dato de prueba oculto/);
+});

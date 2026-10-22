@@ -78,3 +78,9 @@ test("cableado: las etiquetas tienen Editar y Quitar separados, se adaptan al te
   assert.match(chip, /h-10 w-10/, "área táctil de 40 px por botón");
   assert.match(read("components/ui/field.tsx"), /px-3\.5 text-\[16px\]/);
 });
+
+test("cableado: los saltos de línea de observaciones y tareas se ven donde se leen (perfil del alumno)", () => {
+  assert.match(read("components/students/profile/progreso-tab.tsx"), /whitespace-pre-wrap[^"]*"[^>]*>\{entry\.evaluation\.individualObservation\}/);
+  assert.match(read("components/students/profile/tareas-tab.tsx"), /whitespace-pre-wrap[^"]*"[^>]*>\{task\.description\}/);
+  assert.match(read("components/students/profile/resumen-tab.tsx"), /whitespace-pre-wrap \[overflow-wrap:anywhere\]">\s*\{task\.description\}/);
+});

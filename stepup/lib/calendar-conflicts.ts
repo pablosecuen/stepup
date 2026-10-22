@@ -50,6 +50,8 @@ export interface ConflictCandidateLesson {
   overlapAllowed: boolean;
   /** Texto para mostrar con qué clase choca (opcional; nunca interviene en el cálculo). */
   label?: string;
+  /** Pertenece sólo a alumnos de PRUEBA ocultos (R16): sigue ocupando el horario aunque la agenda no la muestre. Sólo para explicarlo en el aviso. */
+  hiddenTestData?: boolean;
 }
 
 export interface CalendarConflict {

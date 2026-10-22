@@ -14,7 +14,7 @@ export function TareasTabContent({ tasks }: { tasks: PendingHomeworkTask[] }) {
       {tasks.map((task) => (
         <li key={task.taskId}>
           <Card className="!p-4">
-            <p className="text-[15px] text-textPrimary [overflow-wrap:anywhere]">{task.description}</p>
+            <p className="whitespace-pre-wrap text-[15px] text-textPrimary [overflow-wrap:anywhere]">{task.description}</p>
             <p className="mt-1.5 text-[13.5px] text-textMuted">
               Asignada el {formatInstantDate(task.assignedAt)}
               {task.dueDate && <> · Entrega: {formatCivilDate(task.dueDate)}</>}

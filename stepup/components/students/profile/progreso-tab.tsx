@@ -57,7 +57,7 @@ export function ProgresoTabContent({ entries }: { entries: { registration: Lesso
                     </p>
                     <p className="font-display text-[22px] font-semibold tf-num text-accentDark">{entry.evaluation.generalGrade ?? "—"}</p>
                   </div>
-                  {entry.evaluation.individualObservation && <p className="mt-1.5 text-[14.5px] text-textSecondary [overflow-wrap:anywhere]">{entry.evaluation.individualObservation}</p>}
+                  {entry.evaluation.individualObservation && <p className="mt-1.5 whitespace-pre-wrap text-[14.5px] text-textSecondary [overflow-wrap:anywhere]">{entry.evaluation.individualObservation}</p>}
                   {skillEntries.length > 0 && (
                     <ul className="mt-2.5 flex flex-wrap gap-1.5">
                       {skillEntries.map(([skill, value]) => (

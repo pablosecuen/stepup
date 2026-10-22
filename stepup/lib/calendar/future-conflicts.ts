@@ -24,6 +24,8 @@ export interface FutureRecurrenceConflict {
   detail: string;
   /** Nombre de la clase con la que se superpone (sólo en «ocupado», si se conoce). */
   with: string | null;
+  /** La clase con la que choca es de un alumno de prueba oculto en la agenda (sigue ocupando el horario). */
+  withHidden?: boolean;
 }
 
 export function findFutureRecurrenceConflicts(input: {
@@ -43,7 +45,7 @@ export function findFutureRecurrenceConflicts(input: {
     const overlaps = findCalendarConflicts(occurrence.start, occurrence.end, [...input.candidates]);
     if (hasBlockingConflict(overlaps)) {
       const blocking = overlaps.find((conflict) => !conflict.conflictingLesson.overlapAllowed);
-      result.push({ start: occurrence.start, end: occurrence.end, kind: "occupied", detail: "horario ocupado", with: blocking?.conflictingLesson.label ?? null });
+      result.push({ start: occurrence.start, end: occurrence.end, kind: "occupied", detail: "horario ocupado", with: blocking?.conflictingLesson.label ?? null, ...(blocking?.conflictingLesson.hiddenTestData ? { withHidden: true } : {}) });
       continue;
     }
     const evaluation = evaluateAvailability(occurrence.start, occurrence.end, input.availability);
@@ -65,7 +67,10 @@ function describeOccurrence(startIso: string, timeZone: string): string {
 export function describeFutureConflicts(conflicts: readonly FutureRecurrenceConflict[], timeZone: string): string {
   const shown = conflicts.slice(0, 5).map((conflict) => {
     const when = describeOccurrence(conflict.start, timeZone);
-    if (conflict.kind === "occupied") return conflict.with ? `${when}: se superpone con ${conflict.with}` : `${when}: horario ocupado`;
+    if (conflict.kind === "occupied") {
+      const hidden = conflict.withHidden ? " (dato de prueba oculto en la agenda: en Configuración → Datos de prueba podés mostrarlo y administrarlo)" : "";
+      return conflict.with ? `${when}: se superpone con ${conflict.with}${hidden}` : `${when}: horario ocupado${hidden}`;
+    }
     return `${when}: bloqueado en tu disponibilidad (${conflict.detail})`;
   });
   const more = conflicts.length > shown.length ? ` (y ${conflicts.length - shown.length} más)` : "";

@@ -15,6 +15,7 @@ import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/a
 import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { toConflictCandidates } from "@/lib/calendar/conflict-candidates";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { describeFutureConflicts, findFutureRecurrenceConflicts, futureValidationRange, occurrencesAsCandidates, FUTURE_VALIDATION_HORIZON_DAYS } from "@/lib/calendar/future-conflicts";
 import { formatCivilDayLabelShort, instantDateKey, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import type { RecurrenceRuleForEngine } from "@/lib/calendar/types";
@@ -129,9 +130,9 @@ async function checkFuturePatternConflicts(
   const rangeStart = new Date(localDateTimeToInstantIso({ date: effectiveDate, hour: 0, minute: 0, timeZone: original.timezone }));
   const horizonBase = effectiveDate > todayDate ? effectiveDate : todayDate;
   const rangeEnd = new Date(localDateTimeToInstantIso({ date: addDaysToDateKey(horizonBase, FUTURE_VALIDATION_HORIZON_DAYS + 1), hour: 0, minute: 0, timeZone: original.timezone }));
-  const [items, availability] = await Promise.all([loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true }), getTeacherAvailability(ctx)]);
-  // La serie que se reemplaza deja de generar clases desde la fecha efectiva: no cuenta como ocupación.
-  const candidates = toConflictCandidates(items, { excludeRecurrenceIds: input.replacedRuleIds });
+  const [items, availability, hiddenStudentIds] = await Promise.all([loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true }), getTeacherAvailability(ctx), loadExcludedStudentIds(ctx)]);
+  // La serie que se reemplaza deja de generar clases desde la fecha efectiva: no cuenta como ocupación. Los datos de prueba ocultos SÍ cuentan (el aviso lo aclara).
+  const candidates = toConflictCandidates(items, { excludeRecurrenceIds: input.replacedRuleIds, hiddenStudentIds });
   const conflicts = findFutureRecurrenceConflicts({ successor, effectiveDate, todayDate, candidates, availability });
   return conflicts.length > 0 ? describeFutureConflicts(conflicts, original.timezone) : null;
 }
@@ -726,13 +727,14 @@ async function prepareSeriesSwap(ctx: Awaited<ReturnType<typeof requireAuthentic
   const successorB = successorOf(b);
 
   const { rangeStart, rangeEnd } = futureValidationRange(input.effectiveDate, todayDate, timeZone);
-  const [items, availability] = await Promise.all([
+  const [items, availability, hiddenStudentIds] = await Promise.all([
     loadCalendarViewForRange(ctx, rangeStart, new Date(rangeEnd.getTime() + 86_400_000), undefined, { includeTestData: true }),
     getTeacherAvailability(ctx),
+    loadExcludedStudentIds(ctx),
   ]);
   // Las dos series dejan de generar sus patrones viejos desde la fecha efectiva: no cuentan como ocupación; el resultado final de cada una sí.
   const replacedIds = [a.target, ...a.superseded, b.target, ...b.superseded].map((rule) => rule.id);
-  const thirdParties = toConflictCandidates(items, { excludeRecurrenceIds: replacedIds });
+  const thirdParties = toConflictCandidates(items, { excludeRecurrenceIds: replacedIds, hiddenStudentIds });
   const problems: string[] = [];
   for (const [side, successor, other, otherSuccessor] of [
     [a, successorA, b, successorB],

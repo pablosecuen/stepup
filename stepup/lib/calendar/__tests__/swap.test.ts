@@ -112,7 +112,7 @@ test("cableado: el intercambio valida el resultado final en el servidor, sin opc
   assert.match(actions, /export async function swapSeriesAction/);
   const swapBlock = actions.slice(actions.indexOf("async function prepareSeriesSwap"), actions.indexOf("// Disponibilidad"));
   assert.doesNotMatch(swapBlock, /allowOverlap/, "el intercambio no tiene «guardar igual»");
-  assert.match(swapBlock, /thirdParties = toConflictCandidates\(items, \{ excludeRecurrenceIds: replacedIds \}\)/);
+  assert.match(swapBlock, /thirdParties = toConflictCandidates\(items, \{ excludeRecurrenceIds: replacedIds, hiddenStudentIds \}\)/);
   assert.match(swapBlock, /await swapRecurrencePatterns\(ctx, \[sideInput\(a\), sideInput\(b\)\]\)/);
   assert.match(actions, /readString\(formData, "confirmReplace"\) !== "true"/);
   assert.match(actions, /describeReplacements\(segment\.superseded, affected\)/);

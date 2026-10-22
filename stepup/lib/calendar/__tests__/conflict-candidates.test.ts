@@ -73,3 +73,15 @@ test("el mapeo conserva los campos que usa el detector y nunca permite solapamie
     overlapAllowed: false,
   });
 });
+
+test("un alumno de prueba oculto sigue ocupando el horario y el candidato lo marca para que el aviso lo explique", () => {
+  const hiddenItem = item({ id: "oculta", studentId: "qa-2", participantIds: ["qa-2"], studentName: "QA Alumno Dos" });
+  const sharedItem = item({ id: "compartida", studentId: "qa-2", participantIds: ["qa-2", "real"], studentName: "Compartida" });
+  const realItem = item({ id: "real", studentId: "real", participantIds: ["real"], studentName: "Real" });
+  const candidates = toConflictCandidates([hiddenItem, sharedItem, realItem], { hiddenStudentIds: new Set(["qa-2"]) });
+  assert.equal(candidates.find((c) => c.id === "oculta")?.hiddenTestData, true);
+  assert.equal(candidates.find((c) => c.id === "compartida")?.hiddenTestData, undefined, "algo compartido con un alumno real nunca está oculto");
+  assert.equal(candidates.find((c) => c.id === "real")?.hiddenTestData, undefined);
+  assert.equal(candidates.length, 3, "ninguna se elimina del chequeo: todas bloquean");
+  assert.equal(toConflictCandidates([hiddenItem]).every((c) => c.hiddenTestData === undefined), true, "sin lista de ocultos no marca nada");
+});
