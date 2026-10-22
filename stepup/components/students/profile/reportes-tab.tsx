@@ -60,6 +60,8 @@ export function ReportPreviewCard({
   onIncludePunctualitySummary,
   selectedEvidenceIds,
   onToggleEvidence,
+  unreadableEvidenceIds,
+  onEvidenceUnreadable,
   isGenerating,
   onGenerate,
 }: {
@@ -81,6 +83,9 @@ export function ReportPreviewCard({
   /** Fotos y PDF elegidos para el reporte (ninguno viene preseleccionado). */
   selectedEvidenceIds: string[];
   onToggleEvidence: (attachmentId: string) => void;
+  /** Fotos que el servidor no pudo leer (HEIC inválido, imagen dañada): se muestran como «no se puede usar» y nunca se pueden elegir. */
+  unreadableEvidenceIds: string[];
+  onEvidenceUnreadable: (attachmentId: string) => void;
   isGenerating: boolean;
   onGenerate: () => void;
 }) {
@@ -162,18 +167,26 @@ export function ReportPreviewCard({
             </p>
           )}
           <ul className="mt-2 flex flex-col">
-            {evidenceCandidates.map((candidate) => (
-              <li key={candidate.attachmentId}>
-                <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
-                  <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={selectedEvidenceIds.includes(candidate.attachmentId)} disabled={photosFull && candidate.kind === "image" && !selectedEvidenceIds.includes(candidate.attachmentId)} onChange={() => onToggleEvidence(candidate.attachmentId)} />
-                  {candidate.kind === "image" && <LessonPhotoThumbnail id={candidate.attachmentId} name={candidate.name} />}
-                  <span className="min-w-0 [overflow-wrap:anywhere]">
-                    <span className="font-[650] text-textPrimary">{candidate.name}</span> · {candidate.kind === "image" ? "Foto" : "PDF"} · {formatCivilDate(candidate.dateKey)}
-                    {candidate.caption && <span className="block text-[13px] text-textMuted">{candidate.caption}</span>}
-                  </span>
-                </label>
-              </li>
-            ))}
+            {evidenceCandidates.map((candidate) => {
+              const unreadable = unreadableEvidenceIds.includes(candidate.attachmentId);
+              return (
+                <li key={candidate.attachmentId}>
+                  <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
+                    <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={!unreadable && selectedEvidenceIds.includes(candidate.attachmentId)} disabled={unreadable || (photosFull && candidate.kind === "image" && !selectedEvidenceIds.includes(candidate.attachmentId))} onChange={() => onToggleEvidence(candidate.attachmentId)} />
+                    {candidate.kind === "image" && <LessonPhotoThumbnail id={candidate.attachmentId} name={candidate.name} onUnreadable={onEvidenceUnreadable} />}
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      <span className="font-[650] text-textPrimary">{candidate.name}</span> · {candidate.kind === "image" ? "Foto" : "PDF"} · {formatCivilDate(candidate.dateKey)}
+                      {candidate.caption && <span className="block text-[13px] text-textMuted">{candidate.caption}</span>}
+                      {unreadable && (
+                        <span role="alert" className="block text-[13px] font-semibold text-bad">
+                          No se puede usar en el reporte: la foto no se puede leer. El original sigue guardado en la clase.
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </fieldset>
       )}
@@ -218,6 +231,7 @@ export function ReportesTabContent({
   const [includeClassDetail, setIncludeClassDetail] = useState(true);
   const [includePunctualitySummary, setIncludePunctualitySummary] = useState(true);
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
+  const [unreadableEvidenceIds, setUnreadableEvidenceIds] = useState<string[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isStartingNew, setIsStartingNew] = useState(false);
@@ -457,6 +471,11 @@ export function ReportesTabContent({
           includePunctualitySummary={includePunctualitySummary}
           onIncludePunctualitySummary={setIncludePunctualitySummary}
           selectedEvidenceIds={selectedEvidenceIds}
+          unreadableEvidenceIds={unreadableEvidenceIds}
+          onEvidenceUnreadable={(attachmentId) => {
+            setUnreadableEvidenceIds((current) => (current.includes(attachmentId) ? current : [...current, attachmentId]));
+            setSelectedEvidenceIds((current) => current.filter((id) => id !== attachmentId));
+          }}
           onToggleEvidence={(attachmentId) => setSelectedEvidenceIds((current) => (current.includes(attachmentId) ? current.filter((id) => id !== attachmentId) : [...current, attachmentId]))}
           isGenerating={isGenerating}
           onGenerate={handleGenerate}

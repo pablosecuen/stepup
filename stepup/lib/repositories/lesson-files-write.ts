@@ -1,6 +1,8 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "../db/server-context.ts";
 import { LESSON_FILES_BUCKET } from "./lesson-content.ts";
+import { UNREADABLE_PHOTO_MESSAGE } from "../images/photo-validity.ts";
+import { toThumbnailJpeg } from "../reports/evidence-image.ts";
 import { attachmentStoragePath, checkPickedFile, cleanFileName, isUuid, materialStoragePath, MAX_CAPTION_LENGTH, type AttachmentKind } from "../lessons/attachments.ts";
 
 /**
@@ -60,8 +62,24 @@ export interface RegisterAttachmentInput {
   studentId?: string | null;
 }
 
+/**
+ * Una foto sólo se registra si se puede leer: se genera su miniatura (el mismo camino que usan el visor, la lista de evidencias y el reporte). Si no se puede (archivo que no es una foto, HEIC inválido,
+ * imagen dañada) no se registra como foto utilizable y la persona recibe un error claro; el objeto subido queda en el almacenamiento (nada se borra). Si el objeto todavía no está, lo explica la base al registrar.
+ */
+async function assertStoredPhotoReadable(ctx: AuthenticatedDbContext, path: string): Promise<void> {
+  if (!path.startsWith(`${ctx.ownerId}/`)) return;
+  const { data, error } = await ctx.supabase.storage.from(LESSON_FILES_BUCKET).download(path);
+  if (error || !data) return;
+  try {
+    await toThumbnailJpeg(new Uint8Array(await data.arrayBuffer()));
+  } catch {
+    throw new LessonFileInputError(UNREADABLE_PHOTO_MESSAGE);
+  }
+}
+
 export async function registerAttachment(ctx: AuthenticatedDbContext, input: RegisterAttachmentInput): Promise<{ id: string; deduplicated: boolean }> {
   if (!isUuid(input.registrationId) || !isUuid(input.attachmentId)) throw new LessonFileInputError("Adjunto inválido.");
+  if (input.kind === "image") await assertStoredPhotoReadable(ctx, input.path);
   const studentId = input.studentId ?? null;
   if (studentId !== null && !isUuid(studentId)) throw new LessonFileInputError("Participante inválido.");
   const { data, error } = await ctx.supabase.rpc("add_lesson_attachment", {

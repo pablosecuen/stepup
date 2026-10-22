@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { guardNetwork } from "@/lib/actions/network-guard";
@@ -10,6 +10,7 @@ import { addMaterialAction, prepareAttachmentUploadAction, prepareMaterialUpload
 import { checkPickedFile, cleanFileName, IMAGE_MAX_BYTES, IMAGE_PICK_MAX_BYTES, MAX_CAPTION_LENGTH, type AttachmentKind } from "@/lib/lessons/attachments";
 import { SignedUploadError, uploadToSignedUrl } from "@/lib/lessons/signed-upload";
 import { prepareImageForUpload } from "@/lib/images/client-prepare";
+import { UnreadablePhotoError } from "@/lib/images/photo-validity";
 import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { availabilityLabel } from "@/lib/repositories/lesson-content-mapping";
 import { LessonPhotoThumbnail } from "./lesson-photo-thumbnail";
@@ -19,6 +20,8 @@ import { OpenLessonFileButton } from "./open-lesson-file-button";
 const LABEL = "text-sm font-semibold text-textSecondary";
 
 function uploadErrorMessage(error: unknown): string {
+  // Foto que no se puede leer (no es una foto, o un HEIC inválido): el texto ya está escrito para la persona.
+  if (error instanceof UnreadablePhotoError) return error.message;
   if (error instanceof SignedUploadError) return error.status === 413 ? "El archivo es demasiado grande." : "No se pudo subir el archivo. Probá de nuevo.";
   // Una falla de red (el pedido no llegó a destino) se explica con el texto de red de siempre.
   if (error instanceof TypeError) return domainErrorMessage(error);
@@ -34,6 +37,8 @@ function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attach
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El servidor no pudo leer esta foto (p. ej. una HEIC inválida subida antes): no se presenta como foto utilizable.
+  const [unreadable, setUnreadable] = useState(false);
 
   async function saveCaption() {
     if (caption.trim() === savedCaption.trim()) return;
@@ -63,15 +68,25 @@ function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attach
     <li className="min-w-0 space-y-2 rounded-md border-[1.5px] border-border bg-surface2 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
-          {attachment.kind === "image" && attachment.availability === "disponible" && <LessonPhotoThumbnail id={attachment.id} name={attachment.name} />}
+          {attachment.kind === "image" && attachment.availability === "disponible" && <LessonPhotoThumbnail id={attachment.id} name={attachment.name} onUnreadable={() => setUnreadable(true)} />}
           <p className="min-w-0 text-[15px] font-medium [overflow-wrap:anywhere]">
             {attachment.name} <span className="text-[13px] font-normal text-textMuted">· {attachment.kind === "image" ? "Foto" : "PDF"}</span>
             {ownerLabel && <span className="block text-[13px] font-normal text-textMuted">Para: {ownerLabel}</span>}
             {attachment.availability !== "disponible" && <span className="block text-[13px] font-normal text-textMuted">{availabilityLabel(attachment.availability)}</span>}
+            {unreadable && (
+              <span role="alert" className="block text-[13px] font-semibold text-bad">
+                Esta foto no se puede abrir ni usar en reportes. Quitala y subí otra; el original sigue guardado.
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {attachment.availability === "disponible" && (attachment.kind === "image" ? <LessonPhotoViewer id={attachment.id} name={attachment.name} /> : <OpenLessonFileButton kind="attachment" id={attachment.id} label={`Abrir el archivo ${attachment.name}`} />)}
+          {attachment.availability === "disponible" && !unreadable && (attachment.kind === "image" ? <LessonPhotoViewer id={attachment.id} name={attachment.name} /> : <OpenLessonFileButton kind="attachment" id={attachment.id} label={`Abrir el archivo ${attachment.name}`} />)}
+          {unreadable && (
+            <a href={`/api/archivos/adjunto/${encodeURIComponent(attachment.id)}?descargar=1`} download className={buttonClass({ variant: "secondary" })} aria-label={`Descargar el original de ${attachment.name}`}>
+              Descargar el original
+            </a>
+          )}
           {!confirming && (
             <Button variant="ghost" onClick={() => setConfirming(true)} aria-label={`Quitar ${attachment.kind === "image" ? "la foto" : "el archivo"} ${attachment.name}`}>
               Quitar

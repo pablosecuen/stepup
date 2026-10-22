@@ -24,7 +24,8 @@ export async function serveLessonAttachment(resolveContext: () => Promise<Authen
         const jpeg = await toThumbnailJpeg(new Uint8Array(await file.blob.arrayBuffer()));
         return new Response(Buffer.from(jpeg), { status: 200, headers: lessonFileHeaders({ mime: "image/jpeg", name: "miniatura.jpg", size: jpeg.byteLength, download: false }) });
       } catch {
-        return plain(404);
+        // 422: el archivo existe pero no se puede leer como foto (HEIC inválido, dañado o un PDF): la pantalla lo marca como no utilizable en vez de mostrar una miniatura rota.
+        return plain(422);
       }
     }
     return new Response(file.blob.stream(), { status: 200, headers: lessonFileHeaders({ mime: file.mimeType, name: file.name, size: file.blob.size, download }) });

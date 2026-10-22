@@ -40,23 +40,24 @@ test("el editor de evidencias: la galería admite varias fotos, la cámara una, 
 test("reportes: hasta 12 fotos (como la app anterior), aviso de datos sensibles y las demás fotos se bloquean al llegar al tope", () => {
   const tab = read("components/students/profile/reportes-tab.tsx");
   assert.match(tab, /Evitá incluir imágenes de alumnos o información sensible sin autorización\./);
-  assert.match(tab, /disabled=\{photosFull && candidate\.kind === "image" && !selectedEvidenceIds\.includes\(candidate\.attachmentId\)\}/);
+  assert.ok(tab.includes('(photosFull && candidate.kind === "image" && !selectedEvidenceIds.includes(candidate.attachmentId))'));
   assert.match(read("lib/reports/evidence.ts"), /export const MAX_REPORT_PHOTOS = 12;/);
 });
 test("HEIC que el navegador no sabe leer: se decodifica con el decodificador propio antes de subir (carga dinámica, sólo en ese momento)", () => {
   const source = read("lib/images/client-prepare.ts");
   assert.match(source, /await import\("\.\/heic-decode"\)/);
-  assert.match(source, /if \(isHeic\(file\)\) \{\s+try \{\s+const converted = await heicToJpeg\(file\)/);
+  assert.match(source, /if \(isHeic\(file\)\) \{\s+const converted = await heicToJpeg\(file\)/);
   assert.equal(/^import .*heic-decode/m.test(source), false, "el decodificador no entra en el paquete inicial");
 });
 
 test("reportes: cada foto elegible lleva su miniatura (la hace el servidor, también para HEIC, y sólo se pide al verla)", () => {
   const tab = read("components/students/profile/reportes-tab.tsx");
-  assert.match(tab, /\{candidate\.kind === "image" && <LessonPhotoThumbnail id=\{candidate\.attachmentId\} name=\{candidate\.name\} \/>\}/);
+  assert.ok(tab.includes('{candidate.kind === "image" && <LessonPhotoThumbnail id={candidate.attachmentId} name={candidate.name} onUnreadable={onEvidenceUnreadable} />}'));
   const thumb = read("components/registro/lesson-photo-thumbnail.tsx");
-  assert.match(thumb, /\?miniatura=1/);
-  assert.match(thumb, /loading="lazy"/);
-  assert.match(thumb, /onError=\{\(\) => setFailed\(true\)\}/, "si falla, un texto «Sin vista previa»: la foto se puede elegir igual");
+  assert.ok(thumb.includes("?miniatura=1"));
+  assert.ok(thumb.includes("IntersectionObserver"), "sólo se pide cuando la fila entra en pantalla");
+  assert.ok(thumb.includes("response.status === 422"), "422 = no se puede leer: se marca como inutilizable");
+  assert.ok(thumb.includes('setPhase({ state: "error" })') && thumb.includes("Reintentar"), "un error pasajero NO marca la foto como inutilizable y permite reintentar");
   const route = read("app/api/archivos/adjunto/[id]/route.ts");
   assert.match(route, /query\.get\("miniatura"\) === "1"/);
 });
@@ -73,4 +74,20 @@ test("clases grupales: cada archivo puede ser de toda la clase o sólo de un par
   assert.match(read("app/(app)/registro/[calendarLessonId]/registration-workspace.tsx"), /participants: isGroup \? participants\.map/);
   // El reporte de un alumno nunca ofrece el archivo de otro participante.
   assert.match(read("lib/repositories/lesson-registrations.ts"), /!attachmentBelongsToStudent\(row\.student_id, studentId\)\) continue/);
+});
+
+test("fotos que no se pueden leer: no se suben, no se registran, no se ofrecen como utilizables y las demás se conservan", () => {
+  const prepare = read("lib/images/client-prepare.ts");
+  assert.ok(prepare.includes("assertLooksLikePhoto(new Uint8Array(await file.slice(0, 64).arrayBuffer()));"), "antes de subir: tiene que tener forma de foto");
+  assert.ok(prepare.includes("error instanceof HeicDecodeError ? new UnreadablePhotoError(UNREADABLE_HEIC_MESSAGE)"), "un HEIC que no se puede decodificar no se sube");
+  assert.ok(!prepare.includes("se sube la original y el servidor/visor explican"));
+  const editor = read("components/registro/lesson-files-editor.tsx");
+  assert.ok(editor.includes("if (error instanceof UnreadablePhotoError) return error.message;"));
+  assert.ok(editor.includes("if (failure) failures.push(failure);"), "las demás fotos elegidas siguen su camino");
+  assert.ok(editor.includes("Esta foto no se puede abrir ni usar en reportes"));
+  const write = read("lib/repositories/lesson-files-write.ts");
+  assert.ok(write.includes('if (input.kind === "image") await assertStoredPhotoReadable(ctx, input.path);'), "el servidor sólo registra una foto si puede generar su miniatura");
+  const tab = read("components/students/profile/reportes-tab.tsx");
+  assert.ok(tab.includes("disabled={unreadable ||"), "una foto ilegible no se puede elegir para el reporte");
+  assert.ok(tab.includes("setSelectedEvidenceIds((current) => current.filter((id) => id !== attachmentId))"), "y si estaba elegida se saca de la selección");
 });

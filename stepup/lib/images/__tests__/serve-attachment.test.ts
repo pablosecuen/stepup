@@ -112,7 +112,7 @@ test("con ?miniatura=1 se entrega un JPEG chico hecho por el servidor (también 
   assert.equal(fromHeic.status, 200);
   assert.equal((await sharp(new Uint8Array(await fromHeic.arrayBuffer())).metadata()).format, "jpeg");
   const text = await serveLessonAttachment(async () => withBytes(new TextEncoder().encode("no soy una foto"), available) as never, "att-1", false, true);
-  assert.equal(text.status, 404);
+  assert.equal(text.status, 422, "no se puede leer como foto: 422 (distinto de «no existe» o un error del servidor)");
   assert.equal(await text.text(), "");
   assert.equal((await serveLessonAttachment(async () => { throw new Error("sin sesión"); }, "att-1", false, true)).status, 401);
 });

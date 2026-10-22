@@ -190,8 +190,10 @@ export interface MobileWeekColumns {
   trackPx: number[];
   /** Ancho total de la grilla (columna de horas + días). */
   totalPx: number;
-  /** ¿Algún día pasa del ancho común (la grilla se desplaza hacia los costados)? */
+  /** ¿La suma pasa del ancho disponible (la grilla se desplaza hacia los costados)? */
   expanded: boolean;
+  /** ¿Las columnas dejan de ser todas iguales (hay que dibujarlas con anchos en px)? */
+  custom: boolean;
 }
 
 export function mobileWeekColumns(input: { areaWidthPx: number; timeColumnPx: number; needPx: readonly number[] }): MobileWeekColumns {
@@ -200,7 +202,31 @@ export function mobileWeekColumns(input: { areaWidthPx: number; timeColumnPx: nu
   const trackPx = input.needPx.map((need) => Math.max(commonPx, Math.min(MOBILE_MAX_DAY_COLUMN_PX, need + 1)));
   const daysPx = trackPx.reduce((sum, width) => sum + width, 0);
   const expanded = daysPx > commonPx * dayCount + 0.5;
-  return { trackPx, totalPx: input.timeColumnPx + daysPx, expanded };
+  return { trackPx, totalPx: input.timeColumnPx + daysPx, expanded, custom: expanded };
+}
+
+/**
+ * Semana en escritorio: un día con varias clases simultáneas necesita más ancho para que cada carril muestre al menos la primera palabra del nombre entera. En vez de ensanchar la grilla, ese día
+ * toma el ancho que le falta de los demás días (ninguno baja de `DESKTOP_MIN_DAY_COLUMN_PX`); sólo si ni así alcanza la grilla se desplaza hacia los costados. Sin carriles apretados, todas las
+ * columnas siguen iguales. `needPx` es el ancho mínimo de cada día (cero si no necesita más que el común).
+ */
+export const DESKTOP_MIN_DAY_COLUMN_PX = 112;
+export const DESKTOP_MAX_DAY_COLUMN_PX = 360;
+
+export function desktopWeekColumns(input: { areaWidthPx: number; timeColumnPx: number; needPx: readonly number[] }): MobileWeekColumns {
+  const dayCount = Math.max(1, input.needPx.length);
+  const frame = 3;
+  const usablePx = Math.max(0, input.areaWidthPx - input.timeColumnPx - frame);
+  const commonPx = usablePx / dayCount;
+  const wanted = input.needPx.map((need) => (need + 1 > commonPx ? Math.min(DESKTOP_MAX_DAY_COLUMN_PX, need + 1) : commonPx));
+  const extraPx = wanted.reduce((sum, width) => sum + Math.max(0, width - commonPx), 0);
+  if (extraPx <= 0.5) return { trackPx: wanted.map(() => commonPx), totalPx: input.timeColumnPx + frame + usablePx, expanded: false, custom: false };
+  const others = wanted.filter((width) => width <= commonPx + 0.001).length;
+  const roomPx = others * Math.max(0, commonPx - DESKTOP_MIN_DAY_COLUMN_PX);
+  const shrinkPx = others === 0 ? 0 : Math.min(extraPx, roomPx) / others;
+  const trackPx = wanted.map((width) => (width > commonPx + 0.001 ? width : commonPx - shrinkPx));
+  const daysPx = trackPx.reduce((sum, width) => sum + width, 0);
+  return { trackPx, totalPx: input.timeColumnPx + frame + daysPx, expanded: daysPx > usablePx + 0.5, custom: true };
 }
 
 /** ¿La grilla horaria entra con columnas legibles? Si no, se usa la agenda por día (la misma de móvil). */
