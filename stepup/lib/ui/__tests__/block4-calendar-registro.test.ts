@@ -43,7 +43,7 @@ test("la escala de color del calendario sigue CONGELADA y las tarjetas sólo la 
 test("Semana y Día conservan la grilla también en móvil y comparten datos y acciones de detalle", () => {
   const grid = code("components/calendar/real-calendar-grid.tsx");
   assert.match(grid, /data-calendar-region className=\{`relative min-h-0 flex-1/, "la grilla no se elimina de los teléfonos");
-  assert.match(grid, /overflow-x-hidden rounded-none[^`"]* nav:rounded-lg/, "la grilla nunca se desplaza en horizontal: los carriles dividen el ancho de la columna");
+  assert.match(grid, /\$\{expandedColumns \? "overflow-x-auto" : "overflow-x-hidden"\} rounded-none[^`"]* nav:rounded-lg/, "la grilla sólo se desplaza en horizontal en la semana del teléfono cuando un día ensancha su columna para los nombres de sus carriles; en lo demás los carriles dividen el ancho de la columna");
   assert.match(grid, /hidden flex-col gap-6 \$\{gridFits \? "nav:hidden" : /, "la lista queda como alternativa de escritorio angosto");
   assert.equal([...grid.matchAll(/setSelected\(/g)].length >= 3, true, "cualquiera de las dos abre el mismo detalle");
   assert.match(grid, /<RealLessonDetailModal/);
@@ -68,7 +68,7 @@ test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sól
   const row = card.slice(card.indexOf("export function RealLessonAgendaRow"));
   assert.doesNotMatch(row, /\btruncate\b|text-ellipsis|line-clamp/, "la agenda nunca corta los textos con «…»");
   assert.match(row, /\[overflow-wrap:anywhere\]/);
-  assert.match(card, /const cardWidth = cardWidthPx\(columnWidthPx, laneCount, mobile\);\s+const presentation = cardPresentation\(\{ heightPx: height, widthPx: cardWidth, preferVertical: mobileWeek \}\)/, "el texto se adapta al bloque real (completo, dos líneas, una línea o sin texto), nunca se estira ni baja fuera de él");
+  assert.match(card, /const cardWidth = cardWidthPx\(columnWidthPx, laneCount, mobile\);\s+const presentation = cardPresentation\(\{ heightPx: height, widthPx: cardWidth \}\)/, "el texto se adapta al bloque real (completo, dos líneas, una línea o sin texto), nunca se estira ni baja fuera de él");
 });
 
 test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día en cada paso, separa «Cancelar esta clase» y conserva las acciones y el foco entre pasos", () => {

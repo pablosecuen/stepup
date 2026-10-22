@@ -3,7 +3,7 @@
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx } from "@/lib/calendar/layout";
-import { firstWord, INLINE_TIME_MIN_WIDTH_PX, narrowMeta, nameForWidth, softHyphenateEs, wideMeta } from "@/lib/calendar/card-text";
+import { firstWord, INLINE_TIME_MIN_WIDTH_PX, mobileNameFontPx, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -61,7 +61,7 @@ function ariaLabelOf(input: { title: string; timeLabel: string; durationMinutes:
   return `${title}, ${timeLabel}, ${durationMinutes} minutos${isCancelled ? ", cancelada" : ""}${isActiveReplacement && !isCancelled && !isElapsed ? ", reemplazo" : ""}${isInProgress && !isElapsed && !isCancelled ? ", en curso" : ""}${isElapsedActive ? ", ya transcurrida" : ""}`;
 }
 
-function lessonTitle(item: CalendarViewItem): string {
+export function lessonTitle(item: CalendarViewItem): string {
   return item.title?.trim() || item.studentName || "Serie sin alumnos";
 }
 
@@ -100,14 +100,15 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const mobileWeek = mobile && !dayRow;
   const inset = cardInsetPx(laneCount, mobile);
   const cardWidth = cardWidthPx(columnWidthPx, laneCount, mobile);
-  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth, preferVertical: mobileWeek });
-  // Same word-based identity as the native week card; mobile never substitutes two initials.
-  const narrowName = mobile && !dayRow ? firstWord(title) : nameForWidth(title, cardWidth);
+  const presentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
+  // Semana en el teléfono: palabras enteras en texto horizontal (la columna del día se ensancha para que entren, `mobileWeekColumns`); nunca iniciales, texto girado ni palabras partidas.
+  const shownWords = mobileWeek ? mobileNameWords(title, height) : [];
+  const narrowName = mobileWeek ? shownWords.join(" ") : nameForWidth(title, cardWidth);
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
-  // Dos líneas de nombre (10,5 px / 12) + la línea de la hora (9–10 px / 12) + el borde: desde 38 px de alto, la primera palabra se lee entera aunque la tarjeta sea angosta.
-  const twoNameLines = mobileWeek && presentation === "stack" && height >= 38 && cardWidth < 84;
-  // Nombres de 8 letras o más bajan un punto de letra para que entren enteros siempre que se pueda; si aun así no entran, se cortan en sílabas (con guion), nunca en una letra suelta.
-  const nameFontPx = mobileWeek ? (narrowName.length <= 7 ? 10.5 : 9.5) : undefined;
+  // Desde 38 px de alto entran dos líneas de nombre (10,5 px / 12) + la línea de la hora (9,5 px / 12) + el borde: «Juan Pablo», «Grupo B2».
+  const twoNameLines = mobileWeek && presentation === "stack" && height >= TWO_NAME_LINES_MIN_HEIGHT_PX;
+  // Nombres de 8 letras o más bajan un punto de letra para que entren enteros.
+  const nameFontPx = mobileWeek ? mobileNameFontPx(shownWords) : undefined;
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
   const borderClass = mobileWeek ? "rounded-[5px] border border-l-[3px]" : `rounded-md ${presentation === "full" ? "border-[1.5px]" : "border"}`;
   const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.filter((tag) => tag !== MODALITY_LABELS[item.modality]).join(" · ")}` : ""}`;
@@ -172,12 +173,12 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         )}
         {presentation === "stack" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${mobileWeek ? "px-[3px]" : cardWidth < 44 ? "px-0.5" : "px-1"}`}>
-            <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start leading-[12px]" : "items-center text-[11px] leading-[13px]"}`} style={{ color: textColor, textDecorationLine: strike, fontSize: twoNameLines ? nameFontPx : undefined }}>
+            <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start leading-[12px]" : `items-center leading-[13px]${mobileWeek ? "" : " text-[11px]"}`}`} style={{ color: textColor, textDecorationLine: strike, fontSize: nameFontPx }}>
               {!mobileWeek && icons}
               {twoNameLines ? (
-                // Como la tarjeta de semana de la app: la primera palabra en hasta dos líneas; si no entra, se parte por sílabas con guion (guiones blandos en español), nunca recortada a una o dos letras ni cortada en medio de una sílaba.
-                <span lang="es" className="min-w-0 flex-1" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", hyphens: "manual", overflowWrap: "break-word" }}>
-                  {softHyphenateEs(narrowName)}
+                // Hasta dos palabras en hasta dos líneas, cortando sólo entre palabras (la columna ya mide lo que necesita la más larga).
+                <span className="min-w-0 flex-1" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", hyphens: "none", wordBreak: "normal", overflowWrap: "normal" }}>
+                  {narrowName}
                 </span>
               ) : (
                 <span className="min-w-0 truncate">{narrowName}</span>

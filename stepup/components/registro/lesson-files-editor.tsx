@@ -9,6 +9,7 @@ import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import { addMaterialAction, prepareAttachmentUploadAction, prepareMaterialUploadAction, registerAttachmentAction, removeAttachmentAction, setAttachmentCaptionAction } from "@/lib/actions/lesson-files";
 import { checkPickedFile, cleanFileName, MAX_CAPTION_LENGTH, type AttachmentKind } from "@/lib/lessons/attachments";
 import { SignedUploadError, uploadToSignedUrl } from "@/lib/lessons/signed-upload";
+import { prepareImageForUpload } from "@/lib/images/client-prepare";
 import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { availabilityLabel } from "@/lib/repositories/lesson-content-mapping";
 import { LessonPhotoViewer } from "./lesson-photo-viewer";
@@ -242,33 +243,47 @@ export function LessonFilesEditor({
   const photoInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
-  async function upload(file: File, expect: AttachmentKind) {
+  /** Sube UN archivo; devuelve si quedó guardado (varias fotos elegidas juntas se suben de a una y se frenan en la primera que falla). */
+  async function upload(picked: File, expect: AttachmentKind, prefix = ""): Promise<boolean> {
+    const fail = (message: string) => {
+      setError(`${prefix}${message}`);
+      return false;
+    };
     setError(null);
-    const check = checkPickedFile({ name: file.name, type: file.type, size: file.size }, expect);
-    if (!check.ok) return setError(check.message);
+    const first = checkPickedFile({ name: picked.name, type: picked.type, size: picked.size }, expect);
+    if (!first.ok) return fail(first.message);
     const attachmentId = crypto.randomUUID();
     try {
+      // Foto HEIC o demasiado pesada: se convierte a JPEG antes de subir cuando el navegador sabe (como la app anterior); si no, se sube la original.
+      if (expect === "image") setPhase({ text: "Preparando la foto…" });
+      const file = expect === "image" ? await prepareImageForUpload(picked) : picked;
+      const check = checkPickedFile({ name: file.name, type: file.type, size: file.size }, expect);
+      if (!check.ok) return fail(check.message);
       setPhase({ text: "Preparando la subida…" });
       const prepared = await guardNetwork(() => prepareAttachmentUploadAction({ registrationId, attachmentId, name: file.name, type: file.type, size: file.size }));
-      if (prepared.error || !prepared.data) return setError(prepared.error ?? "No se pudo preparar la subida.");
+      if (prepared.error || !prepared.data) return fail(prepared.error ?? "No se pudo preparar la subida.");
       setPhase({ text: "Subiendo… 0 %" });
       await uploadToSignedUrl({ signedUrl: prepared.data.signedUrl, file, mimeType: prepared.data.mimeType, onProgress: (f) => setPhase({ text: `Subiendo… ${Math.round(f * 100)} %` }) });
       setPhase({ text: "Guardando…" });
       const registered = await guardNetwork(() => registerAttachmentAction({ registrationId, attachmentId, name: file.name, kind: prepared.data!.kind, mimeType: prepared.data!.mimeType, size: file.size, path: prepared.data!.path, caption: null }));
-      if (registered.error || !registered.data) return setError(registered.error ?? "No se pudo guardar el archivo.");
+      if (registered.error || !registered.data) return fail(registered.error ?? "No se pudo guardar el archivo.");
       setAttachments((current) => [...current, { id: registered.data!.id, name: cleanFileName(file.name), kind: prepared.data!.kind, caption: null, studentId: null, availability: "disponible" }]);
+      return true;
     } catch (e) {
-      setError(uploadErrorMessage(e));
+      return fail(uploadErrorMessage(e));
     } finally {
       setPhase(null);
     }
   }
 
-  // Se elige el archivo y el campo se vacía enseguida: así se puede volver a elegir el mismo archivo.
-  function picked(event: React.ChangeEvent<HTMLInputElement>, expect: AttachmentKind) {
-    const file = event.target.files?.[0];
+  // Se elige el archivo y el campo se vacía enseguida: así se puede volver a elegir el mismo archivo. La galería admite varias fotos a la vez: se suben una tras otra.
+  async function picked(event: React.ChangeEvent<HTMLInputElement>, expect: AttachmentKind) {
+    const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (file) void upload(file, expect);
+    for (const file of files) {
+      const saved = await upload(file, expect, files.length > 1 ? `${cleanFileName(file.name)}: ` : "");
+      if (!saved) break;
+    }
   }
 
   const busy = phase !== null;
@@ -294,9 +309,9 @@ export function LessonFilesEditor({
             Tomar foto
           </Button>
         </div>
-        <input ref={pdfInput} aria-label="Archivo PDF a adjuntar" type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => picked(event, "pdf")} />
-        <input ref={photoInput} aria-label="Foto a adjuntar" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => picked(event, "image")} />
-        <input ref={cameraInput} aria-label="Foto tomada con la cámara" type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => picked(event, "image")} />
+        <input ref={pdfInput} aria-label="Archivo PDF a adjuntar" type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => void picked(event, "pdf")} />
+        <input ref={photoInput} aria-label="Foto a adjuntar" type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => void picked(event, "image")} />
+        <input ref={cameraInput} aria-label="Foto tomada con la cámara" type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden onChange={(event) => void picked(event, "image")} />
         <p className="text-[13px] text-textMuted">PDF hasta 20 MB; fotos hasta 10 MB (JPG, PNG, WebP o HEIC).</p>
         {phase && (
           <p role="status" className="text-sm text-textSecondary">

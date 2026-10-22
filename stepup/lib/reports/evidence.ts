@@ -4,7 +4,9 @@ import type { StudentReportEvidenceCandidate } from "./student-report-data.ts";
  * Evidencias del reporte (fotos y PDF de las clases del período), como en la app anterior: la profesora ELIGE cuáles incluir; nunca se preseleccionan. PURO.
  * Lo que se puede elegir sale sólo de `data.evidenceCandidates` (adjuntos vigentes de las clases dictadas de ESE alumno en el período), así que un pedido no puede incluir un archivo ajeno.
  */
-export const MAX_REPORT_EVIDENCE = 24;
+/** Como la app anterior: hasta 12 FOTOS por reporte (los PDF sólo figuran por su nombre y fecha; su tope es sólo una guarda técnica). */
+export const MAX_REPORT_PHOTOS = 12;
+export const MAX_REPORT_EVIDENCE = 36;
 
 export class ReportEvidenceError extends Error {}
 
@@ -17,7 +19,9 @@ export function resolveSelectedEvidence(selectedIds: unknown, candidates: readon
   const byId = new Map((candidates ?? []).map((candidate) => [candidate.attachmentId, candidate]));
   for (const id of wanted) if (!byId.has(id)) throw new ReportEvidenceError("Una de las evidencias elegidas ya no está disponible. Volvé a elegirlas.");
   if (wanted.size > MAX_REPORT_EVIDENCE) throw new ReportEvidenceError(`Podés incluir hasta ${MAX_REPORT_EVIDENCE} evidencias por reporte.`);
-  return (candidates ?? []).filter((candidate) => wanted.has(candidate.attachmentId));
+  const chosen = (candidates ?? []).filter((candidate) => wanted.has(candidate.attachmentId));
+  if (chosen.filter((candidate) => candidate.kind === "image").length > MAX_REPORT_PHOTOS) throw new ReportEvidenceError(`Podés incluir hasta ${MAX_REPORT_PHOTOS} fotos por reporte.`);
+  return chosen;
 }
 
 /** Ids elegidos en un orden fijo, para compararlos entre pedidos. */

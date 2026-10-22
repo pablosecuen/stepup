@@ -176,6 +176,31 @@ export function dayColumnWidthPx(areaWidthPx: number, dayCount: number, timeColu
   return Math.max(0, (areaWidthPx - timeColumnPx - borders) / Math.max(1, dayCount));
 }
 
+/**
+ * Semana en el teléfono: un día con clases a la misma hora ensancha SU columna lo necesario para que cada carril muestre el nombre en texto horizontal y sin cortes (el resto de los días
+ * conserva su ancho y la grilla se desplaza hacia los costados si la suma pasa del ancho de la pantalla). Nunca se gira el texto, nunca se corta una palabra y nunca se oculta una clase:
+ * el alto, la hora y los carriles siguen siendo exactos. `needPx` es el ancho mínimo de la columna de cada día (cero si no necesita más que el común).
+ */
+export const MOBILE_MAX_DAY_COLUMN_PX = 300;
+
+export interface MobileWeekColumns {
+  /** Ancho de cada columna de día INCLUIDO su borde izquierdo (px). */
+  trackPx: number[];
+  /** Ancho total de la grilla (columna de horas + días). */
+  totalPx: number;
+  /** ¿Algún día pasa del ancho común (la grilla se desplaza hacia los costados)? */
+  expanded: boolean;
+}
+
+export function mobileWeekColumns(input: { areaWidthPx: number; timeColumnPx: number; needPx: readonly number[] }): MobileWeekColumns {
+  const dayCount = Math.max(1, input.needPx.length);
+  const commonPx = dayColumnWidthPx(input.areaWidthPx, dayCount, input.timeColumnPx, 0) + 1;
+  const trackPx = input.needPx.map((need) => Math.max(commonPx, Math.min(MOBILE_MAX_DAY_COLUMN_PX, need + 1)));
+  const daysPx = trackPx.reduce((sum, width) => sum + width, 0);
+  const expanded = daysPx > commonPx * dayCount + 0.5;
+  return { trackPx, totalPx: input.timeColumnPx + daysPx, expanded };
+}
+
 /** ¿La grilla horaria entra con columnas legibles? Si no, se usa la agenda por día (la misma de móvil). */
 export function gridFitsWidth(areaWidthPx: number, dayCount: number): boolean {
   return areaWidthPx >= TIME_COLUMN_WIDTH_PX + MIN_DAY_COLUMN_WIDTH_PX * Math.max(1, dayCount);
@@ -199,24 +224,16 @@ export const STACK_CARD_MIN_WIDTH_PX = 30;
 export const TITLE_CARD_MIN_HEIGHT_PX = 15;
 export const TITLE_CARD_MIN_WIDTH_PX = 22;
 /**
- * `vertical`: en un carril muy angosto (la semana en un teléfono con 2 o 3 clases a la misma hora: 11–22 px) la primera palabra del nombre se escribe girada, de arriba hacia
- * abajo, a lo largo del bloque — una línea de 10 px de letra necesita ≥ 11 px de ancho y el bloque ≥ 30 px de alto para dejar leer unas 5 letras. Por debajo de eso sólo queda el
- * bloque de color (el toque abre el detalle y el día se abre desde su número).
+ * `vertical`: en un carril muy angosto de escritorio (11–22 px) la primera palabra del nombre se escribe girada, de arriba hacia abajo, a lo largo del bloque — una línea de 10 px de
+ * letra necesita ≥ 11 px de ancho y el bloque ≥ 30 px de alto. Por debajo de eso sólo queda el bloque de color.
  */
 export const VERTICAL_CARD_MIN_WIDTH_PX = 11;
 export const VERTICAL_CARD_MIN_HEIGHT_PX = 30;
-export const MOBILE_VERTICAL_CARD_MIN_HEIGHT_PX = 22;
 
-/**
- * `preferVertical` (semana en el teléfono): el texto girado se usa hasta los 30 px de ancho — una línea de iniciales («I..») identifica menos que la primera palabra completa de
- * costado — y en escritorio sólo por debajo de los 22 px, donde el puntero ya muestra todo en el cuadro de información.
- */
-export function cardPresentation(input: { heightPx: number; widthPx: number; preferVertical?: boolean }): CardPresentation {
+/** El texto girado sólo existe en escritorio, en carriles de menos de 22 px, donde el puntero ya muestra todo en el cuadro de información; el teléfono ensancha la columna en vez de girar el nombre (`mobileWeekColumns`). */
+export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
   const { heightPx, widthPx } = input;
-  const verticalBelow = input.preferVertical ? STACK_CARD_MIN_WIDTH_PX : TITLE_CARD_MIN_WIDTH_PX;
-  // En el teléfono también las clases cortas (30 min ≈ 25 px) llevan el nombre girado: «Delf…» identifica más que «D».
-  const verticalMinHeight = input.preferVertical ? MOBILE_VERTICAL_CARD_MIN_HEIGHT_PX : VERTICAL_CARD_MIN_HEIGHT_PX;
-  if (heightPx >= verticalMinHeight && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < verticalBelow) return "vertical";
+  if (heightPx >= VERTICAL_CARD_MIN_HEIGHT_PX && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < TITLE_CARD_MIN_WIDTH_PX) return "vertical";
   if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
   if (heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX) return "full";
   return heightPx >= STACK_CARD_MIN_HEIGHT_PX && widthPx >= STACK_CARD_MIN_WIDTH_PX ? "stack" : "title";

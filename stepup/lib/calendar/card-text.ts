@@ -72,90 +72,49 @@ export function wideMeta(input: { timeLabel: string; groupSize: number | null; t
   return [input.timeLabel, group, ...input.tags].filter((part): part is string => Boolean(part)).join(" · ");
 }
 
-const VOWELS = new Set(Array.from("aeiouáéíóúüAEIOUÁÉÍÓÚÜ"));
-const STRONG = new Set(Array.from("aeoáéóíúAEOÁÉÓÍÚ"));
-const ACCENTED_WEAK = new Set(Array.from("íúÍÚ"));
-const INSEPARABLE = new Set(["pl", "pr", "bl", "br", "fl", "fr", "gl", "gr", "cl", "cr", "dr", "tr", "kr", "kl", "ch", "ll", "rr"]);
-const SOFT_HYPHEN = "\u00AD";
-
-/** ¿La letra en esa posición suena como vocal? La «u» de «qu» y de «gu» antes de e/i es muda (parte del dígrafo): «Joaquín», «Guillermo». */
-function isVowelAt(letters: string[], index: number): boolean {
-  const letter = letters[index];
-  if (!VOWELS.has(letter)) return false;
-  if (letter.toLowerCase() === "u") {
-    const before = letters[index - 1]?.toLowerCase();
-    const after = letters[index + 1]?.toLowerCase();
-    if (before === "q") return false;
-    if (before === "g" && after !== undefined && "eéiíy".includes(after)) return false;
-  }
-  return true;
-}
-
-/** ¿Las dos vocales seguidas forman un diptongo (una sola sílaba)? Dos fuertes («le-o») o una débil acentuada («rí-o») hacen hiato. */
-function isDiphthong(a: string, b: string): boolean {
-  if (ACCENTED_WEAK.has(a) || ACCENTED_WEAK.has(b)) return false;
-  return !(STRONG.has(a) && STRONG.has(b));
-}
-
-/** Sílabas de una palabra en español (regla práctica: diptongos, grupos de consonantes inseparables y «una consonante pasa a la sílaba siguiente»). */
-export function syllablesEs(word: string): string[] {
-  const letters = Array.from(word);
-  const syllables: string[] = [];
-  let current = "";
-  let index = 0;
-  while (index < letters.length) {
-    current += letters[index];
-    const isVowel = isVowelAt(letters, index);
-    const next = letters[index + 1];
-    if (isVowel && next !== undefined) {
-      if (isVowelAt(letters, index + 1)) {
-        // vocal + vocal: sigue la misma sílaba si es diptongo; si no, hay hiato y se corta acá
-        if (!isDiphthong(letters[index], next)) {
-          syllables.push(current);
-          current = "";
-        }
-      } else {
-        // vocal + consonantes + vocal: se reparten los grupos de consonantes
-        let end = index + 1;
-        while (end < letters.length && !isVowelAt(letters, end)) end++;
-        // «qu» y «gu» (e/i) cuentan como UNA consonante.
-        const cluster: string[] = [];
-        for (let k = index + 1; k < end; k++) {
-          if ("qgQG".includes(letters[k]) && k + 1 < end && letters[k + 1].toLowerCase() === "u") {
-            cluster.push(letters[k] + letters[k + 1]);
-            k++;
-          } else cluster.push(letters[k]);
-        }
-        if (end < letters.length && cluster.length > 0) {
-          let keep = 0; // cuántas consonantes (unidades) se quedan en esta sílaba
-          if (cluster.length === 2) keep = INSEPARABLE.has(cluster.join("").toLowerCase()) ? 0 : 1;
-          else if (cluster.length === 3) keep = INSEPARABLE.has(cluster.slice(1).join("").toLowerCase()) ? 1 : 2;
-          else if (cluster.length >= 4) keep = 2;
-          const kept = cluster.slice(0, keep).join("");
-          current += kept;
-          syllables.push(current);
-          current = "";
-          index += Array.from(kept).length;
-        }
-      }
-    }
-    index++;
-  }
-  if (current) syllables.push(current);
-  return syllables;
-}
 
 /**
- * La palabra con guiones blandos entre sílabas (invisibles salvo donde el navegador corta la línea: ahí aparece el guion): «Guadalupe» → «Gua-da-lu-pe». Una tarjeta de 40 px de ancho puede
- * partir un nombre largo en dos líneas sin dejar una letra suelta: no se corta después de la primera ni antes de la última si esa sílaba tiene una sola letra.
+ * Semana en el teléfono: el nombre se escribe SIEMPRE en texto horizontal y completo (nunca girado ni partido por sílabas). Una tarjeta baja (una línea) lleva la primera palabra; una de 38 px
+ * o más de alto lleva las dos primeras palabras («Juan Pablo», «Grupo B2»), cada una en su línea si no entran juntas. El ancho que necesita el carril sale de la palabra más larga que se va a ver.
  */
-export function softHyphenateEs(word: string): string {
-  const parts = syllablesEs(word);
-  if (parts.length < 2) return word;
-  const merged: string[] = [];
-  for (const part of parts) {
-    if (merged.length > 0 && (merged[merged.length - 1].length < 2 || part.length < 2)) merged[merged.length - 1] += part;
-    else merged.push(part);
+export const TWO_NAME_LINES_MIN_HEIGHT_PX = 38;
+/** Piso y techo del ancho de un carril (px): por debajo de 40 no entra ni una palabra corta con su margen; por encima de 76 el nombre se acorta con «…» en vez de ensanchar más la columna. */
+export const LANE_MIN_PX = 40;
+export const LANE_MAX_PX = 76;
+/** Lo que gasta una tarjeta de la semana del teléfono fuera del texto: franja izquierda de 3 px, borde derecho de 1 px y 3 px de margen a cada lado, más 2 px de holgura. */
+const CARD_CHROME_PX = 12;
+
+/** Palabras que se muestran en la tarjeta de la semana del teléfono según su alto. */
+export function mobileNameWords(title: string, heightPx: number): string[] {
+  return words(title).slice(0, heightPx >= TWO_NAME_LINES_MIN_HEIGHT_PX ? 2 : 1);
+}
+
+/** Letra del nombre: 10,5 px para nombres cortos (hasta 7 letras) y 9,5 px para los largos, para que entren enteros siempre que se pueda. */
+export function mobileNameFontPx(shown: readonly string[]): number {
+  const longest = Math.max(0, ...shown.map((word) => Array.from(word).length));
+  return longest <= 7 ? 10.5 : 9.5;
+}
+
+const NARROW_GLYPHS = new Set(Array.from("iljtfrI.,'’:;!|1"));
+const WIDE_GLYPHS = new Set(Array.from("mwMW@"));
+
+/** Ancho estimado (px) de un texto en negrita de ese tamaño: letras angostas (i, l, t…), anchas (m, w) y mayúsculas; algo generoso a propósito, porque quedarse corto corta la palabra. */
+export function estimateBoldTextWidthPx(text: string, fontPx: number): number {
+  let em = 0;
+  for (const character of Array.from(text)) {
+    if (NARROW_GLYPHS.has(character)) em += 0.32;
+    else if (WIDE_GLYPHS.has(character)) em += 0.9;
+    else if (character === character.toLocaleUpperCase("es-AR") && character !== character.toLocaleLowerCase("es-AR")) em += 0.68;
+    else if (character === " ") em += 0.3;
+    else em += 0.6;
   }
-  return merged.join(SOFT_HYPHEN);
+  return em * fontPx;
+}
+
+/** Ancho mínimo (px) del carril que muestra este nombre sin cortar ninguna palabra. */
+export function mobileLaneNeedPx(title: string, heightPx: number): number {
+  const shown = mobileNameWords(title, heightPx);
+  const fontPx = mobileNameFontPx(shown);
+  const widest = Math.max(0, ...shown.map((word) => estimateBoldTextWidthPx(word, fontPx)));
+  return Math.min(LANE_MAX_PX, Math.max(LANE_MIN_PX, Math.ceil(widest + CARD_CHROME_PX)));
 }

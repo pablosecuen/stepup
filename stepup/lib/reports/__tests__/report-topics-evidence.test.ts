@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { buildStudentReportData, type RegistrationForStudentReport } from "../student-report-data.ts";
 import { buildDeterministicReportNarrative } from "../narrative.ts";
 import { computeGenerateRequestFingerprint, evaluateGenerateReportOutcome } from "../generate-outcome.ts";
-import { MAX_REPORT_EVIDENCE, normalizeEvidenceIds, ReportEvidenceError, resolveSelectedEvidence } from "../evidence.ts";
+import { MAX_REPORT_EVIDENCE, MAX_REPORT_PHOTOS, normalizeEvidenceIds, ReportEvidenceError, resolveSelectedEvidence } from "../evidence.ts";
 import { toReportJpeg } from "../evidence-image.ts";
 
 const FIXTURES = join(import.meta.dirname, "..", "..", "images", "__tests__", "fixtures");
@@ -54,8 +54,14 @@ test("la selección de evidencias se valida contra los candidatos: sin repetidos
   assert.deepEqual(resolveSelectedEvidence(["a2", "a1", "a1"], candidates).map((c) => c.attachmentId), ["a1", "a2"]);
   assert.throws(() => resolveSelectedEvidence(["de-otro-alumno"], candidates), ReportEvidenceError);
   assert.throws(() => resolveSelectedEvidence("a1", candidates), ReportEvidenceError);
-  const many = Array.from({ length: MAX_REPORT_EVIDENCE + 1 }, (_, i) => ({ attachmentId: `a${i}`, registrationId: "r", dateKey: "2026-10-02", kind: "image" as const, name: `f${i}.jpg`, caption: null }));
-  assert.throws(() => resolveSelectedEvidence(many.map((c) => c.attachmentId), many), ReportEvidenceError);
+  // Como la app anterior: hasta 12 fotos por reporte (la 13.ª se rechaza); los PDF no cuentan para ese tope.
+  const photos = Array.from({ length: MAX_REPORT_PHOTOS + 1 }, (_, i) => ({ attachmentId: `a${i}`, registrationId: "r", dateKey: "2026-10-02", kind: "image" as const, name: `f${i}.jpg`, caption: null }));
+  assert.equal(resolveSelectedEvidence(photos.slice(0, MAX_REPORT_PHOTOS).map((c) => c.attachmentId), photos).length, MAX_REPORT_PHOTOS);
+  assert.throws(() => resolveSelectedEvidence(photos.map((c) => c.attachmentId), photos), /hasta 12 fotos/);
+  const pdfs = Array.from({ length: 20 }, (_, i) => ({ attachmentId: `p${i}`, registrationId: "r", dateKey: "2026-10-02", kind: "pdf" as const, name: `g${i}.pdf`, caption: null }));
+  assert.equal(resolveSelectedEvidence([...photos.slice(0, MAX_REPORT_PHOTOS), ...pdfs].map((c) => c.attachmentId), [...photos, ...pdfs]).length, MAX_REPORT_PHOTOS + 20);
+  const tooMany = Array.from({ length: MAX_REPORT_EVIDENCE + 1 }, (_, i) => ({ attachmentId: `x${i}`, registrationId: "r", dateKey: "2026-10-02", kind: "pdf" as const, name: `h${i}.pdf`, caption: null }));
+  assert.throws(() => resolveSelectedEvidence(tooMany.map((c) => c.attachmentId), tooMany), ReportEvidenceError);
   assert.deepEqual(normalizeEvidenceIds(["b", "a", "b"]), ["a", "b"]);
 });
 

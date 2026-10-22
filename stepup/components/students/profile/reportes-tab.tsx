@@ -12,6 +12,7 @@ import {
   type StudentReportPreview,
 } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
+import { MAX_REPORT_PHOTOS } from "@/lib/reports/evidence";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import { ArrowDownTrayIcon, ArrowPathIcon, CheckIcon, DocumentTextIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +85,10 @@ export function ReportPreviewCard({
 }) {
   const topicsSeen = preview.data.topicsSeen ?? [];
   const evidenceCandidates = preview.data.evidenceCandidates ?? [];
+  // Como la app anterior: hasta 12 fotos por reporte (los PDF no cuentan); al llegar al tope las demás fotos quedan sin poder elegirse y el texto lo dice.
+  const photoKindById = new Map(evidenceCandidates.map((candidate) => [candidate.attachmentId, candidate.kind]));
+  const selectedPhotos = selectedEvidenceIds.filter((id) => photoKindById.get(id) === "image").length;
+  const photosFull = selectedPhotos >= MAX_REPORT_PHOTOS;
   return (
     <Card>
       <h2 className="font-display text-section font-semibold">{preview.monthsSummaryLabel}</h2>
@@ -148,12 +153,18 @@ export function ReportPreviewCard({
       {evidenceCandidates.length > 0 && (
         <fieldset className="mt-5 min-w-0">
           <legend className="text-label font-bold uppercase text-textMuted">Evidencias y materiales (opcional)</legend>
-          <p className="mt-1 text-[14px] text-textMuted">Elegí qué fotos o PDF de las clases incluir en el reporte. Ninguna se incluye si no la elegís.</p>
+          <p className="mt-1 text-[14px] text-textMuted">Elegí qué fotos o PDF de las clases incluir en el reporte. Ninguna se incluye si no la elegís. Podés incluir hasta {MAX_REPORT_PHOTOS} fotos.</p>
+          <p className="mt-1 text-[14px] text-textMuted">Evitá incluir imágenes de alumnos o información sensible sin autorización.</p>
+          {photosFull && (
+            <p role="status" className="mt-1 text-[14px] font-semibold text-textSecondary">
+              Ya elegiste las {MAX_REPORT_PHOTOS} fotos que entran en un reporte. Para sumar otra, sacá una de las elegidas.
+            </p>
+          )}
           <ul className="mt-2 flex flex-col">
             {evidenceCandidates.map((candidate) => (
               <li key={candidate.attachmentId}>
                 <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
-                  <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={selectedEvidenceIds.includes(candidate.attachmentId)} onChange={() => onToggleEvidence(candidate.attachmentId)} />
+                  <input type="checkbox" className={`${CHECKBOX} mt-0.5`} checked={selectedEvidenceIds.includes(candidate.attachmentId)} disabled={photosFull && candidate.kind === "image" && !selectedEvidenceIds.includes(candidate.attachmentId)} onChange={() => onToggleEvidence(candidate.attachmentId)} />
                   <span className="min-w-0 [overflow-wrap:anywhere]">
                     <span className="font-[650] text-textPrimary">{candidate.name}</span> · {candidate.kind === "image" ? "Foto" : "PDF"} · {formatCivilDate(candidate.dateKey)}
                     {candidate.caption && <span className="block text-[13px] text-textMuted">{candidate.caption}</span>}
