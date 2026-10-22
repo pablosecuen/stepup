@@ -11,6 +11,8 @@ export function RegistroPageFrame({
   subtitle,
   lines = [],
   kindLabel,
+  backHref = "/registro",
+  backLabel = "Volver a Clases por registrar",
   children,
 }: {
   title: ReactNode;
@@ -18,11 +20,14 @@ export function RegistroPageFrame({
   /** Renglones debajo del título (tipo de clase, quiénes participan), como el encabezado del formulario de la app. */
   lines?: string[];
   kindLabel?: string;
+  /** A dónde vuelve «Volver» (por defecto, Clases por registrar; desde «Editar registro» del Calendario, la misma semana o día). */
+  backHref?: string;
+  backLabel?: string;
   children: ReactNode;
 }) {
   return (
     <div className={PAGE_WIDTH.medium}>
-      <BackLink href="/registro">Volver a Clases por registrar</BackLink>
+      <BackLink href={backHref}>{backLabel}</BackLink>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
           <PageTitle>{title}</PageTitle>

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon, ArrowRightIcon, ClipboardDocumentCheckIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { editRegistrationHref } from "@/lib/registro/return-path";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -44,6 +45,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [now, setNow] = useState<number | null>(null);
+  // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
+  const [calendarPath, setCalendarPath] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Al pasar de un paso a otro (reprogramar, confirmar, cancelar, volver) el foco va al control principal del paso nuevo
@@ -61,6 +64,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setNow(Date.now());
+    setCalendarPath(window.location.pathname + window.location.search);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -256,6 +260,18 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" block className="mt-2 !justify-between">
                   <span className="min-w-0 text-left [overflow-wrap:anywhere]">{item.studentName || "Ver perfil"}</span>
                   <ArrowRightIcon className="h-4 w-4 shrink-0" aria-hidden />
+                </PrivateButtonLink>
+              </section>
+            )}
+
+            {item.status === "completed" && item.materializedLessonId && (
+              // Como la app original: una clase registrada muestra «Clase registrada» y «Editar registro» (corrige el registro existente; no inicia uno nuevo, no abre el perfil ni la programación de la clase).
+              <section aria-label="Clase registrada" className="flex flex-col gap-2 rounded-md border-[1.5px] border-border bg-surface2 p-3">
+                <p className="text-[15px] font-bold text-textPrimary">Clase registrada</p>
+                <p className="text-[13.5px] text-textMuted">Esta clase ya tiene un registro pedagógico asociado.</p>
+                <PrivateButtonLink href={editRegistrationHref(item.materializedLessonId, calendarPath)} variant="primary" block aria-label={`Editar registro, ${item.studentName || lessonTitle}`}>
+                  <PencilSquareIcon className="h-5 w-5" aria-hidden />
+                  Editar registro
                 </PrivateButtonLink>
               </section>
             )}

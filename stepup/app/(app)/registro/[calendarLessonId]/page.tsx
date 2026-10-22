@@ -20,15 +20,18 @@ import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-c
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
 import { resolveRegistrationHeader } from "@/lib/lessons/registration-form";
 import { instantDateKey } from "@/lib/calendar/civil-calendar";
+import { safeCalendarReturn } from "@/lib/registro/return-path";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
 
-export default async function RegistroClasePage({ params }: { params: Promise<{ calendarLessonId: string }> }) {
+export default async function RegistroClasePage({ params, searchParams }: { params: Promise<{ calendarLessonId: string }>; searchParams: Promise<{ volver?: string }> }) {
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
   const { calendarLessonId } = await params;
+  // «Editar registro» desde el Calendario: se vuelve a la misma semana o día (sólo rutas internas del Calendario).
+  const returnHref = safeCalendarReturn((await searchParams).volver);
 
   let detail;
   let calendarLesson;
@@ -86,7 +89,23 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
   // catch genérico la atraparía como si fuera un error real y mostraría
   // "No pudimos cargar este registro." en vez del 404 real (mismo criterio
   // ya aplicado en `alumnos/[id]/page.tsx`).
-  if (!detail || !calendarLesson) notFound();
+  if (!calendarLesson) notFound();
+  if (!detail) {
+    // La clase existe pero no tiene registro asociado (p. ej. figura como registrada sin su registro guardado): se explica, no se muestra un 404.
+    return (
+      <div className={PAGE_WIDTH.medium}>
+        <PageTitle>Registro de la clase</PageTitle>
+        <div className="mt-5 flex flex-col items-start gap-3">
+          <div className="w-full">
+            <ErrorState message="No encontramos el registro de esta clase." />
+          </div>
+          <PrivateButtonLink href={returnHref ?? "/registro"} variant="secondary">
+            {returnHref ? "Volver al Calendario" : "Volver"}
+          </PrivateButtonLink>
+        </div>
+      </div>
+    );
+  }
 
   // Encabezado como en la app: el alumno (clase individual) o el nombre del grupo, el tipo de clase y, en un grupo, quiénes participan.
   const header = resolveRegistrationHeader({
@@ -102,6 +121,8 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
       subtitle={formatInstantDayLongTime(calendarLesson.startAt)}
       lines={[header.typeLine, ...(header.participantsLine ? [header.participantsLine] : [])]}
       kindLabel={ACTIVITY_KIND_LABEL[detail.registration.activityKind]}
+      backHref={returnHref ?? undefined}
+      backLabel={returnHref ? "Volver al Calendario" : undefined}
     >
       <OriginIncidentsCard incidents={incidents} />
       {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
@@ -109,6 +130,7 @@ export default async function RegistroClasePage({ params }: { params: Promise<{ 
         // Al cambiar el resultado de la clase el formulario se vuelve a armar con lo que quedó guardado.
         key={`${detail.registration.outcome}:${detail.registration.holidayException}:${detail.registration.countsAsClass}`}
         outcomeField={{ alreadyRescheduled: calendarLesson.status === "rescheduled", rescheduleHref: `/calendario?view=day&day=${instantDateKey(calendarLesson.startAt)}&reprogramar=${calendarLesson.id}` }}
+        returnHref={returnHref}
         initialContent={lessonContent}
         materialLibrary={materialLibrary}
         registration={detail.registration}

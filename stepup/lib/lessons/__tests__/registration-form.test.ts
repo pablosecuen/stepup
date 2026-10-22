@@ -114,7 +114,7 @@ test("el formulario respeta el orden de la app: individual y grupal, sin duplica
   const order = ["<PendingHomeworkReview", "Duración real (minutos)", '<Block title="Evaluación">', "<PedagogicalContentEditor", "<InternalNotesCard", '<Block title="Tarea para la próxima clase">'].map(at);
   assert.deepEqual([...order].sort((a, b) => a - b), order, "el orden del formulario individual cambió");
   // Grupo: duración → contenido → participantes → observaciones internas → tarea → resumen → acciones.
-  const group = ["Duración real (minutos)", "<PedagogicalContentEditor", 'aria-label="Participantes"', "<InternalNotesCard", '<Block title="Tarea para la próxima clase">', '<Block title="Resumen">', ': "Guardar progreso"}'].map(at);
+  const group = ["Duración real (minutos)", "<PedagogicalContentEditor", 'aria-label="Participantes"', "<InternalNotesCard", '<Block title="Tarea para la próxima clase">', '<Block title="Resumen" anchorId={SUMMARY_ANCHOR_ID}>', ': "Guardar progreso"}'].map(at);
   assert.deepEqual([...group].sort((a, b) => a - b), group, "el orden del formulario grupal cambió");
   // La tarea común ya no se rotula «para todo el grupo» ni se ofrece en una clase individual junto a otra tarea del alumno.
   assert.ok(!source.includes("Tarea común para todo el grupo"));

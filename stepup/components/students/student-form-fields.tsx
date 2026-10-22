@@ -1,3 +1,4 @@
+import { LevelPicker } from "./level-picker";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import {
@@ -30,8 +31,6 @@ export function StudentFormFields({
   defaultValues?: Partial<StudentRecord>;
   customLevels: CustomLevelRecord[];
 }) {
-  const allLevelNames = [...STANDARD_LEVELS, ...customLevels.map((l) => l.name)];
-  const selectedLevels = new Set(defaultValues?.levels ?? []);
 
   return (
     <div className="flex flex-col gap-5">
@@ -42,22 +41,7 @@ export function StudentFormFields({
             <TextInput id="name" name="name" type="text" required defaultValue={defaultValues?.name ?? ""} placeholder="Nombre y apellido" />
           </Field>
 
-          <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="text-sm font-[650] text-textSecondary">Niveles</legend>
-            <div className="flex flex-wrap gap-2">
-              {allLevelNames.map((level) => (
-                <label
-                  key={level}
-                  className="flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-pill border-[1.5px] border-borderMid bg-surface px-4 py-1.5 text-[14.5px] font-[650] text-textPrimary transition-colors duration-150 hover:border-ink has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink has-[:focus-visible]:ring-offset-2 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-background"
-                >
-                  <input type="checkbox" name="levels" value={level} defaultChecked={selectedLevels.has(level)} className="peer sr-only" />
-                  <span aria-hidden className="hidden text-xs font-bold peer-checked:inline">✓</span>
-                  <span className="[overflow-wrap:anywhere]">{level}</span>
-                </label>
-              ))}
-              {allLevelNames.length === 0 && <p className="text-xs text-textMuted">Todavía no hay niveles cargados.</p>}
-            </div>
-          </fieldset>
+          <LevelPicker customLevels={customLevels} defaultSelected={defaultValues?.levels ?? []} />
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Modalidad *" htmlFor="modality">

@@ -88,14 +88,17 @@ test("Editar alumno: Guardar es la acción principal y Cancelar vuelve a la fich
   assert.match(form, /href=\{`\/alumnos\/\$\{student\.id\}`\} variant="ghost"/);
   assert.match(form, /updateStudentAction\.bind\(null, student\.id\)/);
   const fields = code("components/students/student-form-fields.tsx");
-  for (const name of ["name", "levels", "modality", "category", "billingType", "price", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "notes"]) {
+  for (const name of ["name", "modality", "category", "billingType", "price", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "notes"]) {
     assert.match(fields, new RegExp(`name="${name}"`), name);
   }
   for (const id of ["name", "modality", "category", "billingType", "price", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "notes"]) {
     assert.match(fields, new RegExp(`htmlFor="${id}"`), `etiqueta de ${id}`);
   }
   assert.match(fields, /legend className=\{LEGEND\}>Datos básicos/);
-  assert.match(fields, /has-\[:checked\]:bg-ink/, "el nivel elegido se distingue con marca ✓ y no sólo por color");
+  assert.ok(fields.includes("<LevelPicker customLevels={customLevels} defaultSelected={defaultValues?.levels ?? []} />"), "los niveles los da el selector con «+»");
+  const picker = code("components/students/level-picker.tsx");
+  assert.ok(picker.includes('name="levels"'));
+  assert.match(picker, /has-\[:checked\]:bg-ink/, "el nivel elegido se distingue con marca ✓ y no sólo por color");
 });
 
 test("Perfil: un solo h1 (el nombre), «Volver» como enlace de texto, «Editar alumno» secundaria y el cambio de estado lejos, en su propia tarjeta", () => {

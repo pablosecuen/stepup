@@ -304,7 +304,7 @@ test("los botones de selección dicen su estado (aria-pressed) y no dependen só
     ["components/students/student-picker.tsx", /aria-pressed=\{isSelected\}[\s\S]*\{isSelected \? "✓" : ""\}/],
     ["components/calendar/calendar-view-switch.tsx", /aria-current=\{isWeek \? "true" : undefined\}[\s\S]*aria-current=\{!isWeek \? "true" : undefined\}/],
     ["components/finance/financial-overview-view.tsx", /aria-current=\{selected \? "true" : undefined\}[\s\S]*\{selected && <CheckIcon/],
-    ["components/students/student-form-fields.tsx", /peer sr-only[\s\S]*peer-checked:inline[\s\S]*✓/],
+    ["components/students/level-picker.tsx", /peer sr-only[\s\S]*peer-checked:inline[\s\S]*✓/],
     ["components/calendar/real-calendar-grid.tsx", /\(hoy\)/],
   ];
   for (const [file, pattern] of checks) assert.match(code(file), pattern, file);

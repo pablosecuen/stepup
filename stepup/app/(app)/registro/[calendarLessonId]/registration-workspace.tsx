@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
+import { scrollElementToTop } from "@/lib/ui/scroll-to-element";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { saveParticipantAction, finalizeRegistrationAction, editCompletedRegistrationAction, saveLessonContentDraftAction } from "@/lib/actions/lesson-registrations";
@@ -88,11 +89,16 @@ function buildEditParticipantInput(studentId: string, form: ParticipantForm) {
 
 const STATUS_LABEL: Record<ParticipantRegistrationStatus, string> = { pending: "Pendiente", completed: "Completado", omitted: "Omitido por ahora" };
 
+/** Ancla de desplazamiento: el elemento al que se lleva la pantalla (tarjeta de un alumno o resumen) queda debajo del encabezado fijo del teléfono. */
+export const SCROLL_ANCHOR_CLASS = "scroll-mt-[calc(var(--tf-m-header)+var(--tf-safe-top)+12px)] nav:scroll-mt-4";
+export const SUMMARY_ANCHOR_ID = "registro-resumen";
+export const participantAnchorId = (studentId: string) => `participante-${studentId}`;
+
 /** Un bloque del formulario: tarjeta con su título, en el orden de la app anterior. */
-function Block({ title, children }: { title: string; children: ReactNode }) {
+function Block({ title, children, anchorId }: { title: string; children: ReactNode; anchorId?: string }) {
   const id = useId();
   return (
-    <section aria-labelledby={`${id}-title`}>
+    <section id={anchorId} aria-labelledby={`${id}-title`} className={anchorId ? SCROLL_ANCHOR_CLASS : undefined}>
       <Card padded={false}>
         <CardHeader title={<span id={`${id}-title`}>{title}</span>} />
         <div className="flex min-w-0 flex-col gap-5 px-4 pb-4 nav:px-5 nav:pb-5">{children}</div>
@@ -102,7 +108,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** Un participante de un grupo: encabezado replegable (nombre + estado) y, desplegado, asistencia, tarea pendiente, evaluación, tarea personalizada y las dos acciones. */
-function ParticipantCard({
+export function ParticipantCard({
   studentId,
   name,
   level,
@@ -150,6 +156,7 @@ function ParticipantCard({
   const levelAndAttendance = [level, form.attendanceStatus ? ATTENDANCE_STATUS_LABEL[form.attendanceStatus] : null].filter(Boolean).join(" · ");
 
   return (
+    <div id={participantAnchorId(studentId)} className={SCROLL_ANCHOR_CLASS}>
     <Card padded={false}>
       <button type="button" onClick={onToggle} aria-expanded={isOpen} className="flex min-h-[64px] w-full items-center gap-3 px-4 py-3 text-left">
         <Avatar initial={avatarInitials(name)} tone={avatarToneFor(studentId)} size="m" />
@@ -198,6 +205,7 @@ function ParticipantCard({
         </div>
       )}
     </Card>
+    </div>
   );
 }
 
@@ -213,6 +221,7 @@ export function RegistrationWorkspace({
   initialContent,
   materialLibrary,
   outcomeField,
+  returnHref = null,
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -223,6 +232,8 @@ export function RegistrationWorkspace({
   scheduledStartAt: string;
   scheduledEndAt: string;
   initialContent?: LessonContent | null;
+  /** «Editar registro» desde el Calendario: a dónde volver al guardar (la misma semana o día). Sin esto, a Clases por registrar. */
+  returnHref?: string | null;
   /** Biblioteca de materiales de la cuenta (para elegirlos en la clase). */
   materialLibrary?: LibraryMaterial[];
   /** Clase programada: permite elegir/cambiar el resultado de la clase («¿Qué pasó con esta clase?»). Ausente en una clase no programada (el resultado se elige al crearla). */
@@ -246,6 +257,7 @@ export function RegistrationWorkspace({
   const [attendanceErrorId, setAttendanceErrorId] = useState<string | null>(null);
   const [homeworkErrorId, setHomeworkErrorId] = useState<string | null>(null);
   const [busyParticipantId, setBusyParticipantId] = useState<string | null>(null);
+  const [scrollRequest, setScrollRequest] = useState<{ anchor: string; nonce: number } | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutes] = useState(() => String(initialDurationMinutes({ actualStartedAt: registration.actualStartedAt, actualEndedAt: registration.actualEndedAt, scheduledStartAt, scheduledEndAt })));
@@ -295,10 +307,22 @@ export function RegistrationWorkspace({
     // Actualización local inmediata (progreso/barra/botón «Finalizar» reaccionan al toque, sin esperar un round-trip) + refresh en segundo
     // plano para que el resto de los datos del servidor también queden al día — la fuente real es la fila de `lesson_registration_students`.
     const next = { ...statusByStudentId, [studentId]: status };
+    const nextOpenId = firstOpenParticipant(order, next);
     setStatusByStudentId(next);
-    setOpenParticipantId(firstOpenParticipant(order, next));
+    setOpenParticipantId(nextOpenId);
+    // Como la app original: el foco visual sigue al alumno que se abre (su nombre y el comienzo de su formulario); si no queda ninguno, al resumen. Sólo acá —después de GUARDAR bien—: nunca
+    // durante la edición normal, al escribir ni en un refresco.
+    setScrollRequest((current) => ({ anchor: nextOpenId ? participantAnchorId(nextOpenId) : SUMMARY_ANCHOR_ID, nonce: (current?.nonce ?? 0) + 1 }));
     router.refresh();
   }
+
+  // El desplazamiento se hace DESPUÉS de que React pintó el cambio (la tarjeta anterior ya se plegó y la nueva ya se abrió), sobre el contenedor que de verdad tiene el scroll.
+  useEffect(() => {
+    if (!scrollRequest) return;
+    const target = document.getElementById(scrollRequest.anchor);
+    if (!target) return;
+    return scrollElementToTop(target);
+  }, [scrollRequest]);
 
   /** «Completar alumno» / «Omitir por ahora» de un participante de un grupo: guarda sus datos y pasa al próximo alumno pendiente. */
   function saveParticipant(studentId: string, nextStatus: "completed" | "omitted") {
@@ -321,6 +345,8 @@ export function RegistrationWorkspace({
     }
     setAttendanceErrorId(null);
     setHomeworkErrorId(null);
+    // Como `Keyboard.dismiss()` de la app: se suelta el campo activo (y con él el teclado) ANTES de pasar al siguiente, para que el teclado al cerrarse no vuelva a mover la pantalla.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setBusyParticipantId(studentId);
     startTransition(async () => {
       const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, studentId, form, nextStatus, content)));
@@ -409,7 +435,7 @@ export function RegistrationWorkspace({
         // Recién ahora, con la respuesta exitosa confirmada, se limpia el borrador — un error nunca llega hasta acá, así que el mismo
         // editOperationId sigue disponible para un reintento real.
         clearEditOperationId();
-        router.push("/registro");
+        router.push(returnHref ?? "/registro");
         return;
       }
 
@@ -430,7 +456,7 @@ export function RegistrationWorkspace({
         setError(result.error);
         return;
       }
-      router.push("/registro");
+      router.push(returnHref ?? "/registro");
     });
   }
 
@@ -555,7 +581,7 @@ export function RegistrationWorkspace({
 
       {/* 8) Grupo: resumen de lo marcado hasta ahora. */}
       {countsAsClass && isGroup && (
-        <Block title="Resumen">
+        <Block title="Resumen" anchorId={SUMMARY_ANCHOR_ID}>
           <ul className="flex flex-col gap-1 text-[15px] text-textSecondary">
             <li>Presentes: {summary.present}</li>
             <li>Llegadas tarde: {summary.late}</li>

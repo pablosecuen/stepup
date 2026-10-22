@@ -237,6 +237,23 @@ export async function createLevelAction(_prevState: FormState, formData: FormDat
   return {};
 }
 
+/**
+ * Crea un nivel personalizado desde el formulario del alumno (el «+» junto a A1–C2) y devuelve el nivel creado para seleccionarlo al instante. Siempre en la cuenta de la sesión: nunca recibe una cuenta del
+ * navegador, valida nombre vacío / igual a un nivel estándar / duplicado (sin distinguir mayúsculas) y no toca ningún nivel existente.
+ */
+export async function createLevelInlineAction(rawName: string): Promise<{ error?: string; data?: { id: string; name: string } }> {
+  try {
+    if (typeof rawName !== "string" || rawName.length > 200) return { error: "Ponele un nombre al nivel." };
+    const ctx = await requireAuthenticatedDbContext();
+    const level = await createCustomLevel(ctx, rawName);
+    revalidatePath("/alumnos");
+    revalidatePath("/alumnos/nuevo");
+    return { data: { id: level.id, name: level.name } };
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+}
+
 export async function renameLevelAction(
   levelId: string,
   _prevState: FormState,

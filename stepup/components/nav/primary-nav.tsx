@@ -60,7 +60,7 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
 
   return (
     <>
-      <header className="sticky top-0 z-30 box-border h-[calc(var(--tf-m-header)+var(--tf-safe-top))] border-b-[1.5px] border-border bg-background pt-[var(--tf-safe-top)] nav:hidden">
+      <header data-tf-top-bar className="sticky top-0 z-30 box-border h-[calc(var(--tf-m-header)+var(--tf-safe-top))] border-b-[1.5px] border-border bg-background pt-[var(--tf-safe-top)] nav:hidden">
         <div className="flex h-full items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
           <Logo className="text-textPrimary" />
           <div className="flex items-center gap-1">
