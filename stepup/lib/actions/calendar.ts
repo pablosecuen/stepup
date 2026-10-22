@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
 import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
-import { listPredecessorsRunningFrom } from "@/lib/calendar/lineage";
+import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture } from "@/lib/repositories/recurrence-split";
 import { getTeacherAvailability, saveTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { listStudents } from "@/lib/repositories/students";
@@ -102,7 +102,7 @@ async function buildConflictCandidates(
  */
 async function checkFuturePatternConflicts(
   ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>,
-  input: { original: Awaited<ReturnType<typeof getRecurrenceRule>> & object; effectiveDate: string; todayDate: string; weeks: RecurrenceWeek[]; participantIds: string[] }
+  input: { original: Awaited<ReturnType<typeof getRecurrenceRule>> & object; replacedRuleIds: string[]; successorEndDate: string | null; effectiveDate: string; todayDate: string; weeks: RecurrenceWeek[]; participantIds: string[] }
 ): Promise<string | null> {
   const { original, effectiveDate, todayDate, weeks } = input;
   const successor = {
@@ -114,7 +114,7 @@ async function checkFuturePatternConflicts(
     modality: original.modality,
     timezone: original.timezone,
     startDate: mondayOfWeekContaining(effectiveDate),
-    endDate: original.endDate,
+    endDate: input.successorEndDate,
     status: "active" as const,
     classTitle: original.classTitle,
     activityKind: original.activityKind,
@@ -124,7 +124,7 @@ async function checkFuturePatternConflicts(
   const rangeEnd = new Date(localDateTimeToInstantIso({ date: addDaysToDateKey(horizonBase, FUTURE_VALIDATION_HORIZON_DAYS + 1), hour: 0, minute: 0, timeZone: original.timezone }));
   const [items, availability] = await Promise.all([loadCalendarViewForRange(ctx, rangeStart, rangeEnd, undefined, { includeTestData: true }), getTeacherAvailability(ctx)]);
   // La serie que se reemplaza deja de generar clases desde la fecha efectiva: no cuenta como ocupación.
-  const candidates = toConflictCandidates(items, { excludeRecurrenceId: original.id });
+  const candidates = toConflictCandidates(items, { excludeRecurrenceIds: input.replacedRuleIds });
   const conflicts = findFutureRecurrenceConflicts({ successor, effectiveDate, todayDate, candidates, availability });
   return conflicts.length > 0 ? describeFutureConflicts(conflicts, original.timezone) : null;
 }
@@ -524,23 +524,29 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       return { error: "El alumno principal de la serie ya no forma parte del grupo — usá \"Modificar participantes\" primero." };
     }
 
-    if (effectiveDate < currentRule.startDate) {
-      return {
-        error: `Esta serie vigente empieza el ${formatCivilDate(currentRule.startDate)}: un cambio desde antes tocaría un tramo anterior. Elegí esa fecha o una posterior.`,
-      };
+    // La fecha puede caer ANTES del inicio de la serie vigente (típico tras un cambio mal fechado): el patrón de esa fecha lo da el tramo
+    // anterior que la cubre. Se corta ESE tramo en la fecha, la sucesora toma el fin de la vigente y las vigentes posteriores se
+    // finalizan (el patrón nuevo las reemplaza). Antes se rechazaba y no había forma de corregir «desde hoy».
+    const allRules = (await listRecurrenceRules(ctx)).map((rule) => ({ ...rule, recurrenceId: rule.id }));
+    const segment = resolveEditableSegment(allRules, originalRecurrenceId, effectiveDate);
+    if (!segment) {
+      return { error: `Ningún tramo de esta serie rige el ${formatCivilDate(effectiveDate)} (empieza el ${formatCivilDate(currentRule.startDate)}). Elegí una fecha dentro de la serie.` };
     }
+    const target = segment.target;
+    const replacedRuleIds = [target.id, ...segment.superseded.map((rule) => rule.id)];
+    const successorEndDate = segment.superseded.length > 0 ? currentRule.endDate : target.endDate;
 
     // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
     // Se valida ANTES de guardar; si choca no se escribe nada.
     // La profesora puede aceptar el choque a propósito (`allowOverlap`, tras ver el aviso): nunca queda un conflicto en silencio.
     const allowOverlap = readString(formData, "allowOverlap") === "true";
     if (!allowOverlap) {
-      const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, effectiveDate, todayDate, weeks, participantIds });
+      const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, replacedRuleIds, successorEndDate, effectiveDate, todayDate, weeks, participantIds });
       if (conflictMessage) return { error: conflictMessage, conflict: true };
     }
 
     await splitRecurrenceThisAndFuture(ctx, {
-      originalRecurrenceId,
+      originalRecurrenceId: target.id,
       effectiveDate,
       todayDate,
       ruleType: weeks.length > 1 ? "custom" : "weekly",
@@ -548,7 +554,12 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       weeks,
       participantIds,
       primaryStudentId: currentRule.primaryStudentId,
+      successorEndDate,
     });
+    // Los tramos posteriores al de la fecha ya no generan clases: los reemplaza la sucesora. Si esto fallara, repetir el cambio es seguro (el corte es idempotente).
+    for (const replaced of segment.superseded) {
+      await setRecurrenceRuleStatus(ctx, replaced.id, "ended");
+    }
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }

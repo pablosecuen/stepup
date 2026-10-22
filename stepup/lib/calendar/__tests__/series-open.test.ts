@@ -110,3 +110,30 @@ test("cableado: la fecha efectiva de los formularios de series arranca en HOY (h
   // La validación corre ANTES de escribir.
   assert.ok(actions.indexOf("checkFuturePatternConflicts(ctx, { original: currentRule") < actions.indexOf("await splitRecurrenceThisAndFuture(ctx"), "valida antes de guardar");
 });
+
+// El caso real: «viernes 19:00» (arranca el 28/9, termina el 22/11) y su sucesora «viernes 20:00» que quedó mal fechada desde el 23/11.
+const TRAMO_19 = { ...rule("tramo19", { endDate: "2026-11-22" }), startDate: "2026-09-28" };
+const TRAMO_20 = { ...rule("tramo20", { supersedesRecurrenceId: "tramo19", effectiveFromDate: "2026-11-23" }), startDate: "2026-11-23" };
+
+test("editar «desde hoy» una serie cuya vigente arranca más adelante corta el tramo que cubre hoy y reemplaza a la vigente (antes se rechazaba)", async () => {
+  const { resolveEditableSegment } = await import("../lineage.ts");
+  const rules = [TRAMO_19, TRAMO_20];
+  const fromToday = resolveEditableSegment(rules, "tramo20", "2026-10-22");
+  assert.equal(fromToday?.target.recurrenceId, "tramo19");
+  assert.deepEqual(fromToday?.superseded.map((r) => r.recurrenceId), ["tramo20"]);
+  const fromHeadStart = resolveEditableSegment(rules, "tramo20", "2026-11-23");
+  assert.equal(fromHeadStart?.target.recurrenceId, "tramo20");
+  assert.deepEqual(fromHeadStart?.superseded, []);
+  assert.equal(resolveEditableSegment(rules, "tramo20", "2026-09-01"), null, "antes de que empiece la serie no hay tramo que la cubra");
+  assert.equal(resolveEditableSegment([{ ...TRAMO_19, status: "ended" as const }, TRAMO_20], "tramo20", "2026-10-22"), null, "un tramo finalizado no se corta");
+  assert.equal(resolveEditableSegment(rules, "no-existe", "2026-10-22"), null);
+});
+
+test("cableado: «Editar futuras» corta el tramo que cubre la fecha, hereda el fin de la vigente y finaliza los tramos posteriores", () => {
+  const actions = read("lib/actions/calendar.ts");
+  assert.match(actions, /resolveEditableSegment\(allRules, originalRecurrenceId, effectiveDate\)/);
+  assert.match(actions, /originalRecurrenceId: target\.id,/);
+  assert.match(actions, /successorEndDate,\n    \}\);/);
+  assert.match(actions, /for \(const replaced of segment\.superseded\) \{\s*await setRecurrenceRuleStatus\(ctx, replaced\.id, "ended"\);/);
+  assert.match(read("lib/repositories/recurrence-split.ts"), /if \(input\.successorEndDate !== undefined\) plan\.successorEndDate = input\.successorEndDate;/);
+});

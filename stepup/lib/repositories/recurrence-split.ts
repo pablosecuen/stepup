@@ -22,6 +22,8 @@ export interface SplitThisAndFutureInput {
   participantIds: string[];
   /** Elegido explícitamente por la profesora — nunca inferido del orden de `participantIds` (Fase 10, 20261001140000). Debe estar dentro de `participantIds`, el RPC lo valida igual. */
   primaryStudentId: string;
+  /** Fin de la sucesora cuando NO es el de la serie que se corta: al editar desde una fecha anterior a la serie vigente, la sucesora toma el fin de la vigente a la que reemplaza. */
+  successorEndDate?: string | null;
 }
 
 /**
@@ -43,6 +45,8 @@ export async function splitRecurrenceThisAndFuture(ctx: AuthenticatedDbContext, 
     effectiveDate: input.effectiveDate,
     todayDate: input.todayDate,
   });
+
+  if (input.successorEndDate !== undefined) plan.successorEndDate = input.successorEndDate;
 
   const successorId = randomUUID();
   const excludedOccurrenceKeys = buildExcludedOccurrenceKeys({

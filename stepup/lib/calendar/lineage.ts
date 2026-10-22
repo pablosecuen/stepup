@@ -124,3 +124,35 @@ export function listPredecessorsRunningFrom<T extends RuleForLineage>(rules: T[]
   }
   return result;
 }
+
+export interface EditableSegment<T> {
+  /** Tramo que contiene la fecha efectiva: es el que se corta y sucede por el patrón nuevo. */
+  target: T;
+  /** Tramos POSTERIORES al de la fecha (la serie vigente y los intermedios): el patrón nuevo los reemplaza, así que se finalizan. */
+  superseded: T[];
+}
+
+/**
+ * Qué tramo del linaje se edita «desde una fecha». La pantalla siempre trabaja sobre la serie VIGENTE (`headId`, la última sucesora),
+ * pero la fecha puede caer ANTES de su inicio —típico tras un cambio mal fechado—: el patrón de esa fecha lo da el tramo anterior que
+ * todavía la cubre. Antes se rechazaba («la fecha efectiva es anterior al inicio de la serie»), y quedaba imposible corregir «desde hoy».
+ * Ahora se corta el tramo que cubre la fecha y se finalizan los posteriores. `null` si ningún tramo no finalizado cubre esa fecha.
+ */
+export function resolveEditableSegment<T extends RuleForLineage & { startDate: string }>(rules: T[], headId: string, effectiveDate: string): EditableSegment<T> | null {
+  const byId = new Map(rules.map((rule) => [rule.recurrenceId, rule]));
+  const head = byId.get(headId);
+  if (!head) return null;
+  const covers = (rule: T) => rule.status !== "ended" && rule.startDate <= effectiveDate && (!rule.endDate || rule.endDate >= effectiveDate);
+  if (head.startDate <= effectiveDate) return { target: head, superseded: [] };
+
+  const later: T[] = [head];
+  const visited = new Set<string>([head.recurrenceId]);
+  let current: T | undefined = head.supersedesRecurrenceId ? byId.get(head.supersedesRecurrenceId) : undefined;
+  while (current && !visited.has(current.recurrenceId)) {
+    visited.add(current.recurrenceId);
+    if (covers(current)) return { target: current, superseded: later.filter((rule) => rule.status !== "ended") };
+    later.push(current);
+    current = current.supersedesRecurrenceId ? byId.get(current.supersedesRecurrenceId) : undefined;
+  }
+  return null;
+}

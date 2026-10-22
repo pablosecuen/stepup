@@ -12,10 +12,10 @@ type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "stat
  * serie (la ocurrencia se solapa consigo misma). Se excluye únicamente esa
  * serie — cualquier otra serie, o una clase suelta, sigue siendo candidata.
  */
-export function toConflictCandidates(items: ViewItemForConflict[], options: { excludeRecurrenceId?: string } = {}): ConflictCandidateLesson[] {
-  const { excludeRecurrenceId } = options;
+export function toConflictCandidates(items: ViewItemForConflict[], options: { excludeRecurrenceId?: string; excludeRecurrenceIds?: readonly string[] } = {}): ConflictCandidateLesson[] {
+  const excluded = new Set([...(options.excludeRecurrenceIds ?? []), ...(options.excludeRecurrenceId ? [options.excludeRecurrenceId] : [])]);
   return items
-    .filter((item) => !excludeRecurrenceId || item.recurrenceId !== excludeRecurrenceId)
+    .filter((item) => !item.recurrenceId || !excluded.has(item.recurrenceId))
     .map((item) => {
       const label = item.title?.trim() || item.studentName?.trim();
       return {
