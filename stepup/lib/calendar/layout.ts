@@ -185,7 +185,7 @@ export function gridFitsWidth(areaWidthPx: number, dayCount: number): boolean {
  * Nunca se agranda el bloque ni se mueve la clase para hacer entrar texto: el texto se adapta al bloque. Los alturas mínimas salen de las líneas reales
  * (11–12 px de letra, interlineado 13–14 px) más el borde: ver `card-presentation.test.ts`.
  */
-export type CardPresentation = "full" | "stack" | "title" | "block";
+export type CardPresentation = "full" | "stack" | "title" | "vertical" | "block";
 export const FULL_CARD_MIN_HEIGHT_PX = 32;
 export const FULL_CARD_MIN_WIDTH_PX = 84;
 export const STACK_CARD_MIN_HEIGHT_PX = 27;
@@ -193,9 +193,17 @@ export const STACK_CARD_MIN_HEIGHT_PX = 27;
 export const STACK_CARD_MIN_WIDTH_PX = 30;
 export const TITLE_CARD_MIN_HEIGHT_PX = 15;
 export const TITLE_CARD_MIN_WIDTH_PX = 22;
+/**
+ * `vertical`: en un carril muy angosto (la semana en un teléfono con 2 o 3 clases a la misma hora: 11–22 px) la primera palabra del nombre se escribe girada, de arriba hacia
+ * abajo, a lo largo del bloque — una línea de 10 px de letra necesita ≥ 11 px de ancho y el bloque ≥ 30 px de alto para dejar leer unas 5 letras. Por debajo de eso sólo queda el
+ * bloque de color (el toque abre el detalle y el día se abre desde su número).
+ */
+export const VERTICAL_CARD_MIN_WIDTH_PX = 11;
+export const VERTICAL_CARD_MIN_HEIGHT_PX = 30;
 
 export function cardPresentation(input: { heightPx: number; widthPx: number }): CardPresentation {
   const { heightPx, widthPx } = input;
+  if (heightPx >= VERTICAL_CARD_MIN_HEIGHT_PX && widthPx >= VERTICAL_CARD_MIN_WIDTH_PX && widthPx < TITLE_CARD_MIN_WIDTH_PX) return "vertical";
   if (!(heightPx >= TITLE_CARD_MIN_HEIGHT_PX) || !(widthPx >= TITLE_CARD_MIN_WIDTH_PX)) return "block";
   if (heightPx >= FULL_CARD_MIN_HEIGHT_PX && widthPx >= FULL_CARD_MIN_WIDTH_PX) return "full";
   return heightPx >= STACK_CARD_MIN_HEIGHT_PX && widthPx >= STACK_CARD_MIN_WIDTH_PX ? "stack" : "title";

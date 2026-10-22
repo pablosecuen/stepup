@@ -102,6 +102,8 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   // Same word-based identity as the native week card; mobile never substitutes two initials.
   const narrowName = mobile && !dayRow ? firstWord(title) : nameForWidth(title, cardWidth);
   const padX = laneCount === 1 ? "px-2.5" : "px-1.5";
+  // Dos líneas de nombre (10,5 px / 12) + la línea de la hora (9–10 px / 12) + el borde: desde 38 px de alto, la primera palabra se lee entera aunque la tarjeta sea angosta.
+  const twoNameLines = mobile && !dayRow && presentation === "stack" && height >= 38 && cardWidth < 84;
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
   const borderClass = presentation === "full" ? "border-[1.5px]" : "border";
   const fullInfo = `${title}${groupSize ? ` (${groupSize} alumnos)` : ""} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)} · ${MODALITY_LABELS[item.modality]}${stateTexts.length ? ` · ${stateTexts.filter((tag) => tag !== MODALITY_LABELS[item.modality]).join(" · ")}` : ""}`;
@@ -166,9 +168,16 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         )}
         {presentation === "stack" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${cardWidth < 44 ? "px-0.5" : "px-1"}`}>
-            <span className="flex min-w-0 items-center gap-0.5 text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
+            <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start text-[10.5px] leading-[12px]" : "items-center text-[11px] leading-[13px]"}`} style={{ color: textColor, textDecorationLine: strike }}>
               {icons}
-              <span className="min-w-0 truncate">{narrowName}</span>
+              {twoNameLines ? (
+                // Igual que la tarjeta de semana de la app: la primera palabra en hasta dos líneas (parte la palabra si no entra), nunca recortada a una o dos letras.
+                <span className="min-w-0 flex-1" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+                  {narrowName}
+                </span>
+              ) : (
+                <span className="min-w-0 truncate">{narrowName}</span>
+              )}
             </span>
             <span className={`block min-w-0 truncate font-semibold leading-3 ${cardWidth < 44 ? "text-[9px]" : "text-[10px]"}`} style={{ color: secondaryColor }}>
               {narrowMeta({ timeLabel, facts: stateFacts })}
@@ -185,6 +194,13 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
             )}
             <span className="min-w-0 truncate text-[11px] font-bold leading-[13px]" style={{ color: textColor, textDecorationLine: strike }}>
               {narrowName}
+            </span>
+          </span>
+        )}
+        {presentation === "vertical" && (
+          <span className="flex h-full w-full items-center justify-center overflow-hidden py-0.5">
+            <span className="block min-h-0 truncate text-[10px] font-bold leading-[11px]" style={{ writingMode: "vertical-rl", maxHeight: "100%", color: textColor, textDecorationLine: strike }}>
+              {firstWord(title)}
             </span>
           </span>
         )}

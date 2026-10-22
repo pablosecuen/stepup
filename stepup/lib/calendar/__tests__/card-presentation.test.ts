@@ -17,6 +17,8 @@ import {
   TIME_COLUMN_WIDTH_PX,
   TITLE_CARD_MIN_HEIGHT_PX,
   TITLE_CARD_MIN_WIDTH_PX,
+  VERTICAL_CARD_MIN_HEIGHT_PX,
+  VERTICAL_CARD_MIN_WIDTH_PX,
   cardGapPx,
   cardInsetPx,
   cardPresentation,
@@ -62,7 +64,10 @@ test("cardPresentation: cuatro modos según el tamaño real; los umbrales son ex
   assert.equal(cardPresentation({ heightPx: 300, widthPx: STACK_CARD_MIN_WIDTH_PX - 0.01 }), "title", "demasiado angosta para la hora: una sola línea con las iniciales");
   assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX, widthPx: TITLE_CARD_MIN_WIDTH_PX }), "title");
   assert.equal(cardPresentation({ heightPx: TITLE_CARD_MIN_HEIGHT_PX - 0.01, widthPx: 300 }), "block", "muy bajo: bloque de color");
-  assert.equal(cardPresentation({ heightPx: 300, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "block", "muy angosto: bloque de color");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: TITLE_CARD_MIN_WIDTH_PX - 0.01 }), "vertical", "carril muy angosto (semana en el teléfono): la primera palabra, girada");
+  assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "vertical");
+  assert.equal(cardPresentation({ heightPx: VERTICAL_CARD_MIN_HEIGHT_PX - 0.01, widthPx: VERTICAL_CARD_MIN_WIDTH_PX }), "block", "bajo para el texto girado");
+  assert.equal(cardPresentation({ heightPx: 300, widthPx: VERTICAL_CARD_MIN_WIDTH_PX - 0.01 }), "block", "más angosto que una línea de texto: sólo el color (el toque abre el detalle)");
   for (const bad of [NaN, -1, 0]) {
     assert.equal(cardPresentation({ heightPx: bad, widthPx: 100 }), "block", String(bad));
     assert.equal(cardPresentation({ heightPx: 100, widthPx: bad }), "block", String(bad));
