@@ -386,3 +386,13 @@ Se ejecutaron las funciones reales anterior y corregida sobre las clases materia
 Se consultó `git ls-remote`: `teacherflow-web` remoto sigue en `95da4abd78af591884ab68550124f9a9d881d1d6`; los commits locales 78e8f3f y 5c51660 no se publicaron. Por tanto, ver las capturas de la página pública sin cambios es coherente con el estado del trabajo. La corrección de carriles está preparada localmente desde fccbfda y forma parte del trabajo pendiente de publicar; no se presenta como algo ya desplegado. La vista local `/qa-calendar` responde HTTP 200, con datos sintéticos.
 
 Siguen pendientes las comprobaciones visuales del resultado corregido y las demás condiciones P0 antes de migraciones/push/despliegue. No se atribuye este estado a caché ni a datos del alumno, y no se marca la paridad completa.
+
+### 30. Autorización de publicación anticipada y migraciones aplicadas (21/oct/2026)
+
+La usuaria respondió explícitamente **«Sí, publicar ahora y continuar corrigiendo lo pendiente»** a la pregunta que incluía ambas migraciones, push y despliegue aun con la validación visual pendiente. Tras esa autorización, el mecanismo de revisión permitió ejecutar la operación; no se eludió el rechazo anterior.
+
+Antes de aplicar se preservó otra copia DPAPI verificada del estado vigente y de las funciones/constraint SQL anteriores: `antes-publicacion-2026-10-21T23-47-55-613Z.tfdp`, SHA-256 del contenido `51dc9516b217cbeaed6b7426b157f379ad5a153df3564f3f87f8521f7993ee12`, fuera del repositorio. El dry-run incluyó exclusivamente las dos migraciones autorizadas.
+
+**Hecho en producción:** aplicadas `20261022200000_registration_draft_header_fields.sql` y `20261022300000_registration_outcomes.sql`. La auditoría real `anon_execute_audit.sql` terminó satisfactoriamente tras aplicarlas. Se hizo push de `95da4ab` a `530c151` en `teacherflow-web`. No se revirtieron revisiones históricas ni las marcas posteriores de realizada.
+
+**Pendiente al registrar esta actualización:** despliegue de la web en Vercel. La CLI estaba sin sesión; se inició su autenticación oficial y se solicitó completar el acceso. GitHub no registra checks ni despliegues automáticos para el nuevo commit: push no equivale a web publicada. La sesión de TeacherFlow no se cerró. Las verificaciones visuales pendientes y las funciones restantes siguen en alcance; no se declara paridad completa ni se congela el origen.
