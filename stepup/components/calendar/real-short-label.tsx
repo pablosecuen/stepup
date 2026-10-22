@@ -3,8 +3,11 @@
 import type { PositionedItem } from "@/lib/calendar/layout";
 import type { PlannedItem } from "@/lib/calendar/short-labels";
 import { LABEL_FONT_PX } from "@/lib/calendar/short-labels";
-import { CARD_TEXT_COLORS } from "@/lib/calendar-theme";
+import { CARD_TEXT_COLORS, resolveLessonColors } from "@/lib/calendar-theme";
 import type { CardTip } from "./real-lesson-card";
+
+/** Lo que decide el color de una clase (el mismo dato que usa la tarjeta). */
+export type LessonColorFacts = Parameters<typeof resolveLessonColors>[0];
 
 /**
  * Barra exacta + rótulo de una clase corta. La barra conserva la hora y la duración reales (sin altura mínima inventada) y lleva sólo el número de asociación cuando hay
@@ -13,7 +16,7 @@ import type { CardTip } from "./real-lesson-card";
 export function ShortBar({
   positioned,
   planned,
-  colors,
+  lesson,
   ariaLabel,
   tipText,
   onSelect,
@@ -22,13 +25,14 @@ export function ShortBar({
 }: {
   positioned: PositionedItem;
   planned: PlannedItem;
-  colors: { bg: string; border: string; textPrimary?: string | null };
+  lesson: LessonColorFacts;
   ariaLabel: string;
   tipText: string;
   onSelect: () => void;
   onTip?: (tip: CardTip | null) => void;
   describedBy?: string;
 }) {
+  const colors = resolveLessonColors(lesson);
   const { height, hitTop, hitHeight, blockOffset } = positioned;
   const showNumber = planned.number !== null && planned.barWidth >= 12;
   const tipId = `calendar-tip-${positioned.item.id}`;
@@ -74,7 +78,7 @@ export function ShortBar({
 
 export function ShortLabel({
   planned,
-  colors,
+  lesson,
   title,
   timeText,
   stateText,
@@ -82,13 +86,14 @@ export function ShortLabel({
   onSelect,
 }: {
   planned: PlannedItem;
-  colors: { bg: string; border: string; textPrimary?: string | null; textSecondary?: string | null };
+  lesson: LessonColorFacts;
   title: string;
   timeText: string;
   stateText: string | null;
   strike: boolean;
   onSelect: () => void;
 }) {
+  const colors = resolveLessonColors(lesson);
   const { label } = planned;
   const text = colors.textPrimary ?? CARD_TEXT_COLORS.primary;
   const secondary = colors.textSecondary ?? CARD_TEXT_COLORS.secondary;

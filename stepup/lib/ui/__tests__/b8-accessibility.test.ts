@@ -118,9 +118,9 @@ test("objetivos táctiles de 44 px: regla global para campos, botones, resúmene
   assert.match(css, /button:not\(\[data-grid-event\]\),\s*summary\s*\{\s*min-height: 2\.75rem;/);
   assert.match(css, /button:not\(\[data-grid-event\]\)\s*\{\s*min-width: 2\.75rem;/);
   assert.match(css, /label:has\(> input\[type="checkbox"\]\),\s*label:has\(> input\[type="radio"\]\)\s*\{\s*min-height: 2\.75rem;/);
-  // La única excepción es el bloque de la grilla horaria (su alto es la duración de la clase).
+  // La única excepción es el bloque de la grilla horaria (su alto es la duración de la clase): la tarjeta y la barra exacta de las clases cortas.
   const exempt = sources(["app", "components"]).filter((f) => /data-grid-event/.test(read(f)));
-  assert.deepEqual(exempt, ["components/calendar/real-lesson-card.tsx"]);
+  assert.deepEqual(exempt, ["components/calendar/real-lesson-card.tsx", "components/calendar/real-short-label.tsx"]);
 });
 
 test("todo enlace de texto o botón del área privada y pública declara 44 px de alto (salvo los de la lista)", () => {

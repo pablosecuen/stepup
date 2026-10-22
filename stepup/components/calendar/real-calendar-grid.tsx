@@ -18,7 +18,6 @@ import {
 } from "@/lib/calendar/layout";
 import { compactStateTag, desktopLaneNeedPx, mobileLaneNeedPx, narrowMeta, SINGLE_LINE_ICON_PX } from "@/lib/calendar/card-text";
 import { fitWeekColumns, planShortLabels, shortLabelsNeedPx, type DayLabelPlan, type LabelSource } from "@/lib/calendar/short-labels";
-import { CARD_TEXT_COLORS, resolveLessonColors } from "@/lib/calendar-theme";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { dayOfMonth, formatCivilDayLabelShort, todayDateKey, weekdayIndexMondayFirst } from "@/lib/calendar/civil-calendar";
 import { CURRENT_TIME_COLOR } from "@/lib/calendar-theme";
@@ -307,7 +306,6 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                       }
                       const item = positionedItem.item;
                       const facts = stateOf(item);
-                      const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement });
                       const source = labelSources.get(item.id)!;
                       const minutes = Math.round((new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000);
                       return (
@@ -315,7 +313,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                           key={item.id}
                           positioned={positionedItem}
                           planned={planned}
-                          colors={colors}
+                          lesson={{ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement }}
                           ariaLabel={ariaLabelOf({ title: source.title, timeLabel: source.timeText, durationMinutes: minutes, item, ...facts })}
                           tipText={`${source.title} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}${source.stateText ? ` · ${source.stateText}` : ""}`}
                           onSelect={() => setSelected(item)}
@@ -330,9 +328,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                         if (!planned) return null;
                         const item = positionedItem.item;
                         const facts = stateOf(item);
-                        const colors = resolveLessonColors({ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement });
                         const source = labelSources.get(item.id)!;
-                        return <ShortLabel key={`label-${item.id}`} planned={planned} colors={colors} title={source.title} timeText={source.timeText} stateText={source.stateText} strike={item.status === "cancelled"} onSelect={() => setSelected(item)} />;
+                        return <ShortLabel key={`label-${item.id}`} planned={planned} lesson={{ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement }} title={source.title} timeText={source.timeText} stateText={source.stateText} strike={item.status === "cancelled"} onSelect={() => setSelected(item)} />;
                       })}
                   </div>
                 );
