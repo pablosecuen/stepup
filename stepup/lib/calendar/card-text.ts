@@ -34,6 +34,22 @@ export function nameForWidth(title: string, widthPx: number): string {
   return initials(title) || firstWord(title);
 }
 
+/** Carril (px) desde el cual la tarjeta lleva íconos; por debajo sólo caben las iniciales. */
+export const ICON_LANE_MIN_WIDTH_PX = 36;
+/** Alto mínimo de una tarjeta apilada angosta para sumar una fila propia con el ⊘ (10 px de ícono + las dos líneas de texto) sin tapar el nombre ni la hora. */
+export const NARROW_ICON_ROW_MIN_HEIGHT_PX = 38;
+/** Ancho (px) de la franja rayada de respaldo, al borde de la tarjeta y fuera del texto. */
+export const NARROW_STRIP_WIDTH_PX = 5;
+
+/**
+ * Cómo se dice «no se dictó» (cancelada tarde, ausencias, feriado) en un carril de menos de ICON_LANE_MIN_WIDTH_PX: `icon-row` = el mismo ⊘ de las tarjetas anchas en una fila propia (sólo si la tarjeta
+ * apilada es lo bastante alta); `strip` = franja rayada de 5 px al borde derecho (cabe en cualquier alto y no toca el texto ni baja su contraste); `null` = tarjeta con espacio (el ⊘ va junto a la hora) o clase dictada.
+ */
+export function narrowNotHeldIndicator(input: { notHeld: boolean; cardWidth: number; height: number; presentation: string }): "icon-row" | "strip" | null {
+  if (!input.notHeld || input.cardWidth >= ICON_LANE_MIN_WIDTH_PX) return null;
+  return input.presentation === "stack" && input.height >= NARROW_ICON_ROW_MIN_HEIGHT_PX ? "icon-row" : "strip";
+}
+
 export interface CardStateFacts {
   status: "scheduled" | "cancelled" | "completed" | "rescheduled";
   /** Completada pero no dictada (cancelada tarde, profesora/alumno ausente, feriado): se rotula con su resultado, nunca «Dictada». */
