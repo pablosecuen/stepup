@@ -120,6 +120,7 @@ export function composeCalendarView(
       endAt: lesson.endAt,
       modality: lesson.modality,
       status: lesson.status,
+      closedOutcome: lesson.closedOutcome ?? null,
       isRecurring: lesson.isRecurring,
       classTitle: lesson.classTitle,
       activityKind: lesson.activityKind,

@@ -191,3 +191,13 @@ test("la clase de reemplazo de una reprogramación aparece por su cuenta en su n
   const items = buildCalendarViewForRange({ ...day("2026-10-24"), rules: [regla], exceptions: [{ recurrenceId: SERIE, occurrenceKey: OCCURRENCE_KEY, type: "rescheduled", replacementLessonId: "reemplazo" }], lessons: [replacement] });
   assert.deepEqual(items.map((i) => [i.id, i.status]), [["reemplazo", "rescheduled"]]);
 });
+
+test("el resultado de una clase cerrada sin dictar llega a la tarjeta (composeCalendarView no lo descarta)", async () => {
+  const items = buildCalendarViewForRange({ rangeStart: new Date("2026-09-14T00:00:00Z"), rangeEnd: new Date("2026-09-15T00:00:00Z"), rules: [], exceptions: [], lessons: [lesson({ id: "l1", status: "completed", closedOutcome: "cancelada_tarde" }), lesson({ id: "l2", status: "completed" })] });
+  assert.equal(items.find((item) => item.id === "l1")?.closedOutcome, "cancelada_tarde");
+  assert.equal(items.find((item) => item.id === "l2")?.closedOutcome, undefined);
+  // `composeCalendarView` copia las clases campo por campo: si no pasa `closedOutcome`, la tarjeta vuelve a decir «Completada».
+  const { readFileSync } = await import("node:fs");
+  const view = readFileSync(new URL("../view.ts", import.meta.url), "utf8");
+  assert.match(view, /closedOutcome: lesson\.closedOutcome \?\? null/);
+});

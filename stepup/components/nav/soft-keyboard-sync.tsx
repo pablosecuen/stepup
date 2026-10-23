@@ -20,9 +20,13 @@ export function SoftKeyboardSync() {
     const root = document.documentElement;
     let baseline: KeyboardBaseline | null = null;
     let frame = 0;
+    let timer = 0;
 
     const update = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      if (timer) window.clearTimeout(timer);
       frame = 0;
+      timer = 0;
       const current = measure();
       // El alto estable sólo crece (`nextBaseline`): con el teclado abierto el alto reducido nunca lo baja.
       const editableFocused = isEditableElement(document.activeElement);
@@ -31,8 +35,11 @@ export function SoftKeyboardSync() {
       if (open) root.setAttribute(ATTRIBUTE, "open");
       else root.removeAttribute(ATTRIBUTE);
     };
+    // Un cuadro de animación y, por si la pestaña está en segundo plano (no hay cuadros), un temporizador corto: el que llegue primero actualiza.
     const schedule = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
+      if (frame || timer) return;
+      frame = window.requestAnimationFrame(update);
+      timer = window.setTimeout(update, 80);
     };
 
     update();
@@ -50,6 +57,7 @@ export function SoftKeyboardSync() {
     document.addEventListener("focusout", onFocusOut);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
+      if (timer) window.clearTimeout(timer);
       viewport?.removeEventListener("resize", schedule);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("orientationchange", schedule);
