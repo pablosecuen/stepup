@@ -92,3 +92,12 @@ test("cableado: cancelar una edición la descarta (el campo de edición no confi
   assert.match(editBlock, /finishEdit\(false\)/);
   assert.match(parts, /edit\.take\(\)\.trim\(\);\n\s+editIndex\.take\(\);\n\s+if \(!confirm/, "cancelar vacía el borrador de edición y su posición antes de salir");
 });
+
+test("cableado: los tres guardados del registro guardan antes la descripción de foto escrita sin soltar el campo (en iOS tocar un botón no la suelta)", () => {
+  const files = read("components/registro/lesson-files-editor.tsx");
+  assert.match(files, /export async function flushPendingCaptions\(\)/);
+  assert.match(files, /captionFlushers\.add\(flush\)/);
+  assert.match(files, /if \(inflight\.current\) return inflight\.current;/, "un solo guardado a la vez");
+  const ws = read("app/(app)/registro/[calendarLessonId]/registration-workspace.tsx");
+  assert.equal([...ws.matchAll(/startTransition\(async \(\) => \{\n\s+await flushPendingCaptions\(\);/g)].length, 3);
+});

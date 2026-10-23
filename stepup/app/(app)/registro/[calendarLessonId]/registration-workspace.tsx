@@ -39,6 +39,7 @@ import { RegistrationOutcomeField } from "@/components/registro/registration-out
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
 import { DraftsProvider, applyPendingToList, pendingText, useDraftsStore } from "@/components/registro/draft-items";
 import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
+import { flushPendingCaptions } from "@/components/registro/lesson-files-editor";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import { validatePedagogicalContent } from "@/lib/lessons/pedagogical-content";
 import type { LessonContent, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
@@ -386,6 +387,7 @@ export function RegistrationWorkspace({
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setBusyParticipantId(studentId);
     startTransition(async () => {
+      await flushPendingCaptions();
       const result = await guardNetwork(() => saveParticipantAction(buildSaveParticipantInput(registration.id, studentId, form, nextStatus, liveContent)));
       setBusyParticipantId(null);
       if (result.error) {
@@ -408,6 +410,7 @@ export function RegistrationWorkspace({
       return;
     }
     startTransition(async () => {
+      await flushPendingCaptions();
       const draft = await guardNetwork(() => saveLessonContentDraftAction({
         lessonRegistrationId: registration.id,
         content: liveContent,
@@ -448,6 +451,7 @@ export function RegistrationWorkspace({
       }
     }
     startTransition(async () => {
+      await flushPendingCaptions();
       const headerFields = {
         content: countsAsClass ? liveContent : undefined,
         homeworkDescription: countsAsClass && supportsHomework ? commonHomeworkDescription.trim() || null : undefined,

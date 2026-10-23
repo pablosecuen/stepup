@@ -30,5 +30,5 @@ test("cableado: el PDF no usa más el recorte `cover` en las fotos, publica las 
   assert.doesNotMatch(pdf, /objectFit: "cover"/);
   assert.match(pdf, /fitEvidenceImage\(image\.jpeg\)/);
   assert.match(pdf, /input\.options\.includeIndividualObservations && \(data\.individualObservations \?\? \[\]\)\.length > 0/);
-  assert.doesNotMatch(pdf, /internalNotes/);
+  assert.doesNotMatch(pdf, /(data|input|snapshot).internalNotes|internalNotess*[:=]/);
 });

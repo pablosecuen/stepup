@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
@@ -30,6 +30,16 @@ function uploadErrorMessage(error: unknown): string {
 
 type Phase = { text: string } | null;
 
+/**
+ * Descripciones de fotos que se guardan al soltar el campo (`onBlur`). En iOS tocar un botón NO suelta el campo que está enfocado, así que un guardado del registro podía irse sin la
+ * descripción recién escrita: cada fila se registra acá y los guardados del registro llaman `flushPendingCaptions()` (guarda ya lo que falta y espera a que termine).
+ */
+const captionFlushers = new Set<() => Promise<void>>();
+
+export async function flushPendingCaptions(): Promise<void> {
+  await Promise.all([...captionFlushers].map((flush) => flush()));
+}
+
 function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attachment: LessonContentAttachment; ownerLabel: string | null; onChange: (a: LessonContentAttachment) => void; onRemoved: (id: string) => void }) {
   const id = useId();
   const [caption, setCaption] = useState(attachment.caption ?? "");
@@ -40,7 +50,8 @@ function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attach
   // El servidor no pudo leer esta foto (p. ej. una HEIC inválida subida antes): no se presenta como foto utilizable.
   const [unreadable, setUnreadable] = useState(false);
 
-  async function saveCaption() {
+  const inflight = useRef<Promise<void> | null>(null);
+  async function persistCaption() {
     if (caption.trim() === savedCaption.trim()) return;
     setError(null);
     const result = await guardNetwork(() => setAttachmentCaptionAction(attachment.id, caption));
@@ -51,6 +62,26 @@ function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attach
     setSavedCaption(caption.trim());
     onChange({ ...attachment, caption: caption.trim() || null });
   }
+  // Un solo guardado a la vez: soltar el campo y guardar el registro casi juntos no envían la misma descripción dos veces.
+  function saveCaption(): Promise<void> {
+    if (inflight.current) return inflight.current;
+    const promise = persistCaption().finally(() => {
+      inflight.current = null;
+    });
+    inflight.current = promise;
+    return promise;
+  }
+  const saveRef = useRef(saveCaption);
+  useEffect(() => {
+    saveRef.current = saveCaption;
+  });
+  useEffect(() => {
+    const flush = () => saveRef.current();
+    captionFlushers.add(flush);
+    return () => {
+      captionFlushers.delete(flush);
+    };
+  }, []);
 
   async function remove() {
     setBusy(true);
