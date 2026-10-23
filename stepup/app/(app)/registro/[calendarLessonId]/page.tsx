@@ -8,6 +8,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
+import { logLoadFailure } from "@/lib/errors/load-failure";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "./registration-workspace";
@@ -68,7 +69,9 @@ export default async function RegistroClasePage({ params, searchParams }: { para
         pendingHomeworkByStudentId = Object.fromEntries(entries);
       }
     }
-  } catch {
+  } catch (error) {
+    // Antes no quedaba rastro: sólo el tipo y el código (nunca el mensaje ni datos) para poder diagnosticar un fallo pasajero.
+    logLoadFailure("registro", error);
     return (
       <div className={PAGE_WIDTH.medium}>
         <PageTitle>Registrar clase</PageTitle>
@@ -76,9 +79,14 @@ export default async function RegistroClasePage({ params, searchParams }: { para
           <div className="w-full">
             <ErrorState message="No pudimos cargar este registro." />
           </div>
-          <PrivateButtonLink href="/registro" variant="secondary">
-            Volver
-          </PrivateButtonLink>
+          <div className="flex flex-wrap gap-2">
+            <PrivateButtonLink href={`/registro/${calendarLessonId}${returnHref ? `?volver=${encodeURIComponent(returnHref)}` : ""}`} variant="primary">
+              Reintentar
+            </PrivateButtonLink>
+            <PrivateButtonLink href="/registro" variant="secondary">
+              Volver
+            </PrivateButtonLink>
+          </div>
         </div>
       </div>
     );

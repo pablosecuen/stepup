@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { isEditableElement, isSoftKeyboardOpen, nextBaseline, type KeyboardBaseline, type ViewportMeasure } from "@/lib/ui/soft-keyboard";
+import { isEditableElement, isSoftKeyboardOpen, nextBaseline, type KeyboardBaseline, type ScreenSides, type ViewportMeasure } from "@/lib/ui/soft-keyboard";
 
 const ATTRIBUTE = "data-tf-keyboard";
 
 function measure(): ViewportMeasure {
   const viewport = window.visualViewport;
-  return { width: window.innerWidth, visibleHeight: viewport ? viewport.height : window.innerHeight };
+  // Con zoom (pellizco, zoom de accesibilidad) el viewport visual mide menos pero no hay teclado: se normaliza por la escala.
+  return { width: window.innerWidth, visibleHeight: viewport ? viewport.height * viewport.scale : window.innerHeight };
+}
+
+function screenSides(): ScreenSides | null {
+  const { width, height } = window.screen ?? { width: 0, height: 0 };
+  return width > 0 && height > 0 ? { short: Math.min(width, height), long: Math.max(width, height) } : null;
 }
 
 /**
@@ -30,7 +36,7 @@ export function SoftKeyboardSync() {
       const current = measure();
       // El alto estable sólo crece (`nextBaseline`): con el teclado abierto el alto reducido nunca lo baja.
       const editableFocused = isEditableElement(document.activeElement);
-      baseline = nextBaseline(baseline, current);
+      baseline = nextBaseline(baseline, current, screenSides());
       const open = isSoftKeyboardOpen({ editableFocused, baseline, measure: current });
       if (open) root.setAttribute(ATTRIBUTE, "open");
       else root.removeAttribute(ATTRIBUTE);

@@ -1,6 +1,6 @@
 "use client";
 
-import { UserGroupIcon } from "@heroicons/react/24/outline";
+import { NoSymbolIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/calendar/layout";
 import { estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
@@ -121,9 +121,11 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   // Clase de ~15 minutos (`micro`): una línea de la altura del bloque; en el teléfono nunca más grande que la letra de la semana.
   const microFont = Math.min(microFontPx(height), nameFontPx ?? 10);
   // Tarjetas de UNA línea (clases cortas): la hora de inicio o el estado importante van ANTES del nombre cuando entran con la palabra completa (el teléfono ensancha la columna para eso: `mobileLaneNeedPx`).
+  // Clase cerrada que no se dictó (cancelada tarde, ausencias, feriado): además del texto de la tarjeta ancha y del detalle, un ícono «no se dictó» que acompaña a la hora en las angostas (el estado nunca va sólo por color ni sólo por tooltip).
+  const notHeld = item.status === "completed" && !!item.closedOutcome;
   const singleLineMeta = narrowMeta({ timeLabel, facts: stateFacts });
   // Escritorio: el ícono de grupo/entrenamiento (si el carril lo muestra) también gasta ancho delante del nombre.
-  const inlineNeedPx = inlineMetaNeedPx(mobileWeek ? shownWords : [firstWord(narrowName)], mobileWeek ? (nameFontPx ?? 10.5) : 11, singleLineMeta, (mobileWeek ? 12 : 16) + ((groupSize || isTraining) && (mobileWeek || cardWidth >= 36) ? SINGLE_LINE_ICON_PX : 0));
+  const inlineNeedPx = inlineMetaNeedPx(mobileWeek ? shownWords : [firstWord(narrowName)], mobileWeek ? (nameFontPx ?? 10.5) : 11, singleLineMeta, (mobileWeek ? 12 : 16) + ((groupSize || isTraining || notHeld) && (mobileWeek || cardWidth >= 36) ? SINGLE_LINE_ICON_PX : 0));
   const showInlineMeta = mobileWeek ? cardWidth + 2 >= inlineNeedPx && inlineNeedPx <= LANE_MAX_WITH_META_PX : cardWidth >= inlineNeedPx;
   // Sólo la tarjeta completa lleva el borde de 1,5 px; las de una o dos líneas bajas usan 1 px para no gastar alto de lectura.
   // La de ~15 minutos (`micro`) dibuja su borde hacia adentro con una sombra: así el borde no gasta alto y toda la altura exacta del bloque es de la letra.
@@ -136,6 +138,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const icons =
     cardWidth < 36 ? null : (
       <>
+        {notHeld && <NoSymbolIcon className={`${iconSize} shrink-0`} aria-hidden />}
         {groupSize && <UserGroupIcon className={`${iconSize} shrink-0`} aria-hidden />}
         {isTraining && <BarbellIcon className={`${iconSize} shrink-0`} />}
       </>
@@ -231,6 +234,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
                 {singleLineMeta}
               </span>
             )}
+            {notHeld && cardWidth >= 36 && <NoSymbolIcon className="h-2.5 w-2.5 shrink-0" aria-hidden />}
             <span className="min-w-0 truncate font-bold leading-none" style={{ fontSize: microFont }}>
               {narrowName}
             </span>

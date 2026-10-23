@@ -16,7 +16,7 @@ export const WIDTH_CHANGE_RESET_PX = 48;
 export interface ViewportMeasure {
   /** `window.innerWidth`. */
   width: number;
-  /** Alto del área realmente visible: `visualViewport.height` si existe, si no `window.innerHeight`. */
+  /** Alto del área realmente visible: `visualViewport.height × scale` (con zoom de accesibilidad el viewport visual se achica sin que haya teclado) si existe, si no `window.innerHeight`. */
   visibleHeight: number;
 }
 
@@ -25,9 +25,30 @@ export interface KeyboardBaseline {
   height: number;
 }
 
-/** Alto estable (sin teclado): crece con lo que se ve; se reinicia al rotar. Nunca baja por sí solo, así que un teclado abierto no se confunde con «la pantalla es más baja». */
-export function nextBaseline(previous: KeyboardBaseline | null, measure: ViewportMeasure): KeyboardBaseline {
-  if (!previous || Math.abs(measure.width - previous.width) > WIDTH_CHANGE_RESET_PX) return { width: measure.width, height: measure.visibleHeight };
+/** Lados de la pantalla física (px CSS). En iOS no se intercambian al rotar, por eso se usan como lado corto y largo. */
+export interface ScreenSides {
+  short: number;
+  long: number;
+}
+
+/** Sólo en teléfonos (lado corto <= 500 px): ahí el alto de la pantalla sirve para estimar el alto sin teclado. En una tablet o un escritorio con la ventana angosta no se usa. */
+const PHONE_MAX_SHORT_SIDE_PX = 500;
+/** Parte del alto físico que como mínimo ocupa la web sin teclado (barras de Safari incluidas: ~80 %). */
+const EXPECTED_FULL_HEIGHT_RATIO = 0.9;
+
+/**
+ * Alto estable (sin teclado): crece con lo que se ve. Nunca baja por sí solo, así que un teclado abierto no se confunde con «la pantalla es más baja». Al rotar (cambia el ancho) se vuelve a
+ * medir; si el teclado seguía abierto, lo que se ve ya es el alto reducido, así que en un teléfono se parte del alto físico de ese sentido (vertical u horizontal) en vez de dar por «normal» el alto reducido.
+ */
+export function nextBaseline(previous: KeyboardBaseline | null, measure: ViewportMeasure, screen?: ScreenSides | null): KeyboardBaseline {
+  if (!previous || Math.abs(measure.width - previous.width) > WIDTH_CHANGE_RESET_PX) {
+    let expected = 0;
+    if (screen && screen.short > 0 && screen.short <= PHONE_MAX_SHORT_SIDE_PX && screen.long >= screen.short) {
+      const portrait = Math.abs(measure.width - screen.short) <= Math.abs(measure.width - screen.long);
+      expected = Math.round((portrait ? screen.long : screen.short) * EXPECTED_FULL_HEIGHT_RATIO);
+    }
+    return { width: measure.width, height: Math.max(measure.visibleHeight, expected) };
+  }
   return { width: measure.width, height: Math.max(previous.height, measure.visibleHeight) };
 }
 

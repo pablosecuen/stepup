@@ -83,3 +83,12 @@ test("una clase cerrada sin dictar (cancelada tarde, ausencias, feriado) dice su
   assert.equal(lessonStatusLabel({ status: "cancelled", closedOutcome: "cancelada_tarde" }), "Cancelada", "el rótulo sólo cambia en clases completadas");
   assert.equal(resolveLessonColors.length, 1, "los colores sólo dependen de estado, modalidad y reloj: el resultado no los cambia");
 });
+
+test("cableado: una clase cerrada sin dictar lleva un ícono «no se dictó» junto a la hora (tarjetas angostas y de una línea), sin quitar la hora ni agregar texto", async () => {
+  const { readFileSync } = await import("node:fs");
+  const card = readFileSync(new URL("../../../components/calendar/real-lesson-card.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  assert.match(card, /const notHeld = item\.status === "completed" && !!item\.closedOutcome;/);
+  assert.match(card, /\{notHeld && <NoSymbolIcon className=\{`\$\{iconSize\} shrink-0`\} aria-hidden \/>\}/, "en el bloque de íconos de la tarjeta (completa, apilada, de un renglón)");
+  assert.match(card, /\{notHeld && cardWidth >= 36 && <NoSymbolIcon className="h-2\.5 w-2\.5 shrink-0" aria-hidden \/>\}/, "también en la de ~15 minutos");
+  assert.match(card, /\(groupSize \|\| isTraining \|\| notHeld\)/, "el ancho del ícono entra en el cálculo del carril");
+});

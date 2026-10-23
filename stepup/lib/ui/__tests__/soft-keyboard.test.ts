@@ -71,3 +71,31 @@ test("cableado: el efecto escucha el viewport visual, la ventana, la rotación y
   assert.doesNotMatch(sync, /preventDefault|overflow|touchmove|user-scalable|maximum-scale/);
   assert.doesNotMatch(read("app/layout.tsx") + read("app/(app)/layout.tsx"), /maximumScale|userScalable/);
 });
+
+test("rotación con el teclado abierto en un teléfono: el alto estable parte del alto físico de ese sentido, no del alto ya reducido", () => {
+  const phone = { short: 390, long: 844 };
+  // Vertical sin teclado (Safari con barras: ~664 de 844).
+  let baseline = nextBaseline(null, { width: 390, visibleHeight: 664 }, phone);
+  assert.equal(baseline.height, Math.round(844 * 0.9));
+  assert.equal(isSoftKeyboardOpen({ editableFocused: true, baseline, measure: { width: 390, visibleHeight: 664 } }), false, "falso positivo evitado: Safari sin teclado con un campo enfocado");
+  // Se rota a horizontal con el teclado abierto: quedan ~190 px visibles.
+  baseline = nextBaseline(baseline, { width: 844, visibleHeight: 190 }, phone);
+  assert.equal(baseline.height, Math.round(390 * 0.9));
+  assert.equal(isSoftKeyboardOpen({ editableFocused: true, baseline, measure: { width: 844, visibleHeight: 190 } }), true, "falso negativo evitado: rotar con teclado abierto");
+  // Se cierra el teclado en horizontal: vuelve la altura y la barra reaparece aunque el campo siga enfocado.
+  assert.equal(isSoftKeyboardOpen({ editableFocused: true, baseline, measure: { width: 844, visibleHeight: 340 } }), false);
+  // Se vuelve a vertical con teclado abierto.
+  baseline = nextBaseline(baseline, { width: 390, visibleHeight: 430 }, phone);
+  assert.equal(isSoftKeyboardOpen({ editableFocused: true, baseline, measure: { width: 390, visibleHeight: 430 } }), true);
+});
+
+test("en una tablet o un escritorio con la ventana angosta no se usa el alto físico (nunca oculta la barra por una ventana baja)", () => {
+  const desktop = { short: 1080, long: 1920 };
+  const baseline = nextBaseline(null, { width: 500, visibleHeight: 700 }, desktop);
+  assert.equal(baseline.height, 700);
+  assert.equal(isSoftKeyboardOpen({ editableFocused: true, baseline, measure: { width: 500, visibleHeight: 700 } }), false);
+});
+
+test("cableado: el zoom de accesibilidad no se confunde con un teclado (el alto visible se normaliza por la escala)", () => {
+  assert.match(read("components/nav/soft-keyboard-sync.tsx"), /viewport\.height \* viewport\.scale/);
+});

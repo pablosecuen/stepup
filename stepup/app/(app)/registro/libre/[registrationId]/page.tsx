@@ -8,6 +8,7 @@ import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calenda
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
+import { logLoadFailure } from "@/lib/errors/load-failure";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
@@ -69,7 +70,9 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
         pendingHomeworkByStudentId = Object.fromEntries(entries);
       }
     }
-  } catch {
+  } catch (error) {
+    // Antes no quedaba rastro: sólo el tipo y el código (nunca el mensaje ni datos) para poder diagnosticar un fallo pasajero.
+    logLoadFailure("registro-libre", error);
     return (
       <div className={PAGE_WIDTH.medium}>
         <PageTitle>Clase no programada</PageTitle>
@@ -77,9 +80,14 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
           <div className="w-full">
             <ErrorState message="No pudimos cargar este registro." />
           </div>
-          <PrivateButtonLink href="/registro" variant="secondary">
-            Volver
-          </PrivateButtonLink>
+          <div className="flex flex-wrap gap-2">
+            <PrivateButtonLink href={`/registro/libre/${registrationId}`} variant="primary">
+              Reintentar
+            </PrivateButtonLink>
+            <PrivateButtonLink href="/registro" variant="secondary">
+              Volver
+            </PrivateButtonLink>
+          </div>
         </div>
       </div>
     );
