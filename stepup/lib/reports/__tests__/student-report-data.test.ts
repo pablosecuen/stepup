@@ -91,3 +91,16 @@ test("buildStudentReportData: sin ninguna clase -> classesHeld 0, promedios null
   assert.equal(data.generalAverageGrade, null);
   assert.equal(data.attendance.ratePercent, null);
 });
+
+test("observaciones individuales: sólo con la opción, recortadas, ordenadas por fecha, con sus saltos de línea y sin tocar las notas internas", () => {
+  const withObs = (dateKey: string, text: string | null) => reg({ registrationId: dateKey, dateKey, evaluation: { generalGrade: null, skillGrades: {}, strengths: [], areasToImprove: [], individualHomeworkDescription: null, individualObservation: text } });
+  const rows = [withObs("2026-05-12", "  Segunda línea\ncon salto  "), withObs("2026-05-05", "Primera"), withObs("2026-05-19", "   "), withObs("2026-05-26", null)];
+  assert.equal(buildStudentReportData(rows).individualObservations, undefined, "sin la opción no sale nada (ni queda guardado en el reporte)");
+  assert.ok(!JSON.stringify(buildStudentReportData(rows)).includes("Primera"));
+  const data = buildStudentReportData(rows, { includeIndividualObservations: true });
+  assert.deepEqual(data.individualObservations, [
+    { dateKey: "2026-05-05", text: "Primera" },
+    { dateKey: "2026-05-12", text: "Segunda línea\ncon salto" },
+  ]);
+  assert.ok(!JSON.stringify(data).includes("internalNotes"), "las notas internas de la clase nunca viajan");
+});

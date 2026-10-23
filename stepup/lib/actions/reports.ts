@@ -126,6 +126,8 @@ export interface GenerateStudentReportInput {
   teacherNotes: StudentReportTeacherNotes;
   includeClassDetail: boolean;
   includePunctualitySummary: boolean;
+  /** Publicar en el PDF las observaciones individuales de cada clase (las notas internas nunca se publican). Por omisión no. */
+  includeIndividualObservations?: boolean;
   /** Fotos y PDF elegidos para el reporte (de `data.evidenceCandidates`); nunca se incluye ninguno sin elegirlo. */
   selectedEvidenceIds?: string[];
 }
@@ -157,7 +159,8 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
 
     const monthSet = new Set(input.selectedMonths);
     const inRange = registrations.filter((r) => monthSet.has(r.dateKey.slice(0, 7)));
-    const data = buildStudentReportData(inRange);
+    const includeIndividualObservations = input.includeIndividualObservations === true;
+    const data = buildStudentReportData(inRange, { includeIndividualObservations });
     const monthsSummaryLabel = buildMonthsSummaryLabel(input.selectedMonths);
     const title = `Reporte de ${student.name} — ${monthsSummaryLabel}`;
     // Sólo se puede elegir lo que ofrece ESTE reporte (adjuntos vigentes de las clases dictadas del alumno en el período); nunca se incluye nada sin elegirlo.
@@ -184,6 +187,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         narrativeText: input.narrativeText,
         includeClassDetail: input.includeClassDetail,
         includePunctualitySummary: input.includePunctualitySummary,
+        ...(includeIndividualObservations ? { includeIndividualObservations: true } : {}),
         teacherNotes: input.teacherNotes,
         studentName: student.name,
         monthsSummaryLabel,
@@ -199,6 +203,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         teacherNotes: record.snapshot.teacherNotes,
         includeClassDetail: record.snapshot.includeClassDetail,
         includePunctualitySummary: record.snapshot.includePunctualitySummary,
+        includeIndividualObservations: record.snapshot.includeIndividualObservations,
         selectedEvidenceIds: record.snapshot.selectedEvidenceIds,
       },
       {
@@ -207,6 +212,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         teacherNotes: input.teacherNotes,
         includeClassDetail: input.includeClassDetail,
         includePunctualitySummary: input.includePunctualitySummary,
+        includeIndividualObservations,
         selectedEvidenceIds,
       },
       wasCreated
@@ -234,7 +240,7 @@ export async function generateStudentReportAction(input: GenerateStudentReportIn
         generatedAtDateKey: todayDateKey,
         data: record.snapshot.data,
         narrativeText: record.snapshot.narrativeText,
-        options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary },
+        options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary, includeIndividualObservations: record.snapshot.includeIndividualObservations === true },
         evidence,
       });
       await attachReportPdf(ctx, record.id, pdfBytes);
@@ -345,7 +351,7 @@ export async function regenerateReportPdfAction(reportId: string): Promise<Actio
       generatedAtDateKey,
       data: record.snapshot.data,
       narrativeText: record.snapshot.narrativeText,
-      options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary },
+      options: { includeClassDetail: record.snapshot.includeClassDetail, includePunctualitySummary: record.snapshot.includePunctualitySummary, includeIndividualObservations: record.snapshot.includeIndividualObservations === true },
       evidence,
     });
     await attachReportPdf(ctx, record.id, pdfBytes);

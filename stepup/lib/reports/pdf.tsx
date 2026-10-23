@@ -14,11 +14,13 @@ import type { PreparedEvidence } from "./evidence.ts";
  * mecanismo — acá se genera un PDF REAL (binario, no HTML con extensión
  * .pdf) con `@react-pdf/renderer`, que corre en Node puro sin necesitar un
  * navegador headless. Mismo contenido/estructura real que el móvil: nunca
- * incluye `individualObservation` (nota interna), teléfono, WhatsApp ni
+ * incluye notas internas (`internalNotes`), teléfono, WhatsApp ni
  * ningún dato financiero — esos campos no forman parte de
  * `StudentReportData` (exclusión estructural, no un filtro que pueda
  * fallar).
  */
+import { EVIDENCE_BOX, fitEvidenceImage } from "./evidence-layout.ts";
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 11, fontFamily: "Helvetica" },
   title: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
@@ -35,9 +37,12 @@ const styles = StyleSheet.create({
   colTopics: { flex: 1, paddingRight: 6 },
   col3: { width: 38 },
   col4: { width: 62 },
+  observation: { marginBottom: 6 },
+  observationDate: { fontSize: 9, color: "#555555", marginBottom: 1 },
+  observationText: { fontSize: 11, lineHeight: 1.4 },
+  // Cada foto se muestra COMPLETA (sin recortar bordes, texto ni ejercicios): su caja es `EVIDENCE_BOX` y la imagen se ajusta a ella respetando su proporción (`fitEvidenceImage`).
   evidenceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  evidenceItem: { width: 150, marginBottom: 6 },
-  evidenceImage: { width: 150, height: 150, objectFit: "cover", borderRadius: 4 },
+  evidenceItem: { width: EVIDENCE_BOX.width, marginBottom: 8 },
   evidenceCaption: { fontSize: 9, marginTop: 3 },
   evidenceFile: { width: 150, border: "1 solid #cccccc", borderRadius: 4, padding: 6, fontSize: 9, marginBottom: 6 },
   footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: "#999999", textAlign: "center" },
@@ -46,6 +51,8 @@ const styles = StyleSheet.create({
 export interface ReportPdfOptions {
   includeClassDetail: boolean;
   includePunctualitySummary: boolean;
+  /** Publicar las observaciones individuales de cada clase (sólo si la profesora lo eligió). */
+  includeIndividualObservations?: boolean;
 }
 
 export interface ReportPdfInput {
@@ -144,6 +151,20 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
           </Text>
         ))}
 
+        {input.options.includeIndividualObservations && (data.individualObservations ?? []).length > 0 && (
+          <>
+            <View style={styles.sectionTitle} minPresenceAhead={60}>
+              <Text>Observaciones de la profesora</Text>
+            </View>
+            {(data.individualObservations ?? []).map((observation, index) => (
+              <View style={styles.observation} key={`${observation.dateKey}-${index}`} wrap={false}>
+                <Text style={styles.observationDate}>{formatCivilDate(observation.dateKey)}</Text>
+                <Text style={styles.observationText}>{observation.text}</Text>
+              </View>
+            ))}
+          </>
+        )}
+
         {input.options.includePunctualitySummary && (
           <>
             <View style={styles.sectionTitle}>
@@ -197,7 +218,7 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
               {input.evidence.images.map((image) => (
                 <View style={styles.evidenceItem} key={image.attachmentId} wrap={false}>
                   {/* eslint-disable-next-line jsx-a11y/alt-text -- el <Image> de @react-pdf no es un <img> de HTML: el PDF no admite texto alternativo; la descripción va debajo. */}
-                  <Image style={styles.evidenceImage} src={{ data: Buffer.from(image.jpeg), format: "jpg" }} />
+                  <Image style={fitEvidenceImage(image.jpeg)} src={{ data: Buffer.from(image.jpeg), format: "jpg" }} />
                   {image.caption && <Text style={styles.evidenceCaption}>{image.caption}</Text>}
                 </View>
               ))}

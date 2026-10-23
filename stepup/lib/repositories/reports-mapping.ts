@@ -13,6 +13,8 @@ export interface ReportRecordSnapshot {
   narrativeText: string;
   includeClassDetail: boolean;
   includePunctualitySummary: boolean;
+  /** Publicar las observaciones individuales de cada clase. Ausente = no (reportes anteriores). */
+  includeIndividualObservations?: boolean;
   teacherNotes: StudentReportTeacherNotes;
   studentName: string;
   monthsSummaryLabel: string;

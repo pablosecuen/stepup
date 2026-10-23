@@ -58,6 +58,8 @@ export function ReportPreviewCard({
   onIncludeClassDetail,
   includePunctualitySummary,
   onIncludePunctualitySummary,
+  includeIndividualObservations,
+  onIncludeIndividualObservations,
   selectedEvidenceIds,
   onToggleEvidence,
   unreadableEvidenceIds,
@@ -80,6 +82,8 @@ export function ReportPreviewCard({
   onIncludeClassDetail: (value: boolean) => void;
   includePunctualitySummary: boolean;
   onIncludePunctualitySummary: (value: boolean) => void;
+  includeIndividualObservations: boolean;
+  onIncludeIndividualObservations: (value: boolean) => void;
   /** Fotos y PDF elegidos para el reporte (ninguno viene preseleccionado). */
   selectedEvidenceIds: string[];
   onToggleEvidence: (attachmentId: string) => void;
@@ -200,6 +204,13 @@ export function ReportPreviewCard({
           <input type="checkbox" checked={includePunctualitySummary} onChange={(e) => onIncludePunctualitySummary(e.target.checked)} className={CHECKBOX} />
           Puntualidad y asistencia
         </label>
+        <label className="flex min-h-11 items-start gap-3 py-2 text-[15px] text-textSecondary">
+          <input type="checkbox" checked={includeIndividualObservations} onChange={(e) => onIncludeIndividualObservations(e.target.checked)} className={`${CHECKBOX} mt-0.5`} />
+          <span>
+            Incluir mis observaciones individuales de cada clase
+            <span className="block text-[13.5px] text-textMuted">Se publican tal como las escribiste en el registro («puede aparecer en su reporte»). Las observaciones internas de la clase nunca se incluyen.</span>
+          </span>
+        </label>
       </div>
 
       <Button variant="accent" onClick={onGenerate} busy={isGenerating} className="mt-5 w-full sm:w-auto">
@@ -230,6 +241,8 @@ export function ReportesTabContent({
   const [recommendations, setRecommendations] = useState("");
   const [includeClassDetail, setIncludeClassDetail] = useState(true);
   const [includePunctualitySummary, setIncludePunctualitySummary] = useState(true);
+  // Opción deliberada: lo escrito en el registro no se publica sin que la profesora lo elija para este reporte.
+  const [includeIndividualObservations, setIncludeIndividualObservations] = useState(false);
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [unreadableEvidenceIds, setUnreadableEvidenceIds] = useState<string[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -300,6 +313,7 @@ export function ReportesTabContent({
       teacherNotes: { generalComment, behaviorAndParticipation, nextObjectives, recommendations },
       includeClassDetail,
       includePunctualitySummary,
+      includeIndividualObservations,
       selectedEvidenceIds,
     }));
     setIsGenerating(false);
@@ -470,6 +484,8 @@ export function ReportesTabContent({
           onIncludeClassDetail={setIncludeClassDetail}
           includePunctualitySummary={includePunctualitySummary}
           onIncludePunctualitySummary={setIncludePunctualitySummary}
+          includeIndividualObservations={includeIndividualObservations}
+          onIncludeIndividualObservations={setIncludeIndividualObservations}
           selectedEvidenceIds={selectedEvidenceIds}
           unreadableEvidenceIds={unreadableEvidenceIds}
           onEvidenceUnreadable={(attachmentId) => {

@@ -6,8 +6,9 @@ import { SKILLS, SKILL_LABEL, type Skill } from "../lessons/skills.ts";
  * exclusivamente con datos reales de clases YA REGISTRADAS y finalizadas
  * (`countsAsClass && status === 'completed'`) del alumno, dentro del
  * período de meses seleccionados. Nunca incluye notas internas
- * (`individualObservation` NUNCA se lee acá — es la nota privada de la
- * profesora, equivalente real de `internalNotes` del móvil), nunca datos
+ * (`internalNotes`, la nota privada de la clase, NUNCA se lee acá; la observación
+ * individual — que el registro rotula «puede aparecer en su reporte» — sólo se
+ * incluye si el pedido lo indica: `individualObservations`), nunca datos
  * financieros (`billedAmount` nunca se lee), nunca información de otros
  * alumnos (cada registro ya viene filtrado a un solo `studentId` por el
  * repositorio, antes de llegar acá). Pura.
@@ -36,6 +37,8 @@ export interface RegistrationForStudentReport {
     strengths: string[];
     areasToImprove: string[];
     individualHomeworkDescription: string | null;
+    /** Observación individual del alumno en esa clase (la que el registro rotula «puede aparecer en su reporte»). Sólo se usa si el reporte la pide. */
+    individualObservation?: string | null;
   } | null;
 }
 
@@ -78,7 +81,15 @@ export interface StudentReportPunctualitySummary {
   averageLateMinutes: number | null; // sólo sobre las tardanzas reales, null si no hubo ninguna
 }
 
+/** Observación individual de una clase, publicable en el reporte de ESE alumno. */
+export interface StudentReportIndividualObservation {
+  dateKey: string;
+  text: string;
+}
+
 export interface StudentReportData {
+  /** Sólo cuando la profesora eligió incluirlas. Ausente = ninguna (reportes anteriores y reportes sin esa opción). */
+  individualObservations?: StudentReportIndividualObservation[];
   /** Temas vistos en el período, sin repetir. Ausente en reportes anteriores. */
   topicsSeen?: string[];
   /** Fotos y PDF que la profesora puede elegir para el reporte (nunca se incluyen sin elegirlos). Ausente en reportes anteriores. */
@@ -100,7 +111,7 @@ function durationMinutes(startIso: string | null, endIso: string | null): number
   return Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000));
 }
 
-export function buildStudentReportData(registrations: readonly RegistrationForStudentReport[]): StudentReportData {
+export function buildStudentReportData(registrations: readonly RegistrationForStudentReport[], options: { includeIndividualObservations?: boolean } = {}): StudentReportData {
   const classesHeld = registrations.length;
 
   const hoursTaught =
@@ -157,5 +168,12 @@ export function buildStudentReportData(registrations: readonly RegistrationForSt
     }))
     .sort((a, b) => (a.dateKey < b.dateKey ? -1 : 1));
 
-  return { topicsSeen, evidenceCandidates, classesHeld, hoursTaught: Math.round(hoursTaught * 10) / 10, skillNotes, generalAverageGrade, strengths, areasToImprove, homeworkAssigned, attendance, punctuality, lessonDetails };
+  const individualObservations: StudentReportIndividualObservation[] = options.includeIndividualObservations
+    ? registrations
+        .map((r) => ({ dateKey: r.dateKey, text: (r.evaluation?.individualObservation ?? "").trim() }))
+        .filter((o) => o.text !== "")
+        .sort((a, b) => (a.dateKey < b.dateKey ? -1 : a.dateKey > b.dateKey ? 1 : 0))
+    : [];
+
+  return { ...(options.includeIndividualObservations ? { individualObservations } : {}), topicsSeen, evidenceCandidates, classesHeld, hoursTaught: Math.round(hoursTaught * 10) / 10, skillNotes, generalAverageGrade, strengths, areasToImprove, homeworkAssigned, attendance, punctuality, lessonDetails };
 }

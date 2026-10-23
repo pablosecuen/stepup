@@ -591,15 +591,16 @@ export interface RegistrationForStudentReportRow {
     strengths: string[];
     areasToImprove: string[];
     individualHomeworkDescription: string | null;
+    /** Sólo con `withContent` (Reportes): la observación individual «que puede aparecer en su reporte». NUNCA las notas internas de la clase (`internalNotes`). */
+    individualObservation?: string | null;
   } | null;
 }
 
 /**
  * Clases REALMENTE dictadas de un alumno (`status: 'completed'`,
  * `counts_as_class: true`) con la asistencia/evaluación de ESE alumno —
- * fuente real para Reportes (Fase 7). Nunca incluye `individualObservation`
- * (nota interna) ni ningún campo financiero (`billed_amount`) — la
- * selección de columnas ni los pide.
+ * fuente real para Reportes (Fase 7). La observación individual sólo se entrega con `withContent` (Reportes la publica únicamente si la profesora lo elige); nunca incluye notas internas
+ * (`internalNotes`) ni ningún campo financiero (`billed_amount`).
  */
 export async function listCompletedRegistrationsForStudentReport(ctx: AuthenticatedDbContext, studentId: string, options: { withContent?: boolean } = {}): Promise<RegistrationForStudentReportRow[]> {
   const registrations = await listLessonRegistrationsForStudent(ctx, studentId);
@@ -672,6 +673,7 @@ export async function listCompletedRegistrationsForStudentReport(ctx: Authentica
               strengths: evaluation.strengths,
               areasToImprove: evaluation.areasToImprove,
               individualHomeworkDescription: evaluation.individualHomeworkDescription,
+              ...(options.withContent ? { individualObservation: evaluation.individualObservation } : {}),
             }
           : null,
       };

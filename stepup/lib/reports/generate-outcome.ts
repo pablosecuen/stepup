@@ -28,6 +28,8 @@ export interface GenerateRequestContent {
   teacherNotes: StudentReportTeacherNotes;
   includeClassDetail: boolean;
   includePunctualitySummary: boolean;
+  /** Ausente = no. */
+  includeIndividualObservations?: boolean;
   /** Evidencias (fotos/PDF) elegidas para el reporte. Ausente = ninguna (pedidos y reportes anteriores). */
   selectedEvidenceIds?: readonly string[];
 }
@@ -57,6 +59,8 @@ export function computeGenerateRequestFingerprint(content: GenerateRequestConten
     },
     includeClassDetail: content.includeClassDetail,
     includePunctualitySummary: content.includePunctualitySummary,
+    // Sólo se agrega cuando está activada: un pedido sin esta opción conserva exactamente la huella de siempre.
+    ...(content.includeIndividualObservations ? { includeIndividualObservations: true } : {}),
     // Sólo se agrega a la huella cuando hay evidencias: así un pedido sin evidencias conserva exactamente la huella de siempre.
     ...((content.selectedEvidenceIds ?? []).length > 0 ? { selectedEvidenceIds: [...new Set(content.selectedEvidenceIds)].sort() } : {}),
   });
