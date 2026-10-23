@@ -189,7 +189,8 @@ function ReportDocument(input: ReportPdfInput): React.ReactElement {
 
         {input.evidence && (input.evidence.images.length > 0 || input.evidence.files.length > 0) && (
           <>
-            <View style={styles.sectionTitle}>
+            {/* El título no queda solo al pie de una página con las fotos en la siguiente: pide lugar para la primera fila de fotos. */}
+            <View style={styles.sectionTitle} minPresenceAhead={170}>
               <Text>Evidencias y materiales</Text>
             </View>
             <View style={styles.evidenceGrid}>
