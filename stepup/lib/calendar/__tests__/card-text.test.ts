@@ -93,12 +93,16 @@ test("cableado: una clase cerrada sin dictar lleva un ícono «no se dictó» ju
   assert.match(card, /\(groupSize \|\| isTraining \|\| notHeld\)/, "el ancho del ícono entra en el cálculo del carril");
 });
 
-test("carril < 36 px: ⊘ en fila propia si la tarjeta apilada es alta; si no, franja rayada fuera del texto; con espacio o dictada, nada nuevo", async () => {
+test("carril < 36 px: ⊘ en fila propia si la tarjeta apilada es alta; si no, banda rayada inferior o franja lateral fuera del texto; con espacio o dictada, nada nuevo", async () => {
   const { narrowNotHeldIndicator } = await import("../card-text.ts");
   assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 30, height: 44, presentation: "stack" }), "icon-row");
   assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 30, height: 38, presentation: "stack" }), "icon-row");
-  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 30, height: 37, presentation: "stack" }), "strip", "no hay alto para el ícono sin tapar nombre u hora");
-  for (const presentation of ["title", "vertical", "block", "micro"]) assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 20, height: 60, presentation }), "strip", presentation);
+  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 30, height: 37, presentation: "stack" }), "band", "no hay alto para el ícono sin tapar nombre u hora: banda inferior");
+  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 30, height: 29, presentation: "stack" }), "strip");
+  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 25, height: 20, presentation: "title" }), "band");
+  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 25, height: 16, presentation: "title" }), "strip");
+  assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 15, height: 60, presentation: "vertical" }), "band");
+  for (const presentation of ["block", "micro"]) assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 20, height: 60, presentation }), "strip", presentation);
   assert.equal(narrowNotHeldIndicator({ notHeld: true, cardWidth: 36, height: 60, presentation: "stack" }), null, "desde 36 px el ⊘ va junto a la hora");
   assert.equal(narrowNotHeldIndicator({ notHeld: false, cardWidth: 20, height: 60, presentation: "stack" }), null, "una clase dictada no cambia");
 });
@@ -106,7 +110,8 @@ test("carril < 36 px: ⊘ en fila propia si la tarjeta apilada es alta; si no, f
 test("cableado: la franja rayada va fuera del texto (reserva su ancho) y el ⊘ de fila propia no se superpone", async () => {
   const { readFileSync } = await import("node:fs");
   const card = readFileSync(new URL("../../../components/calendar/real-lesson-card.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-  assert.match(card, /narrowIndicator === "strip" \? \{ paddingRight: NARROW_STRIP_WIDTH_PX \}/, "el texto cede el ancho de la franja");
+  assert.match(card, /narrowIndicator === "strip" \? \{ paddingRight: stripPx \} : narrowIndicator === "band" \? \{ paddingBottom: NARROW_TEXT_STRIP_PX \}/, "el texto cede el espacio de la banda o la franja");
   assert.match(card, /narrowIndicator === "strip" && <span aria-hidden className="absolute inset-y-0 right-0"/);
+  assert.match(card, /narrowIndicator === "band" && <span aria-hidden className="absolute inset-x-0 bottom-0"/);
   assert.match(card, /narrowIndicator === "icon-row" && <NoSymbolIcon className="mx-auto mb-px h-2\.5 w-2\.5 shrink-0"/, "fila propia, arriba del nombre");
 });

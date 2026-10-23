@@ -3,7 +3,7 @@
 import { NoSymbolIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/calendar/layout";
-import { narrowNotHeldIndicator, NARROW_STRIP_WIDTH_PX, estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
+import { narrowNotHeldIndicator, narrowStripPx, NARROW_TEXT_STRIP_PX, estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { CARD_TEXT_COLORS, lessonStatusLabel, MODALITY_LABELS, resolveLessonColors } from "@/lib/calendar-theme";
@@ -144,6 +144,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
       </>
     );
   const narrowIndicator = narrowNotHeldIndicator({ notHeld, cardWidth, height, presentation });
+  const stripPx = narrowStripPx(presentation);
   const tipId = `calendar-tip-${item.id}`;
 
   function showTip(target: HTMLElement) {
@@ -181,7 +182,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
       <span
         aria-hidden="true"
         className={`absolute inset-x-0 min-w-0 overflow-hidden ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
-        style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border, ...(narrowIndicator === "strip" ? { paddingRight: NARROW_STRIP_WIDTH_PX } : {}), ...microEdge }}
+        style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border, ...(narrowIndicator === "strip" ? { paddingRight: stripPx } : narrowIndicator === "band" ? { paddingBottom: NARROW_TEXT_STRIP_PX } : {}), ...microEdge }}
       >
         {presentation === "full" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
@@ -242,7 +243,8 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
             </span>
           </span>
         )}
-        {narrowIndicator === "strip" && <span aria-hidden className="absolute inset-y-0 right-0" style={{ width: NARROW_STRIP_WIDTH_PX, borderLeft: `1px solid ${colors.border}`, backgroundImage: `repeating-linear-gradient(135deg, ${colors.border} 0 1.5px, transparent 1.5px 4px)` }} />}
+        {narrowIndicator === "strip" && <span aria-hidden className="absolute inset-y-0 right-0" style={{ width: stripPx, backgroundImage: `repeating-linear-gradient(135deg, ${colors.border} 0 1.5px, transparent 1.5px 4px)` }} />}
+        {narrowIndicator === "band" && <span aria-hidden className="absolute inset-x-0 bottom-0" style={{ height: NARROW_TEXT_STRIP_PX, backgroundImage: `repeating-linear-gradient(135deg, ${colors.border} 0 1.5px, transparent 1.5px 4px)` }} />}
         {presentation === "vertical" && (
           <span className="flex h-full w-full items-center justify-center overflow-hidden py-0.5">
             <span className="block min-h-0 truncate text-[10px] font-bold leading-[11px]" style={{ writingMode: "vertical-rl", maxHeight: "100%", color: textColor, textDecorationLine: strike }}>

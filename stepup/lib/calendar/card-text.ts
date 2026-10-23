@@ -38,16 +38,29 @@ export function nameForWidth(title: string, widthPx: number): string {
 export const ICON_LANE_MIN_WIDTH_PX = 36;
 /** Alto mínimo de una tarjeta apilada angosta para sumar una fila propia con el ⊘ (10 px de ícono + las dos líneas de texto) sin tapar el nombre ni la hora. */
 export const NARROW_ICON_ROW_MIN_HEIGHT_PX = 38;
-/** Ancho (px) de la franja rayada de respaldo, al borde de la tarjeta y fuera del texto. */
-export const NARROW_STRIP_WIDTH_PX = 5;
+/** Grosor (px) de la franja rayada de respaldo, al borde de la tarjeta y fuera del texto: 5 en un bloque sin texto, 3 donde hay texto al lado. */
+export const NARROW_BLOCK_STRIP_PX = 5;
+export const NARROW_TEXT_STRIP_PX = 3;
+/** Alto mínimo para una banda inferior (texto + bordes + 3 px) en la tarjeta apilada y en la de una línea. */
+export const NARROW_STACK_BAND_MIN_HEIGHT_PX = 30;
+export const NARROW_TITLE_BAND_MIN_HEIGHT_PX = 18;
 
 /**
  * Cómo se dice «no se dictó» (cancelada tarde, ausencias, feriado) en un carril de menos de ICON_LANE_MIN_WIDTH_PX: `icon-row` = el mismo ⊘ de las tarjetas anchas en una fila propia (sólo si la tarjeta
- * apilada es lo bastante alta); `strip` = franja rayada de 5 px al borde derecho (cabe en cualquier alto y no toca el texto ni baja su contraste); `null` = tarjeta con espacio (el ⊘ va junto a la hora) o clase dictada.
+ * apilada es lo bastante alta); `band` = banda rayada de 3 px al borde inferior (no quita ancho: el nombre y la hora se leen enteros); `strip` = franja rayada al borde derecho (sólo donde no hay alto para la banda); `null` = tarjeta con espacio (el ⊘ va junto a la hora) o clase dictada.
  */
-export function narrowNotHeldIndicator(input: { notHeld: boolean; cardWidth: number; height: number; presentation: string }): "icon-row" | "strip" | null {
+/** Grosor de la franja lateral: 5 px en el bloque sin texto, 3 px donde hay texto al lado. */
+export function narrowStripPx(presentation: string): number {
+  return presentation === "block" ? NARROW_BLOCK_STRIP_PX : NARROW_TEXT_STRIP_PX;
+}
+
+export function narrowNotHeldIndicator(input: { notHeld: boolean; cardWidth: number; height: number; presentation: string }): "icon-row" | "band" | "strip" | null {
   if (!input.notHeld || input.cardWidth >= ICON_LANE_MIN_WIDTH_PX) return null;
-  return input.presentation === "stack" && input.height >= NARROW_ICON_ROW_MIN_HEIGHT_PX ? "icon-row" : "strip";
+  const { presentation, height } = input;
+  if (presentation === "stack") return height >= NARROW_ICON_ROW_MIN_HEIGHT_PX ? "icon-row" : height >= NARROW_STACK_BAND_MIN_HEIGHT_PX ? "band" : "strip";
+  if (presentation === "title") return height >= NARROW_TITLE_BAND_MIN_HEIGHT_PX ? "band" : "strip";
+  if (presentation === "vertical") return "band";
+  return "strip";
 }
 
 export interface CardStateFacts {
