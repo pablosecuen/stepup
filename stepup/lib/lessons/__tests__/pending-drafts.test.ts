@@ -84,3 +84,11 @@ test("cableado: los saltos de línea de observaciones y tareas se ven donde se l
   assert.match(read("components/students/profile/tareas-tab.tsx"), /whitespace-pre-wrap[^"]*"[^>]*>\{task\.description\}/);
   assert.match(read("components/students/profile/resumen-tab.tsx"), /whitespace-pre-wrap \[overflow-wrap:anywhere\]">\s*\{task\.description\}/);
 });
+
+test("cableado: cancelar una edición la descarta (el campo de edición no confirma al perder el foco) y sólo «Guardar cambio»/Enter la aplican", () => {
+  const parts = read("components/registro/registration-form-parts.tsx");
+  const editBlock = parts.slice(parts.indexOf("editingIndex === index ? ("), parts.indexOf(") : (", parts.indexOf("editingIndex === index ? (")));
+  assert.doesNotMatch(editBlock, /onBlur/, "perder el foco no confirma una edición");
+  assert.match(editBlock, /finishEdit\(false\)/);
+  assert.match(parts, /edit\.take\(\)\.trim\(\);\n\s+editIndex\.take\(\);\n\s+if \(!confirm/, "cancelar vacía el borrador de edición y su posición antes de salir");
+});

@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 import { redirect } from "next/navigation";
 import { PrimaryNav } from "@/components/nav/primary-nav";
 import { NavigationProgress } from "@/components/nav/navigation-progress";
+import { SoftKeyboardSync } from "@/components/nav/soft-keyboard-sync";
 import { SignOutButton } from "@/components/nav/sign-out-button";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { isSupabaseConfigured, shouldFailClosed } from "@/lib/auth/config";
@@ -55,13 +56,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen nav:pl-[236px]">
       <NavigationProgress />
+      <SoftKeyboardSync />
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
           fila propia de `--tf-shell-top` de alto: nunca se superpone con el título ni con las acciones de cada pantalla. */}
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">
         <SignOutButton />
       </div>
-      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] nav:pb-0">{children}</main>
+      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0">{children}</main>
     </div>
   );
 }

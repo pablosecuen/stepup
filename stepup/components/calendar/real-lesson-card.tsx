@@ -6,7 +6,7 @@ import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/c
 import { estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
-import { CARD_TEXT_COLORS, MODALITY_LABELS, resolveLessonColors, STATUS_LABELS } from "@/lib/calendar-theme";
+import { CARD_TEXT_COLORS, lessonStatusLabel, MODALITY_LABELS, resolveLessonColors } from "@/lib/calendar-theme";
 import { BarbellIcon } from "./barbell-icon";
 
 // Colores de las tarjetas: SIEMPRE de `lib/calendar-theme.ts` (escala congelada del calendario). Este archivo sólo decide la
@@ -44,7 +44,7 @@ function stateParts(input: { item: CalendarViewItem; isElapsed: boolean; isActiv
   const isTraining = item.activityKind === "training";
   const parts: string[] = [];
   if (item.status !== "scheduled") {
-    parts.push(STATUS_LABELS[item.status]);
+    parts.push(lessonStatusLabel(item));
   } else if (isTraining) {
     parts.push("Entren.");
   }
@@ -56,11 +56,16 @@ function stateParts(input: { item: CalendarViewItem; isElapsed: boolean; isActiv
   return parts;
 }
 
+/** Estado de una clase completada que no se dictó (cancelada tarde, ausente, feriado), para el nombre accesible. */
+function closedSuffix(item: CalendarViewItem): string {
+  return item.status === "completed" && item.closedOutcome ? ", " + lessonStatusLabel(item).toLowerCase() : "";
+}
+
 export function ariaLabelOf(input: { title: string; timeLabel: string; durationMinutes: number; item: CalendarViewItem; isElapsed: boolean; isActiveReplacement: boolean; isInProgress: boolean }): string {
   const { title, timeLabel, durationMinutes, item, isElapsed, isActiveReplacement, isInProgress } = input;
   const isCancelled = item.status === "cancelled";
   const isElapsedActive = isElapsed && !isCancelled;
-  return `${title}, ${timeLabel}, ${durationMinutes} minutos${isCancelled ? ", cancelada" : ""}${isActiveReplacement && !isCancelled && !isElapsed ? ", reemplazo" : ""}${isInProgress && !isElapsed && !isCancelled ? ", en curso" : ""}${isElapsedActive ? ", ya transcurrida" : ""}`;
+  return `${title}, ${timeLabel}, ${durationMinutes} minutos${isCancelled ? ", cancelada" : ""}${closedSuffix(item)}${isActiveReplacement && !isCancelled && !isElapsed ? ", reemplazo" : ""}${isInProgress && !isElapsed && !isCancelled ? ", en curso" : ""}${isElapsedActive ? ", ya transcurrida" : ""}`;
 }
 
 export function lessonTitle(item: CalendarViewItem): string {
@@ -88,10 +93,10 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   const title = lessonTitle(item);
   const stateTexts = stateParts({ item, isElapsed, isActiveReplacement, isInProgress });
   if (dayRow) {
-    if (stateTexts.length === 0) stateTexts.push(STATUS_LABELS[item.status]);
+    if (stateTexts.length === 0) stateTexts.push(lessonStatusLabel(item));
     stateTexts.unshift(MODALITY_LABELS[item.modality]);
   }
-  const stateFacts = { status: item.status, isElapsed, isActiveReplacement, isInProgress };
+  const stateFacts = { status: item.status, closedOutcome: item.closedOutcome ?? null, isElapsed, isActiveReplacement, isInProgress };
   // Grupal: cuántos alumnos son (se ve en la tarjeta ancha, con el ícono en las angostas, y siempre en el cuadro de información).
   const groupSize = item.participantIds.length > 1 ? item.participantIds.length : null;
 

@@ -1,5 +1,6 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
+import type { ClosedOutcome } from "@/lib/calendar/types";
 import type { CalendarLessonParticipantRow, CalendarLessonRow } from "@/lib/db/database.types";
 import { readTable, readTableByIds } from "@/lib/db/read";
 import {
@@ -39,7 +40,24 @@ async function attachParticipants(ctx: AuthenticatedDbContext, rows: CalendarLes
     list.push(participant.student_id);
     byLesson.set(participant.calendar_lesson_id, list);
   });
-  return rows.map((row) => toCalendarLessonRecord(row, byLesson.get(row.id) ?? []));
+  const closed = await loadClosedOutcomes(ctx, rows.filter((row) => row.status === "completed").map((row) => row.id));
+  return rows.map((row) => ({ ...toCalendarLessonRecord(row, byLesson.get(row.id) ?? []), ...(closed.has(row.id) ? { closedOutcome: closed.get(row.id) } : {}) }));
+}
+
+const CLOSED_OUTCOMES: readonly ClosedOutcome[] = ["cancelada_tarde", "profesora_ausente", "alumno_ausente", "feriado"];
+
+/** Resultado de las clases completadas cuyo registro NO se dictó: sólo para rotularlas bien en el Calendario (nunca toca cobros ni asistencia). */
+async function loadClosedOutcomes(ctx: AuthenticatedDbContext, lessonIds: string[]): Promise<Map<string, ClosedOutcome>> {
+  const result = new Map<string, ClosedOutcome>();
+  if (lessonIds.length === 0) return result;
+  const data = await readTableByIds<{ id: string; calendar_lesson_id: string; outcome: string }>(ctx.supabase, "lesson_registrations", {
+    columns: "id, calendar_lesson_id, outcome",
+    matchColumn: "calendar_lesson_id",
+    ids: lessonIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("counts_as_class", false),
+  });
+  for (const row of data) if ((CLOSED_OUTCOMES as readonly string[]).includes(row.outcome)) result.set(row.calendar_lesson_id, row.outcome as ClosedOutcome);
+  return result;
 }
 
 /** ¿Existe al menos una clase materializada (de cualquier fecha y estado)? Lectura mínima: una fila, sin traer datos. */

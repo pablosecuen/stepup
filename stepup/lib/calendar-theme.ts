@@ -3,6 +3,8 @@
 // `src/theme/colors.ts`). Esta escala está CONGELADA en el proyecto móvil —
 // esta web la REPLICA, nunca la reinventa ni la modifica.
 
+import type { ClosedOutcome } from "./calendar/types.ts";
+
 export type LessonModality = "presencial" | "online" | "mixta";
 export type LessonStatus = "scheduled" | "cancelled" | "completed" | "rescheduled";
 export type ActivityKind = "class" | "training";
@@ -59,6 +61,20 @@ export const STATUS_LABELS: Record<LessonStatus, string> = {
   completed: "Completada",
   rescheduled: "Reprogramada",
 };
+
+/** Rótulo de una clase completada cuyo registro NO se dictó: dice el resultado real, nunca «Completada». */
+export const CLOSED_OUTCOME_LABELS: Record<ClosedOutcome, string> = {
+  cancelada_tarde: "Cancelada tarde",
+  profesora_ausente: "Profesora ausente",
+  alumno_ausente: "Alumno ausente",
+  feriado: "Feriado",
+};
+
+/** Rótulo de estado de una clase: el de su estado, salvo una completada que no se dictó (ahí, su resultado real). */
+export function lessonStatusLabel(item: { status: LessonStatus; closedOutcome?: ClosedOutcome | null }): string {
+  if (item.status === "completed" && item.closedOutcome) return CLOSED_OUTCOME_LABELS[item.closedOutcome];
+  return STATUS_LABELS[item.status];
+}
 
 /**
  * Resuelve el color de una tarjeta — misma prioridad EXACTA que

@@ -6,7 +6,7 @@ import PrivateLink from "@/components/nav/private-link";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { RealLessonDetailModal } from "@/components/calendar/real-lesson-detail-modal";
 import { MODALITY_LABEL } from "@/lib/students/constants";
-import { STATUS_LABELS } from "@/lib/calendar-theme";
+import { lessonStatusLabel, STATUS_LABELS } from "@/lib/calendar-theme";
 import { formatInstantTime } from "@/lib/format/date-format";
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
 import { agendaLessonLabel } from "@/lib/dashboard/lesson-label";
@@ -26,7 +26,7 @@ function stateBadges(entry: TodayAgendaEntry, isNext: boolean): StateBadge[] {
   if (item.status === "cancelled") return [{ label: STATUS_LABELS.cancelled, tone: "warn" }];
   const badges: StateBadge[] = [];
   if (item.status === "rescheduled") badges.push({ label: STATUS_LABELS.rescheduled, tone: "neutral" });
-  if (item.status === "completed") badges.push({ label: STATUS_LABELS.completed, tone: "ok" });
+  if (item.status === "completed") badges.push({ label: lessonStatusLabel(item), tone: item.closedOutcome ? "neutral" : "ok" });
   if (timing === "in_progress") badges.push({ label: "En curso", tone: "accent", dot: true });
   else if (timing === "upcoming" && isNext) badges.push({ label: "Sigue", tone: "warn" });
   else if (timing === "finished" && item.status !== "completed") badges.push({ label: "Pasada", tone: "neutral" });

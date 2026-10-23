@@ -1,5 +1,8 @@
 import type { CalendarModality, RecurrenceRuleStatus, ActivityKind, CalendarLessonStatus, CalendarLessonType } from "@/lib/db/database.types";
 
+/** Resultado de una clase cerrada que NO se dictó (el registro no cuenta como clase): la clase del Calendario queda `completed`, pero no es una clase dada. Sólo para rotular. */
+export type ClosedOutcome = "cancelada_tarde" | "profesora_ausente" | "alumno_ausente" | "feriado";
+
 export type { CalendarModality, RecurrenceRuleStatus, ActivityKind, CalendarLessonStatus, CalendarLessonType };
 
 /** jsonb `weeks` de `recurrence_rules` — misma forma exacta que `RecurrenceWeek[]` del móvil. */

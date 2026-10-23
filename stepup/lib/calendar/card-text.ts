@@ -36,6 +36,8 @@ export function nameForWidth(title: string, widthPx: number): string {
 
 export interface CardStateFacts {
   status: "scheduled" | "cancelled" | "completed" | "rescheduled";
+  /** Completada pero no dictada (cancelada tarde, profesora/alumno ausente, feriado): se rotula con su resultado, nunca «Dictada». */
+  closedOutcome?: "cancelada_tarde" | "profesora_ausente" | "alumno_ausente" | "feriado" | null;
   isElapsed: boolean;
   isActiveReplacement: boolean;
   isInProgress: boolean;
@@ -46,13 +48,15 @@ export interface CardStateFacts {
  * estados que cambian lo que la profesora tiene que hacer (cancelada, reprogramada, dictada, reemplazo): «En curso» y «Pasada» ya se ven por la línea de la hora actual y el gris
  * de la escala, y en una tarjeta angosta la hora vale más que repetirlos.
  */
+const CLOSED_OUTCOME_TAGS = { cancelada_tarde: "Canc. tarde", profesora_ausente: "Prof. aus.", alumno_ausente: "Alumno aus.", feriado: "Feriado" } as const;
+
 export function compactStateTag(facts: CardStateFacts, priorityOnly = false): string | null {
   if (facts.status === "cancelled") return "Cancel.";
   if (facts.status === "rescheduled") return "Reprog.";
   if (facts.isActiveReplacement && !facts.isElapsed && facts.status !== "completed") return "Reemp.";
   // «Dictada» (clase ya registrada) ya se ve por el gris de la escala y se dice completo en la tarjeta ancha: en una angosta la hora vale más (como en la app).
   if (priorityOnly) return null;
-  if (facts.status === "completed") return "Dictada";
+  if (facts.status === "completed") return facts.closedOutcome ? CLOSED_OUTCOME_TAGS[facts.closedOutcome] : "Dictada";
   if (facts.isInProgress && !facts.isElapsed) return "En curso";
   if (facts.isElapsed) return "Pasada";
   return null;

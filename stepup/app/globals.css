@@ -52,8 +52,24 @@
   --tf-m-header: 60px;
   --tf-m-nav: 72px;
   --tf-focus-ring-on-dark: #F6F0E5;
+  --tf-keyboard-gap: 1rem;
   /* Ancho de la barra lateral del escritorio. */
   --tf-side-w: 236px;
+}
+
+/* Teclado en pantalla abierto (`SoftKeyboardSync` marca <html data-tf-keyboard="open">): la barra inferior pertenece al borde inferior de la aplicación, no al teclado. Se oculta mientras
+   está abierto y se anulan su alto y la zona segura inferior, así no queda ni barra flotante ni franja vacía encima del teclado; al cerrarlo todo vuelve en el mismo cuadro. Sólo móvil (< 820 px). */
+@media (max-width: 819.98px) {
+  html[data-tf-keyboard="open"] {
+    --tf-safe-bottom: 0px;
+    --tf-m-nav: 0px;
+  }
+  html[data-tf-keyboard="open"] [data-tf-bottom-nav] {
+    display: none;
+  }
+  html[data-tf-keyboard="open"] main#contenido {
+    padding-bottom: var(--tf-keyboard-gap);
+  }
 }
 
 @layer base {

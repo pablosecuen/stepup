@@ -89,7 +89,7 @@ test("safe areas: arriba (muesca), abajo (barra de inicio) y laterales; viewport
   assert.match(nav, /pl-\[env\(safe-area-inset-left\)\] pr-\[env\(safe-area-inset-right\)\]/);
   assert.match(layout, /export const viewport: Viewport = \{ viewportFit: "cover" \}/);
   assert.doesNotMatch(read("app/layout.tsx"), /viewportFit/, "el layout raíz (login, etc.) no cambia");
-  assert.match(layout, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] nav:pb-0/, "el contenido deja lugar a la barra inferior + safe area");
+  assert.match(layout, /pb-\[calc\(var\(--tf-m-nav\)\+var\(--tf-safe-bottom\)\)\] nav:pb-0/, "el contenido deja lugar a la barra inferior + safe area (72 px + zona segura; con el teclado abierto ambos valen 0)");
 });
 
 test("logout: acción propia (botón → signOutAction existente vía guardNetwork), nunca un enlace ni un form pelado; sin confirmación nueva", () => {

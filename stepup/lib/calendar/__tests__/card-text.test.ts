@@ -69,3 +69,17 @@ test("ancho que necesita el carril: crece con la palabra más larga que se ve, c
   assert.ok(mobileLaneNeedPx("Ana Constantinopla", 60) > mobileLaneNeedPx("Ana Constantinopla", 25), "la segunda palabra sólo cuenta cuando se ve (tarjeta alta)");
   assert.equal(mobileLaneNeedPx("", 25), LANE_MIN_PX);
 });
+test("una clase cerrada sin dictar (cancelada tarde, ausencias, feriado) dice su resultado y nunca «Dictada»/«Completada»; los colores no cambian", async () => {
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: "cancelada_tarde" }), "Canc. tarde");
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: "profesora_ausente" }), "Prof. aus.");
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: "alumno_ausente" }), "Alumno aus.");
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: "feriado" }), "Feriado");
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: "cancelada_tarde" }, true), null, "en una tarjeta angosta sigue la hora");
+  assert.equal(compactStateTag({ ...base, status: "completed", closedOutcome: null }), "Dictada", "una clase dictada sigue igual");
+  const { lessonStatusLabel, resolveLessonColors } = await import("../../calendar-theme.ts");
+  assert.equal(lessonStatusLabel({ status: "completed", closedOutcome: "cancelada_tarde" }), "Cancelada tarde");
+  assert.equal(lessonStatusLabel({ status: "completed" }), "Completada");
+  assert.equal(lessonStatusLabel({ status: "completed", closedOutcome: null }), "Completada");
+  assert.equal(lessonStatusLabel({ status: "cancelled", closedOutcome: "cancelada_tarde" }), "Cancelada", "el rótulo sólo cambia en clases completadas");
+  assert.equal(resolveLessonColors.length, 1, "los colores sólo dependen de estado, modalidad y reloj: el resultado no los cambia");
+});

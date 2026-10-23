@@ -58,7 +58,7 @@ test("Semana y Día conservan la grilla también en móvil y comparten datos y a
 
 test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sólo con color) y la fila de agenda mide ≥ 56 px sin cortar textos", () => {
   const card = code("components/calendar/real-lesson-card.tsx");
-  for (const text of ['parts.push("Reemplazo")', 'parts.push("En curso")', 'parts.push("Pasada")', "STATUS_LABELS[item.status]", '"Entren."']) assert.ok(card.includes(text), text);
+  for (const text of ['parts.push("Reemplazo")', 'parts.push("En curso")', 'parts.push("Pasada")', "lessonStatusLabel(item)", '"Entren."']) assert.ok(card.includes(text), text);
   assert.match(card, /", cancelada"/);
   assert.match(card, /", en curso"/);
   assert.match(card, /", ya transcurrida"/);

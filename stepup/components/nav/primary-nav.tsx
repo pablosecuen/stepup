@@ -79,6 +79,7 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
 
       <nav
         aria-label="Navegación principal"
+        data-tf-bottom-nav
         className="fixed inset-x-0 bottom-0 z-20 box-border h-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] border-t-[1.5px] border-borderMid bg-surface pb-[var(--tf-safe-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] nav:hidden"
       >
         <ul className="grid grid-cols-5 px-1 pt-1.5">

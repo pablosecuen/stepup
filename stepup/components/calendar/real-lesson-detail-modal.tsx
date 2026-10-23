@@ -7,7 +7,7 @@ import { editRegistrationHref } from "@/lib/registro/return-path";
 import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
-import { MODALITY_LABELS, STATUS_LABELS } from "@/lib/calendar-theme";
+import { lessonStatusLabel, MODALITY_LABELS } from "@/lib/calendar-theme";
 import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { formatMinutes } from "@/lib/format/number-format";
@@ -217,7 +217,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <MetaChip>{formatMinutes(durationMinutes)}</MetaChip>
           <MetaChip>{MODALITY_LABELS[item.modality]}</MetaChip>
           <MetaChip>{item.isRecurring ? "Serie recurrente" : "Clase suelta"}</MetaChip>
-          <MetaChip>{STATUS_LABELS[item.status]}</MetaChip>
+          <MetaChip>{lessonStatusLabel(item)}</MetaChip>
           {item.activityKind === "training" && <MetaChip>Entrenamiento</MetaChip>}
           {!item.isMaterialized && <MetaChip>Ocurrencia virtual</MetaChip>}
         </div>

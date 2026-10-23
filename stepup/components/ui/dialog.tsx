@@ -55,7 +55,7 @@ export function Dialog({ title, onClose, size = "md", footer, busy, children }: 
         aria-busy={busy || undefined}
         onAnimationEnd={onPanelAnimationEnd}
         tabIndex={-1}
-        className={`relative flex max-h-[92vh] w-full tf-dialog flex-col overflow-hidden rounded-t-[24px] border-[1.5px] border-b-0 border-borderMid bg-surface shadow-panel focus:outline-none nav:max-h-[calc(100vh-48px)] nav:rounded-xl nav:border-b-[1.5px] ${WIDTHS[size]}`}
+        className={`relative flex max-h-[min(92vh,92dvh)] w-full tf-dialog flex-col overflow-hidden rounded-t-[24px] border-[1.5px] border-b-0 border-borderMid bg-surface shadow-panel focus:outline-none nav:max-h-[calc(100vh-48px)] nav:rounded-xl nav:border-b-[1.5px] ${WIDTHS[size]}`}
       >
         <div aria-hidden className="mx-auto mt-2.5 h-[5px] w-11 shrink-0 rounded-pill bg-borderMid nav:hidden" />
         <div className="flex items-start gap-3 px-[18px] pb-1 pt-2 nav:px-6 nav:pt-[22px]">
@@ -67,7 +67,7 @@ export function Dialog({ title, onClose, size = "md", footer, busy, children }: 
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-[18px] pb-2 pt-2.5 nav:px-6">{children}</div>
-        {footer && <div className="flex flex-col-reverse gap-2.5 px-[18px] pb-[calc(1.125rem+env(safe-area-inset-bottom))] pt-3 nav:flex-row nav:flex-wrap nav:justify-end nav:px-6 nav:pb-[22px]">{footer}</div>}
+        {footer && <div className="flex flex-col-reverse gap-2.5 px-[18px] pb-[calc(1.125rem+var(--tf-safe-bottom))] pt-3 nav:flex-row nav:flex-wrap nav:justify-end nav:px-6 nav:pb-[22px]">{footer}</div>}
       </div>
     </div>
   );

@@ -53,7 +53,7 @@ test("«Tu día»: línea de tiempo con todas las clases del día, sin límite n
   assert.match(PLANNER, /a la misma hora/, "las simultáneas se dicen con texto");
   assert.match(PLANNER, /function NowMarker/);
   assert.match(PLANNER, /firstOpenIndex/, "«Ahora» antes de la primera clase no terminada");
-  for (const state of ["STATUS_LABELS.cancelled", "STATUS_LABELS.rescheduled", "STATUS_LABELS.completed", '"En curso"', '"Sigue"', '"Pasada"']) assert.ok(PLANNER.includes(state), `estado ${state}`);
+  for (const state of ["STATUS_LABELS.cancelled", "STATUS_LABELS.rescheduled", "lessonStatusLabel(item)", '"En curso"', '"Sigue"', '"Pasada"']) assert.ok(PLANNER.includes(state), `estado ${state}`);
   assert.match(PLANNER, /line-through/, "la cancelada se tacha además de decirlo con texto");
   assert.doesNotMatch(PLANNER, /Math\.random|Faltó|Ausente|Pagada|Pagó/, "ningún estado inventado");
   // los datos salen de lo ya cargado: una sola lectura acotada al día, sin consultas por clase

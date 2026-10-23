@@ -1,6 +1,6 @@
 import { generateOccurrences, applyExceptionsToOccurrences } from "./recurrence-engine.ts";
 import { resolveOccurrenceStudentLabel, type StudentForLabel } from "./occurrence-student-label.ts";
-import type { ActivityKind, CalendarLessonStatus, CalendarLessonType, CalendarModality, RecurrenceRuleForEngine } from "./types.ts";
+import type { ActivityKind, CalendarLessonStatus, CalendarLessonType, CalendarModality, ClosedOutcome, RecurrenceRuleForEngine } from "./types.ts";
 
 /**
  * Combina reglas de recurrencia (generadas en memoria, nunca
@@ -34,6 +34,8 @@ export interface CalendarViewItem {
   end: string;
   modality: CalendarModality;
   status: CalendarLessonStatus;
+  /** Ver `ClosedOutcome`: sólo rotula, nunca cambia color, cobros ni asistencia. */
+  closedOutcome?: ClosedOutcome | null;
   activityKind: ActivityKind;
   isRecurring: boolean;
   freedByLessonId: string | null;
@@ -67,6 +69,7 @@ export interface MaterializedLessonForMerge {
   endAt: string;
   modality: CalendarModality;
   status: CalendarLessonStatus;
+  closedOutcome?: ClosedOutcome | null;
   isRecurring: boolean;
   classTitle: string | null;
   activityKind: ActivityKind;
@@ -180,6 +183,7 @@ export function buildCalendarViewForRange(input: {
       end: lesson.endAt,
       modality: lesson.modality,
       status: lesson.status,
+      ...(lesson.closedOutcome ? { closedOutcome: lesson.closedOutcome } : {}),
       activityKind: lesson.activityKind,
       isRecurring: lesson.recurrenceId !== null,
       freedByLessonId: lesson.freedByLessonId,

@@ -1,4 +1,5 @@
 import { parseOperationId } from "../calendar/operation-id.ts";
+import type { ClosedOutcome } from "../calendar/types.ts";
 import type { ActivityKind, CalendarLessonRow, CalendarLessonStatus, CalendarLessonType, CalendarModality } from "../db/database.types.ts";
 
 /**
@@ -25,6 +26,8 @@ export interface CalendarLessonRecord {
   activityKind: ActivityKind;
   notes: string | null;
   participantIds: string[];
+  /** Sólo en una clase completada cuyo registro no se dictó (cancelada tarde, profesora/alumno ausente, feriado): para no rotularla «Completada». */
+  closedOutcome?: ClosedOutcome | null;
   createdAt: string;
   updatedAt: string;
 }
