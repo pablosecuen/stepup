@@ -19,11 +19,14 @@ import { getLessonContent } from "@/lib/repositories/lesson-content";
 import { absenceAttendanceStatus, validateOutcomeDraft, type AbsenceNotice } from "@/lib/lessons/registration-outcome";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
-import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { getLocalDateKey, localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { adhocEndAt, isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
 import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
-import { syncPerClassCharge } from "@/lib/repositories/payments";
+import { listStudentIdsWithTrainingCharge, syncPerClassCharge } from "@/lib/repositories/payments";
+import { billingPeriodOfDateKey } from "@/lib/payments/dates";
+import { getRecurrenceRule } from "@/lib/repositories/recurrence-rules";
+import { isCoveredByTrainingPlan } from "@/lib/payments/training-coverage";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -295,13 +298,22 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
   const outcome = detail.registration.outcome as AdhocOutcome;
   const lateCancellationPolicy = (detail.registration.lateCancellationPolicy ?? null) as LateCancellationPolicy | null;
 
+  // El cobro depende de la ACTIVIDAD: una sesión de entrenamiento cubierta por la cuota mensual de su serie no genera cobro por clase suelta, aunque el alumno pague sus otras clases por clase.
+  // Con `amount: null` la sincronización retira sólo un cobro por clase de ESTE registro que siga sin pagos (nunca toca uno con pagos).
+  const calendarLesson = detail.registration.calendarLessonId ? await getCalendarLesson(ctx, detail.registration.calendarLessonId) : null;
+  const seriesRule = calendarLesson?.recurrenceId ? await getRecurrenceRule(ctx, calendarLesson.recurrenceId) : null;
+  // Por alumno: la serie con acuerdo mensual, o la cuota mensual de entrenamiento de ESE mes del alumno (una sesión de entrenamiento suelta, sin serie, es parte del mismo entrenamiento).
+  const sessionAnchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
+  const studentsWithMonthlyTraining = detail.registration.activityKind === "training" ? await listStudentIdsWithTrainingCharge(ctx, detail.participants.map((p) => p.studentId), billingPeriodOfDateKey(getLocalDateKey(sessionAnchor, TIMEZONE))) : new Set<string>();
+  const isCovered = (studentId: string) => isCoveredByTrainingPlan({ activityKind: detail.registration.activityKind, trainingBillingAgreementId: seriesRule?.trainingBillingAgreementId ?? null, hasTrainingChargeForPeriod: studentsWithMonthlyTraining.has(studentId) });
+
   const participants = detail.participants
     .map((p) => {
       const student = studentsById.get(p.studentId);
       if (!student) return null;
       const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
       if (plan.type !== "per_class") return null;
-      const amount = computePerClassBilledAmount({
+      const amount = isCovered(p.studentId) ? 0 : computePerClassBilledAmount({
         perClassAmount: plan.amount,
         outcome,
         isClassHeld: detail.registration.countsAsClass,

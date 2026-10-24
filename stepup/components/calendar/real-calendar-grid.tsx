@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
@@ -50,6 +52,7 @@ interface RealCalendarGridProps {
  */
 export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
+  const router = useRouter();
   const [selected, setSelected] = useState<CalendarViewItem | null>(() => (rescheduleItemId ? (items.find((item) => item.id === rescheduleItemId) ?? null) : null));
   // Sólo la clase abierta por el enlace directo arranca en «Reprogramar»; cualquier otra que se elija después abre las acciones de siempre.
   const [startInReschedule, setStartInReschedule] = useState(() => Boolean(rescheduleItemId && items.some((item) => item.id === rescheduleItemId)));
@@ -285,6 +288,20 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                         </div>
                       </div>
                     )}
+
+                    {/* Espacios libres: tocar una hora vacía abre «Nueva clase» en ese día y hora (como la app original). Van ANTES de las clases (quedan debajo) y sólo reaccionan al toque/clic, nunca al deslizar. */}
+                    {HOURS.map((hour, index) => (
+                      <button
+                        key={`slot-${hour}`}
+                        type="button"
+                        tabIndex={-1}
+                        data-grid-slot=""
+                        aria-label={slotAriaLabel(formatCivilDayLabelShort(dayKey), hour)}
+                        onClick={() => router.push(newLessonSlotHref({ dayKey, hour, returnPath: `${window.location.pathname}${window.location.search}` }))}
+                        className="absolute inset-x-0 cursor-pointer bg-transparent hover:bg-accent/[0.06] focus-visible:bg-accent/[0.08]"
+                        style={{ top: index * hourHeightPx, height: hourHeightPx }}
+                      />
+                    ))}
 
                     {positioned.map((positionedItem) => {
                       const planned = labelPlan?.items.get(positionedItem.item.id);

@@ -14,7 +14,6 @@ import { Notice } from "@/components/ui/notice";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { BackLink, PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { SeriesCard, swapOptionsOf, withLineageIds } from "@/components/calendar/series-list-view";
-import { SeriesSwapPanel } from "@/components/calendar/series-swap-panel";
 import { selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
 
 export const dynamic = "force-dynamic";
@@ -122,8 +121,7 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
             No tiene clases por venir, así que no hay nada que cambiar. Sus clases dictadas y registros se conservan.
           </Notice>
         )}
-        <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} highlighted />
-        {head && swapOptions.length >= 2 && swapOptions.some((option) => option.id === head.id) && <SeriesSwapPanel options={swapOptions} fixedId={head.id} />}
+        <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={head ? swapOptions : []} highlighted />
       </div>
     </div>
   );

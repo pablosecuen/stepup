@@ -36,9 +36,12 @@ async function dispatchAction(mode: "single" | "series", prevState: FormState, f
 export function NewLessonForm({
   activeStudents,
   presetFromReplacement,
+  returnHref = "/calendario",
 }: {
   activeStudents: StudentRecord[];
   presetFromReplacement?: { freedByLessonId?: string; date?: string; hour?: string; minute?: string; duration?: string; modality?: string };
+  /** Dónde se vuelve al guardar o cancelar: la semana o el día desde el que se abrió (por omisión, el Calendario). */
+  returnHref?: string;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<"single" | "series">("single");
@@ -123,7 +126,7 @@ export function NewLessonForm({
   useEffect(() => {
     if (!shouldRotateOperationId(state.createdOperationId, operationId)) return;
     rotateOperationId();
-    if (!state.error) router.push("/calendario");
+    if (!state.error) router.push(returnHref);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, operationId]);
 
@@ -257,7 +260,7 @@ export function NewLessonForm({
       {state.error && <FormErrorBox message={state.error} />}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
-        <PrivateButtonLink href="/calendario" variant="ghost">
+        <PrivateButtonLink href={returnHref} variant="ghost">
           Cancelar
         </PrivateButtonLink>
       </div>

@@ -12,7 +12,8 @@ import {
   type TrainingBillingAgreementRecord,
 } from "./payments-mapping";
 import { listStudents } from "./students";
-import { readTable, readRpc } from "@/lib/db/read";
+import { readTable, readTableByIds, readRpc } from "@/lib/db/read";
+import { summarizeRegistrationCharge, type RegistrationChargeSummary } from "@/lib/payments/registration-charge-status";
 import type { ChargeWithPaidAmount } from "@/lib/payments/collections-center";
 import { listRecurrenceRules, type RecurrenceRuleRecord } from "./recurrence-rules";
 import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
@@ -90,6 +91,39 @@ export async function listPaymentsForStudent(ctx: AuthenticatedDbContext, studen
     order: PAYMENT_ORDER,
   });
   return data.map(toPaymentRecord);
+}
+
+/** Alumnos (de la lista) que tienen la cuota mensual de ENTRENAMIENTO vigente (no anulada) del período `YYYY-MM`: sus sesiones de entrenamiento de ese mes ya están cubiertas. */
+export async function listStudentIdsWithTrainingCharge(ctx: AuthenticatedDbContext, studentIds: string[], billingPeriod: string): Promise<Set<string>> {
+  if (studentIds.length === 0) return new Set();
+  const rows = await readTableByIds<{ id: string; student_id: string }>(ctx.supabase, "payment_charges", {
+    columns: "id, student_id",
+    matchColumn: "student_id",
+    ids: studentIds,
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("charge_type", "entrenamiento").eq("billing_period", billingPeriod).is("voided_at", null),
+  });
+  return new Set(rows.map((row) => row.student_id));
+}
+
+/** Cobros por clase VIGENTES de UN registro (uno por alumno) con su situación real: sólo los pagos asignados a cada cobro. */
+export async function listChargeStatusForRegistration(ctx: AuthenticatedDbContext, registrationId: string): Promise<Array<{ chargeId: string; studentId: string; dueDate: string } & RegistrationChargeSummary>> {
+  const charges = await readTable<PaymentChargeRow>(ctx.supabase, "payment_charges", {
+    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("saved_lesson_id", registrationId).eq("charge_type", "por_clase").is("voided_at", null),
+  });
+  if (charges.length === 0) return [];
+  const allocations = await readTableByIds<PaymentAllocationRow>(ctx.supabase, "payment_allocations", { matchColumn: "charge_id", ids: charges.map((charge) => charge.id), filter: (query) => query.eq("owner_id", ctx.ownerId) });
+  const paymentIds = [...new Set(allocations.map((allocation) => allocation.payment_id))];
+  const paymentRows = paymentIds.length === 0 ? [] : await readTableByIds<PaymentRow>(ctx.supabase, "payments", { matchColumn: "id", ids: paymentIds, filter: (query) => query.eq("owner_id", ctx.ownerId) });
+  const payments = new Map(paymentRows.map((row) => [row.id, { paidAt: row.paid_at, voidedAt: row.voided_at }]));
+  return charges.map((row) => {
+    const charge = toPaymentChargeRecord(row);
+    const summary = summarizeRegistrationCharge({
+      originalAmount: charge.originalAmount,
+      allocations: allocations.filter((allocation) => allocation.charge_id === charge.id).map((allocation) => ({ paymentId: allocation.payment_id, amount: allocation.amount })),
+      payments,
+    });
+    return { chargeId: charge.id, studentId: charge.studentId, dueDate: charge.dueDate, ...summary };
+  });
 }
 
 export async function listAllAllocations(ctx: AuthenticatedDbContext): Promise<PaymentAllocationRecord[]> {

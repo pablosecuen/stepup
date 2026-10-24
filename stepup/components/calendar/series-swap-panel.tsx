@@ -24,11 +24,10 @@ type Preview = NonNullable<SeriesSwapResult["preview"]>;
  * transacción (ambos o ninguno): si algo falla no cambia ninguna. El servidor vuelve a validar todo (terceras clases y disponibilidad) y no hay
  * opción de ignorar conflictos. `fixedId`: la serie desde la que se abrió (queda fija como la primera).
  */
-export function SeriesSwapPanel({ options, fixedId }: { options: SwapOption[]; fixedId?: string }) {
+export function SeriesSwapPanel({ options, fixedId, onClose }: { options: SwapOption[]; fixedId?: string; onClose: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const today = useMemo(() => todayInArgentina(), []);
-  const [open, setOpen] = useState(false);
   const [seriesA, setSeriesA] = useState(fixedId ?? "");
   const [seriesB, setSeriesB] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(today);
@@ -79,12 +78,9 @@ export function SeriesSwapPanel({ options, fixedId }: { options: SwapOption[]; f
   const fixedOption = fixedId ? options.find((option) => option.id === fixedId) : undefined;
 
   return (
-    <div className="mt-4">
-      <Button variant="secondary" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        {open ? "Cerrar el intercambio" : "Intercambiar horarios con otra serie"}
-      </Button>
-      {open && (
-        <div className="mt-3 flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+    <div>
+      <>
+        <div className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
           <div>
             <h3 className="font-display text-card font-semibold">Intercambiar horarios</h3>
             <p className="mt-0.5 text-[13.5px] text-textMuted">Cada serie toma el horario de la otra desde la fecha elegida. Los alumnos no cambian. Los dos cambios se guardan juntos: o se hacen los dos o no se hace ninguno.</p>
@@ -162,12 +158,12 @@ export function SeriesSwapPanel({ options, fixedId }: { options: SwapOption[]; f
                 {pending ? "Preparando..." : "Ver vista previa"}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
           </div>
         </div>
-      )}
+      </>
     </div>
   );
 }

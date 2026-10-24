@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { computePerClassBilledAmount } from "../adhoc-billing.ts";
 import { resolveStudentBillingPlan } from "../billing-plan.ts";
+import { isCoveredByTrainingPlan } from "../training-coverage.ts";
 import { isAdhocClassHeld, type AdhocOutcome, type LateCancellationPolicy } from "../../lessons/adhoc.ts";
 
 function declaration(source: string,name: string): string {
@@ -20,9 +21,9 @@ test("the actual registration billing action excludes monthly, weekly, package a
   const plans=[{type:"monthly",amount:80000,dueDay:10},{type:"weekly",amount:10000,anchorDate:"2026-10-01"},{type:"class_package",amount:80000,includedClasses:8,validFrom:"2026-10-01"},{type:"complimentary"},{type:"per_class",amount:7000}];
   const students=plans.map((billingPlan,i)=>({id:`qa_${i}`,billingPlan,billingType:"mensual",price:999}));
   const charges=[] as unknown[];
-  const create=new Function("getLessonRegistrationDetail","listStudents","resolveStudentBillingPlan","computePerClassBilledAmount","syncPerClassCharge",`${body}; return syncPerClassChargesForRegistration;`);
+  const create=new Function("getLessonRegistrationDetail","listStudents","resolveStudentBillingPlan","computePerClassBilledAmount","syncPerClassCharge","getCalendarLesson","getRecurrenceRule","isCoveredByTrainingPlan",`${body}; return syncPerClassChargesForRegistration;`);
   for(const outcome of ["clase_dictada","alumno_ausente","profesora_ausente","feriado","cancelada_con_aviso","reprogramada","cancelada_tarde"] as const){
-    const run=create(async()=>({registration:{status:"completed",outcome,countsAsClass:isAdhocClassHeld(outcome,false),lateCancellationPolicy:outcome==="cancelada_tarde"?"cobrar_100":null,lateCancellationPercentage:null},participants:students.map(s=>({studentId:s.id}))}),async()=>students,resolveStudentBillingPlan,computePerClassBilledAmount,async(_ctx:unknown,_id:string,participants:unknown)=>charges.push(participants));
+    const run=create(async()=>({registration:{status:"completed",outcome,countsAsClass:isAdhocClassHeld(outcome,false),lateCancellationPolicy:outcome==="cancelada_tarde"?"cobrar_100":null,lateCancellationPercentage:null},participants:students.map(s=>({studentId:s.id}))}),async()=>students,resolveStudentBillingPlan,computePerClassBilledAmount,async(_ctx:unknown,_id:string,participants:unknown)=>charges.push(participants),async()=>null,async()=>null,isCoveredByTrainingPlan);
     await run({},"qa_registration");
     assert.deepEqual(charges.at(-1),[{studentId:"qa_4",amount:outcome==="clase_dictada"||outcome==="cancelada_tarde"?7000:null}]);
   }

@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ui/states";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { FormPage } from "@/components/ui/form-page";
 import { NewLessonForm } from "./new-lesson-form";
+import { safeCalendarReturn } from "@/lib/registro/return-path";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Nueva clase · TeacherFlow" };
@@ -15,12 +16,14 @@ export const metadata = { title: "Nueva clase · TeacherFlow" };
 export default async function NuevaClasePage({
   searchParams,
 }: {
-  searchParams: Promise<{ freedByLessonId?: string; date?: string; hour?: string; minute?: string; duration?: string; modality?: string }>;
+  searchParams: Promise<{ freedByLessonId?: string; date?: string; hour?: string; minute?: string; duration?: string; modality?: string; volver?: string }>;
 }) {
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
   const params = await searchParams;
+  // Desde un espacio libre del Calendario se vuelve a la MISMA semana o día de origen (sólo rutas internas del Calendario).
+  const returnHref = safeCalendarReturn(params.volver) ?? "/calendario";
 
   let students;
   try {
@@ -44,7 +47,7 @@ export default async function NuevaClasePage({
 
   return (
     <FormPage
-      backHref="/calendario"
+      backHref={returnHref}
       backLabel="Volver al Calendario"
       title="Nueva clase"
       subtitle={
@@ -53,7 +56,7 @@ export default async function NuevaClasePage({
           : "Elegí si es una clase única o una serie recurrente."
       }
     >
-      <NewLessonForm activeStudents={activeStudents} presetFromReplacement={params} />
+      <NewLessonForm activeStudents={activeStudents} presetFromReplacement={params} returnHref={returnHref} />
     </FormPage>
   );
 }

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
+import { cancelFutureUnregisteredLessonsOfRules } from "@/lib/repositories/calendar-lessons";
+import { planEndSeriesFromDate } from "@/lib/calendar/end-series";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
-import { createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { endRecurrenceRulesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
 import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
@@ -513,6 +515,29 @@ export async function setRecurrenceStatusAction(ruleId: string, status: "active"
   revalidatePath("/calendario");
   revalidatePath("/calendario/series");
   return {};
+}
+
+/**
+ * «Esta y todas las series»: quita LA serie elegida (su tramo vigente y los anteriores que todavía generan clases) desde HOY. Como la app original («Eliminar esta y todas las siguientes»): lo
+ * anterior a hoy se conserva (sólo se le pone fecha de fin) y nunca se toca otra serie de la cuenta. No borra nada: clases dictadas, registros, cobros, pagos y adjuntos quedan. Las clases ya creadas
+ * de la serie, futuras, programadas y sin registro, pasan a canceladas para que no queden sueltas en la agenda.
+ */
+export async function endSeriesFromTodayAction(ruleId: string): Promise<FormState & { removedFrom?: string }> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const todayDate = getLocalDateKey(new Date().toISOString(), TIMEZONE);
+    const rules = (await listRecurrenceRules(ctx)).map((rule) => ({ ...rule, recurrenceId: rule.id }));
+    const plan = planEndSeriesFromDate(rules, ruleId, todayDate);
+    if (!plan) return { error: "Esta serie ya estaba terminada." };
+    await endRecurrenceRulesFromDate(ctx, plan);
+    await cancelFutureUnregisteredLessonsOfRules(ctx, [...plan.truncate.map((cut) => cut.id), ...plan.end], todayDate, (startAt) => getLocalDateKey(startAt, TIMEZONE));
+    revalidatePath("/calendario");
+    revalidatePath("/calendario/series");
+    return { removedFrom: todayDate };
+  } catch (error) {
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "Serie no encontrada." };
+    return { error: friendlyErrorMessage(error) };
+  }
 }
 
 export interface EditFutureActionInput {

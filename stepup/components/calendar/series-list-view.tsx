@@ -12,7 +12,7 @@ import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { SeriesStatusActions } from "@/app/(app)/calendario/series/series-status-actions";
 import { ScrollToLastSeries } from "@/components/calendar/scroll-to-last-series";
 import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
-import { SeriesSwapPanel, type SwapOption } from "@/components/calendar/series-swap-panel";
+import type { SwapOption } from "@/components/calendar/series-swap-panel";
 
 const WEEKDAY_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
@@ -59,8 +59,10 @@ export function SeriesCard({
   rulesForLineage,
   students,
   nowIso,
+  swapOptions = [],
   highlighted = false,
 }: {
+  swapOptions?: SwapOption[];
   rule: RuleWithLineageId;
   rulesForLineage: RuleWithLineageId[];
   students: StudentRecord[];
@@ -105,7 +107,7 @@ export function SeriesCard({
           Tramo anterior: {scheduleOf(segment.weeks)} · {segment.endDate ? `hasta ${formatCivilDayMonth(segment.endDate)}` : "sin fecha de fin"} · {namesOf(segment.participantIds)}
         </p>
       ))}
-      <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} />
+      <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} />
       {rule.activityKind === "training" && (
         <div className="mt-3">
           <TrainingBillingConfigButton recurrenceRuleId={rule.id} agreementId={rule.trainingBillingAgreementId} seriesLabel={rule.classTitle || participantNames} />
@@ -135,8 +137,6 @@ export function SeriesListView({ rules, students, nowIso }: { rules: RecurrenceR
         {manageable.length > 4 && <ScrollToLastSeries lastRuleId={manageable[manageable.length - 1].id} />}
       </div>
 
-      {swapOptions.length >= 2 && <SeriesSwapPanel options={swapOptions} />}
-
       {manageable.length === 0 ? (
         <div className="mt-6">
           <EmptyState icon={Squares2X2Icon} message="Todavía no hay series recurrentes." action={{ label: "Crear una clase", href: "/calendario/nueva" }} />
@@ -145,7 +145,7 @@ export function SeriesListView({ rules, students, nowIso }: { rules: RecurrenceR
         <ul className="mt-6 flex max-h-[70vh] flex-col gap-3.5 overflow-y-auto pr-1">
           {manageable.map((rule) => (
             <li key={rule.id} id={`series-${rule.id}`} className="scroll-mt-4">
-              <SeriesCard rule={rule} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} />
+              <SeriesCard rule={rule} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={swapOptions} />
             </li>
           ))}
         </ul>

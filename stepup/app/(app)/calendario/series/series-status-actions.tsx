@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, type FormState } from "@/lib/actions/calendar";
+import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, endSeriesFromTodayAction, type FormState } from "@/lib/actions/calendar";
+import { Dialog } from "@/components/ui/dialog";
+import { SeriesSwapPanel, type SwapOption } from "@/components/calendar/series-swap-panel";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,14 @@ export function SeriesStatusActions({
   participantIds,
   primaryStudentId,
   students,
+  seriesLabel,
+  scheduleLabel,
+  swapOptions = [],
 }: {
+  /** Nombre y horario de LA serie (para decir en la confirmación exactamente qué se quita). */
+  seriesLabel: string;
+  scheduleLabel: string;
+  swapOptions?: SwapOption[];
   ruleId: string;
   status: RecurrenceRuleStatus;
   weeks: RecurrenceWeek[];
@@ -55,6 +64,8 @@ export function SeriesStatusActions({
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
   const [editingFuture, setEditingFuture] = useState(false);
   const [editingParticipants, setEditingParticipants] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const initialCycle = (weeks.length > 0 ? weeks.length : 1) as 1 | 2 | 3 | 4;
   const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(initialCycle);
   const [weekCycles, setWeekCycles] = useState<WeekRows[]>(() => defaultWeekCycles(initialCycle, weeks));
@@ -123,6 +134,20 @@ export function SeriesStatusActions({
     });
   }
 
+  function confirmEndSeries() {
+    setError(null);
+    startTransition(async () => {
+      const result = await guardNetwork(() => endSeriesFromTodayAction(ruleId));
+      if (result.error) {
+        setConfirmingEnd(false);
+        setError(result.error);
+        return;
+      }
+      setConfirmingEnd(false);
+      router.refresh();
+    });
+  }
+
   function submitEditFuture(formData: FormData, allowOverlap = false, confirmReplace = replaceConfirmed) {
     setError(null);
     setOverlapWarning(null);
@@ -186,6 +211,7 @@ export function SeriesStatusActions({
             aria-expanded={editingFuture}
             onClick={() => {
               setEditingParticipants(false);
+              setSwapOpen(false);
               setEditingFuture((v) => !v);
             }}
           >
@@ -198,20 +224,66 @@ export function SeriesStatusActions({
             aria-expanded={editingParticipants}
             onClick={() => {
               setEditingFuture(false);
+              setSwapOpen(false);
               setEditingParticipants((v) => !v);
             }}
           >
             {editingParticipants ? "Cerrar" : "Modificar participantes"}
           </Button>
         )}
+        {status === "active" && swapOptions.length >= 2 && swapOptions.some((option) => option.id === ruleId) && (
+          <Button
+            variant="secondary"
+            aria-expanded={swapOpen}
+            onClick={() => {
+              setEditingFuture(false);
+              setEditingParticipants(false);
+              setSwapOpen((v) => !v);
+            }}
+          >
+            {swapOpen ? "Cerrar" : "Intercambiar horarios"}
+          </Button>
+        )}
         {status !== "ended" && (
-          <Button variant="dangerGhost" disabled={pending} onClick={() => applyStatus("ended")} className="sm:ml-auto">
-            Finalizar
+          <Button variant="dangerOutline" disabled={pending} onClick={() => setConfirmingEnd(true)} aria-haspopup="dialog" className="sm:ml-auto">
+            Esta y todas las series
           </Button>
         )}
       </div>
 
       {error && <FormErrorBox message={error} />}
+
+      {swapOpen && <SeriesSwapPanel options={swapOptions} fixedId={ruleId} onClose={() => setSwapOpen(false)} />}
+
+      {confirmingEnd && (
+        <Dialog
+          title="Quitar esta serie"
+          onClose={() => setConfirmingEnd(false)}
+          busy={pending}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirmingEnd(false)} disabled={pending}>
+                Volver
+              </Button>
+              <Button variant="danger" onClick={confirmEndSeries} busy={pending}>
+                {pending ? "Quitando..." : "Quitar esta serie desde hoy"}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-[15px] font-[650] text-textPrimary [overflow-wrap:anywhere]">
+            {seriesLabel} · {scheduleLabel}
+          </p>
+          <p className="text-[15px] text-textSecondary">
+            Se quita esta serie y todas sus clases desde hoy, {formatCivilDayLabel(today)}, en adelante. Dejan de aparecer en el Calendario y en las clases por registrar.
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-[14.5px] text-textSecondary">
+            <li>Sólo se quita ESTA serie: las demás series de tu cuenta, aunque sean del mismo alumno, no cambian.</li>
+            <li>Se conservan las clases ya dictadas o registradas, sus cobros, pagos y archivos adjuntos, y las clases anteriores a hoy.</li>
+            <li>Las clases futuras ya creadas de esta serie que no tengan registro quedan canceladas.</li>
+          </ul>
+        </Dialog>
+      )}
 
       {editingFuture && (
         <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">

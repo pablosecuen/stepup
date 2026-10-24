@@ -124,8 +124,10 @@ test("cableado: el intercambio valida el resultado final en el servidor, sin opc
   const panel = read("components/calendar/series-swap-panel.tsx");
   assert.match(panel, /Confirmar intercambio/);
   assert.match(panel, /Ver vista previa/);
-  assert.match(read("components/calendar/series-list-view.tsx"), /<SeriesSwapPanel options=\{swapOptions\}/);
-  assert.match(read("app/(app)/calendario/series/[id]/page.tsx"), /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{head\.id\}/);
+  // El intercambio vive DENTRO del recuadro de acciones de cada serie (no por fuera de la tarjeta).
+  assert.match(read("app/(app)/calendario/series/series-status-actions.tsx"), /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{ruleId\}/);
+  assert.match(read("components/calendar/series-list-view.tsx"), /swapOptions=\{swapOptions\}/);
+  assert.match(read("app/(app)/calendario/series/[id]/page.tsx"), /swapOptions=\{head \? swapOptions : \[\]\}/);
 });
 
 test("clases ya decididas que un cambio desde una fecha afecta: las reprogramadas se reemplazan y las canceladas siguen registradas; las completadas y las anteriores a la fecha no cuentan", async () => {
