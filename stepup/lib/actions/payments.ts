@@ -48,6 +48,7 @@ export async function registerPaymentAction(input: RegisterPaymentActionInput): 
   } finally {
     revalidatePath("/cobros");
     revalidatePath("/alumnos");
+    revalidatePath("/registro/[calendarLessonId]", "page");
   }
 }
 

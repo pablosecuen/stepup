@@ -61,3 +61,14 @@ test("cableado: el cobro por clase usa la cobertura por acuerdo y período y la 
   const fn = repo.slice(repo.indexOf("export async function listChargeStatusForRegistration"), repo.indexOf("export async function listAllAllocations"));
   assert.match(fn, /eq\("saved_lesson_id", registrationId\)\.eq\("charge_type", "por_clase"\)\.is\("voided_at", null\)/, "sólo el cobro por clase de ESE registro");
 });
+
+test("pago de ESTA clase desde el registro: sólo su cobro (chargeId fijo), sin anular desde allí, y la pantalla se actualiza", () => {
+  const card = read("components/registro/registration-charge-card.tsx");
+  assert.match(card, /<ChargeActions chargeId=\{line\.chargeId\} studentId=\{line\.studentId\} balance=\{line\.balance\} allowVoid=\{false\}/);
+  assert.match(card, /line\.balance > 0 &&/, "sin saldo no hay botón de pago");
+  const actions = read("components/payments/charge-actions.tsx");
+  assert.match(actions, /allowVoid && mode === "void"/);
+  assert.match(actions, /\n        chargeId,\n      \}\)\)/, "el pago va siempre al cargo fijo");
+  assert.match(read("app/(app)/registro/[calendarLessonId]/page.tsx"), /chargeId: status\.chargeId, studentId: status\.studentId/);
+  assert.match(read("lib/actions/payments.ts"), /revalidatePath\("\/registro\/\[calendarLessonId\]", "page"\)/);
+});

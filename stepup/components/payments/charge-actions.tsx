@@ -23,7 +23,7 @@ const METHOD_LABEL: Record<string, string> = { efectivo: "Efectivo", transferenc
  * Presentación: «Registrar pago» es la acción normal (secundaria) y «Anular cobro» queda al otro extremo, con menos peso; cada
  * una abre un diálogo (hoja inferior en móvil). La lógica (estado, clave de operación, validaciones, acciones) no cambió.
  */
-export function ChargeActions({ chargeId, studentId, balance, context, compact = false }: { chargeId: string; studentId: string; balance: number; context?: ChargeContext; /** Dentro de una fila de tabla (Cobros): sin margen superior y las dos acciones juntas, alineadas a la derecha. */ compact?: boolean }) {
+export function ChargeActions({ chargeId, studentId, balance, context, compact = false, allowVoid = true }: { chargeId: string; studentId: string; balance: number; context?: ChargeContext; /** `false` en el Registro de clase: allí sólo se registra el pago de ESE cobro, no se anula. */ allowVoid?: boolean; /** Dentro de una fila de tabla (Cobros): sin margen superior y las dos acciones juntas, alineadas a la derecha. */ compact?: boolean }) {
   const router = useRouter();
   const uid = useId();
   const [mode, setMode] = useState<"idle" | "pay" | "void">("idle");
@@ -92,9 +92,11 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
         <Button variant="secondary" onClick={() => setMode("pay")}>
           Registrar pago
         </Button>
-        <Button variant="dangerGhost" onClick={() => setMode("void")} className={compact ? undefined : "sm:ml-auto"}>
-          Anular cobro
-        </Button>
+        {allowVoid && (
+          <Button variant="dangerGhost" onClick={() => setMode("void")} className={compact ? undefined : "sm:ml-auto"}>
+            Anular cobro
+          </Button>
+        )}
       </div>
 
       {mode === "pay" && (
@@ -136,7 +138,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
         </Dialog>
       )}
 
-      {mode === "void" && (
+      {allowVoid && mode === "void" && (
         <Dialog
           title="Anular cobro"
           size="sm"

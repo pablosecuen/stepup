@@ -1,9 +1,12 @@
 import { Notice } from "@/components/ui/notice";
+import { ChargeActions } from "@/components/payments/charge-actions";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
 import { REGISTRATION_CHARGE_STATE_LABEL, type RegistrationChargeState } from "@/lib/payments/registration-charge-status";
 
 export interface RegistrationChargeLine {
+  chargeId: string;
+  studentId: string;
   studentName: string;
   total: number;
   paid: number;
@@ -15,6 +18,7 @@ export interface RegistrationChargeLine {
 /**
  * Situación REAL del cobro de ESTA clase (pagada, parcial o pendiente) con los pagos asignados a ese cobro — nunca los de otra clase, serie o entrenamiento.
  * Una sesión de entrenamiento cubierta por la cuota mensual de su serie lo dice y no muestra cobro por clase.
+ * Con saldo, «Registrar pago» paga SÓLO el cobro de esta clase (`chargeId` fijo): nunca se reparte hacia un entrenamiento ni hacia otra clase del alumno. Es el equivalente web del aviso de cobro al dictar la clase de la app original (pagó el total / una parte / después).
  */
 export function RegistrationChargeCard({ lines, coveredByTrainingPlan }: { lines: RegistrationChargeLine[]; coveredByTrainingPlan: boolean }) {
   if (coveredByTrainingPlan) {
@@ -44,6 +48,9 @@ export function RegistrationChargeCard({ lines, coveredByTrainingPlan }: { lines
                   </li>
                 ))}
               </ul>
+            )}
+            {line.balance > 0 && (
+              <ChargeActions chargeId={line.chargeId} studentId={line.studentId} balance={line.balance} allowVoid={false} context={{ studentName: line.studentName, concept: "Clase", originalAmount: line.total }} />
             )}
           </li>
         ))}

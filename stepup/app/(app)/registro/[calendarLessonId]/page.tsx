@@ -67,7 +67,7 @@ export default async function RegistroClasePage({ params, searchParams }: { para
         const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson.recurrenceId, participantIds, sessionAnchorIso: calendarLesson.startAt }).catch(() => new Set<string>());
         coveredByTrainingPlan = participantIds.length > 0 && participantIds.every((studentId: string) => coveredStudents.has(studentId));
         const statuses = coveredByTrainingPlan ? [] : await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => []);
-        chargeLines = statuses.map((status) => ({ studentName: studentById.get(status.studentId)?.name ?? "Alumno", total: status.total, paid: status.paid, balance: status.balance, state: status.state, payments: status.payments }));
+        chargeLines = statuses.map((status) => ({ chargeId: status.chargeId, studentId: status.studentId, studentName: studentById.get(status.studentId)?.name ?? "Alumno", total: status.total, paid: status.paid, balance: status.balance, state: status.state, payments: status.payments }));
       }
 
       lessonContent = await getLessonContent(ctx, detail.registration.id);
