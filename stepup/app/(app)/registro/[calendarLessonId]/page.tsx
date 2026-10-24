@@ -9,10 +9,8 @@ import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calenda
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { RegistrationChargeCard, type RegistrationChargeLine } from "@/components/registro/registration-charge-card";
-import { getRecurrenceRule } from "@/lib/repositories/recurrence-rules";
-import { listChargeStatusForRegistration, listStudentIdsWithTrainingCharge } from "@/lib/repositories/payments";
-import { billingPeriodOfDateKey } from "@/lib/payments/dates";
-import { isCoveredByTrainingPlan } from "@/lib/payments/training-coverage";
+import { listStudentsCoveredByTrainingPlan } from "@/lib/repositories/training-coverage";
+import { listChargeStatusForRegistration } from "@/lib/repositories/payments";
 import { logLoadFailure } from "@/lib/errors/load-failure";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
@@ -65,10 +63,9 @@ export default async function RegistroClasePage({ params, searchParams }: { para
 
       // Cobro de ESTA clase (sólo informativo: si no se puede leer, la pantalla sigue como siempre).
       if (detail.registration.status === "completed") {
-        const seriesRule = calendarLesson.recurrenceId ? await getRecurrenceRule(ctx, calendarLesson.recurrenceId).catch(() => null) : null;
-        const monthlyTraining = detail.registration.activityKind === "training" ? await listStudentIdsWithTrainingCharge(ctx, detail.participants.map((p) => p.studentId), billingPeriodOfDateKey(instantDateKey(calendarLesson.startAt))).catch(() => new Set<string>()) : new Set<string>();
-        const activityKind = detail.registration.activityKind;
-        coveredByTrainingPlan = detail.participants.length > 0 && detail.participants.every((p: { studentId: string }) => isCoveredByTrainingPlan({ activityKind, trainingBillingAgreementId: seriesRule?.trainingBillingAgreementId ?? null, hasTrainingChargeForPeriod: monthlyTraining.has(p.studentId) }));
+        const participantIds = detail.participants.map((p: { studentId: string }) => p.studentId);
+        const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson.recurrenceId, participantIds, sessionAnchorIso: calendarLesson.startAt }).catch(() => new Set<string>());
+        coveredByTrainingPlan = participantIds.length > 0 && participantIds.every((studentId: string) => coveredStudents.has(studentId));
         const statuses = coveredByTrainingPlan ? [] : await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => []);
         chargeLines = statuses.map((status) => ({ studentName: studentById.get(status.studentId)?.name ?? "Alumno", total: status.total, paid: status.paid, balance: status.balance, state: status.state, payments: status.payments }));
       }

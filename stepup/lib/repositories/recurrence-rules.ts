@@ -203,17 +203,26 @@ export async function changeRecurrenceParticipantsFromDate(
 }
 
 /**
- * «Esta y todas las series» (quitar una serie desde una fecha): corta con fecha de fin las reglas que ya tenían clases antes de esa fecha y cierra por estado las que todavía no habían empezado. Nunca
- * borra una fila: las clases ya dictadas, los registros, los cobros, los pagos y los adjuntos se conservan. Son dos escrituras (cortes y cierres) en ese orden; si fallara la segunda, la serie queda
- * cortada y se vuelve a intentar (es idempotente).
+ * «Esta y todas las series» (quitar una serie desde una fecha), en UNA sola transacción de la base (`end_recurrence_series_from_date`): corta con fecha de fin las reglas que ya tenían clases
+ * antes de esa fecha, cierra por estado las que todavía no habían empezado y cancela las clases futuras ya creadas, programadas y sin registro. O se hace todo o no cambia nada; repetir la
+ * operación no cambia nada. Nunca borra una fila: clases dictadas, registros, cobros, pagos y adjuntos se conservan.
  */
-export async function endRecurrenceRulesFromDate(ctx: AuthenticatedDbContext, plan: { truncate: { id: string; endDate: string }[]; end: string[] }): Promise<void> {
-  for (const cut of plan.truncate) {
-    const { error } = await ctx.supabase.from("recurrence_rules").update({ end_date: cut.endDate }).eq("owner_id", ctx.ownerId).eq("id", cut.id);
-    if (error) throw error;
+export async function endRecurrenceSeriesFromDate(
+  ctx: AuthenticatedDbContext,
+  input: { plan: { truncate: { id: string; endDate: string }[]; end: string[] }; effectiveDate: string; timezone: string }
+): Promise<{ truncated: number; ended: number; cancelled: number }> {
+  const { data, error } = await ctx.supabase.rpc("end_recurrence_series_from_date", {
+    p_payload: {
+      truncate: input.plan.truncate.map((cut) => ({ id: cut.id, end_date: cut.endDate })),
+      end: input.plan.end,
+      effective_date: input.effectiveDate,
+      timezone: input.timezone,
+    },
+  });
+  if (error) {
+    if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
+    throw error;
   }
-  if (plan.end.length > 0) {
-    const { error } = await ctx.supabase.from("recurrence_rules").update({ status: "ended" }).eq("owner_id", ctx.ownerId).in("id", plan.end);
-    if (error) throw error;
-  }
+  const result = data as { truncated?: number; ended?: number; cancelled?: number } | null;
+  return { truncated: Number(result?.truncated ?? 0), ended: Number(result?.ended ?? 0), cancelled: Number(result?.cancelled ?? 0) };
 }

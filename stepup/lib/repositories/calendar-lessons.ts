@@ -265,29 +265,3 @@ export async function rescheduleCalendarOccurrence(ctx: AuthenticatedDbContext, 
     input.participants.map((p) => p.studentId)
   );
 }
-
-/**
- * Al quitar una serie desde una fecha: las clases YA CREADAS de esa serie, futuras y todavía «programadas», sin ningún registro, pasan a canceladas (no se borran) para que no queden sueltas en la agenda.
- * Las dictadas, las registradas, las canceladas y las reprogramadas no se tocan. Devuelve cuántas se cancelaron.
- */
-export async function cancelFutureUnregisteredLessonsOfRules(ctx: AuthenticatedDbContext, ruleIds: string[], fromDateKey: string, dateKeyOf: (startAt: string) => string): Promise<number> {
-  let cancelled = 0;
-  for (const ruleId of ruleIds) {
-    const lessons = await listCalendarLessonsForRecurrence(ctx, ruleId);
-    const candidates = lessons.filter((lesson) => lesson.status === "scheduled" && dateKeyOf(lesson.recurrenceOriginalStart ?? lesson.startAt) >= fromDateKey);
-    if (candidates.length === 0) continue;
-    const registered = await readTableByIds<{ id: string; calendar_lesson_id: string }>(ctx.supabase, "lesson_registrations", {
-      columns: "id, calendar_lesson_id",
-      matchColumn: "calendar_lesson_id",
-      ids: candidates.map((lesson) => lesson.id),
-      filter: (query) => query.eq("owner_id", ctx.ownerId),
-    });
-    const withRegistration = new Set(registered.map((row) => row.calendar_lesson_id));
-    const ids = candidates.filter((lesson) => !withRegistration.has(lesson.id)).map((lesson) => lesson.id);
-    if (ids.length === 0) continue;
-    const { error } = await ctx.supabase.from("calendar_lessons").update({ status: "cancelled" }).eq("owner_id", ctx.ownerId).eq("status", "scheduled").in("id", ids);
-    if (error) throw error;
-    cancelled += ids.length;
-  }
-  return cancelled;
-}

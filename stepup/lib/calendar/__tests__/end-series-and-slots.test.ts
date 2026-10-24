@@ -48,6 +48,12 @@ test("cableado de Series: botón «Esta y todas las series» con confirmación q
   assert.match(action, /planEndSeriesFromDate\(rules, ruleId, todayDate\)/);
   const body = action.slice(action.indexOf("export async function endSeriesFromTodayAction"), action.indexOf("export interface EditFutureActionInput"));
   assert.doesNotMatch(body, /\.delete\(|setRecurrenceRuleStatus\(ctx, ruleId, "ended"\)/, "no borra nada ni termina toda la regla sin fecha");
+  assert.match(body, /endRecurrenceSeriesFromDate\(ctx, \{ plan, effectiveDate: todayDate, timezone/, "corte + cierres + clases futuras en UNA sola operación (RPC)");
+  assert.doesNotMatch(body, /cancelFutureUnregisteredLessonsOfRules/, "ya no hay una segunda escritura separada");
+  const migration = read("supabase/migrations/20261024100000_end_recurrence_series_from_date.sql");
+  assert.match(migration, /create or replace function public\.end_recurrence_series_from_date\(p_payload jsonb\)/);
+  assert.match(migration, /security invoker/);
+  assert.match(migration, /revoke all on function public\.end_recurrence_series_from_date\(jsonb\) from public, anon;/);
 });
 
 test("cableado del Calendario: cada hora libre de la grilla es un botón debajo de las clases que abre Nueva clase y vuelve a la misma semana o día", () => {
