@@ -31,7 +31,7 @@ export function LessonContentCard({ content, studentNames, includePedagogy = tru
                 {content.topics.map((topic, i) => (
                   <li key={`${topic.id ?? i}`} className="flex flex-wrap items-center gap-2 text-[15px] [overflow-wrap:anywhere]">
                     <span>{topic.text}</span>
-                    <Badge tone={topic.status === "visto" ? "ok" : "neutral"}>{topic.status === "visto" ? "Visto" : "Planificado"}</Badge>
+                    {topic.status === "visto" && <Badge tone="ok">Visto</Badge>}
                   </li>
                 ))}
               </ul>

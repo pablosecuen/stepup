@@ -33,12 +33,14 @@ test("un espacio libre abre «Nueva clase» en ese día y hora en punto, con la 
   assert.equal(slotAriaLabel("lun 26/10", 14), "Agregar clase el lun 26/10 a las 14:00");
 });
 
-test("cableado de Series: botón «Esta y todas las series» con confirmación que dice el alcance; el intercambio vive dentro del mismo recuadro de acciones", () => {
+test("cableado de Series: botón «Eliminar serie» con confirmación que dice el alcance; el intercambio vive dentro del mismo recuadro de acciones", () => {
   const actions = read("app/(app)/calendario/series/series-status-actions.tsx");
-  assert.match(actions, /Esta y todas las series/);
+  assert.match(actions, /Eliminar serie\n/);
+  assert.doesNotMatch(actions, /Esta y todas las series|Quitar esta serie/, "el nombre definitivo es «Eliminar serie»");
+  assert.match(actions, /Se elimina de la agenda esta serie desde hoy, \{formatCivilDayLabel\(today\)\}, incluidas sus continuaciones futuras/);
   assert.doesNotMatch(actions, />\s*Finalizar\s*</);
   assert.match(actions, /endSeriesFromTodayAction\(ruleId\)/);
-  assert.match(actions, /Sólo se quita ESTA serie: las demás series de tu cuenta/);
+  assert.match(actions, /Sólo se elimina ESTA serie: las demás series de tu cuenta/);
   assert.match(actions, /Se conservan las clases ya dictadas o registradas, sus cobros, pagos y archivos adjuntos/);
   assert.match(actions, /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{ruleId\}/);
   assert.match(actions, /Intercambiar horarios/);
@@ -59,7 +61,7 @@ test("cableado de Series: botón «Esta y todas las series» con confirmación q
 test("cableado del Calendario: cada hora libre de la grilla es un botón debajo de las clases que abre Nueva clase y vuelve a la misma semana o día", () => {
   const grid = read("components/calendar/real-calendar-grid.tsx");
   assert.match(grid, /data-grid-slot=""/);
-  assert.match(grid, /router\.push\(newLessonSlotHref\(\{ dayKey, hour, returnPath: `\$\{window\.location\.pathname\}\$\{window\.location\.search\}` \}\)\)/);
+  assert.match(grid, /const returnPath = \`\$\{window\.location\.pathname\}\$\{window\.location\.search\}\`;\n\s+saveGridScroll\(returnPath, scrollerRef\.current\);\n\s+router\.push\(newLessonSlotHref\(\{ dayKey, hour, returnPath \}\)\);/);
   assert.ok(grid.indexOf("data-grid-slot") < grid.indexOf("{positioned.map((positionedItem) => {"), "los espacios van antes que las clases (quedan debajo)");
   assert.match(read("app/(app)/calendario/nueva/page.tsx"), /safeCalendarReturn\(params\.volver\) \?\? "\/calendario"/);
   const form = read("app/(app)/calendario/nueva/new-lesson-form.tsx");

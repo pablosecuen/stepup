@@ -12,7 +12,7 @@ import type { ParticipantRegistrationStatus } from "@/lib/lessons/group-progress
 import { ATTENDANCE_STATUS_LABEL, hasResolvedAttendanceStatus } from "@/lib/lessons/attendance";
 import { getBlockingHomeworkTasks, homeworkReviewSelectionKey, type PendingHomeworkTask, type HomeworkReviewOutcome } from "@/lib/lessons/homework";
 import { ADHOC_OUTCOME_LABEL, type AdhocOutcome } from "@/lib/lessons/adhoc";
-import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
+import { activityKindAssignsHomework, activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import {
   firstOpenParticipant,
@@ -37,7 +37,7 @@ import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { InternalNotesCard, PedagogicalContentEditor } from "@/components/registro/pedagogical-content-editor";
 import { RegistrationOutcomeField } from "@/components/registro/registration-outcome-field";
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
-import { DraftsProvider, applyPendingToList, pendingText, useDraftsStore } from "@/components/registro/draft-items";
+import { DraftsProvider, applyPendingToList, applyPendingToTopics, useDraftsStore } from "@/components/registro/draft-items";
 import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
 import { flushPendingCaptions } from "@/components/registro/lesson-files-editor";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
@@ -121,6 +121,7 @@ export function ParticipantCard({
   form,
   onFormChange,
   supportsHomework,
+  assignsHomework,
   pendingHomework,
   attendanceError,
   homeworkError,
@@ -137,6 +138,7 @@ export function ParticipantCard({
   form: ParticipantForm;
   onFormChange: (patch: ParticipantFormPatch) => void;
   supportsHomework: boolean;
+  assignsHomework: boolean;
   pendingHomework: PendingHomeworkTask[];
   attendanceError: boolean;
   homeworkError: boolean;
@@ -195,7 +197,7 @@ export function ParticipantCard({
 
           <EvaluationFields studentName={name} studentId={studentId} form={form} onChange={onFormChange} />
 
-          {supportsHomework && <PersonalizedHomework studentName={name} form={form} onChange={onFormChange} />}
+          {assignsHomework && <PersonalizedHomework studentName={name} form={form} onChange={onFormChange} />}
 
           <div className="flex flex-col gap-2.5 sm:max-w-sm">
             <Button variant="primary" onClick={onComplete} busy={busy} disabled={busy}>
@@ -290,10 +292,9 @@ export function RegistrationWorkspace({
   function takePendingDrafts(): { content: PedagogicalContentInput; forms: Record<string, ParticipantForm> } {
     const pending = draftsStore.snapshot();
     if (!Object.values(pending).some((value) => value.trim())) return { content, forms: formByStudentId };
-    const addedTopic = pendingText(pending, CONTENT_DRAFT_KEYS.topics);
     const nextContent: PedagogicalContentInput = {
       ...content,
-      topics: addedTopic ? [...content.topics, { id: crypto.randomUUID(), text: addedTopic, status: "planificado" }] : content.topics,
+      topics: applyPendingToTopics(content.topics, pending, CONTENT_DRAFT_KEYS.topics, () => crypto.randomUUID()),
       objectives: applyPendingToList(content.objectives, pending, CONTENT_DRAFT_KEYS.objectives),
       activities: applyPendingToList(content.activities, pending, CONTENT_DRAFT_KEYS.activities),
     };
@@ -314,7 +315,8 @@ export function RegistrationWorkspace({
   }
 
   const supportsHomework = activityKindSupportsHomework(registration.activityKind);
-  const homeworkFields = homeworkFieldsFor({ supportsHomework, isGroup });
+  const assignsHomework = activityKindAssignsHomework(registration.activityKind);
+  const homeworkFields = homeworkFieldsFor({ supportsHomework, assignsHomework, isGroup });
   const completedCount = Object.values(statusByStudentId).filter((s) => s === "completed").length;
   const allComplete = participants.every((p) => statusByStudentId[p.studentId] === "completed");
   const isFinalized = registration.status === "completed";
@@ -454,8 +456,8 @@ export function RegistrationWorkspace({
       await flushPendingCaptions();
       const headerFields = {
         content: countsAsClass ? liveContent : undefined,
-        homeworkDescription: countsAsClass && supportsHomework ? commonHomeworkDescription.trim() || null : undefined,
-        homeworkDueDate: countsAsClass && supportsHomework ? commonHomeworkDueDate || null : undefined,
+        homeworkDescription: countsAsClass && assignsHomework ? commonHomeworkDescription.trim() || null : undefined,
+        homeworkDueDate: countsAsClass && assignsHomework ? commonHomeworkDueDate || null : undefined,
         actualDurationMinutes: countsAsClass ? Number(durationMinutes) || null : null,
         scheduledStartAt: countsAsClass ? scheduledStartAt : null,
       };
@@ -596,6 +598,7 @@ export function RegistrationWorkspace({
               form={formByStudentId[p.studentId]}
               onFormChange={(patch) => handleParticipantFormChange(p.studentId, patch)}
               supportsHomework={supportsHomework}
+              assignsHomework={assignsHomework}
               pendingHomework={pendingHomeworkByStudentId[p.studentId] ?? []}
               attendanceError={attendanceErrorId === p.studentId}
               homeworkError={homeworkErrorId === p.studentId}

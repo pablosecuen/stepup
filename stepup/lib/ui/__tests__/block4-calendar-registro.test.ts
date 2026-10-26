@@ -96,14 +96,14 @@ test("Nueva clase / serie: conserva la clave de idempotencia por borrador, el ec
   assert.match(form, /href=\{returnHref\} variant="ghost"/, "Cancelar vuelve a la semana o día de origen (por omisión, el Calendario)");
 });
 
-test("Series: «Esta y todas las series» pide confirmación que dice el alcance, «Editar futuras» divide sin vista previa «así queda» y el botón queda delimitado y alineado con las demás acciones", () => {
+test("Series: «Eliminar serie» pide confirmación que dice el alcance, «Editar futuras» divide sin vista previa «así queda» y el botón queda delimitado y alineado con las demás acciones", () => {
   const actions = code("app/(app)/calendario/series/series-status-actions.tsx");
   assert.match(actions, /<Button variant="dangerOutline" disabled=\{pending\} onClick=\{\(\) => setConfirmingEnd\(true\)\} aria-haspopup="dialog" className="sm:ml-auto">/);
   assert.match(actions, /editFutureRecurrenceAction\(\{\}, formData\)/);
   assert.match(actions, /changeParticipantsAction\(\{/);
   assert.match(actions, /Dividir: «esta y las siguientes»/);
   assert.doesNotMatch(actions, /Así queda|Tramo nuevo|Tramo actual/, "la propuesta «así queda» no se implementa");
-  assert.match(actions, /<Dialog\s+title="Quitar esta serie"/, "la confirmación dice qué se quita y desde cuándo");
+  assert.match(actions, /<Dialog\s+title="Eliminar serie"/, "la confirmación dice qué se elimina y desde cuándo");
   const view = code("components/calendar/series-list-view.tsx");
   assert.match(view, /Sin alumnos asignados/);
   assert.match(view, /Tramo anterior:/);

@@ -23,6 +23,17 @@ export function applyPendingToList(items: string[], drafts: Readonly<Record<stri
   return added ? [...next, added] : next;
 }
 
+/** Igual para los temas: la edición en curso cambia SÓLO el texto del tema en su lugar (conserva `id` y `status`) y el borrador de «agregar» suma un tema nuevo «planificado» al final. */
+export function applyPendingToTopics<T extends { id: string | null; text: string; status: "planificado" | "visto" }>(topics: T[], drafts: Readonly<Record<string, string>>, listKey: string, newId: () => string): T[] {
+  let next = topics;
+  const rawIndex = drafts[editIndexKey(listKey)];
+  const index = rawIndex === undefined || rawIndex === "" ? -1 : Number(rawIndex);
+  const edited = pendingText(drafts, editTextKey(listKey));
+  if (Number.isInteger(index) && index >= 0 && index < next.length && edited) next = next.map((topic, i) => (i === index ? { ...topic, text: edited } : topic));
+  const added = pendingText(drafts, listKey);
+  return added ? [...next, { id: newId(), text: added, status: "planificado" } as T] : next;
+}
+
 /** ¿Hay algo escrito pendiente (incluida una edición abierta)? */
 export function hasPendingDrafts(drafts: Readonly<Record<string, string>>): boolean {
   return Object.values(drafts).some((value) => value.trim() !== "");

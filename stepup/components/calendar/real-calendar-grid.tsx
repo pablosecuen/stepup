@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { saveGridScroll, restoreGridScroll } from "@/lib/calendar/grid-scroll";
 import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
@@ -64,6 +65,15 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  // Al volver de «Nueva clase» (Cancelar o guardar) la grilla recupera su desplazamiento, una sola vez, cuando ya tiene su alto definitivo.
+  const scrollRestoredRef = useRef(false);
+  useEffect(() => {
+    if (scrollRestoredRef.current || !fit) return;
+    scrollRestoredRef.current = true;
+    const scroller = scrollerRef.current;
+    restoreGridScroll(`${window.location.pathname}${window.location.search}`, scroller);
+  }, [fit]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -297,7 +307,11 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                         tabIndex={-1}
                         data-grid-slot=""
                         aria-label={slotAriaLabel(formatCivilDayLabelShort(dayKey), hour)}
-                        onClick={() => router.push(newLessonSlotHref({ dayKey, hour, returnPath: `${window.location.pathname}${window.location.search}` }))}
+                        onClick={() => {
+                          const returnPath = `${window.location.pathname}${window.location.search}`;
+                          saveGridScroll(returnPath, scrollerRef.current);
+                          router.push(newLessonSlotHref({ dayKey, hour, returnPath }));
+                        }}
                         className="absolute inset-x-0 cursor-pointer bg-transparent hover:bg-accent/[0.06] focus-visible:bg-accent/[0.08]"
                         style={{ top: index * hourHeightPx, height: hourHeightPx }}
                       />

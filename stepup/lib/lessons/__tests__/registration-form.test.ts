@@ -46,11 +46,13 @@ test("quiénes participan: se lista hasta tres y el resto se cuenta", () => {
   assert.equal(isGroupRegistration(2), true);
 });
 
-test("la tarea: una sola caja en la clase individual; en un grupo, además una personalizada por alumno; un entrenamiento ninguna", () => {
-  assert.deepEqual(homeworkFieldsFor({ supportsHomework: true, isGroup: false }), { common: true, personalizedPerStudent: false, pendingReview: true });
-  assert.deepEqual(homeworkFieldsFor({ supportsHomework: true, isGroup: true }), { common: true, personalizedPerStudent: true, pendingReview: true });
-  assert.deepEqual(homeworkFieldsFor({ supportsHomework: false, isGroup: true }), { common: false, personalizedPerStudent: false, pendingReview: false });
-  assert.deepEqual(homeworkFieldsFor({ supportsHomework: false, isGroup: false }), { common: false, personalizedPerStudent: false, pendingReview: false });
+test("la tarea: una sola caja en la clase individual; en un grupo, además una personalizada por alumno; un entrenamiento también la asigna (sin revisar tareas anteriores)", () => {
+  // Clase: asigna y revisa. Entrenamiento: asigna (común y, en grupo, personalizada) pero no revisa tareas anteriores ni se bloquea.
+  assert.deepEqual(homeworkFieldsFor({ supportsHomework: true, assignsHomework: true, isGroup: false }), { common: true, personalizedPerStudent: false, pendingReview: true });
+  assert.deepEqual(homeworkFieldsFor({ supportsHomework: true, assignsHomework: true, isGroup: true }), { common: true, personalizedPerStudent: true, pendingReview: true });
+  assert.deepEqual(homeworkFieldsFor({ supportsHomework: false, assignsHomework: true, isGroup: true }), { common: true, personalizedPerStudent: true, pendingReview: false });
+  assert.deepEqual(homeworkFieldsFor({ supportsHomework: false, assignsHomework: true, isGroup: false }), { common: true, personalizedPerStudent: false, pendingReview: false });
+  assert.deepEqual(homeworkFieldsFor({ supportsHomework: false, assignsHomework: false, isGroup: true }), { common: false, personalizedPerStudent: false, pendingReview: false });
 });
 
 test("la revisión de la tarea anterior en un grupo sólo aparece si el alumno vino; en la clase individual siempre", () => {

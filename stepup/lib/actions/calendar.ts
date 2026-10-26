@@ -80,6 +80,8 @@ export interface NewLessonFormValues {
   startDate: string;
   endDate: string;
   weeksJson: string;
+  /** Qué se estaba creando (para volver al mismo modo tras un error de validación). */
+  mode: "single" | "series";
 }
 
 function readString(formData: FormData, key: string): string {
@@ -217,6 +219,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
     startDate: "",
     endDate: "",
     weeksJson: "",
+    mode: "single",
   };
 
   if (!operationId) return { error: MISSING_OPERATION_ID_MESSAGE, values };
@@ -306,6 +309,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     startDate,
     endDate: endDateRaw,
     weeksJson: weeksJsonRaw,
+    mode: "series",
   };
 
   let weeks: RecurrenceWeek[];

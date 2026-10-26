@@ -246,7 +246,7 @@ export function SeriesStatusActions({
         )}
         {status !== "ended" && (
           <Button variant="dangerOutline" disabled={pending} onClick={() => setConfirmingEnd(true)} aria-haspopup="dialog" className="sm:ml-auto">
-            Esta y todas las series
+            Eliminar serie
           </Button>
         )}
       </div>
@@ -257,7 +257,7 @@ export function SeriesStatusActions({
 
       {confirmingEnd && (
         <Dialog
-          title="Quitar esta serie"
+          title="Eliminar serie"
           onClose={() => setConfirmingEnd(false)}
           busy={pending}
           footer={
@@ -266,7 +266,7 @@ export function SeriesStatusActions({
                 Volver
               </Button>
               <Button variant="danger" onClick={confirmEndSeries} busy={pending}>
-                {pending ? "Quitando..." : "Quitar esta serie desde hoy"}
+                {pending ? "Eliminando..." : "Eliminar serie desde hoy"}
               </Button>
             </>
           }
@@ -275,10 +275,10 @@ export function SeriesStatusActions({
             {seriesLabel} · {scheduleLabel}
           </p>
           <p className="text-[15px] text-textSecondary">
-            Se quita esta serie y todas sus clases desde hoy, {formatCivilDayLabel(today)}, en adelante. Dejan de aparecer en el Calendario y en las clases por registrar.
+            Se elimina de la agenda esta serie desde hoy, {formatCivilDayLabel(today)}, incluidas sus continuaciones futuras. Dejan de aparecer en el Calendario y en las clases por registrar.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-[14.5px] text-textSecondary">
-            <li>Sólo se quita ESTA serie: las demás series de tu cuenta, aunque sean del mismo alumno, no cambian.</li>
+            <li>Sólo se elimina ESTA serie: las demás series de tu cuenta, aunque sean del mismo alumno, no cambian.</li>
             <li>Se conservan las clases ya dictadas o registradas, sus cobros, pagos y archivos adjuntos, y las clases anteriores a hoy.</li>
             <li>Las clases futuras ya creadas de esta serie que no tengan registro quedan canceladas.</li>
           </ul>

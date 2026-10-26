@@ -1,13 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useId } from "react";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Field, TextArea } from "@/components/ui/field";
+import { Field, TextArea, checkClass } from "@/components/ui/field";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { LessonFilesEditor } from "./lesson-files-editor";
-import { AddItemRow } from "./draft-items";
+import { EditableTextList } from "./editable-text-list";
 
 /** Claves de los borradores de «agregar» del contenido (las usa el guardado para incorporar lo pendiente). */
 export const CONTENT_DRAFT_KEYS = { topics: "contenido:temas", objectives: "contenido:objetivos", activities: "contenido:actividades" } as const;
@@ -16,23 +16,18 @@ type ContentUpdate = PedagogicalContentInput | ((previous: PedagogicalContentInp
 
 type ItemsUpdate = (update: (items: string[]) => string[]) => void;
 
-/**
- * Lista editable de textos (objetivos, actividades): cada elemento YA es un campo editable en su lugar (se conserva); se agrega con «+», con Enter o
- * al soltar el campo (✅ de iOS) — una sola vez, ver `AddItemRow`.
- */
+/** Lista de textos simples (objetivos, actividades): la lista editable compartida del registro (editar, eliminar, agregar). */
 function TextList({ label, singular, draftKey, items, onItemsChange }: { label: string; singular: string; draftKey: string; items: string[]; onItemsChange: ItemsUpdate }) {
-  const id = useId();
-  return <fieldset className="min-w-0 space-y-2">
-    <legend className="text-sm font-semibold text-textSecondary">{label}</legend>
-    {items.map((item, index) => <div key={index} className="flex min-w-0 items-start gap-2">
-      <TextArea rows={1} aria-label={`${singular} ${index + 1}`} value={item} onChange={(e) => { const text = e.target.value; onItemsChange((current) => current.map((v, i) => i === index ? text : v)); }} />
-      <Button variant="ghost" onClick={() => onItemsChange((current) => current.filter((_, i) => i !== index))} aria-label={`Eliminar ${singular.toLowerCase()} ${index + 1}`}>×</Button>
-    </div>)}
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-[650] text-textSecondary">{`Agregar ${singular.toLowerCase()}`}</label>
-      <AddItemRow draftKey={draftKey} id={id} label={`Agregar ${singular.toLowerCase()}`} onAdd={(text) => onItemsChange((current) => [...current, text])} />
-    </div>
-  </fieldset>;
+  return <EditableTextList
+    label={label}
+    singular={singular}
+    placeholder={`Agregar ${singular.toLowerCase()}`}
+    draftKey={draftKey}
+    items={items.map((text) => ({ text }))}
+    onEditText={(index, text) => onItemsChange((current) => current.map((v, i) => i === index ? text : v))}
+    onRemove={(index) => onItemsChange((current) => current.filter((_, i) => i !== index))}
+    onAdd={(text) => onItemsChange((current) => [...current, text])}
+  />;
 }
 
 /** `files`: con el registro ya creado, el editor también permite adjuntar fotos y PDF y elegir materiales de la biblioteca (como la app anterior). */
@@ -54,19 +49,21 @@ export function PedagogicalContentEditor({ value, onChange, files, title = "Cont
     <Card padded={false}>
       <CardHeader title={<span id={`${id}-title`}>{title}</span>} />
       <div className="space-y-5 px-4 pb-4 nav:px-5 nav:pb-5">
-        <fieldset className="min-w-0 space-y-2">
-          <legend className="text-sm font-semibold text-textSecondary">Temas</legend>
-          <p className="text-sm text-textMuted">Marcá un tema para pasarlo de planificado a visto; podés editar su texto.</p>
-          {value.topics.map((topic, index) => <div key={topic.id ?? index} className="flex min-w-0 items-start gap-2">
-            <label className="flex min-h-11 shrink-0 items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-ink" aria-label={`Tema ${index + 1} visto`} checked={topic.status === "visto"} onChange={(e) => { const seen = e.target.checked; onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, status: seen ? "visto" : "planificado" } : t) })); }} /><span>{topic.status === "visto" ? "Visto" : "Planificado"}</span></label>
-            <TextArea rows={1} aria-label={`Tema ${index + 1}`} value={topic.text} onChange={(e) => { const text = e.target.value; onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, text } : t) })); }} />
-            <Button variant="ghost" aria-label={`Eliminar tema ${index + 1}`} onClick={() => onChange((current) => ({ ...current, topics: current.topics.filter((_, i) => i !== index) }))}>×</Button>
-          </div>)}
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <label htmlFor={`${id}-topic`} className="text-sm font-[650] text-textSecondary">Agregar tema</label>
-            <AddItemRow draftKey={CONTENT_DRAFT_KEYS.topics} id={`${id}-topic`} label="Agregar tema" onAdd={(text) => onChange((current) => ({ ...current, topics: [...current.topics, { id: crypto.randomUUID(), text, status: "planificado" }] }))} />
-          </div>
-        </fieldset>
+        <EditableTextList
+          label="Temas"
+          singular="Tema"
+          placeholder="Agregar tema"
+          draftKey={CONTENT_DRAFT_KEYS.topics}
+          items={value.topics.map((topic, index) => ({
+            text: topic.text,
+            note: topic.status === "visto" ? <><CheckCircleIcon className="h-4 w-4" aria-hidden />Visto</> : undefined,
+            // Marcar un tema como visto sigue siendo posible, compacto y sin etiqueta de estado; cambiar sólo el texto nunca toca `status`.
+            leading: <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center" title="Marcar como visto"><input type="checkbox" className={checkClass} aria-label={`Tema ${index + 1} visto`} checked={topic.status === "visto"} onChange={(e) => { const seen = e.target.checked; onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, status: seen ? "visto" : "planificado" } : t) })); }} /></label>,
+          }))}
+          onEditText={(index, text) => onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, text } : t) }))}
+          onRemove={(index) => onChange((current) => ({ ...current, topics: current.topics.filter((_, i) => i !== index) }))}
+          onAdd={(text) => onChange((current) => ({ ...current, topics: [...current.topics, { id: crypto.randomUUID(), text, status: "planificado" }] }))}
+        />
         <TextList label="Objetivos" singular="Objetivo" draftKey={CONTENT_DRAFT_KEYS.objectives} items={value.objectives} onItemsChange={(update) => onChange((current) => ({ ...current, objectives: update(current.objectives) }))} />
         <TextList label="Actividades" singular="Actividad" draftKey={CONTENT_DRAFT_KEYS.activities} items={value.activities} onItemsChange={(update) => onChange((current) => ({ ...current, activities: update(current.activities) }))} />
         <Field label="Notas de actividades" htmlFor={`${id}-notes`}><TextArea id={`${id}-notes`} rows={4} placeholder="Qué se hizo en esta clase, en texto libre" value={value.activityNotes} onChange={(e) => onChange({ ...value, activityNotes: e.target.value })} /></Field>

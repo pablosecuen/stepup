@@ -21,7 +21,7 @@ import {
   type LessonRegistrationDetail,
 } from "./lesson-registrations-mapping";
 import { readTable, readTableByIds } from "@/lib/db/read";
-import { activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
+import { activityKindAssignsHomework } from "@/lib/calendar/activity-kind";
 import { instantDateKey } from "@/lib/calendar/civil-calendar";
 import { commonHomeworkTaskId, individualHomeworkTaskId, type PendingHomeworkTask } from "@/lib/lessons/homework";
 
@@ -187,9 +187,8 @@ export async function listLessonRegistrationsForStudent(ctx: AuthenticatedDbCont
  * Tareas pendientes reales de un alumno — puerto de
  * `computePendingHomeworkTasks` (móvil): recorre sus registros YA
  * finalizados (`status = 'completed'`), sólo los que cuentan como clase
- * (`counts_as_class`) y cuyo `activity_kind` admite tareas
- * (`activityKindSupportsHomework` — un entrenamiento nunca asigna tarea a
- * una clase posterior), junta la tarea común del registro + la individual
+ * (`counts_as_class`) y cuyo `activity_kind` puede asignar tareas
+ * (`activityKindAssignsHomework` — una clase o un entrenamiento), junta la tarea común del registro + la individual
  * de este alumno, y descarta las ya resueltas (`isHomeworkTaskResolved`).
  * Ordenadas de la más vieja a la más nueva, igual que el móvil.
  */
@@ -200,7 +199,7 @@ export async function listPendingHomeworkTasksForStudent(
 ): Promise<PendingHomeworkTask[]> {
   const registrations = await listLessonRegistrationsForStudent(ctx, studentId);
   const eligible = registrations.filter(
-    (r) => r.status === "completed" && r.countsAsClass && activityKindSupportsHomework(r.activityKind) && r.id !== options?.excludeOriginLessonRegistrationId
+    (r) => r.status === "completed" && r.countsAsClass && activityKindAssignsHomework(r.activityKind) && r.id !== options?.excludeOriginLessonRegistrationId
   );
   if (eligible.length === 0) return [];
 

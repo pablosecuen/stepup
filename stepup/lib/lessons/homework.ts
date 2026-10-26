@@ -50,7 +50,7 @@ export function isHomeworkTaskResolved(outcome: HomeworkReviewOutcome | null | u
  * Única fuente real de verdad: qué tareas pendientes bloquean de verdad
  * "Completar alumno"/"Guardar clase"/"Finalizar registro" para esta
  * actividad. Un entrenamiento (`activityKindSupportsHomework` = false)
- * NUNCA bloquea, sin importar cuántas tareas heredadas tenga un
+ * NUNCA bloquea (aunque ahora SÍ puede asignar tarea: `activityKindAssignsHomework`), sin importar cuántas tareas heredadas tenga un
  * participante — mismo criterio exacto que el móvil, aplicado en el mismo
  * único lugar tanto para la validación de "completar alumno" como para la
  * validación final (nunca se vuelve a combinar a mano en otro archivo).

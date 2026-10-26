@@ -104,8 +104,8 @@ export function initialAttendanceStatus(saved: AttendanceStatus | null, isGroup:
  * Tareas que la profesora puede cargar en el formulario. UNA sola «Tarea para la próxima clase» (común) en una clase individual — es
  * la tarea del único alumno, nunca una segunda caja; en un grupo, además, cada alumno puede tener una personalizada (acción explícita).
  */
-export function homeworkFieldsFor(params: { supportsHomework: boolean; isGroup: boolean }): { common: boolean; personalizedPerStudent: boolean; pendingReview: boolean } {
-  return { common: params.supportsHomework, personalizedPerStudent: params.supportsHomework && params.isGroup, pendingReview: params.supportsHomework };
+export function homeworkFieldsFor(params: { /** Revisa tareas anteriores (sólo una clase). */ supportsHomework: boolean; /** Puede asignar tarea (clase o entrenamiento). */ assignsHomework: boolean; isGroup: boolean }): { common: boolean; personalizedPerStudent: boolean; pendingReview: boolean } {
+  return { common: params.assignsHomework, personalizedPerStudent: params.assignsHomework && params.isGroup, pendingReview: params.supportsHomework };
 }
 
 /** En un grupo, la revisión de la tarea anterior de un alumno sólo aparece cuando su asistencia es «presente» o «tarde» (si faltó, la tarea queda pendiente sin pedir nada). */

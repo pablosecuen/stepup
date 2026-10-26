@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { CheckIcon, PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { AddItemRow, editIndexKey, editTextKey, useDraft } from "./draft-items";
+import { EditableTextList } from "./editable-text-list";
 import { Button } from "@/components/ui/button";
 import { Field, TextArea, TextInput, checkClass } from "@/components/ui/field";
 import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus } from "@/lib/lessons/attendance";
@@ -144,81 +144,21 @@ function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: numb
 export type ParticipantFormPatch = Partial<ParticipantForm> | ((form: ParticipantForm) => Partial<ParticipantForm>);
 
 /**
- * Lista de textos cortos (fortalezas, aspectos a mejorar): cada uno es una etiqueta con dos acciones SEPARADAS — «Editar» (abre el texto actual en el
- * mismo lugar, se confirma o se cancela; conserva el orden y la posición) y «Quitar». Se agrega con «+», con Enter o al soltar el campo (✅ de iOS).
- * La etiqueta crece según su texto (nunca se trunca ni se fija su alto) y el texto tiene su propio espacio, independiente de los botones.
+ * Lista de textos cortos (fortalezas, aspectos a mejorar): la MISMA lista editable que temas, objetivos y actividades (`EditableTextList`): cada texto se
+ * muestra completo, con «Editar» y «Eliminar» separados; editar conserva el orden y la posición y se guarda o se cancela. Se agrega con «+», Enter o al soltar el campo.
  */
-export function ChipListField({ label, placeholder, draftKey, items, onItemsChange }: { label: string; placeholder: string; draftKey: string; items: string[]; onItemsChange: (update: (items: string[]) => string[]) => void }) {
-  const id = useId();
-  const edit = useDraft(editTextKey(draftKey));
-  const editIndex = useDraft(editIndexKey(draftKey));
-  // Qué etiqueta se está editando y su texto viven en el almacén de borradores del formulario: si se guarda con una edición abierta, el guardado la
-  // incorpora en su lugar (nunca se pierde) y la cierra.
-  const editingIndex = editIndex.text !== "" && Number.isInteger(Number(editIndex.text)) ? Number(editIndex.text) : null;
-
-  function startEdit(index: number) {
-    editIndex.set(String(index));
-    edit.set(items[index]);
-  }
-  function finishEdit(confirm: boolean) {
-    const index = editingIndex;
-    const text = edit.take().trim();
-    editIndex.take();
-    if (!confirm || index === null || !text) return;
-    onItemsChange((current) => current.map((item, i) => (i === index ? text : item)));
-  }
-
+export function ChipListField({ label, singular, placeholder, draftKey, items, onItemsChange }: { label: string; singular: string; placeholder: string; draftKey: string; items: string[]; onItemsChange: (update: (items: string[]) => string[]) => void }) {
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2.5">
-      <legend className="mb-1 text-[14px] font-bold text-textPrimary">{label}</legend>
-      {items.length > 0 && (
-        <ul className="flex min-w-0 flex-wrap gap-2">
-          {items.map((item, index) =>
-            editingIndex === index ? (
-              <li key={`${index}-edit`} className="flex w-full min-w-0 flex-col gap-2 rounded-[20px] border-[1.5px] border-ink bg-surface p-2.5">
-                <TextInput
-                  aria-label={`Editar: ${item}`}
-                  autoFocus
-                  enterKeyHint="done"
-                  autoComplete="off"
-                  value={edit.text}
-                  onChange={(event) => edit.set(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.nativeEvent.isComposing) return;
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      finishEdit(true);
-                    } else if (event.key === "Escape") {
-                      event.preventDefault();
-                      finishEdit(false);
-                    }
-                  }}
-                />
-                <div className="flex gap-2">
-                  <Button variant="primary" onClick={() => finishEdit(true)} disabled={!edit.text.trim()} aria-label={`Guardar el cambio de: ${item}`}>
-                    Guardar cambio
-                  </Button>
-                  <Button variant="secondary" onClick={() => finishEdit(false)} aria-label={`Cancelar la edición de: ${item}`}>
-                    Cancelar
-                  </Button>
-                </div>
-              </li>
-            ) : (
-              <li key={`${index}-${item}`} className="flex min-w-0 max-w-full items-center gap-0.5 rounded-[20px] border border-border bg-paperDeep py-1 pl-4 pr-1 text-[15px] leading-snug text-textPrimary">
-                <span className="min-w-0 flex-1 py-2 [overflow-wrap:anywhere]">{item}</span>
-                <button type="button" onClick={() => startEdit(index)} aria-label={`Editar ${item}`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill text-textMuted hover:bg-border hover:text-textPrimary">
-                  <PencilSquareIcon className="h-[18px] w-[18px]" aria-hidden />
-                </button>
-                <button type="button" onClick={() => onItemsChange((current) => current.filter((_, i) => i !== index))} aria-label={`Quitar ${item}`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill text-textMuted hover:bg-border hover:text-textPrimary">
-                  <XMarkIcon className="h-5 w-5" aria-hidden />
-                </button>
-              </li>
-            )
-          )}
-        </ul>
-      )}
-      <AddItemRow draftKey={draftKey} id={id} label={placeholder} placeholder={placeholder} onAdd={(text) => onItemsChange((current) => [...current, text])} />
-    </fieldset>
+    <EditableTextList
+      label={label}
+      singular={singular}
+      placeholder={placeholder}
+      draftKey={draftKey}
+      items={items.map((text) => ({ text }))}
+      onEditText={(index, text) => onItemsChange((current) => current.map((item, i) => (i === index ? text : item)))}
+      onRemove={(index) => onItemsChange((current) => current.filter((_, i) => i !== index))}
+      onAdd={(text) => onItemsChange((current) => [...current, text])}
+    />
   );
 }
 
@@ -251,8 +191,8 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
           />
         ))}
       </fieldset>
-      <ChipListField label="Fortalezas observadas" placeholder="Agregar fortaleza" draftKey={participantDraftKey(studentId, "strengths")} items={form.strengths} onItemsChange={(update) => onChange((current) => ({ strengths: update(current.strengths) }))} />
-      <ChipListField label="Aspectos a mejorar" placeholder="Agregar aspecto a mejorar" draftKey={participantDraftKey(studentId, "areasToImprove")} items={form.areasToImprove} onItemsChange={(update) => onChange((current) => ({ areasToImprove: update(current.areasToImprove) }))} />
+      <ChipListField label="Fortalezas observadas" singular="Fortaleza" placeholder="Agregar fortaleza" draftKey={participantDraftKey(studentId, "strengths")} items={form.strengths} onItemsChange={(update) => onChange((current) => ({ strengths: update(current.strengths) }))} />
+      <ChipListField label="Aspectos a mejorar" singular="Aspecto a mejorar" placeholder="Agregar aspecto a mejorar" draftKey={participantDraftKey(studentId, "areasToImprove")} items={form.areasToImprove} onItemsChange={(update) => onChange((current) => ({ areasToImprove: update(current.areasToImprove) }))} />
       <Field label="Observación individual (puede aparecer en su reporte)" htmlFor={`${id}-obs`}>
         <TextArea id={`${id}-obs`} rows={3} aria-label={`Observación individual de ${studentName}`} placeholder="Ej. Mejoró mucho la fluidez esta clase" value={form.individualObservation} onChange={(e) => onChange({ individualObservation: e.target.value })} />
       </Field>

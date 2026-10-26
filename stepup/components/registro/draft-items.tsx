@@ -98,4 +98,4 @@ export function AddItemRow({ draftKey, id, label, placeholder, onAdd }: { draftK
   );
 }
 
-export { applyPendingToList, editIndexKey, editTextKey, hasPendingDrafts, pendingText } from "@/lib/lessons/pending-drafts";
+export { applyPendingToList, applyPendingToTopics, editIndexKey, editTextKey, hasPendingDrafts, pendingText } from "@/lib/lessons/pending-drafts";
