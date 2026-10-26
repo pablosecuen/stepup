@@ -1,5 +1,6 @@
 "use server";
 
+import { parseMoneyInput } from "@/lib/format/money-input";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
@@ -58,6 +59,12 @@ function readOptionalString(formData: FormData, key: string): string | null {
   return value === "" ? null : value;
 }
 
+/** Importe escrito (tarifa): UNA interpretación estricta (`parseMoneyInput`); si el texto es vacío, inválido o ambiguo devuelve NaN y la validación del alumno lo rechaza — nunca guarda un valor distinto del escrito. */
+function readMoney(formData: FormData, key: string): number {
+  const parsed = parseMoneyInput(readString(formData, key));
+  return "amount" in parsed ? parsed.amount : Number.NaN;
+}
+
 function readNumber(formData: FormData, key: string): number {
   const raw = readString(formData, key).trim();
   return raw === "" ? Number.NaN : Number(raw);
@@ -84,7 +91,7 @@ export async function createStudentAction(_prevState: FormState, formData: FormD
     category: readString(formData, "category") as StudentCategory,
     billingType: readString(formData, "billingType") as BillingType,
     dateJoined: readString(formData, "dateJoined"),
-    price: readNumber(formData, "price"),
+    price: readMoney(formData, "price"),
     levels: readLevels(formData),
     initialLevel: readOptionalString(formData, "initialLevel") ?? undefined,
     usualDurationMinutes: readString(formData, "usualDurationMinutes").trim()
@@ -139,7 +146,7 @@ export async function updateStudentAction(
     modality: readString(formData, "modality") as StudentModality,
     category: readString(formData, "category") as StudentCategory,
     billingType: readString(formData, "billingType") as BillingType,
-    price: readNumber(formData, "price"),
+    price: readMoney(formData, "price"),
     levels: readLevels(formData),
     initialLevel: readOptionalString(formData, "initialLevel") ?? undefined,
     usualDurationMinutes: readString(formData, "usualDurationMinutes").trim()

@@ -6,6 +6,7 @@ import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments"
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { todayInArgentina } from "@/lib/format/date-format";
+import { formatMoneyForInput, parseMoneyInput } from "@/lib/format/money-input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
@@ -29,7 +30,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
   const [mode, setMode] = useState<"idle" | "pay" | "void">("idle");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState(String(balance));
+  const [amount, setAmount] = useState(formatMoneyForInput(balance));
   const [method, setMethod] = useState("efectivo");
   const [paidAt, setPaidAt] = useState(() => todayInArgentina());
   const [notes, setNotes] = useState("");
@@ -43,8 +44,13 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
 
   function submitPayment() {
     setError(null);
-    const parsedAmount = Number(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    const parsed = parseMoneyInput(amount);
+    if ("error" in parsed) {
+      setError(parsed.error);
+      return;
+    }
+    const parsedAmount = parsed.amount;
+    if (parsedAmount <= 0) {
       setError("El importe tiene que ser mayor a 0.");
       return;
     }
@@ -118,7 +124,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
           <DialogContext title={joinContextTitle(context?.studentName, context?.concept)} lines={chargeContextLines(context, balance)} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label="Importe" htmlFor={`${uid}-amount`}>
-            <TextInput id={`${uid}-amount`} type="number" min={1} max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
           <Field label="Método" htmlFor={`${uid}-method`}>
             <SelectInput id={`${uid}-method`} value={method} onChange={(e) => setMethod(e.target.value)}>

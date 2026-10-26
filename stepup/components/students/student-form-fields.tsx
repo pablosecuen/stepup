@@ -1,4 +1,5 @@
 import { LevelPicker } from "./level-picker";
+import { formatMoneyForInput } from "@/lib/format/money-input";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import {
@@ -74,8 +75,8 @@ export function StudentFormFields({
               </SelectInput>
             </Field>
 
-            <Field label="Precio (ARS) *" htmlFor="price">
-              <TextInput id="price" name="price" type="number" min="0" step="1" required defaultValue={defaultValues?.price ?? ""} placeholder="0" />
+            <Field label="Precio (ARS) *" htmlFor="price" hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
+              <TextInput id="price" name="price" type="text" inputMode="decimal" autoComplete="off" required defaultValue={formatMoneyForInput(defaultValues?.price)} placeholder="0" />
             </Field>
 
             <Field label="Frecuencia semanal" htmlFor="weeklyFrequency">

@@ -6,6 +6,7 @@ import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
 import { todayInArgentina } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
+import { formatMoneyForInput } from "@/lib/format/money-input";
 import { validatePromptAmount, type RegistrationPaymentPrompt } from "@/lib/payments/registration-payment-prompt";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -33,7 +34,7 @@ function PromptStep({ item, classLabel, position, total, onNext }: { item: Regis
   const uid = useId();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState(String(item.balance));
+  const [amount, setAmount] = useState(formatMoneyForInput(item.balance));
   const [method, setMethod] = useState("efectivo");
   const [paidAt, setPaidAt] = useState(() => todayInArgentina());
   const { operationId, clear } = useDraftOperationId(`teacherflow:registro:cobro:${item.chargeId}`);
@@ -87,7 +88,7 @@ function PromptStep({ item, classLabel, position, total, onNext }: { item: Regis
       />
       {error && <Notice tone="bad">{error}</Notice>}
       <Field label="Importe que pagó" htmlFor={`${uid}-amount`} hint="Si pagó una parte, cargá lo que recibiste: el resto queda como saldo pendiente.">
-        <TextInput id={`${uid}-amount`} type="number" min={1} max={item.balance} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
       </Field>
       <Field label="Método" htmlFor={`${uid}-method`}>
         <SelectInput id={`${uid}-method`} value={method} onChange={(e) => setMethod(e.target.value)}>

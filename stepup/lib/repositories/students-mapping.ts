@@ -119,7 +119,7 @@ export function validateNewStudentInput(input: NewStudentInput): StudentValidati
   const errors: StudentValidationError[] = [];
   if (!input.name.trim()) errors.push({ field: "name", message: "El nombre es obligatorio." });
   if (!Number.isFinite(input.price) || input.price < 0) {
-    errors.push({ field: "price", message: "El precio debe ser un número mayor o igual a cero." });
+    errors.push({ field: "price", message: "Revisá el precio: usá solo números (36000 o 36.000) y coma para los decimales; tiene que ser mayor o igual a cero." });
   }
   if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes <= 0) {
     errors.push({ field: "usualDurationMinutes", message: "La duración habitual debe ser mayor a cero." });
@@ -226,7 +226,7 @@ export function validateUpdateStudentInput(input: UpdateStudentInput): StudentVa
     errors.push({ field: "name", message: "El nombre es obligatorio." });
   }
   if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
-    errors.push({ field: "price", message: "El precio debe ser un número mayor o igual a cero." });
+    errors.push({ field: "price", message: "Revisá el precio: usá solo números (36000 o 36.000) y coma para los decimales; tiene que ser mayor o igual a cero." });
   }
   if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes <= 0) {
     errors.push({ field: "usualDurationMinutes", message: "La duración habitual debe ser mayor a cero." });

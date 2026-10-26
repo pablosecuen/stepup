@@ -7,6 +7,8 @@
  *  - al completar el registro por primera vez, todos esos cobros; al editar un registro ya finalizado, sólo los cobros NUEVOS de ese guardado (los que ya existían antes de
  *    abrir la pantalla no se vuelven a preguntar): reabrir, editar o recargar nunca repite el aviso.
  */
+import { parseMoneyInput } from "../format/money-input.ts";
+
 export interface RegistrationPaymentPrompt {
   chargeId: string;
   studentId: string;
@@ -28,8 +30,10 @@ export function selectPaymentPrompts<T extends { chargeId: string; balance: numb
 
 /** Importe a pagar válido: entero positivo y no mayor al saldo; si no, el mensaje para la profesora. */
 export function validatePromptAmount(raw: string, balance: number): { amount: number } | { error: string } {
-  const amount = Number(raw);
-  if (!Number.isFinite(amount) || amount <= 0) return { error: "El importe tiene que ser mayor a 0." };
+  const parsed = parseMoneyInput(raw);
+  if ("error" in parsed) return { error: parsed.error };
+  const amount = parsed.amount;
+  if (amount <= 0) return { error: "El importe tiene que ser mayor a 0." };
   if (amount > balance) return { error: "El importe no puede ser mayor al saldo de la clase." };
   return { amount };
 }

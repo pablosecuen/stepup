@@ -1,5 +1,6 @@
 "use client";
 
+import { parseMoneyInput } from "@/lib/format/money-input";
 import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -42,8 +43,13 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
 
   function preview() {
     setError(null);
-    const fee = Number(monthlyFee);
-    if (!fee || fee <= 0) {
+    const parsedFee = parseMoneyInput(monthlyFee);
+    if ("error" in parsedFee) {
+      setError(parsedFee.error);
+      return;
+    }
+    const fee = parsedFee.amount;
+    if (fee <= 0) {
       setError("La cuota tiene que ser mayor a 0.");
       return;
     }
@@ -75,8 +81,13 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
 
   function confirmFeeChange() {
     setError(null);
-    const fee = Number(monthlyFee);
-    if (!fee || fee <= 0 || !agreementId) {
+    const parsedFee = parseMoneyInput(monthlyFee);
+    if ("error" in parsedFee) {
+      setError(parsedFee.error);
+      return;
+    }
+    const fee = parsedFee.amount;
+    if (fee <= 0 || !agreementId) {
       setError("La cuota tiene que ser mayor a 0.");
       return;
     }
@@ -148,8 +159,9 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
           <Field label={agreementId ? "Nueva cuota mensual (vigente desde el próximo período)" : "Cuota mensual"} htmlFor={feeId}>
             <TextInput
               id={feeId}
-              type="number"
-              min={1}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
               value={monthlyFee}
               onChange={(e) => {
                 setMonthlyFee(e.target.value);

@@ -44,7 +44,10 @@ export function computeLateCancellationBillingFactor(input: {
   return input.isClassHeld ? 1 : 0;
 }
 
-/** Importe final a facturar a UN alumno `'per_class'` por esta clase, redondeado. `null` si el alumno no factura por clase (se resuelve fuera de esta función). */
+/**
+ * Importe final a facturar a UN alumno `'per_class'` por esta clase. Con el factor completo (1) es EXACTAMENTE la tarifa del alumno (con sus centavos, sin perder ni sumar nada: 27.500,50 sigue siendo 27.500,50);
+ * un importe derivado de un porcentaje se redondea a pesos enteros, igual que la app original. `null` si el alumno no factura por clase (se resuelve fuera de esta función).
+ */
 export function computePerClassBilledAmount(input: {
   perClassAmount: number;
   outcome: AdhocOutcome;
@@ -53,5 +56,6 @@ export function computePerClassBilledAmount(input: {
   lateCancellationPercentage: number | null;
 }): number {
   const factor = computeLateCancellationBillingFactor(input);
+  if (factor === 1) return Math.round(input.perClassAmount * 100) / 100;
   return Math.round(input.perClassAmount * factor);
 }
