@@ -154,6 +154,8 @@ export default async function RegistroClasePage({ params, searchParams }: { para
         key={`${detail.registration.outcome}:${detail.registration.holidayException}:${detail.registration.countsAsClass}`}
         outcomeField={{ alreadyRescheduled: calendarLesson.status === "rescheduled", rescheduleHref: `/calendario?view=day&day=${instantDateKey(calendarLesson.startAt)}&reprogramar=${calendarLesson.id}` }}
         returnHref={returnHref}
+        classLabel={`${ACTIVITY_KIND_LABEL[detail.registration.activityKind as keyof typeof ACTIVITY_KIND_LABEL] ?? "Clase"} · ${formatInstantDayLongTime(calendarLesson.startAt)}`}
+        knownChargeIds={chargeLines.map((line) => line.chargeId)}
         initialContent={lessonContent}
         materialLibrary={materialLibrary}
         registration={detail.registration}

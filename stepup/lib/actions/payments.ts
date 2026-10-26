@@ -10,6 +10,7 @@ import {
   editTrainingBillingFee,
   ensureCurrentMonthlyCharges,
   ensureTrainingCharges,
+  listChargeStatusForRegistration,
   PaymentNotFoundError,
   ChargeNotFoundError,
 } from "@/lib/repositories/payments";
@@ -17,6 +18,7 @@ import { getRecurrenceRule } from "@/lib/repositories/recurrence-rules";
 import { listCalendarLessonsForRecurrence } from "@/lib/repositories/calendar-lessons";
 import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-exceptions";
 import { listStudents } from "@/lib/repositories/students";
+import { selectPaymentPrompts, type RegistrationPaymentPrompt } from "@/lib/payments/registration-payment-prompt";
 import { computeTrainingFirstPeriodCharge } from "@/lib/payments/training-charge-plan";
 import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/dates";
 import type { ActionResult } from "./lesson-registrations";
@@ -49,6 +51,25 @@ export async function registerPaymentAction(input: RegisterPaymentActionInput): 
     revalidatePath("/cobros");
     revalidatePath("/alumnos");
     revalidatePath("/registro/[calendarLessonId]", "page");
+  }
+}
+
+/**
+ * Qué cobros por clase de ESTE registro piden el aviso de pago al guardarlo (ver `lib/payments/registration-payment-prompt.ts`): sólo cobros vigentes de la clase con saldo > 0; al editar
+ * un registro ya finalizado, sólo los NUEVOS (los que ya existían al abrir la pantalla no se vuelven a preguntar). Sólo lee: nunca crea ni cambia un cobro. Si no se puede leer, devuelve
+ * un error y la pantalla sigue como siempre (el registro ya quedó guardado).
+ */
+export async function listRegistrationPaymentPromptsAction(input: { registrationId: string; firstCompletion: boolean; knownChargeIds: string[] }): Promise<ActionResult<{ items: RegistrationPaymentPrompt[] }>> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const statuses = await listChargeStatusForRegistration(ctx, input.registrationId);
+    const selected = selectPaymentPrompts(statuses, { firstCompletion: input.firstCompletion, knownChargeIds: new Set(input.knownChargeIds) });
+    if (selected.length === 0) return { data: { items: [] } };
+    const students = await listStudents(ctx);
+    const nameById = new Map(students.map((student) => [student.id, student.name]));
+    return { data: { items: selected.map((status) => ({ chargeId: status.chargeId, studentId: status.studentId, studentName: nameById.get(status.studentId) ?? "Alumno", total: status.total, paid: status.paid, balance: status.balance })) } };
+  } catch (error) {
+    return { error: friendlyPaymentError(error) };
   }
 }
 

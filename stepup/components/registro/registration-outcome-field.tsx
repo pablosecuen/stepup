@@ -27,6 +27,7 @@ export function RegistrationOutcomeField({
   isGroup,
   alreadyRescheduled,
   rescheduleHref,
+  onClosed,
 }: {
   registrationId: string;
   current: { outcome: AdhocOutcome; absenceNotice?: AbsenceNotice };
@@ -36,6 +37,8 @@ export function RegistrationOutcomeField({
   alreadyRescheduled: boolean;
   /** Dónde elegir la nueva fecha (flujo de reprogramar del calendario). */
   rescheduleHref: string;
+  /** El resultado cerró el registro: quien lo muestra decide a dónde seguir (p. ej. el aviso de pago). Sin esto, a Clases por registrar. */
+  onClosed?: () => void | Promise<void>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -97,8 +100,10 @@ export function RegistrationOutcomeField({
         return;
       }
       setOpen(false);
-      if (result.data?.closed) router.push("/registro");
-      else router.refresh();
+      if (result.data?.closed) {
+        if (onClosed) await onClosed();
+        else router.push("/registro");
+      } else router.refresh();
     });
   }
 

@@ -4,6 +4,7 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getLessonRegistrationDetail, listPendingHomeworkTasksForStudent } from "@/lib/repositories/lesson-registrations";
 import { listStudents } from "@/lib/repositories/students";
+import { listChargeStatusForRegistration } from "@/lib/repositories/payments";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ErrorState } from "@/components/ui/states";
@@ -45,6 +46,8 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
   let lessonContent: LessonContent | null = null;
   let materialLibrary: LibraryMaterial[] = [];
   let incidents: OriginIncidentView[] = [];
+  // Cobros de esta clase que ya existían al abrir la pantalla (al editar no se vuelven a preguntar).
+  let knownChargeIds: string[] = [];
   try {
     const ctx = await requireAuthenticatedDbContext();
     detail = await getLessonRegistrationDetail(ctx, registrationId);
@@ -57,6 +60,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
       });
 
+      if (detail.registration.status === "completed") knownChargeIds = (await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => [])).map((status) => status.chargeId);
       lessonContent = await getLessonContent(ctx, detail.registration.id);
       // La biblioteca es complementaria: si no se puede leer, el registro igual se puede completar (sin elegir materiales).
       materialLibrary = await listMaterialLibrary(ctx).catch(() => []);
@@ -123,6 +127,8 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
       <OriginIncidentsCard incidents={incidents} />
       {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
+        classLabel={`${ACTIVITY_KIND_LABEL[registration.activityKind]} · ${formatInstantDayLongTime(scheduledStartAt)}`}
+        knownChargeIds={knownChargeIds}
         initialContent={lessonContent}
         materialLibrary={materialLibrary}
         registration={registration}

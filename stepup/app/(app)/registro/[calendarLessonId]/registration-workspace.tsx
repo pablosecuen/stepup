@@ -36,6 +36,9 @@ import { Notice } from "@/components/ui/notice";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { InternalNotesCard, PedagogicalContentEditor } from "@/components/registro/pedagogical-content-editor";
 import { RegistrationOutcomeField } from "@/components/registro/registration-outcome-field";
+import { ClassPaymentPrompt } from "@/components/registro/class-payment-prompt";
+import { listRegistrationPaymentPromptsAction } from "@/lib/actions/payments";
+import type { RegistrationPaymentPrompt } from "@/lib/payments/registration-payment-prompt";
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
 import { DraftsProvider, applyPendingToList, applyPendingToTopics, useDraftsStore } from "@/components/registro/draft-items";
 import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
@@ -227,6 +230,8 @@ export function RegistrationWorkspace({
   materialLibrary,
   outcomeField,
   returnHref = null,
+  classLabel = "",
+  knownChargeIds = [],
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -239,6 +244,10 @@ export function RegistrationWorkspace({
   initialContent?: LessonContent | null;
   /** «Editar registro» desde el Calendario: a dónde volver al guardar (la misma semana o día). Sin esto, a Clases por registrar. */
   returnHref?: string | null;
+  /** Para el aviso de pago: «Clase · jueves, 22 de octubre, 15:00». */
+  classLabel?: string;
+  /** Cobros de esta clase que ya existían al abrir la pantalla (al editar un registro finalizado no se vuelven a preguntar). */
+  knownChargeIds?: string[];
   /** Biblioteca de materiales de la cuenta (para elegirlos en la clase). */
   materialLibrary?: LibraryMaterial[];
   /** Clase programada: permite elegir/cambiar el resultado de la clase («¿Qué pasó con esta clase?»). Ausente en una clase no programada (el resultado se elige al crearla). */
@@ -312,6 +321,21 @@ export function RegistrationWorkspace({
     setFormByStudentId(nextForms);
     draftsStore.clear();
     return { content: nextContent, forms: nextForms };
+  }
+
+  // Aviso de pago: se abre solo al guardar (no al cargar la pantalla), por cada cobro de la clase con saldo pendiente; se navega recién al cerrarlo.
+  const [paymentPrompts, setPaymentPrompts] = useState<RegistrationPaymentPrompt[] | null>(null);
+  const [afterPromptHref, setAfterPromptHref] = useState<string>(returnHref ?? "/registro");
+  /** Después de guardar: si hay cobros por clase con saldo, abre el aviso de pago; si no (o si no se pudo leer), sigue como siempre. */
+  async function continueAfterSave(firstCompletion: boolean, destination: string) {
+    const prompts = await guardNetwork(() => listRegistrationPaymentPromptsAction({ registrationId: registration.id, firstCompletion, knownChargeIds }));
+    const items = prompts.data?.items ?? [];
+    if (items.length > 0) {
+      setAfterPromptHref(destination);
+      setPaymentPrompts(items);
+      return;
+    }
+    router.push(destination);
   }
 
   const supportsHomework = activityKindSupportsHomework(registration.activityKind);
@@ -480,7 +504,7 @@ export function RegistrationWorkspace({
         // Recién ahora, con la respuesta exitosa confirmada, se limpia el borrador — un error nunca llega hasta acá, así que el mismo
         // editOperationId sigue disponible para un reintento real.
         clearEditOperationId();
-        router.push(returnHref ?? "/registro");
+        await continueAfterSave(false, returnHref ?? "/registro");
         return;
       }
 
@@ -501,7 +525,7 @@ export function RegistrationWorkspace({
         setError(result.error);
         return;
       }
-      router.push(returnHref ?? "/registro");
+      await continueAfterSave(true, returnHref ?? "/registro");
     });
   }
 
@@ -513,6 +537,7 @@ export function RegistrationWorkspace({
 
   return (
     <DraftsProvider value={draftsStore.api}>
+    {paymentPrompts && <ClassPaymentPrompt items={paymentPrompts} classLabel={classLabel} onFinished={() => router.push(afterPromptHref)} />}
     <div className="flex flex-col gap-4">
       {outcomeField && !isFinalized && (
         <RegistrationOutcomeField
@@ -525,6 +550,7 @@ export function RegistrationWorkspace({
           isGroup={isGroup}
           alreadyRescheduled={outcomeField.alreadyRescheduled}
           rescheduleHref={outcomeField.rescheduleHref}
+          onClosed={() => continueAfterSave(true, "/registro")}
         />
       )}
 

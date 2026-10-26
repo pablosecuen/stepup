@@ -57,7 +57,7 @@ test("Calendario: una clase registrada ofrece «Clase registrada» + «Editar re
   assert.ok(page.includes("safeCalendarReturn((await searchParams).volver)"), "sólo se vuelve a una ruta interna del Calendario");
   assert.ok(page.includes("if (!calendarLesson) notFound();") && page.includes("No encontramos el registro de esta clase."));
   const w = read(WORKSPACE);
-  assert.equal((w.match(/router\.push\(returnHref \?\? "\/registro"\)/g) ?? []).length, 2);
+  assert.equal((w.match(/continueAfterSave\((?:true|false), returnHref \?\? "\/registro"\)/g) ?? []).length, 2, "al guardar (primer finalizado o edición) se vuelve a la misma semana o día, pasando antes por el aviso de pago si corresponde");
   // El guardado de una edición sigue siendo la misma llamada atómica con su operación idempotente (no crea otro registro ni duplica nada).
   assert.ok(w.includes("editCompletedRegistrationAction({") && w.includes("editOperationId,"));
 });
