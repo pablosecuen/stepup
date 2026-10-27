@@ -1,9 +1,8 @@
 "use client";
 
 import { useId } from "react";
-import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Field, TextArea, checkClass } from "@/components/ui/field";
+import { Field, TextArea } from "@/components/ui/field";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
 import type { LessonContentAttachment, LibraryMaterial } from "@/lib/repositories/lesson-content-mapping";
 import { LessonFilesEditor } from "./lesson-files-editor";
@@ -54,12 +53,7 @@ export function PedagogicalContentEditor({ value, onChange, files, title = "Cont
           singular="Tema"
           placeholder="Agregar tema"
           draftKey={CONTENT_DRAFT_KEYS.topics}
-          items={value.topics.map((topic, index) => ({
-            text: topic.text,
-            note: topic.status === "visto" ? <><CheckCircleIcon className="h-4 w-4" aria-hidden />Visto</> : undefined,
-            // Marcar un tema como visto sigue siendo posible, compacto y sin etiqueta de estado; cambiar sólo el texto nunca toca `status`.
-            leading: <label className="flex h-11 w-9 shrink-0 cursor-pointer items-center justify-center" title="Marcar como visto"><input type="checkbox" className={checkClass} aria-label={`Tema ${index + 1} visto`} checked={topic.status === "visto"} onChange={(e) => { const seen = e.target.checked; onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, status: seen ? "visto" : "planificado" } : t) })); }} /></label>,
-          }))}
+          items={value.topics.map((topic) => ({ text: topic.text }))}
           onEditText={(index, text) => onChange((current) => ({ ...current, topics: current.topics.map((t, i) => i === index ? { ...t, text } : t) }))}
           onRemove={(index) => onChange((current) => ({ ...current, topics: current.topics.filter((_, i) => i !== index) }))}
           onAdd={(text) => onChange((current) => ({ ...current, topics: [...current.topics, { id: crypto.randomUUID(), text, status: "planificado" }] }))}

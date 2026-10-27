@@ -82,7 +82,6 @@ test("cableado: los tres guardados incorporan lo pendiente ANTES de enviar y los
   assert.match(ws, /topics: applyPendingToTopics\(content\.topics, pending, CONTENT_DRAFT_KEYS\.topics,/, "temas: edición abierta + agregado, igual que el resto de las listas");
   const editor = read("components/registro/pedagogical-content-editor.tsx");
   assert.match(editor, /topics: current\.topics\.map\(\(t, i\) => i === index \? \{ \.\.\.t, text \} : t\)/, "editar el texto no toca `status`");
-  assert.match(editor, /\{ \.\.\.t, status: seen \? "visto" : "planificado" \}/);
 });
 
 test("cableado: cada elemento tiene Editar y Eliminar separados, muestra todo su texto (sin recorte ni alto fijo) y los campos usan 16 px (sin zoom en iOS)", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { CheckIcon, PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { EditableTextList } from "./editable-text-list";
 import { Button } from "@/components/ui/button";
@@ -118,24 +118,45 @@ export function PendingHomeworkReview({ tasks, studentId, studentName, reviews, 
   );
 }
 
-// Control numérico por área — 0 (o vacío) significa «sin calificar» y NUNCA se persiste como nota real (`normalizeSkillGradeValue`).
+// Control numérico por área — 0 (o vacío) significa «sin calificar» y NUNCA se persiste como nota real (`normalizeSkillGradeValue`); la escala es 1–10, paso 1.
+// Compacto (ancho máximo, no ocupa toda la pantalla), con el nombre y el valor juntos arriba del control; la barra es el `<input type="range">` nativo —clic sobre la pista, arrastre
+// con mouse, trackpad o dedo, y teclado— con una pista y un tirador grandes (`.tf-grade`); «−» y «+» de 48×48 px ajustan de a un paso sin depender de un arrastre preciso.
+const GRADE_MIN = 0;
+const GRADE_MAX = 10;
+const STEP_BUTTON =
+  "inline-flex h-12 w-12 shrink-0 select-none items-center justify-center rounded-md border-[1.5px] border-borderStrong bg-surface text-[24px] font-bold leading-none text-textPrimary transition-colors hover:border-ink active:bg-paperDeep disabled:cursor-not-allowed disabled:opacity-40";
+
 function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: number | null; onChange: (value: number | null) => void }) {
+  const label = SKILL_LABEL[skill];
+  const current = value ?? GRADE_MIN;
+  const set = (next: number) => onChange(normalizeSkillGradeValue(Math.min(GRADE_MAX, Math.max(GRADE_MIN, next))));
+  const spoken = value != null ? `${value} de 10` : "sin calificar";
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 sm:flex-nowrap">
-      <span className="w-full shrink-0 text-[14.5px] text-textSecondary sm:w-32">{SKILL_LABEL[skill]}</span>
-      <div className="flex min-h-11 min-w-[140px] flex-1 items-center">
+    <div role="group" aria-label={label} className="max-w-[420px]">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[15px] font-[650] text-textSecondary">{label}</span>
+        <span className="text-[15px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
+      </div>
+      <div className="mt-1 flex items-center gap-2">
+        <button type="button" className={STEP_BUTTON} onClick={() => set(current - 1)} disabled={current <= GRADE_MIN} aria-label={`Bajar la nota de ${label}`}>
+          −
+        </button>
         <input
           type="range"
-          min="0"
-          max="10"
+          min={GRADE_MIN}
+          max={GRADE_MAX}
           step="1"
-          value={value ?? 0}
+          value={current}
           onChange={(e) => onChange(normalizeSkillGradeValue(Number(e.target.value)))}
-          className="h-2 w-full accent-accent"
-          aria-label={`${SKILL_LABEL[skill]}: ${value != null ? `${value} de 10` : "sin calificar"}`}
+          style={{ "--tf-fill": `${(current / GRADE_MAX) * 100}%` } as CSSProperties}
+          className="tf-grade min-w-0 flex-1"
+          aria-label={`${label}: ${spoken}`}
+          aria-valuetext={spoken}
         />
+        <button type="button" className={STEP_BUTTON} onClick={() => set(current + 1)} disabled={current >= GRADE_MAX} aria-label={`Subir la nota de ${label}`}>
+          +
+        </button>
       </div>
-      <span className="w-24 shrink-0 text-right text-[14px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
     </div>
   );
 }
@@ -176,7 +197,7 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
           <TextInput id={`${id}-grade`} type="number" min="1" max="10" value={form.generalGrade} onChange={(e) => onChange({ generalGrade: e.target.value })} placeholder="Sin calificar" />
         </Field>
       </div>
-      <fieldset className="flex min-w-0 flex-col gap-1">
+      <fieldset className="flex min-w-0 flex-col gap-4">
         <legend className="mb-1 text-[14px] font-bold text-textPrimary">Notas por área (opcional)</legend>
         {SKILLS.map((skill) => (
           <SkillGradeField
