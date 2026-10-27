@@ -490,6 +490,13 @@ html:has(.tf-landing) {
       animation: tf-dialog-out 110ms ease-in forwards;
     }
   }
+  /* Diálogo compacto y centrado en cualquier ancho (`placement="center"`): entra y sale como el diálogo de escritorio, no como hoja inferior. */
+  .tf-dialog.tf-dialog-center {
+    animation: tf-dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  [data-closing] .tf-dialog.tf-dialog-center {
+    animation: tf-dialog-out 110ms ease-in forwards;
+  }
   /* Menús y selectores propios: la lista aparece con opacidad y escala leve desde su borde superior (cierra al instante). */
   .tf-menu {
     transform-origin: top;

@@ -537,7 +537,7 @@ export function RegistrationWorkspace({
 
   return (
     <DraftsProvider value={draftsStore.api}>
-    {paymentPrompts && <ClassPaymentPrompt items={paymentPrompts} classLabel={classLabel} onFinished={() => router.push(afterPromptHref)} />}
+    {paymentPrompts && <ClassPaymentPrompt items={paymentPrompts} classLabel={classLabel} registrationId={registration.id} onFinished={() => router.push(afterPromptHref)} />}
     <div className="flex flex-col gap-4">
       {outcomeField && !isFinalized && (
         <RegistrationOutcomeField

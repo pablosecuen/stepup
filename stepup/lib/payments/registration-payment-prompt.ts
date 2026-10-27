@@ -37,3 +37,42 @@ export function validatePromptAmount(raw: string, balance: number): { amount: nu
   if (amount > balance) return { error: "El importe no puede ser mayor al saldo de la clase." };
   return { amount };
 }
+
+/** Las cinco respuestas del aviso: «Pagó el total», «Pagó una parte», «Ya había pagado» registran dinero; «Quedó pendiente» y «Registrar después» no registran nada y pasan al siguiente alumno. */
+export type PromptPaymentMode = "total" | "partial" | "retroactive";
+
+/** Fecha civil real AAAA-MM-DD (rechaza «2026-02-31», vacío y otros formatos). */
+export function isValidCivilDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+/**
+ * Qué se registra al confirmar cada respuesta, siempre contra el SALDO real del cobro de esa clase (nunca contra otra deuda):
+ *  - «total»: el saldo exigible completo, no editable, con la fecha de hoy;
+ *  - «partial»: el importe escrito (positivo, estricto, hasta el saldo), con la fecha de hoy;
+ *  - «retroactive»: el importe escrito (hasta el saldo) con la fecha REAL del pago, que no puede ser posterior a hoy.
+ */
+export function resolvePromptPayment(input: { mode: PromptPaymentMode; amountRaw: string; paidAt: string; today: string; balance: number }): { amount: number; paidAt: string } | { error: string } {
+  if (!(input.balance > 0)) return { error: "Ya no queda saldo pendiente para esta clase." };
+  if (input.mode === "total") return { amount: input.balance, paidAt: input.today };
+  if (input.mode === "retroactive") {
+    if (!input.paidAt) return { error: "Elegí el día en que se pagó." };
+    if (!isValidCivilDate(input.paidAt)) return { error: "La fecha del pago no es válida." };
+    if (input.paidAt > input.today) return { error: "La fecha del pago no puede ser posterior a hoy." };
+  }
+  const parsed = validatePromptAmount(input.amountRaw, input.balance);
+  if ("error" in parsed) return { error: parsed.error };
+  return { amount: parsed.amount, paidAt: input.mode === "retroactive" ? input.paidAt : input.today };
+}
+
+/**
+ * Saldo vigente de un cobro después de volver a leerlo del servidor (otro pago pudo registrarse desde otra pestaña o dispositivo): si ya no figura entre los cobros con saldo,
+ * la clase está saldada y no se pide ni se registra otro pago. Con el cobro vigente, se muestra lo ya pagado y sólo el saldo restante.
+ */
+export function settleAfterRefresh(item: { total: number }, fresh: { paid: number; balance: number } | undefined): { paid: number; balance: number } {
+  return fresh ? { paid: fresh.paid, balance: fresh.balance } : { paid: item.total, balance: 0 };
+}

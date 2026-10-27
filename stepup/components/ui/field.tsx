@@ -17,8 +17,12 @@ export const textareaClass = `${inputClass} min-h-24 py-3 leading-normal`;
 export const fieldHintId = (id: string) => `${id}-hint`;
 export const fieldErrorId = (id: string) => `${id}-error`;
 
-export function TextInput({ className, ...props }: ComponentProps<"input">) {
-  return <input className={`${inputClass}${className ? ` ${className}` : ""}`} {...props} />;
+// Un `<input type="date">` nativo (sobre todo en iOS Safari) toma un ancho propio mayor que su contenedor y centra el valor: se fuerza a ocupar sólo el ancho disponible y a alinear el valor a la izquierda.
+const dateInputClass = "block min-w-0 max-w-full appearance-none text-left [&::-webkit-date-and-time-value]:min-h-[1.5em] [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:p-0";
+
+export function TextInput({ className, type, ...props }: ComponentProps<"input">) {
+  const extra = [type === "date" ? dateInputClass : "", className ?? ""].filter(Boolean).join(" ");
+  return <input type={type} className={`${inputClass}${extra ? ` ${extra}` : ""}`} {...props} />;
 }
 
 export function SelectInput({ className, ...props }: ComponentProps<"select">) {
