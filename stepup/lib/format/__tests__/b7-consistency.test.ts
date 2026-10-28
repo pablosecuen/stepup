@@ -79,7 +79,8 @@ test("las demás cuentas de Reportes y del Resumen financiero también usan el d
 // --- Formatos únicos -------------------------------------------------------------------------------------------------
 
 test("no hay formateadores paralelos de números ni de fechas: Intl.NumberFormat, toFixed y toLocale* viven sólo en los formateadores únicos", () => {
-  const allowed = new Set(["lib/format/number-format.ts", "lib/format/date-format.ts"]);
+  // `paymentFormat.ts` del motor promovido es una copia idéntica del original (la guarda byte a byte lo exige) y su `formatCurrencyARS` (pesos enteros) no se usa en la web: todo importe se muestra con `formatMoney`.
+  const allowed = new Set(["lib/format/number-format.ts", "lib/format/date-format.ts", "lib/payments/engine/features/payments/utils/paymentFormat.ts"]);
   const offenders: string[] = [];
   for (const file of sources(["app", "components", "lib"])) {
     if (allowed.has(file)) continue;

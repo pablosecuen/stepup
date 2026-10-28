@@ -3,7 +3,7 @@ import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
-import type { StudentRecord } from "@/lib/repositories/students-mapping";
+import type { StudentListRow } from "@/lib/students/list-filters";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import { StudentCard, StudentsTable } from "@/components/students/student-card";
 import { StudentsFiltersForm } from "@/components/students/students-filters-form";
@@ -15,7 +15,7 @@ import { ManageLevelsSection } from "@/components/students/manage-levels-section
  * tabla desde 820 px y tarjetas por debajo.
  */
 export function StudentsListView({
-  items,
+  rows,
   page,
   totalPages,
   totalItems,
@@ -25,10 +25,12 @@ export function StudentsListView({
   status,
   level,
   modality,
+  paymentStatus,
+  sortBy,
   customLevels,
   buildHref,
 }: {
-  items: StudentRecord[];
+  rows: StudentListRow[];
   page: number;
   totalPages: number;
   totalItems: number;
@@ -38,9 +40,12 @@ export function StudentsListView({
   status: string;
   level: string;
   modality: string;
+  paymentStatus: string;
+  sortBy: string;
   customLevels: CustomLevelRecord[];
   buildHref: (page: number) => string;
 }) {
+  const now = new Date();
   return (
     <div className={PAGE_WIDTH.wide}>
       <PageHeader
@@ -60,22 +65,22 @@ export function StudentsListView({
       />
 
       <div className="mt-6 flex flex-col gap-3.5">
-        <StudentsFiltersForm search={search} status={status} level={level} modality={modality} levelOptions={customLevels.map((l) => l.name)} />
+        <StudentsFiltersForm search={search} status={status} level={level} modality={modality} paymentStatus={paymentStatus} sortBy={sortBy} levelOptions={customLevels.map((l) => l.name)} />
         <ManageLevelsSection customLevels={customLevels} />
       </div>
 
-      <EnterOnChange changeKey={`${search}|${status}|${level}|${modality}|${page}`}>
-      {items.length > 0 ? (
+      <EnterOnChange changeKey={`${search}|${status}|${level}|${modality}|${paymentStatus}|${sortBy}|${page}`}>
+      {rows.length > 0 ? (
         <>
           <ul className="mt-5 flex flex-col gap-3 nav:hidden">
-            {items.map((student) => (
-              <li key={student.id}>
-                <StudentCard student={student} />
+            {rows.map((row) => (
+              <li key={row.student.id}>
+                <StudentCard row={row} now={now} />
               </li>
             ))}
           </ul>
           <div className="mt-5 hidden nav:block">
-            <StudentsTable students={items} />
+            <StudentsTable rows={rows} now={now} />
           </div>
           <PaginationControls page={page} totalPages={totalPages} buildHref={buildHref} />
         </>

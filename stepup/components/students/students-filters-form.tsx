@@ -7,12 +7,15 @@ import { Button, PrivateButtonLink, linkClass } from "@/components/ui/button";
 import PrivateLink from "@/components/nav/private-link";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { PAYMENT_STATUS_FILTER_OPTIONS, SORT_OPTIONS } from "@/lib/students/list-filters";
 
 interface FilterValues {
   search: string;
   status: string;
   level: string;
   modality: string;
+  paymentStatus: string;
+  sortBy: string;
   levelOptions: string[];
 }
 
@@ -42,11 +45,29 @@ function modalityOptions() {
 }
 
 /** Los filtros que cambiaron respecto del estado inicial (activos, todos los niveles, todas las modalidades), ya en texto. */
-function activeFilterLabels({ status, level, modality }: FilterValues): string[] {
+function paymentOptions() {
+  return PAYMENT_STATUS_FILTER_OPTIONS.map((option) => (
+    <option key={option.value} value={option.value}>
+      {option.label}
+    </option>
+  ));
+}
+
+function sortOptions() {
+  return SORT_OPTIONS.map((option) => (
+    <option key={option.value} value={option.value}>
+      {option.label}
+    </option>
+  ));
+}
+
+function activeFilterLabels({ status, level, modality, paymentStatus, sortBy }: FilterValues): string[] {
   const labels: string[] = [];
   if (status !== "activo") labels.push(`Estado: ${status === "todos" ? "Todos" : (STUDENT_STATUS_LABEL as Record<string, string>)[status] ?? status}`);
   if (level !== "todos") labels.push(`Nivel: ${level}`);
   if (modality !== "todos") labels.push(`Modalidad: ${(MODALITY_LABEL as Record<string, string>)[modality] ?? modality}`);
+  if (paymentStatus !== "todos") labels.push(`Pago: ${PAYMENT_STATUS_FILTER_OPTIONS.find((option) => option.value === paymentStatus)?.label ?? paymentStatus}`);
+  if (sortBy !== "nombre") labels.push(`Orden: ${SORT_OPTIONS.find((option) => option.value === sortBy)?.label ?? sortBy}`);
   return labels;
 }
 
@@ -59,7 +80,7 @@ function activeFilterLabels({ status, level, modality }: FilterValues): string[]
  * siguen en la página (ocultos con CSS en móvil, no por JavaScript), así buscar por nombre en móvil conserva los filtros activos.
  */
 export function StudentsFiltersForm(values: FilterValues) {
-  const { search, status, level, modality, levelOptions } = values;
+  const { search, status, level, modality, paymentStatus, sortBy, levelOptions } = values;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetSearch, setSheetSearch] = useState(search);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -83,7 +104,7 @@ export function StudentsFiltersForm(values: FilterValues) {
             </Field>
           </div>
 
-          <div className="hidden min-w-0 flex-[3_1_480px] gap-3 nav:grid nav:grid-cols-3">
+          <div className="hidden min-w-0 flex-[4_1_640px] gap-3 nav:grid nav:grid-cols-5">
             <Field label="Estado" htmlFor="status">
               <SelectInput id="status" name="status" defaultValue={status}>
                 <option value="todos">Todos</option>
@@ -100,6 +121,16 @@ export function StudentsFiltersForm(values: FilterValues) {
               <SelectInput id="modality" name="modality" defaultValue={modality}>
                 <option value="todos">Todas</option>
                 {modalityOptions()}
+              </SelectInput>
+            </Field>
+            <Field label="Estado de pago" htmlFor="pago">
+              <SelectInput id="pago" name="pago" defaultValue={paymentStatus}>
+                {paymentOptions()}
+              </SelectInput>
+            </Field>
+            <Field label="Ordenar por" htmlFor="orden">
+              <SelectInput id="orden" name="orden" defaultValue={sortBy}>
+                {sortOptions()}
               </SelectInput>
             </Field>
           </div>
@@ -167,6 +198,16 @@ export function StudentsFiltersForm(values: FilterValues) {
               <SelectInput id="sheet-modality" name="modality" defaultValue={modality}>
                 <option value="todos">Todas</option>
                 {modalityOptions()}
+              </SelectInput>
+            </Field>
+            <Field label="Estado de pago" htmlFor="sheet-pago">
+              <SelectInput id="sheet-pago" name="pago" defaultValue={paymentStatus}>
+                {paymentOptions()}
+              </SelectInput>
+            </Field>
+            <Field label="Ordenar por" htmlFor="sheet-orden">
+              <SelectInput id="sheet-orden" name="orden" defaultValue={sortBy}>
+                {sortOptions()}
               </SelectInput>
             </Field>
           </form>
