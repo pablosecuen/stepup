@@ -4,6 +4,12 @@ import { classifyLessonTiming, selectCurrentOrNextOccurrence } from "../next-cla
 
 const NOW = new Date("2026-09-22T15:00:00.000Z");
 
+test("una reprogramación ofrece el destino y nunca el horario original liberado",()=>{
+  const original={start:"2026-09-22T16:00:00.000Z",end:"2026-09-22T17:00:00.000Z",status:"rescheduled",occupiesSlot:false};
+  const destination={start:"2026-09-22T18:00:00.000Z",end:"2026-09-22T19:00:00.000Z",status:"rescheduled"};
+  assert.equal(selectCurrentOrNextOccurrence([original,destination],NOW)?.occurrence,destination);
+});
+
 test("classifyLessonTiming: ahora antes del inicio -> upcoming", () => {
   assert.equal(classifyLessonTiming({ start: "2026-09-22T16:00:00.000Z", end: "2026-09-22T17:00:00.000Z" }, NOW), "upcoming");
 });

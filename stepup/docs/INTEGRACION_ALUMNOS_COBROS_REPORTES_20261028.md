@@ -25,3 +25,13 @@ Entrega local original: rama alumnos-cobros-reportes, commits 358dca4, 86424a0, 
 Restan ACC-07 (trabajo sin red), INI-04 (tarjeta mensual dentro de Inicio), INI-14 (preferencia de ubicación de navegación), INI-15 (crear/eliminar ejemplos), ALU-10 (eliminación definitiva, excluida del bloque por su impacto), PAG-09 y CFG-02 (reparaciones/reconciliaciones seguras), UX-01 (verificación física completa). No se convierte el inventario antiguo de archivos en una lista de funciones ausentes.
 
 El cuadro de puntualidad mostrado en el video del 28/10 queda como pedido separado: esta integración no lo elimina.
+
+## Verificación autenticada de la integración en producción
+
+Sólo cuenta de QA matias. Alta a 375 px: QA Integración Mensual, edad 30, dos objetivos, cuota de $1.500 y mes declarado pago. Reabrir confirmó los datos; edición a edad 31 y objetivos actualizados guardada. Cobros a 390 px: una obligación de $1.500, un pago declarado y mes saldado, sin puntaje inventado por historial insuficiente. Pausar y restaurar exigiendo elección «Cobrar desde este mes» funcionó; conservó el mes saldado sin duplicarlo.
+
+Lista a 430 px: el menú de QA Tres Prueba abrió sus reportes, no los de otro alumno. Compartir preparó el archivo y ofreció descargar/copiar/selector del sistema. La descarga produjo un PDF real de 83.842 bytes, firma %PDF-. No se abrió un contacto ni se envió nada. Captura local: output/qa-parity-20261028-codex/compartir-pdf-integrado-qa.png. Se restauró el tamaño de escritorio.
+
+Se detectó además que el selector de próxima clase aún incluía el origen liberado de una reprogramación; se corrigió para que el menú y el perfil utilicen el destino real, conservando la tarjeta histórica del origen en el calendario. Se agregó prueba de regresión. Continúan separadas las pruebas físicas de iPhone/Safari y las ocho diferencias listadas arriba.
+
+Verificación final tras la corrección de próxima clase: 5105/5105 pruebas, tipos/lint/build sin errores. La reapertura de la edición de QA Integración Mensual confirmó edad 31 y los objetivos actualizados. No se enviaron reportes ni se cerró la sesión de QA.

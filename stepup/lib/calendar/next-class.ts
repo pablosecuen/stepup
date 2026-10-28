@@ -22,9 +22,11 @@ export interface LessonTimingCandidate {
   start: string;
   end: string;
   status?: string;
+  occupiesSlot?: boolean;
 }
 
 export function classifyLessonTiming(candidate: LessonTimingCandidate, now: Date): LessonTimingStatus {
+  if (candidate.occupiesSlot === false) return "excluded";
   if (candidate.status !== undefined && !(ACTIVE_LESSON_STATUSES as readonly string[]).includes(candidate.status)) {
     return "excluded";
   }

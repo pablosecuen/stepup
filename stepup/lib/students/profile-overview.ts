@@ -119,6 +119,7 @@ export interface NextClassCandidate {
   start: string;
   end: string;
   status: string;
+  occupiesSlot?: boolean;
   title: string | null;
   modality: string;
 }
