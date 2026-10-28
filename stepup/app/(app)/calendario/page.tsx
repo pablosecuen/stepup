@@ -17,6 +17,8 @@ interface CalendarioSearchParams {
   day?: string;
   /** Id de la clase cuyo flujo de «Reprogramar» se abre directo (desde el resultado «Reprogramada» del registro). */
   reprogramar?: string;
+  reprogramarAlumno?: string;
+  reprogramarInicio?: string;
 }
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<CalendarioSearchParams> }) {
@@ -61,5 +63,6 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     return qs ? `/calendario?${qs}` : "/calendario";
   }
 
-  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} rescheduleItemId={params.reprogramar} />;
+  const requestedStudentClass = params.reprogramarAlumno && params.reprogramarInicio ? items.find(item => item.participantIds.includes(params.reprogramarAlumno!) && item.start === params.reprogramarInicio && item.status !== "cancelled" && item.status !== "completed") : undefined;
+  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} rescheduleItemId={params.reprogramar ?? requestedStudentClass?.id} />;
 }

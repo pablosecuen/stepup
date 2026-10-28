@@ -49,3 +49,12 @@ export async function listPriceHistory(ctx: AuthenticatedDbContext, studentId: s
   });
   return (data as StudentPriceHistoryRow[]).map(toPriceHistoryRecord);
 }
+
+export async function recordLevelAchievement(ctx: AuthenticatedDbContext, input: { studentId: string; operationId: string; level: string; date: string; note: string; confirmWarning: boolean; expectedLevel: string }): Promise<void> {
+  const { error } = await ctx.supabase.rpc("record_student_level_achievement", {
+    p_student_id: input.studentId, p_operation_id: input.operationId,
+    p_level: input.level, p_achieved_on: input.date, p_note: input.note,
+    p_confirm_warning: input.confirmWarning, p_expected_level: input.expectedLevel,
+  });
+  if (error) throw new Error(error.message);
+}

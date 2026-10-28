@@ -67,10 +67,11 @@ export default async function AlumnoProfilePage({
     student = await getStudent(ctx, id);
     if (student && tab === "resumen") {
       // Sólo lecturas: cifras de clases dictadas, próxima clase del calendario y tareas pendientes (la misma fuente que la pestaña Tareas).
-      [stats, nextClass, pendingTasks] = await Promise.all([
+      [stats, nextClass, pendingTasks, totalCollected] = await Promise.all([
         loadProfileClassStats(ctx, id),
         loadStudentNextClass(ctx, student),
         listPendingHomeworkTasksForStudent(ctx, id),
+        loadStudentTotalCollected(ctx, id),
       ]);
     }
     if (student && tab === "informacion") {
@@ -90,7 +91,7 @@ export default async function AlumnoProfilePage({
       attendanceByRegistrationId = Object.fromEntries(held.flatMap((r) => (r.attendance ? [[r.registrationId, r.attendance.status] as const] : [])));
     }
     if (student && tab === "tareas") pendingTasks = await listPendingHomeworkTasksForStudent(ctx, id);
-    if (student && tab === "progreso") evaluationEntries = await listEvaluationsForStudent(ctx, id);
+    if (student && tab === "progreso") [evaluationEntries, levelHistory] = await Promise.all([listEvaluationsForStudent(ctx, id), listLevelHistory(ctx, id)]);
     if (student && tab === "cobros") {
       // R2: sólo lectura. Esta pestaña puede abrirse directamente (sin pasar antes por Centro de cobros): la generación de
       // mensualidades/cuotas del período la dispara `ChargeGenerationTrigger` (Server Action) al mostrarse.

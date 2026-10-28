@@ -25,6 +25,7 @@ import { formatInstantDayLongTime } from "@/lib/format/date-format";
 import { resolveRegistrationHeader } from "@/lib/lessons/registration-form";
 import { instantDateKey } from "@/lib/calendar/civil-calendar";
 import { safeCalendarReturn } from "@/lib/registro/return-path";
+import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registrar clase · TeacherFlow" };
@@ -40,6 +41,7 @@ export default async function RegistroClasePage({ params, searchParams }: { para
   let detail;
   let calendarLesson;
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
+  let showPerClassBillingControls = false;
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
   let lessonContent: LessonContent | null = null;
   let materialLibrary: LibraryMaterial[] = [];
@@ -56,6 +58,7 @@ export default async function RegistroClasePage({ params, searchParams }: { para
     if (detail && calendarLesson) {
       const students = await listStudents(ctx);
       const studentById = new Map(students.map((s) => [s.id, s]));
+      showPerClassBillingControls = detail.participants.some(p => { const s = studentById.get(p.studentId); return s && resolveStudentBillingPlan({billingPlan:s.billingPlan as StudentBillingPlan|null,billingType:s.billingType,price:s.price}).type === "per_class"; });
       participantsInfo = detail.participants.map((p) => {
         const student = studentById.get(p.studentId);
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
@@ -157,6 +160,7 @@ export default async function RegistroClasePage({ params, searchParams }: { para
         classLabel={`${ACTIVITY_KIND_LABEL[detail.registration.activityKind as keyof typeof ACTIVITY_KIND_LABEL] ?? "Clase"} · ${formatInstantDayLongTime(calendarLesson.startAt)}`}
         knownChargeIds={chargeLines.map((line) => line.chargeId)}
         initialContent={lessonContent}
+        showPerClassBillingControls={showPerClassBillingControls}
         materialLibrary={materialLibrary}
         registration={detail.registration}
         participants={participantsInfo}

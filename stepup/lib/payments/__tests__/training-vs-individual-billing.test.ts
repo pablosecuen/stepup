@@ -18,12 +18,19 @@ function realSync() {
 
 const STUDENT = { id: "alumna", billingPlan: { type: "per_class", amount: 27500 }, billingType: "por_clase", price: 27500 };
 
-async function charge(input: { activityKind: "class" | "training"; outcome?: AdhocOutcome; covered?: boolean }): Promise<{ result: unknown; coverageQueries: unknown[] }> {
+test("clase marcada no cobrable no genera un cargo suelto, aun con cancelación que normalmente cobra", async () => {
+  for (const outcome of ["clase_dictada", "cancelada_tarde"] as const) {
+    assert.deepEqual((await charge({activityKind:"class",outcome,isBillable:false})).result,[{studentId:"alumna",amount:null}]);
+    assert.deepEqual((await charge({activityKind:"class",outcome,isBillable:true})).result,[{studentId:"alumna",amount:27500}]);
+  }
+});
+
+async function charge(input: { activityKind: "class" | "training"; outcome?: AdhocOutcome; covered?: boolean; isBillable?: boolean }): Promise<{ result: unknown; coverageQueries: unknown[] }> {
   const outcome = input.outcome ?? "clase_dictada";
   const charges: unknown[] = [];
   const coverageQueries: unknown[] = [];
   const run = realSync()(
-    async () => ({ registration: { status: "completed", outcome, activityKind: input.activityKind, calendarLessonId: "clase-1", scheduledStartAt: "2026-10-23T18:00:00.000Z", actualStartedAt: null, createdAt: "2026-10-23T19:00:00.000Z", countsAsClass: isAdhocClassHeld(outcome, false), lateCancellationPolicy: outcome === "cancelada_tarde" ? "cobrar_100" : null, lateCancellationPercentage: null }, participants: [{ studentId: STUDENT.id }] }),
+    async () => ({ registration: { status: "completed", outcome, activityKind: input.activityKind, isBillable: input.isBillable, calendarLessonId: "clase-1", scheduledStartAt: "2026-10-23T18:00:00.000Z", actualStartedAt: null, createdAt: "2026-10-23T19:00:00.000Z", countsAsClass: isAdhocClassHeld(outcome, false), lateCancellationPolicy: outcome === "cancelada_tarde" ? "cobrar_100" : null, lateCancellationPercentage: null }, participants: [{ studentId: STUDENT.id }] }),
     async () => [STUDENT],
     resolveStudentBillingPlan,
     computePerClassBilledAmount,

@@ -57,6 +57,7 @@ export function CalendarView({
               <ClipboardDocumentCheckIcon className="h-3.5 w-3.5 nav:h-4 nav:w-4" aria-hidden />
               Clases por registrar
             </PrivateLink>
+            <PrivateLink href={`/calendario/informacion?volver=${encodeURIComponent(buildHref({ view, week: weekStartKey, day: dayKey }))}`} className={`${linkClass()} ${MOBILE_CHIP}`}>Información</PrivateLink>
           </nav>
         </div>
         <div className="order-first w-full nav:order-none nav:w-auto">

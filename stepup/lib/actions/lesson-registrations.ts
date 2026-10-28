@@ -310,7 +310,7 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
       if (!student) return null;
       const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
       if (plan.type !== "per_class") return null;
-      const amount = isCovered(p.studentId) ? 0 : computePerClassBilledAmount({
+      const amount = detail.registration.isBillable === false || isCovered(p.studentId) ? 0 : computePerClassBilledAmount({
         perClassAmount: plan.amount,
         outcome,
         isClassHeld: detail.registration.countsAsClass,

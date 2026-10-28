@@ -212,7 +212,8 @@ test("cableado: cada pestaña carga sólo lo suyo y el Resumen/Información NUNC
   assert.match(page, /tab === "resumen"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentNextClass\(ctx, student\),\s*listPendingHomeworkTasksForStudent\(ctx, id\)/);
   assert.match(page, /tab === "informacion"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentTotalCollected\(ctx, id\)/);
   assert.match(page, /tab === "clases"\) \{[\s\S]*?listCompletedRegistrationsForStudentReport\(ctx, id\)/);
-  assert.match(code("components/students/profile/student-profile-view.tsx"), /<ResumenTabContent student=\{student\} stats=\{data\.stats\} nextClass=\{data\.nextClass\} pendingTasks=\{data\.pendingTasks\} \/>/);
+  assert.match(code("components/students/profile/student-profile-view.tsx"), /<ResumenTabContent student=\{student\} stats=\{data\.stats\} nextClass=\{data\.nextClass\} pendingTasks=\{data\.pendingTasks\} totalCollected=\{data\.totalCollected\} \/>/);
+  assert.match(page, /tab === "resumen"\) \{[\s\S]*?loadStudentTotalCollected\(ctx, id\)/, "la inversión histórica usa la lectura de pagos vigentes");
   assert.match(page, /<StudentProfileView\s+student=\{student\}\s+tab=\{tab\}/);
   // R2: la página NUNCA escribe durante el GET (ni genera cobros ni barre PDFs). La generación idempotente de cobros la dispara
   // un Server Action (POST) desde `ChargeGenerationTrigger`, sólo en la pestaña Cobros; el barrido de PDFs, desde `ReportCleanupTrigger`.

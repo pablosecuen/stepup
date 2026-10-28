@@ -1,5 +1,7 @@
 # Matriz única de equivalencia: aplicación original ↔ web
 
+> Actualización Codex 28/10: mapa por módulos y cambios de esta ronda en `ESTRUCTURA_FUNCIONAL_APP_WEB.md`. Las descripciones antiguas «migración sin aplicar» de secciones anteriores no reflejan la ejecución más reciente: `20261029100000` y las tres migraciones `20261030*` están aplicadas. Nuevo código aún pendiente de publicar por acceso de Vercel CLI. Logros de nivel (ALU-14), participantes de clase suelta/ocurrencia (CAL-09), Información del Calendario (CAL-17), tutorial reabrible (ACC-04), controles cobrable/consumo (REG-04), accesos del resumen e inversión histórica (ALU-12) implementados en esta ronda. Esto no convierte el resto del inventario en equivalente ni acredita una prueba física.
+
 Estado vivo. Fuente de verdad del cierre de la migración funcional. **La migración NO está cerrada** mientras exista alguna fila en «falta implementar» o «falta verificar».
 
 - Original (sólo lectura): `C:\Users\joaqu\Downloads\aca va tdo\TeacherFlow_NuevaClase\TeacherFlow\src` (`features/*`, 12 módulos, ~420 archivos fuente).

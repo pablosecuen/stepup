@@ -15,6 +15,7 @@ import { RegistroPageFrame } from "@/components/registro/registro-page-frame";
 import { RegistrationWorkspace } from "../../[calendarLessonId]/registration-workspace";
 import { formatParticipantNamesSentence } from "@/lib/lessons/registration-form";
 import { formatInstantDayLongTime } from "@/lib/format/date-format";
+import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 import { LessonContentCard } from "@/components/registro/lesson-content-card";
 import { getLessonContent, listMaterialLibrary } from "@/lib/repositories/lesson-content";
 import { loadRegistrationIncidents } from "@/lib/repositories/origin-incidents";
@@ -42,6 +43,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
 
   let detail;
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
+  let showPerClassBillingControls = false;
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
   let lessonContent: LessonContent | null = null;
   let materialLibrary: LibraryMaterial[] = [];
@@ -55,6 +57,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
     if (detail) {
       const students = await listStudents(ctx);
       const studentById = new Map(students.map((s) => [s.id, s]));
+      showPerClassBillingControls = detail.participants.some(p => { const s = studentById.get(p.studentId); return s && resolveStudentBillingPlan({billingPlan:s.billingPlan as StudentBillingPlan|null,billingType:s.billingType,price:s.price}).type === "per_class"; });
       participantsInfo = detail.participants.map((p) => {
         const student = studentById.get(p.studentId);
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
@@ -130,6 +133,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
         classLabel={`${ACTIVITY_KIND_LABEL[registration.activityKind]} · ${formatInstantDayLongTime(scheduledStartAt)}`}
         knownChargeIds={knownChargeIds}
         initialContent={lessonContent}
+        showPerClassBillingControls={showPerClassBillingControls}
         materialLibrary={materialLibrary}
         registration={registration}
         participants={participantsInfo}

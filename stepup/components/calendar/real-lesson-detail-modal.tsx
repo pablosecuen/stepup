@@ -16,6 +16,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { LessonEditDialog, type LessonEditMode } from "@/components/calendar/lesson-edit-dialog";
+import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -48,6 +49,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   // Nombre, duración, restaurar y eliminar: pasos propios (`LessonEditDialog`) que vuelven a las acciones con «Volver».
   const [editMode, setEditMode] = useState<LessonEditMode | null>(null);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
   const [calendarPath, setCalendarPath] = useState<string | null>(null);
@@ -171,6 +173,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const canRestore = !!item.materializedLessonId && !!item.recurrenceId && (item.status === "cancelled" || item.status === "rescheduled");
   const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
 
+  if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
   if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
   const step: "actions" | "reschedule" | "confirm" | "cancel" = reschedulingOpen && reschedulePreview ? "confirm" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
@@ -330,6 +333,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
 
             {(canEdit || canRestore || canDeleteCancelled) && (
               <section aria-label="Más acciones" className="flex flex-col gap-2 border-t-[1.5px] border-border pt-3">
+                {canEdit && <Button variant="secondary" block onClick={() => setParticipantsOpen(true)}><UserPlusIcon className="h-5 w-5" aria-hidden />Modificar participantes de esta clase</Button>}
                 {canEdit && (
                   <Button variant="secondary" block onClick={() => setEditMode("title")}>
                     <PencilIcon className="h-5 w-5" aria-hidden />

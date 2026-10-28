@@ -18,7 +18,8 @@ export const metadata = { title: "Clase no programada · TeacherFlow" };
  * `NewClassScreen.tsx` (móvil). Sólo alumnos ACTIVOS son seleccionables,
  * mismo criterio que `StudentOrGroupPicker.tsx`.
  */
-export default async function RegistroNuevoPage() {
+export default async function RegistroNuevoPage({ searchParams }: { searchParams: Promise<{ alumno?: string }> }) {
+  const { alumno } = await searchParams;
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
@@ -52,7 +53,7 @@ export default async function RegistroNuevoPage() {
       title="Clase no programada"
       subtitle="Para una clase que diste sin reservarla antes en el Calendario — nunca crea ninguna reserva, sólo el registro pedagógico."
     >
-      <NuevoRegistroForm students={activeStudents} />
+      <NuevoRegistroForm students={activeStudents} initialStudentId={activeStudents.some(s => s.id === alumno) ? alumno : undefined} />
     </FormPage>
   );
 }

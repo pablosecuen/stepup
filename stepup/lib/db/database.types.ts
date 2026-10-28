@@ -435,6 +435,8 @@ export type LessonRegistrationOutcome =
 export type LateCancellationPolicyRow = "cobrar_100" | "cobrar_porcentaje" | "descontar_del_paquete" | "no_cobrar";
 
 export interface LessonRegistrationRow {
+  is_billable?: boolean;
+  consumes_monthly_package?: boolean;
   id: UUID;
   owner_id: UUID;
   legacy_mobile_id: string | null;

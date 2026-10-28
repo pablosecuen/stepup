@@ -232,6 +232,7 @@ export function RegistrationWorkspace({
   returnHref = null,
   classLabel = "",
   knownChargeIds = [],
+  showPerClassBillingControls = false,
 }: {
   registration: LessonRegistrationRecord;
   participants: { studentId: string; name: string; level: string }[];
@@ -248,6 +249,7 @@ export function RegistrationWorkspace({
   classLabel?: string;
   /** Cobros de esta clase que ya existían al abrir la pantalla (al editar un registro finalizado no se vuelven a preguntar). */
   knownChargeIds?: string[];
+  showPerClassBillingControls?: boolean;
   /** Biblioteca de materiales de la cuenta (para elegirlos en la clase). */
   materialLibrary?: LibraryMaterial[];
   /** Clase programada: permite elegir/cambiar el resultado de la clase («¿Qué pasó con esta clase?»). Ausente en una clase no programada (el resultado se elige al crearla). */
@@ -286,6 +288,8 @@ export function RegistrationWorkspace({
     activityNotes: initialContent?.activityNotes ?? "",
     internalNotes: initialContent?.internalNotes ?? "",
     materialIds: initialContent?.materials.map((m) => m.legacyId) ?? [],
+    isBillable: initialContent?.isBillable ?? registration.isBillable ?? true,
+    consumesMonthlyPackage: initialContent?.consumesMonthlyPackage ?? registration.consumesMonthlyPackage ?? true,
   }));
   const [progressSaved, setProgressSaved] = useState(false);
   function handleContentChange(next: PedagogicalContentInput | ((previous: PedagogicalContentInput) => PedagogicalContentInput)) {
@@ -498,7 +502,7 @@ export function RegistrationWorkspace({
     startTransition(async () => {
       await flushPendingCaptions();
       const headerFields = {
-        content: countsAsClass ? liveContent : undefined,
+        content: liveContent,
         homeworkDescription: countsAsClass && assignsHomework ? commonHomeworkDescription.trim() || null : undefined,
         homeworkDueDate: countsAsClass && assignsHomework ? commonHomeworkDueDate || null : undefined,
         actualDurationMinutes: countsAsClass ? Number(durationMinutes) || null : null,
@@ -605,6 +609,10 @@ export function RegistrationWorkspace({
       )}
 
       {/* 2) Duración real. */}
+      {showPerClassBillingControls && <Card><h2 className="font-display text-card font-semibold">Cobro de esta clase</h2><div className="mt-3 flex flex-col gap-3">
+        <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4"><span>¿Es cobrable?</span><input type="checkbox" role="switch" checked={content.isBillable !== false} onChange={event => handleContentChange(current => ({...current,isBillable:event.target.checked}))} className="h-6 w-6 shrink-0 accent-accent" /></label>
+        <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4"><span>¿Consume una clase de la cuota mensual?</span><input type="checkbox" role="switch" checked={content.consumesMonthlyPackage !== false} onChange={event => handleContentChange(current => ({...current,consumesMonthlyPackage:event.target.checked}))} className="h-6 w-6 shrink-0 accent-accent" /></label>
+      </div><p className="mt-3 text-sm text-textMuted">Estas opciones se aplican al cobro por clase. Los planes por período y los pagos ya registrados se conservan.</p></Card>}
       {countsAsClass && (
         <Card>
           <div className="sm:w-60">

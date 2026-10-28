@@ -52,7 +52,7 @@ test("situación real del cobro de UNA clase: pagada, parcial o pendiente con su
 test("cableado: el cobro por clase usa la cobertura por acuerdo y período y la pantalla del registro muestra el cobro de ESA clase", () => {
   const action = read("lib/actions/lesson-registrations.ts");
   assert.match(action, /listStudentsCoveredByTrainingPlan\(ctx, \{ activityKind: detail\.registration\.activityKind, recurrenceId: calendarLesson\?\.recurrenceId \?\? null,/);
-  assert.match(action, /const amount = isCovered\(p\.studentId\) \? 0 : computePerClassBilledAmount\(/);
+  assert.match(action, /const amount = detail\.registration\.isBillable === false \|\| isCovered\(p\.studentId\) \? 0 : computePerClassBilledAmount\(/);
   assert.match(read("app/(app)/registro/[calendarLessonId]/page.tsx"), /<RegistrationChargeCard lines=\{chargeLines\} coveredByTrainingPlan=\{coveredByTrainingPlan\} \/>/);
   const coverage = read("lib/repositories/training-coverage.ts");
   assert.match(coverage, /eq\("training_billing_agreement_id", matchedAgreementId\)/, "la cuota debe ser de ESE acuerdo");

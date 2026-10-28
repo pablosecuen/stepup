@@ -27,7 +27,7 @@ const ADHOC_OPERATION_ID_STORAGE_KEY = "teacherflow:registro-adhoc:operation-id"
  * protegerse, así que no hace falta el mecanismo de eco de valores de
  * `new-lesson-form.tsx`.
  */
-export function NuevoRegistroForm({ students }: { students: { id: string; name: string; level: string }[] }) {
+export function NuevoRegistroForm({ students, initialStudentId }: { students: { id: string; name: string; level: string }[]; initialStudentId?: string }) {
   const router = useRouter();
   // Idempotencia real que sobrevive una RECARGA (a pedido explícito de
   // Joaquín — un `useState(() => crypto.randomUUID())` sólo sobrevive
@@ -37,7 +37,7 @@ export function NuevoRegistroForm({ students }: { students: { id: string; name: 
   // ÚNICAMENTE tras una respuesta exitosa confirmada — nunca antes, nunca
   // ante un error (ver `useDraftOperationId`).
   const { operationId, clear: clearOperationId } = useDraftOperationId(ADHOC_OPERATION_ID_STORAGE_KEY);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => initialStudentId && students.some(s => s.id === initialStudentId) ? [initialStudentId] : []);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");

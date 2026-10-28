@@ -17,10 +17,12 @@ export interface LevelHistoryRecord {
   level: string;
   fromLevel: string | null;
   achievedOn: string;
+  durationDays?: number | null;
+  note?: string | null;
 }
 
 export function toLevelHistoryRecord(row: StudentLevelHistoryRow): LevelHistoryRecord {
-  return { id: row.id, level: row.level, fromLevel: row.from_level, achievedOn: row.achieved_on };
+  return { id: row.id, level: row.level, fromLevel: row.from_level, achievedOn: row.achieved_on, durationDays: row.duration_days, note: row.note };
 }
 
 export interface PriceHistoryRecord {

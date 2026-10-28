@@ -76,6 +76,9 @@ async function start({ port = 5441, upTo = null, migrationsDir = null } = {}) {
   }
   async function stop() {
     try { await admin.end(); } catch {}
+    // embedded-postgres espera un evento `exit` nuevo incluso si el hijo ya terminó en Windows.
+    // En ese caso no hay servidor que detener y esperar de nuevo deja colgada la prueba.
+    if (server.process && (server.process.exitCode !== null || server.process.signalCode !== null)) return;
     // En Windows el borrado del directorio temporal puede fallar con EBUSY justo después de apagar: no debe tumbar la prueba (el sistema lo limpia después).
     try { await server.stop(); } catch {}
   }

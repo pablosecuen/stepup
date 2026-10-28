@@ -55,6 +55,7 @@ export function ConfigurationView({
       </SettingsSection>
 
       <SettingsSection id="preferencias" title="Preferencias" description="Organizá cómo funciona TeacherFlow." columns="max-w-[480px]">
+        <SettingsCard><SettingsRow title="Tutorial de TeacherFlow" description="Volvé a recorrer las funciones principales."><PrivateLink href="/configuracion/tutorial" className={linkClass()}>Ver tutorial</PrivateLink></SettingsRow></SettingsCard>
         <SettingsCard>
           <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />
         </SettingsCard>

@@ -20,6 +20,7 @@ import { buildStudentPunctuality } from "@/lib/live-class/punctuality";
 import { todayInArgentina } from "@/lib/format/date-format";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
+import { LevelAchievementCard } from "@/components/students/profile/level-achievement-card";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
 import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
@@ -64,7 +65,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
       <EnterOnChange changeKey={tab} className="mt-5">
         {tab === "resumen" && (
           <div className="flex flex-col gap-6">
-            <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} />
+            <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} totalCollected={data.totalCollected} />
             <ChangeStatusForm studentId={student.id} currentStatus={student.status} />
           </div>
         )}
@@ -74,7 +75,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
             <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />
           </div>
         )}
-        {tab === "progreso" && <ProgresoTabContent entries={data.evaluationEntries} />}
+        {tab === "progreso" && <div className="flex flex-col gap-4"><LevelAchievementCard studentId={student.id} levels={student.levels} history={data.levelHistory} dateJoined={student.dateJoined} today={data.todayDateKey} /><ProgresoTabContent entries={data.evaluationEntries} /></div>}
         {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
         {tab === "cobros" && (
           <CobrosTabContent studentId={student.id} studentName={student.name} billingPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price })} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />

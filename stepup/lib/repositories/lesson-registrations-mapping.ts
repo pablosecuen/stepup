@@ -28,6 +28,8 @@ export interface LessonRegistrationRecord {
   homeworkDescription: string | null;
   homeworkDueDate: string | null;
   billedAmount: number | null;
+  isBillable?: boolean;
+  consumesMonthlyPackage?: boolean;
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   actualStartedAt: string | null;
@@ -58,6 +60,8 @@ export function toLessonRegistrationRecord(row: LessonRegistrationRow): LessonRe
     homeworkDescription: row.homework_description,
     homeworkDueDate: row.homework_due_date,
     billedAmount: row.billed_amount,
+    isBillable: row.is_billable !== false,
+    consumesMonthlyPackage: row.consumes_monthly_package !== false,
     scheduledStartAt: row.scheduled_start_at,
     scheduledEndAt: row.scheduled_end_at,
     actualStartedAt: row.actual_started_at,

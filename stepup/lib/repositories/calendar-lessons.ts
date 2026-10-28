@@ -1,4 +1,6 @@
 import "server-only";
+import type { CalendarViewItem } from "@/lib/calendar/occurrences";
+import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import type { ClosedOutcome } from "@/lib/calendar/types";
 import type { CalendarLessonParticipantRow, CalendarLessonRow } from "@/lib/db/database.types";
@@ -342,4 +344,21 @@ export async function deleteCancelledCalendarLesson(ctx: AuthenticatedDbContext,
   const { data, error } = await ctx.supabase.rpc("delete_cancelled_calendar_lesson", { p_payload: { lesson_id: lessonId } });
   if (error) throw error;
   return { deleted: Boolean((data as { deleted?: boolean } | null)?.deleted) };
+}
+
+export async function changeSingleLessonParticipants(ctx: AuthenticatedDbContext, item: CalendarViewItem, students: StudentRecord[], studentIds: string[], expectedIds: string[]): Promise<void> {
+  const primary = students.find(s => s.id === item.studentId);
+  if (!primary) throw new Error("El alumno principal no está disponible.");
+  const { error } = await ctx.supabase.rpc("change_calendar_lesson_participants", {
+    p_payload: {
+      lesson_id: item.materializedLessonId, recurrence_id: item.recurrenceId, occurrence_key: item.occurrenceKey,
+      changes: { class_title: item.title },
+      base: { primary_student_id: primary.id, student_name: primary.name, level: primary.levels[0] ?? "", lesson_type: item.lessonType,
+        start_at: item.start, end_at: item.end, modality: item.modality, activity_kind: item.activityKind, class_title: item.title,
+        participants: item.participantIds.map(id => { const s=students.find(student => student.id===id); if(!s) throw new Error("Un participante ya no existe."); return { student_id:id,student_name:s.name,level:s.levels[0]??"" }; }),
+      },
+    },
+    p_student_ids: studentIds, p_expected_ids: expectedIds,
+  });
+  if (error) throw new Error(error.message);
 }

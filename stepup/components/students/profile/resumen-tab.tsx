@@ -1,14 +1,15 @@
 import PrivateLink from "@/components/nav/private-link";
 import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { Card, CardHeader } from "@/components/ui/card";
-import { linkClass } from "@/components/ui/button";
+import { linkClass, buttonClass } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { EmptyState } from "@/components/ui/states";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { PendingHomeworkTask } from "@/lib/lessons/homework";
 import { ATTENDANCE_STATUS_LABEL } from "@/lib/lessons/attendance";
 import { MODALITY_LABEL } from "@/lib/students/constants";
-import { formatGrade, formatHours } from "@/lib/format/number-format";
+import { formatGrade, formatHours, formatMoney } from "@/lib/format/number-format";
+import { instantDateKey } from "@/lib/calendar/civil-calendar";
 import { formatInstantDate, formatInstantDayLongTime } from "@/lib/format/date-format";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import {
@@ -87,11 +88,13 @@ export function ResumenTabContent({
   stats,
   nextClass,
   pendingTasks,
+  totalCollected,
 }: {
   student: StudentRecord;
   stats: ProfileClassStats;
   nextClass: StudentNextClass;
   pendingTasks: PendingHomeworkTask[];
+  totalCollected: number;
 }) {
   const audience = resolveProfileAudience({ status: student.status, classesHeld: stats.classesHeld });
   const lastClassDetail = stats.lastAttended ? ATTENDANCE_STATUS_LABEL[stats.lastAttended.attendance] : null;
@@ -104,6 +107,13 @@ export function ResumenTabContent({
 
   return (
     <div className="flex flex-col gap-4">
+      <Card><h2 className="font-display text-card font-semibold">Acciones rápidas</h2><div className="mt-3 flex flex-wrap gap-2">
+        {student.status === "activo" && <PrivateLink href={`/registro/nuevo?alumno=${encodeURIComponent(student.id)}`} className={buttonClass({variant:"secondary"})}>Registrar clase</PrivateLink>}
+        <PrivateLink href={`/alumnos/${student.id}?tab=cobros`} className={buttonClass({variant:"secondary"})}>Registrar pago</PrivateLink>
+        {student.status === "activo" && nextClass.kind === "found" && <PrivateLink href={`/calendario?view=day&day=${instantDateKey(nextClass.start)}&reprogramarAlumno=${encodeURIComponent(student.id)}&reprogramarInicio=${encodeURIComponent(nextClass.start)}`} className={buttonClass({variant:"secondary"})}>Reprogramar clase</PrivateLink>}
+        <PrivateLink href={`/alumnos/${student.id}/editar`} className={buttonClass({variant:"secondary"})}>Editar alumno</PrivateLink>
+      </div></Card>
+      <Metric label="Inversión histórica" value={formatMoney(totalCollected)} detail="Pagos vigentes asignados a los cobros del alumno." />
       {audience === "archived" && <Notice tone="info">Alumno archivado: conserva todo su historial y no tiene agenda.</Notice>}
       {audience === "inactive" && (
         <Notice tone="info">
