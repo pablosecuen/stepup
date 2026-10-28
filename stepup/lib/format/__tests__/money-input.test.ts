@@ -47,7 +47,7 @@ test("un importe guardado vuelve a escribirse en el campo sin cambiar de valor (
 });
 
 test("cableado: ningún campo de importe es un <input type=number> ni usa Number() sobre el texto; todos pasan por parseMoneyInput", () => {
-  const student = read("components/students/student-form-fields.tsx");
+  const student = read("components/students/first-month-fields.tsx");
   assert.match(student, /id="price" name="price" type="text" inputMode="decimal"/);
   assert.doesNotMatch(student, /id="price"[^>]*type="number"/);
   assert.match(read("lib/actions/students.ts"), /function readMoney\(formData: FormData, key: string\): number \{[\s\S]*parseMoneyInput\(/);

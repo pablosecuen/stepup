@@ -378,6 +378,45 @@ export async function changeStudentMonthlyAmount(
   return { chargeCreated: result.charge_created, chargeUpdated: result.charge_updated, previousChargeAmount: result.previous_charge_amount === null ? null : Number(result.previous_charge_amount), effectiveFrom: result.effective_from };
 }
 
+export interface FirstMonthResult {
+  situation: "paid" | "pending" | "starts_next_month";
+  billingPeriod: string;
+  chargeId: string | null;
+  chargeCreated: boolean;
+  paymentId: string | null;
+  replayed: boolean;
+  startPeriod: string | null;
+}
+
+function toFirstMonthResult(data: unknown): FirstMonthResult {
+  const r = data as { situation: FirstMonthResult["situation"]; billing_period: string; charge_id: string | null; charge_created: boolean; payment_id: string | null; replayed: boolean; start_period?: string | null };
+  return { situation: r.situation, billingPeriod: r.billing_period, chargeId: r.charge_id ?? null, chargeCreated: r.charge_created === true, paymentId: r.payment_id ?? null, replayed: r.replayed === true, startPeriod: r.start_period ?? null };
+}
+
+/** «Marcar mes actual como pagado»: crea el cargo del mes si falta y registra UN pago completo declarado, todo en una transacción; repetir con la misma clave devuelve el mismo pago. */
+export async function markCurrentMonthPaid(
+  ctx: AuthenticatedDbContext,
+  input: { operationId: string; studentId: string; currentPeriod: string; dueDate: string; paidAt: string },
+): Promise<FirstMonthResult> {
+  const { data, error } = await ctx.supabase.rpc("mark_current_month_paid", {
+    p_payload: { operation_id: input.operationId, student_id: input.studentId, current_period: input.currentPeriod, due_date: input.dueDate, paid_at: input.paidAt },
+  });
+  if (error) throw error;
+  return toFirstMonthResult(data);
+}
+
+/** «Retomar el cobro mensual» (al reactivar): «este mes» genera el cargo si no existía; «el próximo mes» sólo mueve el inicio de la mensualidad. Nunca duplica deuda. */
+export async function resumeMonthlyBilling(
+  ctx: AuthenticatedDbContext,
+  input: { studentId: string; choice: "this_month" | "next_month"; currentPeriod: string; dueDate: string },
+): Promise<FirstMonthResult> {
+  const { data, error } = await ctx.supabase.rpc("resume_monthly_billing", {
+    p_payload: { student_id: input.studentId, choice: input.choice, current_period: input.currentPeriod, due_date: input.dueDate },
+  });
+  if (error) throw error;
+  return toFirstMonthResult(data);
+}
+
 export interface TrainingChargeCandidate {
   agreementId: string;
   studentId: string;

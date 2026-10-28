@@ -45,7 +45,7 @@ function SubmitButton({ label, disabled, destructive }: { label: string; disable
  * Presentación: tarjeta propia al final del Resumen, separada de las acciones normales. Al elegir «Archivado» el botón pasa a
  * contorno rojo (acción con consecuencias); la lógica del formulario no cambió.
  */
-export function ChangeStatusForm({ studentId, currentStatus }: { studentId: string; currentStatus: StudentStatus }) {
+export function ChangeStatusForm({ studentId, currentStatus, monthlyPlan = false }: { studentId: string; currentStatus: StudentStatus; monthlyPlan?: boolean }) {
   const boundAction = changeStudentStatusAction.bind(null, studentId);
   const [state, formAction] = useGuardedActionState(boundAction, INITIAL_STATE);
   const today = todayInArgentina();
@@ -54,6 +54,8 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
   const operationId = useMemo(() => crypto.randomUUID(), []);
   const [selectedStatus, setSelectedStatus] = useState<StudentStatus>("pausado");
   const [removeFromFuture, setRemoveFromFuture] = useState<"true" | "false" | "">("");
+  // Reactivar un alumno MENSUAL exige elegir desde cuándo se retoma el cobro (nunca preseleccionado): evita dejar al alumno activo sin deuda por un mes o generar deuda sin querer.
+  const [resumeChoice, setResumeChoice] = useState<"this_month" | "next_month" | "">("");
 
   if (currentStatus !== "activo") {
     return (
@@ -70,10 +72,32 @@ export function ChangeStatusForm({ studentId, currentStatus }: { studentId: stri
             Restaurar vuelve el estado a activo — nunca recrea sola la agenda que se haya quitado al archivar. Pagos, cargos, reportes
             e historial nunca se tocaron ni se tocan al restaurar.
           </p>
+          {monthlyPlan && (
+            <fieldset className="flex min-w-0 flex-col gap-2.5 rounded-md border-[1.5px] border-warnLine bg-warnSoft p-3.5">
+              <legend className="px-1 text-sm font-[650] text-textPrimary">Retomar el cobro mensual (elegí una opción)</legend>
+              <p className="text-[13.5px] text-textSecondary">Este alumno tiene un plan mensual. ¿Desde cuándo corresponde cobrarle?</p>
+              <label className={RADIO_OPTION}>
+                <input type="radio" name="resumeChoice" value="next_month" checked={resumeChoice === "next_month"} onChange={() => setResumeChoice("next_month")} className="mt-0.5 h-5 w-5 shrink-0 accent-ink" />
+                Comenzar el próximo mes
+              </label>
+              <label className={RADIO_OPTION}>
+                <input type="radio" name="resumeChoice" value="this_month" checked={resumeChoice === "this_month"} onChange={() => setResumeChoice("this_month")} className="mt-0.5 h-5 w-5 shrink-0 accent-ink" />
+                Cobrar desde este mes
+              </label>
+              <p className="text-[13.5px] text-textSecondary">
+                {resumeChoice === "this_month"
+                  ? "Se genera la mensualidad de este mes si todavía no existe (nunca se duplica)."
+                  : resumeChoice === "next_month"
+                    ? "No se genera deuda nueva este mes. Si ya existe la de este mes, se conserva tal cual."
+                    : "Sin elegir todavía — el envío queda bloqueado hasta marcar una opción."}
+              </p>
+            </fieldset>
+          )}
           {state.error && <FormErrorBox message={state.error} />}
           {state.success && <FormInfoBox>Estado actualizado.</FormInfoBox>}
+          {state.warning && <FormErrorBox message={state.warning} />}
           <div>
-            <SubmitButton label="Restaurar (volver a activo)" />
+            <SubmitButton label="Restaurar (volver a activo)" disabled={monthlyPlan && resumeChoice === ""} />
           </div>
         </form>
       </Card>

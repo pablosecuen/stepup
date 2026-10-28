@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import {
   createStudent,
+  getStudent,
   updateStudent,
   changeStudentStatus,
   archiveStudentAndPruneFuture,
@@ -23,6 +24,10 @@ import type { BillingType, StudentCategory, StudentModality, StudentStatus } fro
 import { todayInArgentina } from "@/lib/format/date-format";
 import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { resumeMonthlyBilling } from "@/lib/repositories/payments";
+import { billingPeriodOfDateKey, resolveMonthlyDueDate } from "@/lib/payments/dates";
+import { buildFirstMonthInput } from "@/lib/students/first-month";
+import { isValidAge, joinFullName, resolveBirthDateOnEdit, estimatedBirthDateForAge, splitGoals } from "@/lib/students/student-form-fields";
 
 // Server Actions — Alumnos. Nunca reciben `ownerId`/`owner_id` del
 // navegador: `requireAuthenticatedDbContext()` siempre resuelve la sesión
@@ -76,6 +81,15 @@ function readLevels(formData: FormData): string[] {
     .filter((v): v is string => typeof v === "string" && v.trim() !== "");
 }
 
+/** Nombre y apellido por separado, como el original: los dos son obligatorios. Devuelve el nombre guardado («nombre apellido») o el error a mostrar. */
+function readFullName(formData: FormData): { name: string; error?: string } {
+  const first = readString(formData, "firstName").trim();
+  const last = readString(formData, "lastName").trim();
+  if (!first) return { name: "", error: "Ingresá el nombre del alumno." };
+  if (!last) return { name: "", error: "Ingresá el apellido del alumno." };
+  return { name: joinFullName(first, last) };
+}
+
 function friendlyErrorMessage(error: unknown): string {
   return actionErrorMessage("students", error);
 }
@@ -85,8 +99,23 @@ function friendlyErrorMessage(error: unknown): string {
 // ---------------------------------------------------------------------------
 
 export async function createStudentAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const fullName = readFullName(formData);
+  if (fullName.error) return { error: fullName.error };
+  const ageText = readString(formData, "age");
+  if (!isValidAge(ageText)) return { error: "La edad debe ser un número entre 3 y 120." };
+  const todayDateKey = todayInArgentina();
+  const billingType = readString(formData, "billingType");
+  const firstMonth = buildFirstMonthInput({
+    billingType,
+    situationText: readString(formData, "firstMonthSituation"),
+    paidAtText: readString(formData, "paidAt"),
+    confirmPending: readString(formData, "confirmPending") === "true",
+    todayDateKey,
+  });
+  if (firstMonth.error) return { error: firstMonth.error };
+
   const input: NewStudentInput = {
-    name: readString(formData, "name"),
+    name: fullName.name,
     modality: readString(formData, "modality") as StudentModality,
     category: readString(formData, "category") as StudentCategory,
     billingType: readString(formData, "billingType") as BillingType,
@@ -102,6 +131,9 @@ export async function createStudentAction(_prevState: FormState, formData: FormD
     whatsapp: readOptionalString(formData, "whatsapp"),
     email: readOptionalString(formData, "email"),
     notes: readOptionalString(formData, "notes"),
+    birthDate: ageText.trim() ? estimatedBirthDateForAge(Number(ageText), Number(todayDateKey.slice(0, 4))) : null,
+    currentGoals: splitGoals(readString(formData, "goals")),
+    firstMonth: firstMonth.firstMonth,
   };
 
   // La clave de operación la genera el NAVEGADOR (una vez por borrador) y la acción nunca la inventa ni la repone.
@@ -144,8 +176,13 @@ export async function updateStudentAction(
   // Regla del original (2026-08-10): el tipo de facturación y el precio NO se editan desde «Editar alumno» (con esa vía el importe cambiaba sin corregir el cargo
   // del mes ni dejar historial). Se cambian sólo desde la pestaña Cobros («Editar plan de cobro» / «Modificar monto mensual»), que lo hacen de forma atómica y auditada.
   // Aunque un navegador alterado mande esos campos, esta acción nunca los lee.
+  const fullName = readFullName(formData);
+  if (fullName.error) return { error: fullName.error };
+  const ageText = readString(formData, "age");
+  if (!isValidAge(ageText)) return { error: "La edad debe ser un número entre 3 y 120." };
+
   const patch: UpdateStudentInput = {
-    name: readString(formData, "name"),
+    name: fullName.name,
     modality: readString(formData, "modality") as StudentModality,
     category: readString(formData, "category") as StudentCategory,
     levels: readLevels(formData),
@@ -158,10 +195,15 @@ export async function updateStudentAction(
     whatsapp: readOptionalString(formData, "whatsapp"),
     email: readOptionalString(formData, "email"),
     notes: readOptionalString(formData, "notes"),
+    currentGoals: splitGoals(readString(formData, "goals")),
   };
 
   try {
     const ctx = await requireAuthenticatedDbContext();
+    // Misma regla del original: si la edad escrita coincide con la que ya surge de la fecha guardada, esa fecha se conserva.
+    const current = await getStudent(ctx, studentId);
+    if (!current) return { error: "No encontramos ese alumno." };
+    patch.birthDate = resolveBirthDateOnEdit({ ageText, currentBirthDate: current.birthDate, todayDateKey: todayInArgentina() });
     await updateStudent(ctx, studentId, patch);
   } catch (error) {
     if (error instanceof StudentNotFoundError) return { error: "No encontramos ese alumno." };
@@ -179,6 +221,8 @@ export async function updateStudentAction(
 
 export interface ChangeStatusFormState extends FormState {
   success?: boolean;
+  /** Aviso sin invalidar el cambio de estado: p. ej. el alumno quedó activo pero no se pudo guardar desde cuándo se retoma el cobro mensual. */
+  warning?: string;
 }
 
 export async function changeStudentStatusAction(
@@ -190,6 +234,7 @@ export async function changeStudentStatusAction(
   const occurredOn = readString(formData, "occurredOn").trim() || todayInArgentina();
   const reason = readOptionalString(formData, "reason") ?? undefined;
   const internalNote = readOptionalString(formData, "internalNote") ?? undefined;
+  let warning: string | undefined;
 
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -228,6 +273,20 @@ export async function changeStudentStatusAction(
       });
     } else {
       await changeStudentStatus(ctx, studentId, { status, occurredOn, reason, internalNote });
+      // «Retomar el cobro mensual» (sólo al volver a activo un alumno mensual): se aplica en una operación atómica e idempotente aparte; si fallara, el estado ya cambió y se avisa sin simular un éxito completo.
+      const resumeChoice = readString(formData, "resumeChoice").trim();
+      if (status === "activo" && resumeChoice) {
+        if (resumeChoice !== "this_month" && resumeChoice !== "next_month") {
+          warning = "El alumno quedó activo, pero no se pudo guardar desde cuándo se retoma el cobro. Podés ajustarlo desde Cobros.";
+        } else {
+          try {
+            const currentPeriod = billingPeriodOfDateKey(todayInArgentina());
+            await resumeMonthlyBilling(ctx, { studentId, choice: resumeChoice, currentPeriod, dueDate: resolveMonthlyDueDate(currentPeriod, 10) });
+          } catch (resumeError) {
+            warning = `El alumno quedó activo, pero no se pudo guardar desde cuándo se retoma el cobro: ${actionErrorMessage("students.resume-billing", resumeError)} Podés ajustarlo desde Cobros.`;
+          }
+        }
+      }
     }
   } catch (error) {
     if (error instanceof StudentNotFoundError) return { error: "No encontramos ese alumno." };
@@ -235,8 +294,9 @@ export async function changeStudentStatusAction(
   }
 
   revalidatePath("/alumnos");
+  revalidatePath("/cobros");
   revalidatePath(`/alumnos/${studentId}`);
-  return { success: true };
+  return { success: true, warning };
 }
 
 // ---------------------------------------------------------------------------

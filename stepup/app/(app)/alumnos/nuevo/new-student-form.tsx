@@ -108,7 +108,7 @@ export function NewStudentForm({ customLevels }: { customLevels: CustomLevelReco
   const [dismissedState, setDismissedState] = useState<FormState | null>(null);
   function backToEdit() {
     setDismissedState(state);
-    formRef.current?.querySelector<HTMLInputElement>("#name")?.focus();
+    formRef.current?.querySelector<HTMLInputElement>("#firstName")?.focus();
   }
 
   // Confirmación canónica del servidor con ESTA clave (alta nueva o ya existente): rota la clave y recién ahí navega a la

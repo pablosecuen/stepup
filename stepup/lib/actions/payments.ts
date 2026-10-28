@@ -13,6 +13,8 @@ import {
   ensureTrainingCharges,
   setStudentBillingPlan,
   changeStudentMonthlyAmount,
+  markCurrentMonthPaid,
+  resumeMonthlyBilling,
   listChargeStatusForRegistration,
   PaymentNotFoundError,
   ChargeNotFoundError,
@@ -139,6 +141,44 @@ export async function changeMonthlyAmountAction(input: { studentId: string; newA
     return { data: { chargeCreated: result.chargeCreated, chargeUpdated: result.chargeUpdated } };
   } catch (error) {
     return { error: actionErrorMessage("payments.monthly-amount", error) };
+  }
+}
+
+/**
+ * «Marcar mes actual como pagado»: el período, el vencimiento y la fecha de hoy los calcula el servidor. La fecha real del pago es la de la confirmación (no se recorta contra el vencimiento) y
+ * la clave de operación la genera el navegador por intento, así un doble toque o un reintento devuelve el mismo pago sin duplicarlo.
+ */
+export async function markCurrentMonthPaidAction(input: { operationId: string; studentId: string }): Promise<ActionResult<{ paymentId: string | null; replayed: boolean }>> {
+  if (!input?.operationId) return { error: "Falta el identificador de la operación. Recargá la página e intentá de nuevo." };
+  if (!input.studentId) return { error: "No encontramos ese alumno." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const todayKey = localDateKeyInTimeZone(new Date());
+    const currentPeriod = billingPeriodOfDateKey(todayKey);
+    const result = await markCurrentMonthPaid(ctx, { operationId: input.operationId, studentId: input.studentId, currentPeriod, dueDate: resolveMonthlyDueDate(currentPeriod, 10), paidAt: todayKey });
+    revalidatePath("/cobros");
+    revalidatePath("/alumnos");
+    revalidatePath(`/alumnos/${input.studentId}`);
+    return { data: { paymentId: result.paymentId, replayed: result.replayed } };
+  } catch (error) {
+    return { error: actionErrorMessage("payments.initial-month", error) };
+  }
+}
+
+/** «Retomar el cobro mensual»: ver `resumeMonthlyBilling`. El período y el vencimiento los calcula el servidor. */
+export async function resumeMonthlyBillingAction(input: { studentId: string; choice: "this_month" | "next_month" }): Promise<ActionResult<{ chargeCreated: boolean }>> {
+  if (!input?.studentId) return { error: "No encontramos ese alumno." };
+  if (input.choice !== "this_month" && input.choice !== "next_month") return { error: "Elegí desde cuándo corresponde cobrarle." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const currentPeriod = billingPeriodOfDateKey(localDateKeyInTimeZone(new Date()));
+    const result = await resumeMonthlyBilling(ctx, { studentId: input.studentId, choice: input.choice, currentPeriod, dueDate: resolveMonthlyDueDate(currentPeriod, 10) });
+    revalidatePath("/cobros");
+    revalidatePath("/alumnos");
+    revalidatePath(`/alumnos/${input.studentId}`);
+    return { data: { chargeCreated: result.chargeCreated } };
+  } catch (error) {
+    return { error: actionErrorMessage("payments.initial-month", error) };
   }
 }
 

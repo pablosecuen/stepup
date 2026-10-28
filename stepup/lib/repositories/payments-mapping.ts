@@ -48,6 +48,8 @@ export interface PaymentRecord {
   voidReason: string | null;
   replacesPaymentId: string | null;
   operationId: string | null;
+  /** `initial_student_setup`: pago DECLARADO («este mes ya está pago») al dar de alta al alumno o al marcar el mes como pagado; nunca un ingreso observado. */
+  source?: "initial_student_setup" | null;
 }
 
 export function toPaymentRecord(row: PaymentRow): PaymentRecord {
@@ -63,6 +65,7 @@ export function toPaymentRecord(row: PaymentRow): PaymentRecord {
     voidReason: row.void_reason,
     replacesPaymentId: row.replaces_payment_id,
     operationId: row.operation_id,
+    source: row.source ?? null,
   };
 }
 

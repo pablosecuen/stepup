@@ -8,6 +8,10 @@ import { EmptyState } from "@/components/ui/states";
 import { Badge } from "@/components/ui/badge";
 import { ChargeActions } from "@/components/payments/charge-actions";
 import { BillingPlanCard } from "@/components/students/profile/billing-plan-card";
+import { MonthlyStatusCard } from "@/components/students/profile/monthly-status-card";
+import { PaymentHistorySection } from "@/components/payments/student-payment-history";
+import { buildStudentCobrosOverview } from "@/lib/payments/student-cobros";
+import { formatBillingPeriodLong } from "@/lib/payments/engine/features/payments/utils/paymentFormat";
 import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
 import { VoidPaymentButton } from "@/components/payments/void-payment-button";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from "@/lib/repositories/payments";
@@ -59,12 +63,27 @@ export function CobrosTabContent({
   const paymentsById = new Map(payments.map((p) => [p.id, p]));
   const allocationsLike = allocations.map((a) => ({ chargeId: a.chargeId, amount: a.amount, paymentVoidedAt: voidedAtByPaymentId.get(a.paymentId) ?? null }));
 
+  const overview = buildStudentCobrosOverview({ studentId, plan: billingPlan, charges, payments, allocations, todayDateKey });
+  const declaredInitialIds = new Set(overview.declaredInitialPaymentIds);
+  const currentMonth = overview.currentMonth;
+
   const sortedCharges = [...charges].sort((a, b) => (a.dueDate < b.dueDate ? 1 : a.dueDate > b.dueDate ? -1 : 0));
   const sortedPayments = [...payments].sort((a, b) => (a.paidAt < b.paidAt ? 1 : a.paidAt > b.paidAt ? -1 : 0));
 
   return (
     <div className="flex flex-col gap-8">
       <BillingPlanCard studentId={studentId} studentName={studentName} plan={billingPlan} charges={charges} todayDateKey={todayDateKey} />
+      {currentMonth && overview.suggested && (
+        <MonthlyStatusCard
+          studentId={studentId}
+          monthLabel={formatBillingPeriodLong(currentMonth.billingPeriod)}
+          status={currentMonth.label}
+          amount={currentMonth.charge?.originalAmount ?? (billingPlan.type === "monthly" ? billingPlan.amount : null)}
+          declaredInitial={declaredInitialIds.size > 0}
+          canMarkPaid={currentMonth.label !== "pagado" && currentMonth.label !== "comienza_proximo_mes" && !overview.suggested.alreadySettled}
+          suggestedAmount={overview.suggested.amount}
+        />
+      )}
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-section font-semibold">Obligaciones</h2>
@@ -200,6 +219,7 @@ export function CobrosTabContent({
                       Incluye <span className="font-bold tf-num">{formatMoney(line.amount)}</span> por encima del importe base de una obligación · {EXCESS_STATUS_LABEL[line.status]}
                     </p>
                   ))}
+                  {declaredInitialIds.has(payment.id) && <p className="mt-0.5 text-[13.5px] text-textSecondary">Situación inicial declarada al registrar al alumno.</p>}
                   {payment.notes && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">{payment.notes}</p>}
                   {payment.voidedAt && payment.voidReason && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Anulado: {payment.voidReason}</p>}
                 </div>
@@ -209,6 +229,8 @@ export function CobrosTabContent({
           </ul>
         )}
       </section>
+
+      <PaymentHistorySection history={overview.history} evaluationDate={todayDateKey} />
     </div>
   );
 }

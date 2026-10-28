@@ -88,11 +88,15 @@ test("Editar alumno: Guardar es la acción principal y Cancelar vuelve a la fich
   assert.match(form, /href=\{`\/alumnos\/\$\{student\.id\}`\} variant="ghost"/);
   assert.match(form, /updateStudentAction\.bind\(null, student\.id\)/);
   const fields = code("components/students/student-form-fields.tsx");
-  for (const name of ["name", "modality", "category", "billingType", "price", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "notes"]) {
+  const billing = code("components/students/first-month-fields.tsx");
+  for (const name of ["firstName", "lastName", "age", "modality", "category", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "goals", "notes"]) {
     assert.match(fields, new RegExp(`name="${name}"`), name);
+    assert.match(fields, new RegExp(`htmlFor="${name}"`), `etiqueta de ${name}`);
   }
-  for (const id of ["name", "modality", "category", "billingType", "price", "weeklyFrequency", "usualDurationMinutes", "dateJoined", "phone", "whatsapp", "email", "notes"]) {
-    assert.match(fields, new RegExp(`htmlFor="${id}"`), `etiqueta de ${id}`);
+  // Forma de cobro y precio (sólo en el alta) viven en el componente de la situación del primer mes.
+  for (const name of ["billingType", "price"]) {
+    assert.match(billing, new RegExp(`name="${name}"`), name);
+    assert.match(billing, new RegExp(`htmlFor="${name}"`), `etiqueta de ${name}`);
   }
   assert.match(fields, /legend className=\{LEGEND\}>Datos básicos/);
   assert.ok(fields.includes("<LevelPicker customLevels={customLevels} defaultSelected={defaultValues?.levels ?? []} />"), "los niveles los da el selector con «+»");
@@ -109,7 +113,7 @@ test("Perfil: un solo h1 (el nombre), «Volver» como enlace de texto, «Editar 
   assert.doesNotMatch(code("components/ui/page-header.tsx"), /buttonClass\(/, "Volver no compite con Guardar o Crear");
   for (const file of sources("components/students/profile").filter((f) => !f.endsWith("profile-header.tsx"))) assert.doesNotMatch(code(file), /<h1\b/, `${file}: sin h1 extra`);
   const view = code("components/students/profile/student-profile-view.tsx");
-  assert.match(view, /<ChangeStatusForm studentId=\{student\.id\} currentStatus=\{student\.status\} \/>/);
+  assert.match(view, /<ChangeStatusForm studentId=\{student\.id\} currentStatus=\{student\.status\} monthlyPlan=\{/);
   assert.ok(view.indexOf("<ResumenTabContent") < view.indexOf("<ChangeStatusForm"), "el cambio de estado va después de todo el resumen");
 });
 
@@ -165,7 +169,7 @@ test("Duplicado: «Volver y editar los datos» sólo cierra el aviso y devuelve 
   assert.match(form, /<Button type="button" variant="secondary" onClick=\{onBack\}>\s*Volver y editar los datos/, "botón común (no submit) y secundario");
   const back = form.slice(form.indexOf("function backToEdit()"), form.indexOf("useEffect(() => {"));
   assert.match(back, /setDismissedState\(state\)/);
-  assert.match(back, /querySelector<HTMLInputElement>\("#name"\)\?\.focus\(\)/, "el foco vuelve al formulario");
+  assert.match(back, /querySelector<HTMLInputElement>\("#firstName"\)\?\.focus\(\)/, "el foco vuelve al formulario");
   assert.doesNotMatch(back, /formAction|requestSubmit|submit\(|rotateOperationId|clear\(|reset\(|router\./, "no envía, no rota la clave, no limpia ni navega");
   // «Es otra persona» sigue siendo una confirmación explícita (submit con confirmDuplicate) y de menor peso que «Volver y editar».
   assert.match(form, /<Button type="submit" name="confirmDuplicate" value="true" variant="ghost">\s*Es otra persona, crear igualmente/);

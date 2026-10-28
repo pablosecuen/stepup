@@ -103,7 +103,7 @@ test("validateNewStudentInput: precio negativo o NaN es inválido — nunca se a
   assert.ok(notANumber.some((e) => e.field === "price"));
 });
 
-test("validateNewStudentInput: precio cero es válido (clase de cortesía / complimentary)", () => {
+test("validateNewStudentInput: el precio de un alumno nuevo tiene que ser mayor que cero (como el original; «Sin cargo» se elige después desde Cobros)", () => {
   const errors = validateNewStudentInput({
     name: "Juan",
     modality: "online",
@@ -112,7 +112,7 @@ test("validateNewStudentInput: precio cero es válido (clase de cortesía / comp
     dateJoined: "2026-09-16",
     price: 0,
   });
-  assert.equal(errors.some((e) => e.field === "price"), false);
+  assert.equal(errors.some((e) => e.field === "price"), true);
 });
 
 test("validateNewStudentInput: formulario completo y válido no produce ningún error", () => {

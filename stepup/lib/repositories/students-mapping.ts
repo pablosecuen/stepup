@@ -86,6 +86,14 @@ export function toStudentRecord(row: StudentRow): StudentRecord {
   };
 }
 
+/** Situación del primer mes de un alumno MENSUAL (se aplica en la misma transacción del alta). `dueDate` lo calcula el servidor con el día de vencimiento del plan; nunca viene del navegador. */
+export interface FirstMonthInput {
+  situation: "paid" | "pending" | "starts_next_month";
+  currentPeriod: string;
+  dueDate?: string;
+  paidAt?: string;
+}
+
 export interface NewStudentInput {
   name: string;
   modality: StudentModality;
@@ -101,6 +109,10 @@ export interface NewStudentInput {
   whatsapp?: string | null;
   email?: string | null;
   notes?: string | null;
+  /** Fecha de nacimiento estimada a partir de la edad escrita (`YYYY-MM-DD`). */
+  birthDate?: string | null;
+  currentGoals?: string[];
+  firstMonth?: FirstMonthInput;
 }
 
 export interface StudentValidationError {
@@ -128,8 +140,9 @@ export function validateStudentLimits(input: { weeklyFrequency?: number; usualDu
 export function validateNewStudentInput(input: NewStudentInput): StudentValidationError[] {
   const errors: StudentValidationError[] = [];
   if (!input.name.trim()) errors.push({ field: "name", message: "El nombre es obligatorio." });
-  if (!Number.isFinite(input.price) || input.price < 0) {
-    errors.push({ field: "price", message: "Revisá el precio: usá solo números (36000 o 36.000) y coma para los decimales; tiene que ser mayor o igual a cero." });
+  // Igual que el original (`validateAmountInput`): el precio de un alumno nuevo tiene que ser MAYOR que cero. La edición no reenvía el precio (se cambia desde Cobros).
+  if (!Number.isFinite(input.price) || input.price <= 0) {
+    errors.push({ field: "price", message: "El precio debe ser mayor que cero: usá solo números (36000 o 36.000) y coma para los decimales." });
   }
   if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes <= 0) {
     errors.push({ field: "usualDurationMinutes", message: "La duración habitual debe ser mayor a cero." });
@@ -138,6 +151,9 @@ export function validateNewStudentInput(input: NewStudentInput): StudentValidati
     errors.push({ field: "weeklyFrequency", message: "La frecuencia semanal no puede ser negativa." });
   }
   errors.push(...validateStudentLimits(input));
+  if (input.billingType === "mensual" && input.firstMonth && !["paid", "pending", "starts_next_month"].includes(input.firstMonth.situation)) {
+    errors.push({ field: "firstMonth", message: "Elegí desde cuándo querés comenzar a controlar sus pagos." });
+  }
   if (!input.dateJoined.trim()) errors.push({ field: "dateJoined", message: "La fecha de alta es obligatoria." });
   return errors;
 }
@@ -168,6 +184,10 @@ export function studentInputToRpcPayload(input: NewStudentInput): Record<string,
     whatsapp: input.whatsapp ?? null,
     email: input.email ?? null,
     notes: input.notes ?? null,
+    birthDate: input.birthDate ?? null,
+    currentGoals: input.currentGoals ?? [],
+    // La situación del primer mes sólo existe para un alumno MENSUAL; por clase nunca genera una obligación mensual.
+    firstMonth: input.billingType === "mensual" ? input.firstMonth : undefined,
   };
 }
 
@@ -188,6 +208,8 @@ export function studentInputToRowPatch(input: NewStudentInput, ownerId: string) 
     whatsapp: input.whatsapp ?? null,
     email: input.email ?? null,
     notes: input.notes ?? null,
+    birth_date: input.birthDate ?? null,
+    current_goals: input.currentGoals ?? [],
   };
 }
 
@@ -216,6 +238,7 @@ export function updateInputToRowPatch(patch: UpdateStudentInput): Record<string,
   if (patch.whatsapp !== undefined) rowPatch.whatsapp = patch.whatsapp;
   if (patch.email !== undefined) rowPatch.email = patch.email;
   if (patch.notes !== undefined) rowPatch.notes = patch.notes;
+  if (patch.birthDate !== undefined) rowPatch.birth_date = patch.birthDate;
   if (patch.pendingHomework !== undefined) rowPatch.pending_homework = patch.pendingHomework;
   if (patch.alerts !== undefined) rowPatch.alerts = patch.alerts;
   if (patch.currentGoals !== undefined) rowPatch.current_goals = patch.currentGoals;
@@ -236,8 +259,8 @@ export function validateUpdateStudentInput(input: UpdateStudentInput): StudentVa
   if (input.name !== undefined && !input.name.trim()) {
     errors.push({ field: "name", message: "El nombre es obligatorio." });
   }
-  if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
-    errors.push({ field: "price", message: "Revisá el precio: usá solo números (36000 o 36.000) y coma para los decimales; tiene que ser mayor o igual a cero." });
+  if (input.price !== undefined && (!Number.isFinite(input.price) || input.price <= 0)) {
+    errors.push({ field: "price", message: "El precio debe ser mayor que cero: usá solo números (36000 o 36.000) y coma para los decimales." });
   }
   if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes <= 0) {
     errors.push({ field: "usualDurationMinutes", message: "La duración habitual debe ser mayor a cero." });

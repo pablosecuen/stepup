@@ -40,6 +40,7 @@ export function toEnginePaymentsState(input: { charges: readonly PaymentChargeRe
       voidedAt: payment.voidedAt,
       voidReason: payment.voidReason,
       replacesPaymentId: payment.replacesPaymentId,
+      source: payment.source ?? undefined,
     })),
     allocations: input.allocations.map((allocation) => ({ id: allocation.id, paymentId: allocation.paymentId, chargeId: allocation.chargeId, studentId: allocation.studentId, amount: allocation.amount })),
     adjustments: [],

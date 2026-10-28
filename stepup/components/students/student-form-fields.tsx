@@ -1,9 +1,8 @@
 import { LevelPicker } from "./level-picker";
+import { NewStudentBillingFields } from "./first-month-fields";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import {
-  BILLING_LABEL,
-  BILLING_TYPE_OPTIONS,
   CATEGORY_LABEL,
   CATEGORY_OPTIONS,
   MODALITY_LABEL,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/students/constants";
 import { todayInArgentina } from "@/lib/format/date-format";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
+import { ageFromBirthDate, joinGoals, splitFullName } from "@/lib/students/student-form-fields";
 
 const SECTION = "min-w-0 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-6";
 const LEGEND = "px-2 text-label font-bold uppercase text-textMuted";
@@ -31,15 +31,25 @@ export function StudentFormFields({
   defaultValues?: Partial<StudentRecord>;
   customLevels: CustomLevelRecord[];
 }) {
+  const split = splitFullName(defaultValues?.name ?? "");
+  const age = ageFromBirthDate(defaultValues?.birthDate, todayInArgentina());
 
   return (
     <div className="flex flex-col gap-5">
       <fieldset className={SECTION}>
         <legend className={LEGEND}>Datos básicos</legend>
         <div className="flex flex-col gap-5">
-          <Field label="Nombre completo *" htmlFor="name">
-            <TextInput id="name" name="name" type="text" required defaultValue={defaultValues?.name ?? ""} placeholder="Nombre y apellido" />
-          </Field>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_1fr_8rem]">
+            <Field label="Nombre *" htmlFor="firstName">
+              <TextInput id="firstName" name="firstName" type="text" required autoComplete="off" defaultValue={split.firstName} placeholder="Ej. Ana" />
+            </Field>
+            <Field label="Apellido *" htmlFor="lastName">
+              <TextInput id="lastName" name="lastName" type="text" required autoComplete="off" defaultValue={split.lastName} placeholder="Ej. Pérez" />
+            </Field>
+            <Field label="Edad" htmlFor="age">
+              <TextInput id="age" name="age" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} autoComplete="off" defaultValue={age !== null ? String(age) : ""} placeholder="Ej. 25" />
+            </Field>
+          </div>
 
           <LevelPicker customLevels={customLevels} defaultSelected={defaultValues?.levels ?? []} />
 
@@ -72,21 +82,7 @@ export function StudentFormFields({
                 </p>
               </div>
             ) : (
-              <>
-            <Field label="Tipo de facturación *" htmlFor="billingType">
-              <SelectInput id="billingType" name="billingType" required defaultValue="por_clase">
-                {BILLING_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {BILLING_LABEL[option]}
-                  </option>
-                ))}
-              </SelectInput>
-            </Field>
-
-            <Field label="Precio (ARS) *" htmlFor="price" hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
-              <TextInput id="price" name="price" type="text" inputMode="decimal" autoComplete="off" required defaultValue="" placeholder="0" />
-            </Field>
-              </>
+              <NewStudentBillingFields />
             )}
 
             <Field label="Frecuencia semanal" htmlFor="weeklyFrequency">
@@ -105,7 +101,7 @@ export function StudentFormFields({
       </fieldset>
 
       <fieldset className={SECTION}>
-        <legend className={LEGEND}>Contacto y notas</legend>
+        <legend className={LEGEND}>Contacto y objetivos</legend>
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Field label="Teléfono" htmlFor="phone">
@@ -119,8 +115,12 @@ export function StudentFormFields({
             </Field>
           </div>
 
-          <Field label="Notas" htmlFor="notes">
-            <TextArea id="notes" name="notes" rows={3} defaultValue={defaultValues?.notes ?? ""} />
+          <Field label="Objetivos" htmlFor="goals" hint="Uno por línea o separados por comas. Ej: preparar IELTS, mejorar speaking.">
+            <TextArea id="goals" name="goals" rows={3} defaultValue={joinGoals(defaultValues?.currentGoals ?? [])} placeholder="Ej. Preparar IELTS, mejorar speaking…" />
+          </Field>
+
+          <Field label="Observaciones internas" htmlFor="notes">
+            <TextArea id="notes" name="notes" rows={3} defaultValue={defaultValues?.notes ?? ""} placeholder="Información útil para la profesora" />
           </Field>
         </div>
       </fieldset>

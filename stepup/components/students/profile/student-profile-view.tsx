@@ -68,7 +68,9 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
         {tab === "resumen" && (
           <div className="flex flex-col gap-6">
             <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} totalCollected={data.totalCollected} />
-            <ChangeStatusForm studentId={student.id} currentStatus={student.status} />
+            <div id="cambiar-estado" className="scroll-mt-24">
+            <ChangeStatusForm studentId={student.id} currentStatus={student.status} monthlyPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price }).type === "monthly"} />
+            </div>
           </div>
         )}
         {tab === "clases" && (
