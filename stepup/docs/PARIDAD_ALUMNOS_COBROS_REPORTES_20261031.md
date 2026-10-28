@@ -1,6 +1,6 @@
 # Paridad: alumnos, cobros del alumno y compartir reportes — 31/10/2026
 
-Rama `alumnos-cobros-reportes`, partida del commit `7dde04b` (`parity-codex`). **No publicada y sin integrar**: Codex integra y publica. Una migración nueva, **sin aplicar** en ningún entorno: `supabase/migrations/20261031100000_student_initial_month_and_resume.sql` (no colisiona con `20261030130000_two_web_devices.sql` ni edita ninguna migración ya aplicada).
+Rama `alumnos-cobros-reportes`, partida del commit `7dde04b` (`parity-codex`). **No publicada y sin integrar**: Codex integra y publica. Una migración nueva, **sin aplicar** en ningún entorno: `supabase/migrations/20261031120000_student_initial_month_and_resume.sql` (no colisiona con `20261030130000_two_web_devices.sql` ni edita ninguna migración ya aplicada).
 
 Método: para cada punto se leyó el original (`NewStudentScreen`, `studentMapper`, `studentValidation`, `initialMonthlyBillingService/Plan`, `CobrosTab`, `PaymentHistorySection`, `studentPaymentHistory`, `StudentsListScreen`, `SwipeableStudentRow`, `ReportesTab`, `reportSharing`) y se comparó campo por campo, con ejecución cruzada de las dos implementaciones donde hay lógica pura.
 
@@ -60,3 +60,8 @@ Recorrido autenticado en el navegador (no había sesión de QA), capturas a 375/
 ## Para integrar
 
 Archivos nuevos: `components/students/{first-month-fields,row-actions-menu}.tsx`, `components/students/profile/{monthly-status-card,share-report-dialog}.tsx`, `components/payments/student-payment-history.tsx`, `lib/payments/student-cobros.ts`, `lib/reports/share-pdf.ts`, `lib/students/{first-month,row-actions,student-form-fields}.ts` y sus pruebas. Archivos compartidos modificados con cambios pequeños: `lib/actions/{payments,students}.ts`, `lib/repositories/{payments,payments-mapping,students-mapping}.ts`, `lib/students/list-status.ts` (agrega `source` al estado del motor), `components/students/{change-status-form,student-card,student-form-fields}.tsx`, `components/students/profile/{cobros-tab,reportes-tab,student-profile-view}.tsx`. Prueba estructural ajustada por cambios de intención: `block3-students` (campos del formulario), `money-input` (el campo de precio se mudó) y `students-mapping` (precio cero ya no es válido en el alta).
+
+
+## Revisión de integración de Codex — 28/10/2026
+
+Se renumeró la migración aún no aplicada a 20261031120000: el número 20261031100000 ya correspondía al bloque de calendario publicado. Reactivar y retomar cobro ahora comparten una transacción, con validación de elección en servidor y reintento sin otra entrada de historial. 53/53 comprobaciones Postgres, incluido fallo intermedio y concurrencia. El PDF se prepara antes del gesto de compartir; la descarga usa un enlace al archivo ya preparado y no una ventana abierta después de esperar una petición. Las declaraciones iniciales se identifican por source en todos los meses, sin asumir en la etiqueta un pago observado en efectivo. La auditoría Markdown y JSON se sincronizaron; los porcentajes siguen siendo estructurales.

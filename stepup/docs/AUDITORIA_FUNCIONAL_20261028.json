@@ -1,16 +1,16 @@
 {
   "date": "2026-10-28",
-  "baseline": "de9cd6134af6614869ecf39d224c5311ee67462d",
+  "baseline": "edd7cc70af9028f903cd437dfc722bd1c640327c + integración alumnos-cobros-reportes",
   "method": "Presencia estructural; disponible o diferencia vigente=1; parcial=0.5; falta=0. No mide corrección ni QA.",
   "counts": {
-    "available": 50,
+    "available": 73,
     "intentional": 6,
-    "partial": 22,
-    "missing": 9,
+    "partial": 7,
+    "missing": 1,
     "excluded": 2,
     "total": 87
   },
-  "weightedIndex": 77,
+  "weightedIndex": 94.8,
   "rows": [
     {
       "id": "ACC-01",
@@ -18,7 +18,7 @@
       "original": "`account/screens/SignIn,SignUp,AuthEmailConfirmation,ForgotPassword,NewPassword`",
       "web": "`/login`, `/crear-cuenta`, `/auth/confirm`, `/recuperar-contrasena`, `/nueva-contrasena`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/login`, `/crear-cuenta`, `/auth/confirm`, `/recuperar-contrasena`, `/nueva-contrasena` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ACC-02",
@@ -26,7 +26,7 @@
       "original": "`SignedOutElsewhereScreen`, `ConfirmDeviceTransferScreen`, `activeSessionService`",
       "web": "lib/auth/device-session/server.ts; app/dispositivo; web_device_sessions",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Pedido nuevo: dos navegadores/PWA simultáneos. Antes la web copiaba el bloqueo de un único dispositivo. La app nativa conserva su permiso independiente de respaldo; no se habilitan dos escritores locales sobre una copia móvil."
+      "note": "lib/auth/device-session/server.ts; app/dispositivo; web_device_sessions — Pedido nuevo: dos navegadores/PWA simultáneos. Antes la web copiaba el bloqueo de un único dispositivo. La app nativa conserva su permiso independiente de respaldo; no se habilitan dos escritores locales sobre una copia móvil."
     },
     {
       "id": "ACC-03",
@@ -34,7 +34,7 @@
       "original": "`TeacherNameOnboardingScreen`, `SettingsScreen`",
       "web": "`saveTeacherProfileAction`, Configuración",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`saveTeacherProfileAction`, Configuración — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ACC-04",
@@ -42,7 +42,7 @@
       "original": "`OnboardingTutorialScreen`",
       "web": "components/account/tutorial.tsx; app/(app)/configuracion/tutorial",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "components/account/tutorial.tsx; app/(app)/configuracion/tutorial — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ACC-05",
@@ -50,15 +50,15 @@
       "original": "`accountDeletionService`",
       "web": "`deleteOwnAccountAction`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`deleteOwnAccountAction` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ACC-06",
       "function": "Seguimiento de clases en vivo (interruptor)",
       "original": "`LiveClassTrackingSection`",
       "web": "—",
-      "status": "FALTA",
-      "note": "Falta el interruptor de seguimiento de clases en vivo de Configuración. Tener botones Comenzar/Finalizar en Inicio no sustituye esa preferencia."
+      "status": "DISPONIBLE",
+      "note": "Preferencia persistida de seguimiento de clases en vivo; controla Comenzar y se valida también en servidor. Conserva sesiones ya iniciadas."
     },
     {
       "id": "ACC-07",
@@ -66,7 +66,7 @@
       "original": "`authorizationCacheStore`, `chunkedSecureStore`, `deepLinkAuth`, `ConfirmDeviceTransferScreen`",
       "web": "—",
       "status": "PARCIAL",
-      "note": "Cookies y enlaces web sustituyen almacenamiento seguro/deep links. Falta abrir y trabajar sin red durante la ventana que sí tiene el original; no hay cola offline equivalente."
+      "note": "— — Cookies y enlaces web sustituyen almacenamiento seguro/deep links. Falta abrir y trabajar sin red durante la ventana que sí tiene el original; no hay cola offline equivalente."
     },
     {
       "id": "INI-01",
@@ -74,7 +74,7 @@
       "original": "`HomeScreen`, `DayAgenda`, `NextClassCard`, `PendingClasses`",
       "web": "`home-view.tsx`, `today-agenda.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`home-view.tsx`, `today-agenda.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-02",
@@ -82,7 +82,7 @@
       "original": "`EmptyClassesNotice`, `emptyClasses.ts`",
       "web": "`empty-classes.ts`, `home-view.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`empty-classes.ts`, `home-view.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-03",
@@ -90,7 +90,7 @@
       "original": "`StatsRow`, `buildDashboardData.ts`",
       "web": "`home-view.tsx`, `lib/dashboard/home-stats.ts`, `lib/repositories/home-stats-inputs.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`home-view.tsx`, `lib/dashboard/home-stats.ts`, `lib/repositories/home-stats-inputs.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-04",
@@ -98,7 +98,7 @@
       "original": "`FinancialSummary`, `buildHomeFinancialSummary`",
       "web": "Inicio muestra cobros de hoy; Resumen financiero aparte",
       "status": "PARCIAL",
-      "note": "La web tiene Resumen financiero y cobros de hoy; falta la misma tarjeta mensual completa dentro de Inicio (previsto/cobrado/pendiente/vencido)."
+      "note": "Inicio muestra cobros de hoy; Resumen financiero aparte — La web tiene Resumen financiero y cobros de hoy; falta la misma tarjeta mensual completa dentro de Inicio (previsto/cobrado/pendiente/vencido)."
     },
     {
       "id": "INI-05",
@@ -106,7 +106,7 @@
       "original": "`DailyCollectionsNoticeBanner`, `dailyCollectionsNotice.ts`",
       "web": "`components/dashboard/daily-collections-notice.tsx`, `lib/dashboard/daily-collections-notice.ts` (reglas del original, copia idéntica)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`components/dashboard/daily-collections-notice.tsx`, `lib/dashboard/daily-collections-notice.ts` (reglas del original, copia idéntica) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-06",
@@ -114,15 +114,15 @@
       "original": "`NotificationBell`, `notificationBell.ts`",
       "web": "`home-view.tsx` (aria «N recordatorios pendientes»)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`home-view.tsx` (aria «N recordatorios pendientes») — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-07",
       "function": "Comenzar clase / Finalizar clase / puntualidad del alumno / Ajustar horario / Corregir hora de inicio / aviso de clase en curso restaurada",
       "original": "`ActiveClassCard`, `StartClassPunctualityDialog`, `ScheduleAdjustSheet`, `activeClassSessionStore`, `RestoredActiveSessionNotice`, `manualSessionCorrectionService`",
       "web": "components/dashboard/active-class-card.tsx; lib/actions/live-class.ts; lib/repositories/live-class.ts",
-      "status": "PARCIAL",
-      "note": "Comenzar, finalizar, puntualidad y corregir inicio existen y están publicados. Faltan Ajustar horario y el aviso específico de sesión restaurada; el aviso del navegador sólo se mantiene mientras está montado Inicio."
+      "status": "DISPONIBLE",
+      "note": "Ajustar horario con motivo y seis duraciones; seguimiento global en las rutas privadas y aviso de clase recuperada. Comenzar/finalizar/corregir inicio conservados. Sin promesa de proceso nativo en segundo plano."
     },
     {
       "id": "INI-08",
@@ -130,7 +130,7 @@
       "original": "`PendingClassesScreen`, `pendingClasses.ts`",
       "web": "`/registro`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/registro` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-09",
@@ -138,7 +138,7 @@
       "original": "`RemindersCenterScreen`, `remindersCenter.ts`",
       "web": "`/recordatorios`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/recordatorios` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-10",
@@ -146,7 +146,7 @@
       "original": "`BudgetDistributionCard`, `AnnualBudgetChart`",
       "web": "`annual-budget-plan.ts` (13 pruebas originales portadas), `annual-projection.tsx`, tarjeta de distribución con «Restablecer 50/30/20»",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`annual-budget-plan.ts` (13 pruebas originales portadas), `annual-projection.tsx`, tarjeta de distribución con «Restablecer 50/30/20» — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-11",
@@ -154,7 +154,7 @@
       "original": "`SavingsGoalControl`",
       "web": "`savings-goal.ts`, `savings-goal-form.tsx`, `saveSavingsGoalAction`, `applyBudgetPresetAction`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`savings-goal.ts`, `savings-goal-form.tsx`, `saveSavingsGoalAction`, `applyBudgetPresetAction` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-12",
@@ -162,7 +162,7 @@
       "original": "`MonthlyPaymentBehaviorScreen/Chart`",
       "web": "`/resumen-financiero/comportamiento-de-pago`, `lib/payments/payment-behavior.ts` (motor del original)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/resumen-financiero/comportamiento-de-pago`, `lib/payments/payment-behavior.ts` (motor del original) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-13",
@@ -170,7 +170,7 @@
       "original": "`FinancialAnalyticsSections`, `calendarDemandSummary`",
       "web": "`financial-overview-view.tsx` (§22 de TRASLADO)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`financial-overview-view.tsx` (§22 de TRASLADO) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "INI-14",
@@ -178,7 +178,7 @@
       "original": "`SettingsScreen`, `LogoMenuSheet`, `navigationPreferenceStore`",
       "web": "navegación propia de la web",
       "status": "PARCIAL",
-      "note": "Falta elegir barra inferior o menú del logo. La web decide por ancho; cambiar la estética no autoriza quitar una preferencia funcional."
+      "note": "navegación propia de la web — Falta elegir barra inferior o menú del logo. La web decide por ancho; cambiar la estética no autoriza quitar una preferencia funcional."
     },
     {
       "id": "INI-15",
@@ -186,7 +186,7 @@
       "original": "`HomeScreen` «Eliminar datos de ejemplo»",
       "web": "`/configuracion/datos-de-prueba`",
       "status": "PARCIAL",
-      "note": "La web permite ocultar/mostrar datos marcados de QA. No equivale al circuito completo de crear/eliminar ejemplos del original."
+      "note": "`/configuracion/datos-de-prueba` — La web permite ocultar/mostrar datos marcados de QA. No equivale al circuito completo de crear/eliminar ejemplos del original."
     },
     {
       "id": "ALU-01",
@@ -194,7 +194,7 @@
       "original": "`StudentsListScreen`, `useFilteredStudents`, `FiltersPanel`",
       "web": "`app/(app)/alumnos/page.tsx`, `lib/students/list-filters.ts`, `students-filters-form.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`app/(app)/alumnos/page.tsx`, `lib/students/list-filters.ts`, `students-filters-form.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-02",
@@ -202,7 +202,7 @@
       "original": "`StudentCard`, `StudentBadges`, `buildStudent…`",
       "web": "`student-card.tsx`, `student-list-parts.tsx`, `lib/students/list-status.ts` (motor del original, copia idéntica en `lib/payments/engine`)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`student-card.tsx`, `student-list-parts.tsx`, `lib/students/list-status.ts` (motor del original, copia idéntica en `lib/payments/engine`) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-03",
@@ -210,7 +210,7 @@
       "original": "`SwipeableStudentRow`, `StudentCardAction`",
       "web": "components/students/row-actions-menu.tsx; lib/students/row-actions.ts; student-card.tsx",
       "status": "DISPONIBLE",
-      "note": "Menú «Acciones de <alumno>» en cada fila (móvil y escritorio): ver perfil, registrar clase, registrar pago, reprogramar su próxima clase, reporte, editar y archivar/cambiar estado o restaurar según su estado; cada destino lleva el id de esa fila y reutiliza el circuito existente. Hallazgo: el original sólo ofrecía archivar/restaurar/eliminar por deslizamiento en la lista (el resto vivía en el perfil). Eliminar definitivamente (ALU-10) no se ofrece. Prueba: row-actions.test.ts (4). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "components/students/row-actions-menu.tsx; lib/students/row-actions.ts; student-card.tsx — Menú «Acciones de <alumno>» en cada fila (móvil y escritorio): ver perfil, registrar clase, registrar pago, reprogramar su próxima clase, reporte, editar y archivar/cambiar estado o restaurar según su estado; cada destino lleva el id de esa fila y reutiliza el circuito existente. Hallazgo: el original sólo ofrecía archivar/restaurar/eliminar por deslizamiento en la lista (el resto vivía en el perfil). Eliminar definitivamente (ALU-10) no se ofrece. Prueba: row-actions.test.ts (4). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-04",
@@ -218,7 +218,7 @@
       "original": "`NewStudentScreen`, `studentValidation.ts`",
       "web": "student-form-fields.tsx; first-month-fields.tsx; lib/students/student-form-fields.ts; createStudentAction/updateStudentAction",
       "status": "DISPONIBLE",
-      "note": "Nombre y apellido separados y obligatorios, edad 3–120 (fecha estimada; se conserva la exacta si la edad no cambia), objetivos, precio mayor que cero (como el original; antes la web aceptaba cero) y límites 14/480/correo en cliente, servidor y base. Hallazgo: días y horario habituales NO existen en ninguna pantalla del original ni se guardan al crear (sólo llegan desde una copia importada), por eso no se agregaron. Pruebas: student-form-fields.test.ts (8, ejecuta el original) y student_initial_month.cjs (47, Postgres real). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "student-form-fields.tsx; first-month-fields.tsx; lib/students/student-form-fields.ts; createStudentAction/updateStudentAction — Nombre y apellido separados y obligatorios, edad 3–120 (fecha estimada; se conserva la exacta si la edad no cambia), objetivos, precio mayor que cero (como el original; antes la web aceptaba cero) y límites 14/480/correo en cliente, servidor y base. Hallazgo: días y horario habituales NO existen en ninguna pantalla del original ni se guardan al crear (sólo llegan desde una copia importada), por eso no se agregaron. Pruebas: student-form-fields.test.ts (8, ejecuta el original) y student_initial_month.cjs (47, Postgres real). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-05",
@@ -226,7 +226,7 @@
       "original": "`NewStudentScreen`, `EditBillingPlanSheet`, `studentBillingPlan.ts`",
       "web": "first-month-fields.tsx; create_student_with_operation (migración 20261031100000)",
       "status": "DISPONIBLE",
-      "note": "Hallazgo: el alta del original ofrece sólo Por clase y Mensual; los demás planes se cambian después en Cobros (ya existía en la web). Implementada la decisión «¿Desde cuándo querés comenzar a controlar sus pagos?» (próximo mes por defecto / este mes ya está pago con fecha real / este mes está pendiente con confirmación), aplicada en la misma transacción del alta, idempotente por clave de operación y sin restos si falla. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "first-month-fields.tsx; create_student_with_operation (migración 20261031100000) — Hallazgo: el alta del original ofrece sólo Por clase y Mensual; los demás planes se cambian después en Cobros (ya existía en la web). Implementada la decisión «¿Desde cuándo querés comenzar a controlar sus pagos?» (próximo mes por defecto / este mes ya está pago con fecha real / este mes está pendiente con confirmación), aplicada en la misma transacción del alta, idempotente por clave de operación y sin restos si falla. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-06",
@@ -234,7 +234,7 @@
       "original": "`CreateCustomLevelSheet`, `ManageCustomLevelsSheet`",
       "web": "`createLevelAction`, `renameLevelAction`, `deleteLevelAction`, `manage-levels-section.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`createLevelAction`, `renameLevelAction`, `deleteLevelAction`, `manage-levels-section.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-07",
@@ -242,7 +242,7 @@
       "original": "`ChangeStatusSheet`, `StatusSection`",
       "web": "`change-status-form.tsx`, `changeStudentStatusAction`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`change-status-form.tsx`, `changeStudentStatusAction` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-08",
@@ -250,7 +250,7 @@
       "original": "`ArchiveStudentDialog`, `studentArchiveService`",
       "web": "`archive_student_and_prune_future`, `archive-prune-plan.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`archive_student_and_prune_future`, `archive-prune-plan.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-09",
@@ -258,7 +258,7 @@
       "original": "`StudentsListScreen`, `initialMonthlyBillingService`",
       "web": "change-status-form.tsx; changeStudentStatusAction; resume_monthly_billing",
       "status": "DISPONIBLE",
-      "note": "Al restaurar un alumno mensual se elige «Comenzar el próximo mes» o «Cobrar desde este mes» (obligatorio, sin preseleccionar). «Este mes» genera el cargo sólo si no existe; «próximo mes» conserva el cargo ya generado; nunca duplica deuda ni restaura series. Diferencia: la web lo pregunta en cualquier reactivación (pausado, inactivo o archivado); el original sólo al restaurar archivados. Probado en Postgres real (repetición, cargo existente, simultaneidad). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "change-status-form.tsx; changeStudentStatusAction; resume_monthly_billing — Al restaurar un alumno mensual se elige «Comenzar el próximo mes» o «Cobrar desde este mes» (obligatorio, sin preseleccionar). «Este mes» genera el cargo sólo si no existe; «próximo mes» conserva el cargo ya generado; nunca duplica deuda ni restaura series. Diferencia: la web lo pregunta en cualquier reactivación (pausado, inactivo o archivado); el original sólo al restaurar archivados. Probado en Postgres real (repetición, cargo existente, simultaneidad). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-10",
@@ -266,7 +266,7 @@
       "original": "`DeleteStudentDialog`, `studentDeletionImpact.ts`, `studentDeletionCascade.ts`, `studentDeletionService`",
       "web": "—",
       "status": "FALTA",
-      "note": "Falta la eliminación definitiva en cascada. Se mantiene pendiente de decisión porque el original borra historial financiero; no se implementa por inferencia."
+      "note": "— — Falta la eliminación definitiva en cascada. Se mantiene pendiente de decisión porque el original borra historial financiero; no se implementa por inferencia."
     },
     {
       "id": "ALU-11",
@@ -274,7 +274,7 @@
       "original": "`StudentProfileScreen`, `tabs/*`",
       "web": "`student-profile-view.tsx`, `profile-tabs-nav.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`student-profile-view.tsx`, `profile-tabs-nav.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "ALU-12",
@@ -282,7 +282,7 @@
       "original": "`QuickSummary`, `HistorySummary`, `ProfileQuickActions`",
       "web": "components/students/profile/resumen-tab.tsx",
       "status": "DISPONIBLE",
-      "note": "Resumen y accesos rápidos implementados; inversión histórica desde asignaciones vigentes. No se extrapola la tarifa actual al pasado."
+      "note": "components/students/profile/resumen-tab.tsx — Resumen y accesos rápidos implementados; inversión histórica desde asignaciones vigentes. No se extrapola la tarifa actual al pasado."
     },
     {
       "id": "ALU-13",
@@ -290,7 +290,7 @@
       "original": "`PunctualitySection`, `punctualityScoring.ts`",
       "web": "components/students/profile/punctuality-section.tsx",
       "status": "DISPONIBLE",
-      "note": "La evolución mensual de puntualidad sí está implementada (no falta, aunque la matriz vieja lo decía). Falta completar verificación autenticada de este bloque."
+      "note": "components/students/profile/punctuality-section.tsx — La evolución mensual de puntualidad sí está implementada (no falta, aunque la matriz vieja lo decía). Falta completar verificación autenticada de este bloque."
     },
     {
       "id": "ALU-14",
@@ -298,15 +298,15 @@
       "original": "`LevelAchievementSheet`, `levelAchievementRules.ts`",
       "web": "components/students/profile/level-achievement-card.tsx; lib/actions/level-achievement.ts",
       "status": "DISPONIBLE",
-      "note": "Logro de nivel, fecha, nota, salto/corrección y duración ya implementados con RPC atómica; falta recorrido autenticado en producción."
+      "note": "components/students/profile/level-achievement-card.tsx; lib/actions/level-achievement.ts — Logro de nivel, fecha, nota, salto/corrección y duración ya implementados con RPC atómica; falta recorrido autenticado en producción."
     },
     {
       "id": "ALU-15",
       "function": "Corrección manual de sesión (hora real de inicio/fin y puntualidad) desde la pestaña Clases",
       "original": "`ManualSessionCorrectionSheet`",
       "web": "—",
-      "status": "FALTA",
-      "note": "Falta corregir inicio, fin y puntualidad de una clase ya guardada desde su historial. Corregir inicio de la clase actualmente en curso no cubre esto."
+      "status": "DISPONIBLE",
+      "note": "Corrección de inicio real, fin y puntualidad desde Clases. Control de versión, mismo día civil, identidad de cuenta y sin escritura financiera."
     },
     {
       "id": "ALU-16",
@@ -314,15 +314,15 @@
       "original": "`CobrosTab`, `EditBillingPlanSheet`, `EditMonthlyAmountSheet`, `RegisterPaymentSheet`, `initialMonthlyBillingPlan.ts`",
       "web": "cobros-tab.tsx; monthly-status-card.tsx; student-payment-history.tsx; mark_current_month_paid; resume_monthly_billing",
       "status": "DISPONIBLE",
-      "note": "Se suman «Marcar mes actual como pagado», «Cambiar desde cuándo se cobra», la etiqueta «Situación inicial declarada» y el historial de pagos del alumno. La corrección de una declaración equivocada es anular ese pago (queda en el historial; el mes vuelve a pendiente). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "cobros-tab.tsx; monthly-status-card.tsx; student-payment-history.tsx; mark_current_month_paid; resume_monthly_billing — Se suman «Marcar mes actual como pagado», «Cambiar desde cuándo se cobra», la etiqueta «Situación inicial declarada» y el historial de pagos del alumno. La corrección de una declaración equivocada es anular ese pago (queda en el historial; el mes vuelve a pendiente). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-17",
       "function": "Aviso «clase cancelada por reprogramación» con «Entendido, ya avisé» / «Eliminar y reemplazar»",
       "original": "`RescheduleCancellationNoticeBanner`, `rescheduleCancellationNoticeStore`",
       "web": "—",
-      "status": "FALTA",
-      "note": "Falta el aviso de cancelación por reprogramación con Entendido/ya avisé y Eliminar y reemplazar."
+      "status": "DISPONIBLE",
+      "note": "Eliminar y reemplazar al reprogramar cancela sólo clases sin registro/cobro; deja aviso por participante con Entendido, ya avisé."
     },
     {
       "id": "ALU-18",
@@ -330,7 +330,7 @@
       "original": "`TareasTab`, `ReportesTab`",
       "web": "`tareas-tab.tsx`, `reportes-tab.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`tareas-tab.tsx`, `reportes-tab.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-01",
@@ -338,7 +338,7 @@
       "original": "`CalendarTabScreen`, `WeekTimeGrid`, `calendarVisualLegend`",
       "web": "`real-calendar-grid.tsx`, `calendar-density-picker.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`real-calendar-grid.tsx`, `calendar-density-picker.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-02",
@@ -346,31 +346,31 @@
       "original": "`NewCalendarLessonSheet`, `TimeSlotQuickPickSheet`",
       "web": "`/calendario/nueva`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/calendario/nueva` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-03",
       "function": "«Buscar horario libre» y disponibilidad en el selector de horario (libres en blanco / ocupados en gris, mantener presionado para sumar 15 min)",
       "original": "`NewCalendarLessonSheet`, `RescheduleTimeSlotGrid`",
       "web": "—",
-      "status": "FALTA",
-      "note": "Falta el selector de espacios disponibles y ampliación por bloques de 15 minutos. Tocar un hueco de la grilla precarga fecha/hora pero no sustituye ese selector."
+      "status": "DISPONIBLE",
+      "note": "Buscar horario libre: calendario mensual y grilla de 15 minutos, duración exacta, mantener presionado o botón para ampliar 15 minutos. Incluye clases y bloqueos reales."
     },
     {
       "id": "CAL-04",
       "function": "Vacaciones y bloqueos (Mi disponibilidad) con aviso al agendar encima y «Agendar igualmente»",
       "original": "`TeacherAvailabilitySheet`, `teacherAvailabilityEngine`",
       "web": "`/calendario/disponibilidad`",
-      "status": "PARCIAL",
-      "note": "Vacaciones y bloqueos existen. No está acreditada la misma opción de agendar igualmente en todos los caminos de alta, reprogramación y edición; hay caminos que rechazan el bloqueo."
+      "status": "DISPONIBLE",
+      "note": "Confirmación explícita para agendar en un bloqueo en altas y reprogramación; edición de duración/patrón conserva su confirmación de guardar igualmente. Ajuste horario también ofrece confirmación del bloqueo."
     },
     {
       "id": "CAL-05",
       "function": "Acciones de una clase: reprogramar con calendario mensual de disponibilidad (verde/amarillo/rojo) y grilla de horarios",
       "original": "`CalendarLessonActionsSheet`, `RescheduleMonthCalendar`",
       "web": "`real-lesson-detail-modal.tsx` (fecha y hora libres)",
-      "status": "PARCIAL",
-      "note": "Reprogramar existe con fecha/hora; falta calendario mensual de disponibilidad y grilla visual libre/ocupado."
+      "status": "DISPONIBLE",
+      "note": "Reprogramación con calendario mensual y horarios libres/ocupados. Reemplazo de clases, avisos y movimiento en una transacción con clave de reintento."
     },
     {
       "id": "CAL-06",
@@ -378,7 +378,7 @@
       "original": "`EditClassTitleSheet`",
       "web": "`edit_calendar_lesson`, `edit_recurrence_class_title`, `editLessonTitleAction` (`lesson-edit-dialog.tsx`)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`edit_calendar_lesson`, `edit_recurrence_class_title`, `editLessonTitleAction` (`lesson-edit-dialog.tsx`) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-07",
@@ -386,23 +386,23 @@
       "original": "`ChangeLessonDurationSheet`, `calendarDurationEdit`",
       "web": "`changeLessonDurationAction`: sólo esta clase (`edit_calendar_lesson`) o esta y las siguientes (corte de serie con el patrón del tramo vigente); valida choques y bloqueos",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`changeLessonDurationAction`: sólo esta clase (`edit_calendar_lesson`) o esta y las siguientes (corte de serie con el patrón del tramo vigente); valida choques y bloqueos — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-08",
       "function": "**Cambiar tipo de actividad** Clase ↔ Entrenamiento (+ cuota de entrenamiento)",
       "original": "`EditActivityKindSheet`",
       "web": "—",
-      "status": "FALTA",
-      "note": "Falta convertir Clase ↔ Entrenamiento con el alcance del original y la coordinación atómica del acuerdo/cuota. No basta cambiar la etiqueta."
+      "status": "DISPONIBLE",
+      "note": "Conversión Clase/Entrenamiento: clase suelta futura o corte de serie desde hoy/esta y las siguientes, acuerdo y cuota inicial atómicos. Conserva cargos, pagos y clases anteriores; valida versión concurrente."
     },
     {
       "id": "CAL-09",
       "function": "**Agregar/quitar alumnos** de una clase o desde una fecha, con «Crear alumno nuevo»",
       "original": "`AddParticipantsSheet`, `calendarParticipantsFromDate`",
       "web": "components/calendar/lesson-participants-dialog.tsx; lib/actions/lesson-participants.ts",
-      "status": "PARCIAL",
-      "note": "Participantes de serie y de clase suelta/ocurrencia implementados. Crear alumno abre otra pestaña y requiere actualizar; falta alta integrada sin salir del diálogo."
+      "status": "DISPONIBLE",
+      "note": "Alta de alumno dentro del diálogo de participantes, sin otra pestaña, seleccionado al terminar. Usa creación canónica y control de duplicados."
     },
     {
       "id": "CAL-10",
@@ -410,7 +410,7 @@
       "original": "`CalendarLessonActionsSheet`",
       "web": "`deleteCancelledLessonAction` (cancelada: tarjeta eliminada + fecha excluida de la serie) y `deleteSeriesFromOccurrenceAction` (esta y las siguientes). Diferencia: no se elimina una cancelada con registro o cobro (se conserva el historial)",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Se conserva historial: no se elimina una clase con registro/cobro como permite el original. El resto de las acciones está implementado."
+      "note": "`deleteCancelledLessonAction` (cancelada: tarjeta eliminada + fecha excluida de la serie) y `deleteSeriesFromOccurrenceAction` (esta y las siguientes). Diferencia: no se elimina una cancelada con registro o cobro (se conserva el historial) — Se conserva historial: no se elimina una clase con registro/cobro como permite el original. El resto de las acciones está implementado."
     },
     {
       "id": "CAL-11",
@@ -418,7 +418,7 @@
       "original": "`CalendarLessonActionsSheet`, `cancelledSlotReuse`",
       "web": "`restoreOccurrenceAction` / `restore_calendar_occurrence` (vuelve a la fecha original; avisa si está bloqueada y permite «Restaurar igual»; nunca con registro o cobro); reemplazar ya existía",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Restaurar/reemplazar existen; una cancelada con registro/cobro queda protegida para conservar historial. Diferencia intencional, no equivalencia literal."
+      "note": "`restoreOccurrenceAction` / `restore_calendar_occurrence` (vuelve a la fecha original; avisa si está bloqueada y permite «Restaurar igual»; nunca con registro o cobro); reemplazar ya existía — Restaurar/reemplazar existen; una cancelada con registro/cobro queda protegida para conservar historial. Diferencia intencional, no equivalencia literal."
     },
     {
       "id": "CAL-12",
@@ -426,7 +426,7 @@
       "original": "`RecurrenceOptions`, `calendarRecurrenceEngine`",
       "web": "`/calendario/nueva`, `weekday-schedule-editor.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/calendario/nueva`, `weekday-schedule-editor.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-13",
@@ -434,7 +434,7 @@
       "original": "`RecurrenceRulesSheet`, `EditFutureRecurrenceSheet`, `calendarRecurrenceSplit`",
       "web": "`/calendario/series[/id]`, `editFutureRecurrenceAction`, `changeParticipantsAction`, `swapSeriesAction`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/calendario/series[/id]`, `editFutureRecurrenceAction`, `changeParticipantsAction`, `swapSeriesAction` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-14",
@@ -442,7 +442,7 @@
       "original": "`TrainingBillingAgreementSheet`",
       "web": "`training-billing-config.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`training-billing-config.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-15",
@@ -450,7 +450,7 @@
       "original": "`FirstMonthProrationSheet`",
       "web": "`proration.ts` + flujo",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`proration.ts` + flujo — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CAL-16",
@@ -458,7 +458,7 @@
       "original": "`calendarConflicts.ts`",
       "web": "`calendar-conflicts.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`calendar-conflicts.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-01",
@@ -466,7 +466,7 @@
       "original": "`NewClassScreen`, `RegisterPendingClassSheet`, `ParticipantRegistrationBlock`",
       "web": "`registration-workspace.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`registration-workspace.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-02",
@@ -474,7 +474,7 @@
       "original": "`NewClassScreen`, `useNewClassForm`",
       "web": "`planBulkAttendance` + botones en `registration-workspace.tsx` (sólo alumnos no completados; confirma antes de reemplazar o borrar)",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`planBulkAttendance` + botones en `registration-workspace.tsx` (sólo alumnos no completados; confirma antes de reemplazar o borrar) — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-03",
@@ -482,15 +482,15 @@
       "original": "`PendingClassOutcomeSelector`, `LessonOutcomeField`, `LateCancellationPolicySheet`",
       "web": "`registration-outcome-field.tsx`, `change_lesson_registration_outcome`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`registration-outcome-field.tsx`, `change_lesson_registration_outcome` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-04",
       "function": "¿Es cobrable? / ¿Consume una clase de la cuota mensual? (sólo alumnos por clase)",
       "original": "`BillingSection`",
       "web": "app/(app)/registro/[calendarLessonId]/registration-workspace.tsx; lib/repositories/lesson-registrations.ts",
-      "status": "PARCIAL",
-      "note": "Los dos interruptores se guardan; No cobrable interviene en el cargo por clase. Consume cuota no tiene un consumo de créditos completo conectado en la web: falta contrastar los contadores y políticas reales, sin prometer un motor de paquetes que tampoco tiene UI en el original."
+      "status": "DISPONIBLE",
+      "note": "Los dos indicadores se conservan; es cobrable interviene en el cargo por clase. Corrección de auditoría: el original no tiene consumidor financiero de consumeMonthlyPackage fuera del almacenamiento/formulario. No se inventa un motor de paquetes."
     },
     {
       "id": "REG-05",
@@ -498,15 +498,15 @@
       "original": "`ClassPaymentPromptModal`",
       "web": "`class-payment-prompt.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`class-payment-prompt.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-06",
       "function": "Editar un registro ya finalizado, con confirmación al salir sin guardar",
       "original": "`EditRegisteredLessonSheet`",
       "web": "`editCompletedRegistrationAction`; falta confirmar «salir sin guardar»",
-      "status": "PARCIAL",
-      "note": "La edición está implementada; falta acreditar la misma confirmación al abandonar con cambios en todos los caminos de navegación, cierre y cambio de alumno."
+      "status": "DISPONIBLE",
+      "note": "Aviso de cambios sin guardar en navegación, cierre/recarga y salida del registro. No escribe al abandonar; guardar habilita la navegación normal y nuevas ediciones vuelven a protegerse."
     },
     {
       "id": "REG-07",
@@ -514,23 +514,23 @@
       "original": "`PedagogicalContentSection`, `TopicChecklist`, `ChipTextList`",
       "web": "`pedagogical-content-editor.tsx`",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Se conserva la edición de listas y tareas en entrenamientos. Planificado/Visto se quitó por pedido expreso y no debe reintroducirse al copiar el original."
+      "note": "`pedagogical-content-editor.tsx` — Se conserva la edición de listas y tareas en entrenamientos. Planificado/Visto se quitó por pedido expreso y no debe reintroducirse al copiar el original."
     },
     {
       "id": "REG-08",
       "function": "Calificaciones por área (1–10, «sin calificar», mostrar/ocultar control por área)",
       "original": "`SkillGradeChips`",
       "web": "`registration-form-parts.tsx` (barra 48 px)",
-      "status": "PARCIAL",
-      "note": "Notas 1–10 y Sin calificar, barra y botones grandes implementados por pedido. Falta la función mostrar/ocultar cada área; funcionamiento físico de Mac/iPhone no acreditado por emulación."
+      "status": "DISPONIBLE",
+      "note": "Mostrar/ocultar cada área sin borrar la nota. Se conservan las barras y botones grandes aprobados; prueba física sigue separada."
     },
     {
       "id": "REG-09",
       "function": "Tareas: comunes y personalizadas, historial, revisión posterior (cumplida/parcial/no cumplida), **fecha de entrega elegida entre las próximas clases reales**",
       "original": "`HomeworkSection`, `PendingHomeworkSection`, `upcomingHomeworkOccurrences`",
       "web": "`registration-form-parts.tsx`",
-      "status": "PARCIAL",
-      "note": "Asignación común/personal, revisión e historial existen. La fecha es un input libre; falta seleccionar entre próximas clases reales como en el original."
+      "status": "DISPONIBLE",
+      "note": "Fecha elegible entre próximas clases reales del alumno o de todos los participantes de la tarea común; conserva alternativa manual y contenido personalizado."
     },
     {
       "id": "REG-10",
@@ -538,15 +538,15 @@
       "original": "`AttachmentList`, `MaterialLibraryPicker`, `lessonAttachments.ts`",
       "web": "`lesson-files-editor.tsx`, adjuntos y materiales (§25)",
       "status": "DISPONIBLE",
-      "note": "Subida, PDF, miniaturas, leyendas, privacidad por alumno y reutilización implementados. Cámara/galería/HEIC con iPhone físico siguen sin acreditarse: presencia en código no prueba el dispositivo."
+      "note": "`lesson-files-editor.tsx`, adjuntos y materiales (§25) — Subida, PDF, miniaturas, leyendas, privacidad por alumno y reutilización implementados. Cámara/galería/HEIC con iPhone físico siguen sin acreditarse: presencia en código no prueba el dispositivo."
     },
     {
       "id": "REG-11",
       "function": "Ciclo real de la clase: horario efectivo, finalización real, minutos de demora computables",
       "original": "`NewClassScreen`",
       "web": "—",
-      "status": "PARCIAL",
-      "note": "Inicio/final real se guardan desde clase en vivo. Falta corrección manual postclase y completar los alcances del ajuste horario."
+      "status": "DISPONIBLE",
+      "note": "Ciclo real conservado; ajuste horario con razón y horario efectivo conectado a clase en vivo, y corrección posterior de inicio/fin/puntualidad."
     },
     {
       "id": "REG-12",
@@ -554,15 +554,15 @@
       "original": "`useSaveGroupDraft`, `useActiveFieldVisibility`",
       "web": "`useDraftOperationId`, borradores en servidor",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`useDraftOperationId`, borradores en servidor — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REG-13",
-      "function": "Resumen «Revisá estos datos» antes de guardar",
+      "function": "Validación y aviso de errores al guardar",
       "original": "`NewClassScreen`",
       "web": "validaciones en línea",
-      "status": "PARCIAL",
-      "note": "Hay validaciones en línea; no está el mismo resumen previo Revisá estos datos con su recorrido equivalente."
+      "status": "DISPONIBLE",
+      "note": "Corrección de auditoría: Revisá estos datos es un aviso de errores del original, no una confirmación previa al guardado. Se conservan validaciones y errores en línea y el guardado directo."
     },
     {
       "id": "PAG-01",
@@ -570,7 +570,7 @@
       "original": "`monthlyChargeGenerationPlan`, `periodicChargeGenerationService`, `packagePurchaseService`",
       "web": "lib/payments/periodic-charge-candidates.ts; components/students/profile/billing-plan-card.tsx",
       "status": "DISPONIBLE",
-      "note": "Por clase/mensual/semanal/quincenal implementados. Paquete se puede elegir pero el motor no tiene compra/consumo conectados a pantallas tampoco en el original; no se cuenta como falta web una UI inexistente en el origen."
+      "note": "lib/payments/periodic-charge-candidates.ts; components/students/profile/billing-plan-card.tsx — Por clase/mensual/semanal/quincenal implementados. Paquete se puede elegir pero el motor no tiene compra/consumo conectados a pantallas tampoco en el original; no se cuenta como falta web una UI inexistente en el origen."
     },
     {
       "id": "PAG-02",
@@ -578,7 +578,7 @@
       "original": "`RegisterPaymentSheet`, `registerPaymentService`",
       "web": "`ChargeActions`, `register_payment`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`ChargeActions`, `register_payment` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "PAG-03",
@@ -586,7 +586,7 @@
       "original": "`VoidPaymentDialog`, `VoidChargeDialog`",
       "web": "`charge-actions.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`charge-actions.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "PAG-04",
@@ -594,7 +594,7 @@
       "original": "`EditMonthlyAmountSheet`, `monthlyAmountCorrectionService`",
       "web": "components/students/profile/billing-plan-card.tsx; change_student_monthly_amount",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "components/students/profile/billing-plan-card.tsx; change_student_monthly_amount — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "PAG-05",
@@ -602,7 +602,7 @@
       "original": "`initialMonthlyBillingService`, `initialPaidSurchargeRepairService`",
       "web": "_apply_first_month_situation / mark_current_month_paid (migración 20261031100000); payments.source = initial_student_setup",
       "status": "DISPONIBLE",
-      "note": "Declaración (alta) y «marcar mes pagado» distinguidas de un pago observado, con importe = saldo real, sin segundo pago ni segunda mensualidad, fecha recortada al vencimiento sólo en el alta, período obsoleto/fecha futura/alumno no activo/cargo anulado rechazados. Comparado en Postgres real contra planEnsureMonthlyChargeSituation del original (6 escenarios) y probado con dos llamadas simultáneas. El «Corregir situación inicial» del original repara un recargo (desactivado en la web): no aplica. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "_apply_first_month_situation / mark_current_month_paid (migración 20261031100000); payments.source = initial_student_setup — Declaración (alta) y «marcar mes pagado» distinguidas de un pago observado, con importe = saldo real, sin segundo pago ni segunda mensualidad, fecha recortada al vencimiento sólo en el alta, período obsoleto/fecha futura/alumno no activo/cargo anulado rechazados. Comparado en Postgres real contra planEnsureMonthlyChargeSituation del original (6 escenarios) y probado con dos llamadas simultáneas. El «Corregir situación inicial» del original repara un recargo (desactivado en la web): no aplica. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "PAG-06",
@@ -610,7 +610,7 @@
       "original": "`SurchargeSettingsPanel`, `surchargeSettingsService`",
       "web": "apagado estructuralmente",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Recargos automáticos apagados por decisión vigente; no deben reactivarse al portar el original."
+      "note": "apagado estructuralmente — Recargos automáticos apagados por decisión vigente; no deben reactivarse al portar el original."
     },
     {
       "id": "PAG-07",
@@ -618,7 +618,7 @@
       "original": "`PaymentHistorySection`",
       "web": "components/payments/student-payment-history.tsx; lib/payments/student-cobros.ts",
       "status": "DISPONIBLE",
-      "note": "Últimos 12 meses, categoría y puntaje en texto, historial insuficiente, obligaciones en término / fuera de término, deuda actual y racha, con el motor idéntico al original y datos sólo del alumno. Prueba: student-cobros.test.ts (7). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "components/payments/student-payment-history.tsx; lib/payments/student-cobros.ts — Últimos 12 meses, categoría y puntaje en texto, historial insuficiente, obligaciones en término / fuera de término, deuda actual y racha, con el motor idéntico al original y datos sólo del alumno. Prueba: student-cobros.test.ts (7). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "PAG-08",
@@ -626,7 +626,7 @@
       "original": "`CollectionsCenterScreen`, `collectionsCenter.ts`",
       "web": "`/cobros`, `collections-center.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`/cobros`, `collections-center.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "PAG-09",
@@ -634,7 +634,7 @@
       "original": "`financialReconciliation*`",
       "web": "restricciones y RPC atómicos en base",
       "status": "PARCIAL",
-      "note": "Restricciones, generación idempotente y diagnóstico existen; faltan equivalentes de algunas reconciliaciones/reparaciones. No se habilitan reparaciones destructivas automáticas."
+      "note": "restricciones y RPC atómicos en base — Restricciones, generación idempotente y diagnóstico existen; faltan equivalentes de algunas reconciliaciones/reparaciones. No se habilitan reparaciones destructivas automáticas."
     },
     {
       "id": "PAG-10",
@@ -642,7 +642,7 @@
       "original": "`summarizeOverdueDebt`",
       "web": "`reminders-center.ts`, `collections-urgency.ts`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`reminders-center.ts`, `collections-urgency.ts` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REP-01",
@@ -650,7 +650,7 @@
       "original": "`ReportesTab`, `reportPeriods.ts`",
       "web": "`reportes-tab.tsx`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`reportes-tab.tsx` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REP-02",
@@ -658,7 +658,7 @@
       "original": "`reportHistoryStore`, `reportPdfStorage`",
       "web": "`lib/reports/pdf.tsx`, `delete_report_record`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`lib/reports/pdf.tsx`, `delete_report_record` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "REP-03",
@@ -666,7 +666,7 @@
       "original": "`reportSharing.ts`",
       "web": "share-report-dialog.tsx; lib/reports/share-pdf.ts",
       "status": "DISPONIBLE",
-      "note": "Selector del sistema con el PDF real si el navegador lo admite; si no, Descargar PDF, Copiar mensaje y Abrir WhatsApp Web (sin contacto ni texto). Aviso de privacidad del original una vez; enlace firmado de corta vida; nunca se afirma que se envió. Diferencia: el original no tiene mensaje sugerido (el de la web lleva solo primer nombre, título y período). Prueba: share-pdf.test.ts (8, navegadores simulados). Sin iPhone/Safari físico. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
+      "note": "share-report-dialog.tsx; lib/reports/share-pdf.ts — Selector del sistema con el PDF real si el navegador lo admite; si no, Descargar PDF, Copiar mensaje y Abrir WhatsApp Web (sin contacto ni texto). Aviso de privacidad del original una vez; enlace firmado de corta vida; nunca se afirma que se envió. Diferencia: el original no tiene mensaje sugerido (el de la web lleva solo primer nombre, título y período). Prueba: share-pdf.test.ts (8, navegadores simulados). Sin iPhone/Safari físico. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "REP-04",
@@ -674,7 +674,7 @@
       "original": "`buildDeterministicReportNarrative`",
       "web": "`lib/reports`",
       "status": "DISPONIBLE",
-      "note": "Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
+      "note": "`lib/reports` — Estructura/acción presente en el código web. No equivale a una certificación de punta a punta ni de dispositivo físico."
     },
     {
       "id": "CFG-01",
@@ -682,7 +682,7 @@
       "original": "`backup/*`, `CloudBackupRecoveryGate`",
       "web": "la base ES la nube; módulo de importación/traslado",
       "status": "DIFERENCIA VIGENTE",
-      "note": "Base central y lecturas del servidor sustituyen la copia local y recuperación de backup. No resuelve uso sin red (ACC-07)."
+      "note": "la base ES la nube; módulo de importación/traslado — Base central y lecturas del servidor sustituyen la copia local y recuperación de backup. No resuelve uso sin red (ACC-07)."
     },
     {
       "id": "CFG-02",
@@ -690,7 +690,7 @@
       "original": "`BackupScreen`, `dataIntegrity*`, `financialReconciliation`",
       "web": "`/configuracion/consistencia`, `lib/payments/consistency.ts`",
       "status": "PARCIAL",
-      "note": "Diagnóstico de sólo lectura implementado; falta reparación segura de los casos demostrados. Restricciones relacionales impiden varias categorías del original."
+      "note": "`/configuracion/consistencia`, `lib/payments/consistency.ts` — Diagnóstico de sólo lectura implementado; falta reparación segura de los casos demostrados. Restricciones relacionales impiden varias categorías del original."
     },
     {
       "id": "CFG-03",
@@ -698,7 +698,7 @@
       "original": "`transfer/*`",
       "web": "importador (R6/R6.1)",
       "status": "DISPONIBLE",
-      "note": "El importador del traslado existe. Exportar de vuelta hacia la app nativa no se declara implementado ni necesario por este resultado."
+      "note": "importador (R6/R6.1) — El importador del traslado existe. Exportar de vuelta hacia la app nativa no se declara implementado ni necesario por este resultado."
     },
     {
       "id": "CFG-04",
@@ -706,7 +706,7 @@
       "original": "—",
       "web": "`/configuracion/datos-de-prueba`",
       "status": "EXCLUIDO",
-      "note": "Propio de la web, excluido de la comparación con el original."
+      "note": "`/configuracion/datos-de-prueba` — Propio de la web, excluido de la comparación con el original."
     },
     {
       "id": "UX-01",
@@ -714,7 +714,7 @@
       "original": "VERIF por pantalla (aviso de pago: comprobado en emulación 375/390/430 y altura de teclado; **Safari/teclado/modo anclado de iPhone: prueba física pendiente**)",
       "web": "",
       "status": "PARCIAL",
-      "note": "Controles responsivos y de teclado implementados con pruebas de emulación parciales. Sigue pendiente iPhone anclado y Mac/Safari real; no se acredita paridad física."
+      "note": "— Controles responsivos y de teclado implementados con pruebas de emulación parciales. Sigue pendiente iPhone anclado y Mac/Safari real; no se acredita paridad física."
     },
     {
       "id": "UX-02",
@@ -722,7 +722,7 @@
       "original": "EQ para el aviso de pago (`Dialog placement=\"center\"`, `onBeforeClose`); resto de diálogos siguen como hoja inferior en móvil",
       "web": "",
       "status": "EXCLUIDO",
-      "note": "La estética web se conserva por pedido; no se cuenta igualdad visual con React Native."
+      "note": "— La estética web se conserva por pedido; no se cuenta igualdad visual con React Native."
     }
   ]
 }

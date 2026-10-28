@@ -390,3 +390,9 @@ function buildFreezePayload(
     }),
   }));
 }
+
+/** Reactivation and monthly billing resume must succeed or roll back together. */
+export async function reactivateStudentWithBilling(ctx: AuthenticatedDbContext,id:string,input:{occurredOn:string;reason?:string;internalNote?:string;choice:string;period:string;dueDate:string}):Promise<StudentRecord>{
+ const {data,error}=await ctx.supabase.rpc('reactivate_student_with_billing',{p_student_id:id,p_occurred_on:input.occurredOn,p_reason:input.reason??null,p_internal_note:input.internalNote??null,p_choice:input.choice||null,p_period:input.period,p_due_date:input.dueDate});
+ if(error)throw error;return toStudentRecord(data as StudentRow);
+}

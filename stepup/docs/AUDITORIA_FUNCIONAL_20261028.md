@@ -6,10 +6,10 @@ La estructura de pantallas, acciones y datos es el criterio. No se comparan node
 
 Catálogo: 89 bloques. Se excluyen 2 (datos propios de QA web y estética). Base comparable: **87 bloques**. Todos pesan igual; bloques amplios pueden contener varias acciones. ALU-16/PAG-05 y REG-11/INI-07 se solapan: este índice es una lectura del catálogo, no un cálculo de esfuerzo restante. No es una auditoría de corrección de cada rama ni una garantía de ausencia de errores.
 
-- 71/87 disponibles o con diferencia vigente: **81.6 %** (65 disponibles + 6 diferencias vigentes).
-- 12/87 parciales: **13.8 %**.
-- 4/87 faltantes: **4.6 %**.
-- Si se asigna medio punto a cada parcial: **índice estructural aproximado 88.5 %**. Es una ponderación declarada, no «88.5 % probado» ni equivalencia exacta.
+- 79/87 disponibles o con diferencia vigente: **90.8 %** (73 disponibles + 6 diferencias vigentes).
+- 7/87 parciales: **8.0 %**.
+- 1/87 faltantes: **1.1 %**.
+- Si se asigna medio punto a cada parcial: **índice estructural aproximado 94.8 %**. Es una ponderación declarada, no «94.8 % probado» ni equivalencia exacta.
 
 No se calcula porcentaje de funcionamiento confirmado: no existe una prueba comparable y actual de todos los circuitos y dispositivos. Una suite que incluye pruebas del núcleo original copiado no acredita la interfaz publicada.
 

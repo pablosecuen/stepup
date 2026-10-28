@@ -9,6 +9,7 @@ import {
   getStudent,
   updateStudent,
   changeStudentStatus,
+  reactivateStudentWithBilling,
   archiveStudentAndPruneFuture,
   StudentNotFoundError,
   type NewStudentInput,
@@ -24,7 +25,6 @@ import type { BillingType, StudentCategory, StudentModality, StudentStatus } fro
 import { todayInArgentina } from "@/lib/format/date-format";
 import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/operation-id";
 import { actionErrorMessage } from "@/lib/errors/action-error";
-import { resumeMonthlyBilling } from "@/lib/repositories/payments";
 import { billingPeriodOfDateKey, resolveMonthlyDueDate } from "@/lib/payments/dates";
 import { buildFirstMonthInput } from "@/lib/students/first-month";
 import { isValidAge, joinFullName, resolveBirthDateOnEdit, estimatedBirthDateForAge, splitGoals } from "@/lib/students/student-form-fields";
@@ -234,7 +234,7 @@ export async function changeStudentStatusAction(
   const occurredOn = readString(formData, "occurredOn").trim() || todayInArgentina();
   const reason = readOptionalString(formData, "reason") ?? undefined;
   const internalNote = readOptionalString(formData, "internalNote") ?? undefined;
-  let warning: string | undefined;
+  const warning: string | undefined=undefined;
 
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -272,21 +272,10 @@ export async function changeStudentStatusAction(
         operationId,
       });
     } else {
-      await changeStudentStatus(ctx, studentId, { status, occurredOn, reason, internalNote });
-      // «Retomar el cobro mensual» (sólo al volver a activo un alumno mensual): se aplica en una operación atómica e idempotente aparte; si fallara, el estado ya cambió y se avisa sin simular un éxito completo.
-      const resumeChoice = readString(formData, "resumeChoice").trim();
-      if (status === "activo" && resumeChoice) {
-        if (resumeChoice !== "this_month" && resumeChoice !== "next_month") {
-          warning = "El alumno quedó activo, pero no se pudo guardar desde cuándo se retoma el cobro. Podés ajustarlo desde Cobros.";
-        } else {
-          try {
-            const currentPeriod = billingPeriodOfDateKey(todayInArgentina());
-            await resumeMonthlyBilling(ctx, { studentId, choice: resumeChoice, currentPeriod, dueDate: resolveMonthlyDueDate(currentPeriod, 10) });
-          } catch (resumeError) {
-            warning = `El alumno quedó activo, pero no se pudo guardar desde cuándo se retoma el cobro: ${actionErrorMessage("students.resume-billing", resumeError)} Podés ajustarlo desde Cobros.`;
-          }
-        }
-      }
+      if(status==='activo'){
+        const currentPeriod=billingPeriodOfDateKey(todayInArgentina());
+        await reactivateStudentWithBilling(ctx,studentId,{occurredOn,reason,internalNote,choice:readString(formData,'resumeChoice').trim(),period:currentPeriod,dueDate:resolveMonthlyDueDate(currentPeriod,10)});
+      }else await changeStudentStatus(ctx, studentId, { status, occurredOn, reason, internalNote });
     }
   } catch (error) {
     if (error instanceof StudentNotFoundError) return { error: "No encontramos ese alumno." };

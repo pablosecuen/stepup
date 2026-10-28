@@ -212,14 +212,14 @@ export function CobrosTabContent({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] text-textPrimary [overflow-wrap:anywhere]">
-                    <span className="font-bold tf-num">{formatMoney(payment.amount)}</span> · {METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
+                    <span className="font-bold tf-num">{formatMoney(payment.amount)}</span> · {payment.source === "initial_student_setup" ? "Situación inicial declarada" : METHOD_LABEL[payment.method] ?? payment.method} · {formatDateValue(payment.paidAt)}
                   </p>
                   {excessLinesForPayment(payment.id, allocations, voidedAtByPaymentId).map((line) => (
                     <p key={line.allocationId} className="mt-0.5 text-[13.5px] text-textSecondary [overflow-wrap:anywhere]">
                       Incluye <span className="font-bold tf-num">{formatMoney(line.amount)}</span> por encima del importe base de una obligación · {EXCESS_STATUS_LABEL[line.status]}
                     </p>
                   ))}
-                  {declaredInitialIds.has(payment.id) && <p className="mt-0.5 text-[13.5px] text-textSecondary">Situación inicial declarada al registrar al alumno.</p>}
+                  {payment.source === "initial_student_setup" && <p className="mt-0.5 text-[13.5px] text-textSecondary">Situación inicial declarada al registrar al alumno.</p>}
                   {payment.notes && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">{payment.notes}</p>}
                   {payment.voidedAt && payment.voidReason && <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">Anulado: {payment.voidReason}</p>}
                 </div>

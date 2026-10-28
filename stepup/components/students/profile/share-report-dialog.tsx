@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDownTrayIcon, ArrowTopRightOnSquareIcon, ClipboardDocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { getReportSignedUrlAction } from "@/lib/actions/reports";
 import { guardNetwork } from "@/lib/actions/network-guard";
@@ -35,32 +35,38 @@ export function ShareReportDialog({ reportId, title, periodLabel, studentName, o
   // El diálogo sólo se monta después de un toque (nunca en el servidor): el estado inicial puede leer el navegador sin provocar diferencias de hidratación.
   const [acknowledged, setAcknowledged] = useState(() => readNoticeSeen());
   const [supported, setSupported] = useState<boolean | null>(() => canShareReportFiles(navigator, (name, type) => new File([], name, { type })));
-  const [busy, setBusy] = useState<null | "share" | "download">(null);
+  const [busy, setBusy] = useState<null | "share">(null);
   const [message, setMessage] = useState<{ tone: "ok" | "bad" | "info"; text: string } | null>(null);
   const shareMessage = buildReportShareMessage({ studentName, title, periodLabel });
-
-  async function signedUrl(): Promise<string | null> {
-    const result = await guardNetwork(() => getReportSignedUrlAction(reportId));
-    if (result.error || !result.data?.url) {
-      setMessage({ tone: "bad", text: result.error ?? "No se pudo preparar el archivo." });
-      return null;
+  const [preparedPdf,setPreparedPdf]=useState<Blob|null>(null);
+  const [downloadUrl,setDownloadUrl]=useState<string|null>(null);
+  const [prepareError,setPrepareError]=useState<string|null>(null);
+  const [prepareAttempt,setPrepareAttempt]=useState(0);
+  useEffect(()=>{
+    if(!acknowledged)return;
+    let active=true;let objectUrl:string|null=null;
+    async function prepare(){
+      try{
+        const result = await guardNetwork(() => getReportSignedUrlAction(reportId));
+        if(result.error||!result.data?.url)throw new Error('prepare');
+        const response=await fetch(result.data.url,{cache:'no-store'});
+        if(!response.ok)throw new Error('download');
+        const pdf=await response.blob();
+        if(active){objectUrl=URL.createObjectURL(pdf);setDownloadUrl(objectUrl);setPreparedPdf(pdf);setPrepareError(null);}
+      }catch{if(active)setPrepareError('No se pudo preparar el PDF. Podés reintentar o descargarlo.');}
     }
-    return result.data.url;
-  }
+    void prepare();return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl);};
+  },[acknowledged,reportId,prepareAttempt]);
 
   async function handleShare() {
+    if(!preparedPdf)return;
     setBusy("share");
     setMessage(null);
     try {
-      const url = await signedUrl();
-      if (!url) return;
       const outcome = await shareReportPdf({
         nav: navigator,
-        fetchPdf: async () => {
-          const response = await fetch(url, { cache: "no-store" });
-          if (!response.ok) throw new Error("download");
-          return response.blob();
-        },
+        preparedPdf,
+        fetchPdf: async () => preparedPdf,
         makeFile: (blob, name, type) => new File([blob], name, { type }),
         fileName: reportPdfFileName(title),
         title,
@@ -72,17 +78,6 @@ export function ShareReportDialog({ reportId, title, periodLabel, studentName, o
         if (outcome.status === "unsupported") setSupported(false);
         setMessage({ tone: "bad", text: outcome.message });
       }
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleDownload() {
-    setBusy("download");
-    setMessage(null);
-    try {
-      const url = await signedUrl();
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
     } finally {
       setBusy(null);
     }
@@ -117,15 +112,13 @@ export function ShareReportDialog({ reportId, title, periodLabel, studentName, o
       ) : (
         <div className="flex flex-col gap-3">
           {message && <Notice tone={message.tone}>{message.text}</Notice>}
+          {prepareError&&<><Notice tone="bad">{prepareError}</Notice><Button variant="secondary" onClick={()=>setPrepareAttempt(v=>v+1)}>Reintentar preparación</Button></>}
           {supported === false && <Notice tone="info">Este navegador no permite compartir el archivo directamente. Descargalo y adjuntalo donde quieras enviarlo.</Notice>}
-          <Button variant="primary" onClick={handleShare} busy={busy === "share"} disabled={busy !== null || supported === false}>
+          <Button variant="primary" onClick={handleShare} busy={busy === "share"} disabled={busy !== null || supported === false || !preparedPdf}>
             <ShareIcon className="h-4 w-4" aria-hidden />
-            {busy === "share" ? "Preparando…" : "Compartir archivo (WhatsApp u otro medio)"}
+            {supported && !preparedPdf && !prepareError ? "Preparando PDF…" : "Compartir archivo (WhatsApp u otro medio)"}
           </Button>
-          <Button variant="secondary" onClick={handleDownload} busy={busy === "download"} disabled={busy !== null}>
-            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
-            {busy === "download" ? "Abriendo…" : "Descargar PDF"}
-          </Button>
+          {downloadUrl?<a href={downloadUrl} download={reportPdfFileName(title)} target="_blank" rel="noopener noreferrer" className={buttonClass({variant:'secondary'})}><ArrowDownTrayIcon className="h-4 w-4" aria-hidden />Descargar PDF</a>:<Button variant="secondary" disabled>Preparando PDF…</Button>}
           <Button variant="secondary" onClick={handleCopy}>
             <ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
             Copiar mensaje

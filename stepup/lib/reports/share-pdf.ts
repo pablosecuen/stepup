@@ -53,12 +53,14 @@ export async function shareReportPdf(input: {
   fileName: string;
   title: string;
   text: string;
+  /** Prepared before the click so Safari can open Share within the user's gesture. */
+  preparedPdf?: Blob;
 }): Promise<ShareReportOutcome> {
   const nav = input.nav;
   if (!nav || typeof nav.share !== "function" || typeof nav.canShare !== "function") return { status: "unsupported", message: REPORT_SHARE_UNSUPPORTED_MESSAGE };
   let blob: Blob;
   try {
-    blob = await input.fetchPdf();
+    blob = input.preparedPdf ?? await input.fetchPdf();
   } catch {
     return { status: "fetch_failed", message: REPORT_SHARE_FETCH_FAILED_MESSAGE };
   }

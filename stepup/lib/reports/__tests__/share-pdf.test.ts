@@ -75,3 +75,8 @@ test("el mensaje sugerido nombra sólo el primer nombre, el título y el períod
   assert.equal(buildReportShareMessage({ studentName: "Ana María Gómez", title: "Reporte de Ana", periodLabel: "marzo 2026" }), "Hola, te comparto el reporte de Ana: Reporte de Ana (marzo 2026).");
   assert.equal(buildReportShareMessage({ studentName: "", title: "T", periodLabel: "P" }), "Hola, te comparto el reporte: T (P).");
 });
+test('con PDF preparado se abre el selector en el mismo gesto, sin esperar una descarga', async()=>{
+ const {nav,shared}=navigatorWith();let fetched=false;
+ const result=shareReportPdf({...base(nav,async()=>{fetched=true;throw new Error('no debe descargar');}),preparedPdf:pdf});
+ assert.equal(shared.length,1);assert.equal(fetched,false);assert.deepEqual(await result,{status:'shared'});
+});

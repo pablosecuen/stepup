@@ -98,6 +98,7 @@ begin
   if p_situation = 'paid' and p_operation_id is not null then
     select * into v_payment from public.payments where owner_id = p_owner and operation_id = p_operation_id;
     if found then
+      if v_payment.student_id is distinct from p_student_id then raise exception 'La operación corresponde a otro alumno.' using errcode='22023'; end if;
       select * into v_charge from public.payment_charges
         where owner_id = p_owner and student_id = p_student_id and charge_type = 'mensual' and billing_period = p_period and voided_at is null;
       return jsonb_build_object('situation', p_situation, 'billing_period', p_period, 'charge_id', v_charge.id, 'charge_created', false, 'payment_id', v_payment.id, 'replayed', true);
@@ -289,7 +290,7 @@ begin
     exception when others then
       raise exception 'La edad no es válida.';
     end;
-    if v_birth > current_date or v_birth < current_date - interval '121 years' then
+    if extract(year from age((now() at time zone 'America/Argentina/Buenos_Aires')::date,v_birth)) not between 3 and 120 then
       raise exception 'La edad debe estar entre 3 y 120 años.';
     end if;
   end if;
@@ -444,3 +445,23 @@ comment on function public.create_student_with_operation(uuid, jsonb, boolean) i
   'Alta de alumno idempotente por (owner, operation_id), con edad, objetivos y situación del primer mes (alumno mensual) en la misma transacción. Si algo falla se revierte todo, sin claims huérfanos.';
 
 notify pgrst, 'reload schema';
+
+-- Integración: reactivar y decidir el mes de cobro forman una sola transacción.
+create function public.reactivate_student_with_billing(p_student_id uuid,p_occurred_on date,p_reason text,p_internal_note text,p_choice text,p_period text,p_due_date date)
+returns public.students language plpgsql security definer set search_path='' as $$
+declare s public.students; plan jsonb;
+begin
+ if auth.uid() is null then raise exception 'Sesión requerida' using errcode='28000'; end if;
+ select * into s from public.students where id=p_student_id and owner_id=auth.uid() for update;
+ if not found then raise exception 'Alumno no encontrado' using errcode='P0002'; end if;
+ plan:=coalesce(s.billing_plan,case when s.billing_type='mensual' then jsonb_build_object('type','monthly') end);
+ if plan->>'type'='monthly' and (p_choice is null or p_choice not in ('this_month','next_month')) then raise exception 'Elegí desde cuándo retomar el cobro mensual' using errcode='22023'; end if;
+ if s.status='activo' then return s; end if;
+ s:=public.change_student_status(p_student_id,'activo',p_occurred_on,p_reason,p_internal_note);
+ if plan->>'type'='monthly' then
+  perform public.resume_monthly_billing(jsonb_build_object('student_id',p_student_id,'choice',p_choice,'current_period',p_period,'due_date',p_due_date));
+ end if;
+ return s;
+end $$;
+revoke all on function public.reactivate_student_with_billing(uuid,date,text,text,text,text,date) from public,anon;
+grant execute on function public.reactivate_student_with_billing(uuid,date,text,text,text,text,date) to authenticated;

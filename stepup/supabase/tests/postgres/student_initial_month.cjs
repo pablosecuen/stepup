@@ -1,4 +1,4 @@
-// Situación mensual inicial, «marcar mes pagado», retomar el cobro y alta con edad/objetivos (migración 20261031100000). Postgres REAL aislado, datos SINTÉTICOS.
+// Situación mensual inicial, «marcar mes pagado», retomar el cobro y alta con edad/objetivos (migración 20261031120000). Postgres REAL aislado, datos SINTÉTICOS.
 //
 //   set NODE_PATH=%TEMP%\epg\node_modules
 //   node supabase/tests/postgres/student_initial_month.cjs
@@ -195,6 +195,20 @@ async function main() {
     check("original = base: «desde el próximo mes» no crea cargo ni pago y empieza el período siguiente", oNext.chargeToCreate === null && oNext.payment === null && oNext.billingPeriodStart === next && nextPlan?.startPeriod === oNext.billingPeriodStart);
     const oPending = origRun("pending", emptyState);
     check("original = base: «pendiente» crea el cargo y ningún pago", oPending.chargeToCreate !== null && oPending.payment === null && (await count("select count(*) n from public.payments where student_id = $1", [pendingId])) === 0);
+
+
+    // Reactivation and billing must roll back together, including history and the charge.
+    await student(9,A,'mensual',null,'pausado');
+    const reactivate=(session,choice='this_month',p=period)=>call(session,'select (public.reactivate_student_with_billing($1,$2,null,null,$3,$4,$5)).status as r',[S(9),today,choice,p,due]);
+    check('reactivar mensual exige la elección también en servidor',!(await reactivate(sa,null)).ok&&(await admin.query('select status from students where id=$1',[S(9)])).rows[0].status==='pausado');
+    check('error financiero revierte el cambio de estado',!(await reactivate(sa,'this_month','2000-01')).ok&&(await count('select count(*) n from student_status_history where student_id=$1',[S(9)]))===0);
+    await admin.query(`create function public.qa_fail_resume() returns trigger language plpgsql as $$begin if new.student_id='${S(9)}'::uuid and new.kind='monthly_billing_resume' then raise exception 'QA failure';end if;return new;end $$;create trigger qa_fail_resume before insert on student_billing_audit for each row execute function public.qa_fail_resume();`);
+    check('fallo intermedio revierte alumno, historial y cargo',!(await reactivate(sa)).ok&&(await admin.query('select status from students where id=$1',[S(9)])).rows[0].status==='pausado'&&(await count('select count(*) n from payment_charges where student_id=$1',[S(9)]))===0&&(await count('select count(*) n from student_status_history where student_id=$1',[S(9)]))===0);
+    await admin.query('drop trigger qa_fail_resume on student_billing_audit;drop function qa_fail_resume()');
+    const restored=await Promise.all([reactivate(sa),reactivate(sa2)]);
+    check('reactivaciones simultáneas dejan un estado, un historial y un cargo',restored.every(r=>r.ok)&&(await count('select count(*) n from student_status_history where student_id=$1',[S(9)]))===1&&(await count('select count(*) n from payment_charges where student_id=$1',[S(9)]))===1);
+    check('otra cuenta no reactiva un alumno ajeno',!(await reactivate(sb)).ok);
+    check('anon no puede reactivar',!(await reactivate(anon)).ok);
 
     const preexisting = (await admin.query("select amount from public.payments where id = $1", ["fc400000-0000-0000-0000-000000000002"])).rows[0];
     check("el pago preexistente no cambió", Number(preexisting.amount) === 3000);
