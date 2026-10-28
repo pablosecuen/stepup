@@ -19,7 +19,6 @@ import { Notice } from "@/components/ui/notice";
 import { LessonEditDialog, type LessonEditMode } from "@/components/calendar/lesson-edit-dialog";
 import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
 import { AvailabilityPicker } from "@/components/calendar/availability-picker";
-import { ScheduleAdjustDialog } from "@/components/calendar/schedule-adjust-dialog";
 import { ActivityDialog } from "@/components/calendar/activity-dialog";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
@@ -54,7 +53,6 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   // Nombre, duración, restaurar y eliminar: pasos propios (`LessonEditDialog`) que vuelven a las acciones con «Volver».
   const [editMode, setEditMode] = useState<LessonEditMode | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(false);
-  const [adjusting,setAdjusting]=useState(false);
   const [activityOpen,setActivityOpen]=useState(false);
   const [allowBlocked,setAllowBlocked]=useState(false);
   const [rescheduleOperation]=useState(()=>crypto.randomUUID());
@@ -170,7 +168,6 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
 
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
-  if (adjusting) return <ScheduleAdjustDialog item={item} onClose={()=>setAdjusting(false)} onDone={onClose} />;
   if (activityOpen) return <ActivityDialog item={item} onClose={onClose} />;
   if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
@@ -315,9 +312,6 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                   <UserPlusIcon className="h-5 w-5" aria-hidden />
                   Reemplazar con otro alumno
                 </PrivateButtonLink>
-              )}
-              {canEdit && !isPast && (
-                <Button variant="secondary" block onClick={()=>setAdjusting(true)}>Ajustar horario de esta clase</Button>
               )}
               {canEdit && !isPast && (
                 <Button variant="secondary" block onClick={() => setReschedulingOpen(true)}>

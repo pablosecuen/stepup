@@ -101,16 +101,13 @@ test("la puntualidad guardada por «Comenzar clase» alimenta el puntaje del ori
   assert.equal(summary.lateArrivalsCount, 1);
 });
 
-test("cableado: la acción prepara el registro en borrador y después abre la sesión; Inicio carga la sesión; el botón sólo aparece para clases agendadas", () => {
-  const action = read("lib/actions/live-class.ts");
-  assert.ok(action.indexOf("startRegistrationAction(") < action.indexOf("startLiveClass(ctx"), "primero el registro, después la sesión");
-  assert.match(action, /instantFromClockTime\(new Date\(\)\.toISOString\(\), input\.time\)/);
-  const loader = read("lib/dashboard/load-home-data.ts");
-  assert.match(loader, /getLiveClassSession\(ctx\)\.catch\(\(\) => null\)/);
-  const planner = read("components/dashboard/day-planner.tsx");
-  assert.match(planner, /next\.item\.status === "scheduled" && \(/);
-  assert.match(planner, /\{liveClass \? \(/);
-  assert.match(read("components/dashboard/home-view.tsx"), /liveClass=\{data\.liveClass\}/);
+test("las funciones retiradas no se ofrecen en la interfaz", () => {
+  assert.doesNotMatch(read("components/dashboard/day-planner.tsx"), /StartClassButton|ActiveClassCard|ScheduleAdjustDialog|getLivePreferencesAction/);
+  assert.doesNotMatch(read("components/calendar/real-lesson-detail-modal.tsx"), /ScheduleAdjustDialog|Ajustar horario/);
+  assert.doesNotMatch(read("components/account/configuration-view.tsx"), /LiveTrackingPreference/);
+  assert.doesNotMatch(read("app/(app)/layout.tsx"), /LiveClassGlobal/);
+  assert.doesNotMatch(read("lib/dashboard/load-home-data.ts"), /getLiveClassSession/);
+  assert.doesNotMatch(read("components/registro/registration-form-parts.tsx"), /'Mostrar'|'Ocultar'/);
 });
 
 test("cableado: la tarjeta finaliza/descarta con la red protegida, cierra el aviso y lleva al registro", () => {

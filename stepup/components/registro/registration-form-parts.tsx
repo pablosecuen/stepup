@@ -201,7 +201,7 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
       </div>
       <fieldset className="flex min-w-0 flex-col gap-4">
         <legend className="mb-1 text-[14px] font-bold text-textPrimary">Notas por área (opcional)</legend>
-        <div className="flex flex-wrap gap-2">{SKILLS.map(skill=><Button key={skill} variant="secondary" aria-pressed={!hidden.has(skill)} onClick={()=>setHidden(v=>{const next=new Set(v);if(next.has(skill))next.delete(skill);else next.add(skill);return next;})}>{hidden.has(skill)?'Mostrar':'Ocultar'} {SKILL_LABEL[skill]}</Button>)}</div>
+        <div className="flex flex-wrap gap-2">{SKILLS.map(skill=><Button key={skill} variant="secondary" aria-pressed={!hidden.has(skill)} onClick={()=>setHidden(v=>{const next=new Set(v);if(next.has(skill))next.delete(skill);else next.add(skill);return next;})}>{SKILL_LABEL[skill]}</Button>)}</div>
         {SKILLS.filter(skill=>!hidden.has(skill)).map((skill) => (
           <SkillGradeField
             key={skill}

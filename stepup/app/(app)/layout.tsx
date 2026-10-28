@@ -13,7 +13,6 @@ import type { AuthUser } from "@/lib/auth/auth-adapter";
 import { readBillingFlags } from "@/lib/billing/flags";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
-import { LiveClassGlobal } from "@/components/nav/live-class-global";
 import { StudentFileCleanup } from "@/components/nav/student-file-cleanup";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
@@ -70,7 +69,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <DeviceSessionWatcher />
       <NavigationProgress />
       <SoftKeyboardSync />
-      <LiveClassGlobal />
       {configured && user && <StudentFileCleanup />}
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
