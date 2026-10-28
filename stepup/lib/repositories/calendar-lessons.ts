@@ -265,3 +265,81 @@ export async function rescheduleCalendarOccurrence(ctx: AuthenticatedDbContext, 
     input.participants.map((p) => p.studentId)
   );
 }
+
+export interface EditCalendarLessonInput {
+  /** Clase ya creada, o `null` si es una ocurrencia virtual de una serie (se materializa en su horario). */
+  lessonId: string | null;
+  recurrenceId: string | null;
+  occurrenceKey: string | null;
+  /** Sólo hace falta si hay que materializar la ocurrencia: los datos de la clase tal como se ve, con los alumnos ya resueltos en el servidor. */
+  base?: {
+    primaryStudentId: string;
+    studentName: string;
+    level: string;
+    lessonType: string;
+    startAt: string;
+    endAt: string;
+    modality: string;
+    color: string;
+    recurrenceIndex: number | null;
+    classTitle: string | null;
+    activityKind: string;
+    participants: { studentId: string; studentName: string; level: string }[];
+  };
+  /** Sólo se cambian las claves presentes; `classTitle: null` vuelve al nombre automático. */
+  changes: { classTitle?: string | null; endAt?: string };
+}
+
+/** Nombre y/o duración de UNA clase («sólo esta clase») con `edit_calendar_lesson` (una transacción; materializa la ocurrencia si hace falta). */
+export async function editCalendarLesson(ctx: AuthenticatedDbContext, input: EditCalendarLessonInput): Promise<CalendarLessonRecord> {
+  const changes: Record<string, unknown> = {};
+  if ("classTitle" in input.changes) changes.class_title = input.changes.classTitle ?? null;
+  if (input.changes.endAt !== undefined) changes.end_at = input.changes.endAt;
+  const base = input.base;
+  const { data, error } = await ctx.supabase.rpc("edit_calendar_lesson", {
+    p_payload: {
+      lesson_id: input.lessonId,
+      recurrence_id: input.recurrenceId,
+      occurrence_key: input.occurrenceKey,
+      base: base
+        ? {
+            primary_student_id: base.primaryStudentId,
+            student_name: base.studentName,
+            level: base.level,
+            lesson_type: base.lessonType,
+            start_at: base.startAt,
+            end_at: base.endAt,
+            modality: base.modality,
+            color: base.color,
+            recurrence_index: base.recurrenceIndex,
+            class_title: base.classTitle,
+            activity_kind: base.activityKind,
+            participants: base.participants.map((p) => ({ student_id: p.studentId, student_name: p.studentName, level: p.level })),
+          }
+        : null,
+      changes,
+    },
+  });
+  if (error) {
+    if (error.code === "P0002") throw new CalendarLessonNotFoundError("Clase no encontrada.");
+    throw error;
+  }
+  return toCalendarLessonRecord(data as CalendarLessonRow, []);
+}
+
+/** Vuelve a dejar activa la fecha original de una ocurrencia cancelada o reprogramada (`restore_calendar_occurrence`). */
+export async function restoreCalendarOccurrence(ctx: AuthenticatedDbContext, lessonId: string): Promise<CalendarLessonRecord> {
+  const { data, error } = await ctx.supabase.rpc("restore_calendar_occurrence", { p_payload: { lesson_id: lessonId } });
+  if (error) {
+    if (error.code === "P0002") throw new CalendarLessonNotFoundError("Clase no encontrada.");
+    throw error;
+  }
+  return toCalendarLessonRecord(data as CalendarLessonRow, []);
+}
+
+/** Elimina la tarjeta de una clase cancelada y excluye su fecha de la serie (`delete_cancelled_calendar_lesson`). Repetirlo no es un error: `deleted: false`. */
+export async function deleteCancelledCalendarLesson(ctx: AuthenticatedDbContext, lessonId: string): Promise<{ deleted: boolean }> {
+  const { data, error } = await ctx.supabase.rpc("delete_cancelled_calendar_lesson", { p_payload: { lesson_id: lessonId } });
+  if (error) throw error;
+  return { deleted: Boolean((data as { deleted?: boolean } | null)?.deleted) };
+}

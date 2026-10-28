@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon, ArrowRightIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightIcon, ArrowUturnLeftIcon, ClipboardDocumentCheckIcon, ClockIcon, PencilIcon, PencilSquareIcon, TrashIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { editRegistrationHref } from "@/lib/registro/return-path";
 import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
@@ -15,6 +15,7 @@ import { Button, PrivateButtonLink } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { LessonEditDialog, type LessonEditMode } from "@/components/calendar/lesson-edit-dialog";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -45,6 +46,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
   const [reschedulePreview, setReschedulePreview] = useState<{ date: string; hour: number; minute: number } | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // Nombre, duración, restaurar y eliminar: pasos propios (`LessonEditDialog`) que vuelven a las acciones con «Volver».
+  const [editMode, setEditMode] = useState<LessonEditMode | null>(null);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
   const [calendarPath, setCalendarPath] = useState<string | null>(null);
@@ -164,6 +167,11 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
         return `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
       })()
     : null;
+
+  const canRestore = !!item.materializedLessonId && !!item.recurrenceId && (item.status === "cancelled" || item.status === "rescheduled");
+  const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
+
+  if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
   const step: "actions" | "reschedule" | "confirm" | "cancel" = reschedulingOpen && reschedulePreview ? "confirm" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
   const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "confirm" ? `Confirmar horario · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : lessonTitle;
@@ -319,6 +327,41 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 </PrivateButtonLink>
               )}
             </section>
+
+            {(canEdit || canRestore || canDeleteCancelled) && (
+              <section aria-label="Más acciones" className="flex flex-col gap-2 border-t-[1.5px] border-border pt-3">
+                {canEdit && (
+                  <Button variant="secondary" block onClick={() => setEditMode("title")}>
+                    <PencilIcon className="h-5 w-5" aria-hidden />
+                    Editar nombre de la clase
+                  </Button>
+                )}
+                {canEdit && (
+                  <Button variant="secondary" block onClick={() => setEditMode("duration")}>
+                    <ClockIcon className="h-5 w-5" aria-hidden />
+                    Cambiar duración
+                  </Button>
+                )}
+                {canRestore && (
+                  <Button variant="secondary" block onClick={() => setEditMode("restore")}>
+                    <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
+                    {item.status === "rescheduled" ? "Volver a la fecha original" : "Restaurar esta clase"}
+                  </Button>
+                )}
+                {canEdit && item.recurrenceId && (
+                  <Button variant="dangerOutline" block onClick={() => setEditMode("delete-series")}>
+                    <TrashIcon className="h-5 w-5" aria-hidden />
+                    Eliminar esta y las siguientes
+                  </Button>
+                )}
+                {canDeleteCancelled && (
+                  <Button variant="dangerOutline" block onClick={() => setEditMode("delete")}>
+                    <TrashIcon className="h-5 w-5" aria-hidden />
+                    Eliminar clase cancelada
+                  </Button>
+                )}
+              </section>
+            )}
 
             {canEdit && !isCancelled && (
               <section className="border-t-[1.5px] border-border pt-3">
