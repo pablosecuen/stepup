@@ -10,6 +10,8 @@ import { getRenderUser } from "@/lib/auth/render-user";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import type { AuthUser } from "@/lib/auth/auth-adapter";
 import { readBillingFlags } from "@/lib/billing/flags";
+import { readDeviceAccess } from "@/lib/auth/device-session/server";
+import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
 // CDN — se recalcula en cada request.
@@ -53,8 +55,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (decision.kind === "redirect") redirect(decision.to);
   }
 
+  // Un solo dispositivo activo: si este navegador no es el autorizado se lo lleva a «Usar TeacherFlow en este dispositivo» / «Tu cuenta se abrió en otro dispositivo».
+  if (configured && user) {
+    const access = await readDeviceAccess(user.id);
+    if (access.kind === "taken-elsewhere") redirect("/dispositivo?motivo=otro");
+    if (access.kind !== "authorized") redirect("/dispositivo");
+  }
+
   return (
     <div className="min-h-screen nav:pl-[236px]">
+      <DeviceSessionWatcher />
       <NavigationProgress />
       <SoftKeyboardSync />
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} />

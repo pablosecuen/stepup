@@ -4,6 +4,7 @@ import { getSupabaseConfigState, getSupabaseRuntimeConfig, shouldFailClosed } fr
 import { reportConfigUnavailable, serviceUnavailableResponse } from "@/lib/auth/service-unavailable";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { isPrivatePath } from "@/lib/auth/safe-redirect";
+import { DEVICE_COOKIE, isDeviceSessionEnforced } from "@/lib/auth/device-session/decision";
 import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/supabase/cookie-options";
 
 // Next.js 16: `proxy.ts` reemplaza a `middleware.ts`. Su único trabajo acá
@@ -66,6 +67,15 @@ export async function proxy(request: NextRequest) {
     const [redirectPathname, redirectSearch] = decision.to.split("?");
     url.pathname = redirectPathname;
     url.search = redirectSearch ? `?${redirectSearch}` : "";
+    return NextResponse.redirect(url);
+  }
+
+  // Un solo dispositivo activo: un navegador sin identificador de dispositivo todavía no fue autorizado; se lo lleva a autorizarse y se vuelve a esta pantalla.
+  // (La verificación definitiva contra el servidor la hace el layout privado; esto sólo evita el viaje de ida y vuelta y conserva la ruta pedida.)
+  if (decision.kind === "allow" && isDeviceSessionEnforced() && !request.cookies.get(DEVICE_COOKIE)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dispositivo";
+    url.search = `?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
   }
 
