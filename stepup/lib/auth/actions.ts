@@ -7,6 +7,7 @@ import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { abandonRecovery, confirmAuthLink, savePassword, verifyEmailCode, type RecoveryDeps } from "@/lib/auth/recovery-session";
 import { clearRecoveryMarker, hasValidRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery-cookie";
+import { releaseThisDevice } from "@/lib/auth/device-session/server";
 import { captchaTokenFromFormData } from "@/lib/auth/captcha";
 
 function recoveryDeps(): RecoveryDeps {
@@ -137,6 +138,8 @@ export async function updatePasswordAction(_prevState: AuthFormState, formData: 
 }
 
 export async function signOutAction(): Promise<void> {
+  // Libera el lugar de este dispositivo ANTES de cerrar la sesión (hace falta la sesión para que el servidor reconozca a la cuenta). Nunca impide cerrar sesión.
+  await releaseThisDevice();
   await createSupabaseAuthAdapter().signOut();
   await clearRecoveryMarker();
   redirect("/login");

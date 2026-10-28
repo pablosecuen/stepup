@@ -17,7 +17,7 @@ const ALLOWED_BEFORE = [/guardNetwork\(\(\) => $/, /useGuardedActionState(<[^>]*
 // R2: disparadores de FONDO (sin formulario ni texto escrito que conservar). Invocan una acción idempotente una sola vez al
 // montarse y se protegen con su propio try/catch: una falla de red nunca rompe la pantalla ni deja nada bloqueado. Usar
 // `guardNetwork` ahí sería incorrecto: reclama el "envío fresco" del formulario y restauraría valores ajenos.
-const BACKGROUND_TRIGGERS = ["components/payments/charge-generation-trigger.tsx", "components/students/profile/report-cleanup-trigger.tsx"];
+const BACKGROUND_TRIGGERS = ["components/payments/charge-generation-trigger.tsx", "components/students/profile/report-cleanup-trigger.tsx", "components/nav/device-session-watcher.tsx"];
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getRenderUser } from "@/lib/auth/render-user";
+import { DeviceNotAuthorizedError, readDeviceAccess } from "@/lib/auth/device-session/server";
 
 /**
  * Contexto autenticado real para los repositorios (Server Components/
@@ -46,6 +47,10 @@ export async function requireAuthenticatedDbContext(): Promise<AuthenticatedDbCo
   // Compartido con el layout privado dentro de la misma solicitud (una sola verificación con Auth por navegación).
   const user = await getRenderUser();
   if (!user) throw new DbUnauthenticatedError();
+
+  // «Un solo dispositivo activo a la vez»: ni una pantalla ni una acción trabaja con la cuenta desde un navegador que no es el dispositivo autorizado (comparte la lectura con el layout).
+  const access = await readDeviceAccess(user.id);
+  if (access.kind !== "authorized") throw new DeviceNotAuthorizedError(access);
 
   return { supabase, ownerId: user.id };
 }
