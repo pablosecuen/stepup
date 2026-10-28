@@ -5,6 +5,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { GradeAndMonthText, NextClassText, PaymentStatusChip, StudentBadges } from "./student-list-parts";
+import { StudentRowActionsMenu } from "./row-actions-menu";
 
 /** Chip de nivel: se parte si el nombre del nivel es largo (nunca desborda ni se corta con «…»). */
 export function LevelChip({ children }: { children: string }) {
@@ -15,14 +16,12 @@ export function LevelChip({ children }: { children: string }) {
   );
 }
 
-/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, próxima clase, estado de pago del mes, promedio, clases del mes y avisos. Toda la tarjeta es el enlace al perfil. */
+/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, próxima clase, estado de pago del mes, promedio, clases del mes y avisos. La tarjeta es el enlace al perfil; el menú de acciones del alumno queda al costado, fuera del enlace. */
 export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
   const { student } = row;
   return (
-    <PrivateLink
-      href={`/alumnos/${student.id}`}
-      className="flex min-h-[72px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-borderMid hover:shadow-cardHover"
-    >
+    <div className="flex items-start rounded-lg border-[1.5px] border-border bg-surface shadow-card transition-[border-color,box-shadow] duration-150 hover:border-borderMid hover:shadow-cardHover">
+    <PrivateLink href={`/alumnos/${student.id}`} className="flex min-h-[72px] min-w-0 flex-1 items-start gap-3 rounded-lg px-3.5 py-3">
       <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="l" />
       <div className="min-w-0 flex-1">
         <p className="font-display text-[18px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{student.name}</p>
@@ -43,6 +42,10 @@ export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
         </div>
       </div>
     </PrivateLink>
+    <div className="pr-1 pt-1.5">
+      <StudentRowActionsMenu student={{ id: student.id, name: student.name, status: student.status }} nextClassStart={row.nextClassStart} />
+    </div>
+    </div>
   );
 }
 
@@ -64,6 +67,9 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
           <Th>Próxima clase</Th>
           <Th>Estado de pago</Th>
           <Th>Notas y clases</Th>
+          <Th>
+            <span className="sr-only">Acciones</span>
+          </Th>
         </tr>
       </thead>
       <tbody>
@@ -106,6 +112,9 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
             </Td>
             <Td>
               <GradeAndMonthText row={row} />
+            </Td>
+            <Td className="w-14 text-right">
+              <StudentRowActionsMenu student={{ id: student.id, name: student.name, status: student.status }} nextClassStart={row.nextClassStart} />
             </Td>
           </Tr>
           );
