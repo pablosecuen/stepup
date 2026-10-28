@@ -8,7 +8,7 @@ import { todayInArgentina } from "@/lib/format/date-format";
 import { formatMoneyForInput, parseMoneyInput } from "@/lib/format/money-input";
 import { formatMoney } from "@/lib/format/number-format";
 import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
-import { PLAN_TYPE_OPTIONS, WEEKDAY_OPTIONS, buildPlanFromForm, describePlan, initialPlanFormValues, type BillingPlanFormValues, type BillingPlanType } from "@/lib/payments/plan-form";
+import { PLAN_TYPE_OPTIONS, WEEKDAY_OPTIONS, buildPlanFromForm, describePlan, initialPlanFormValues, planTransitionOverlap, type BillingPlanFormValues, type BillingPlanType } from "@/lib/payments/plan-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -20,7 +20,7 @@ import { Notice } from "@/components/ui/notice";
  * `EditBillingPlanSheet` y `ModifyMonthlyAmountSheet` (móvil): el plan se guarda en una transacción con auditoría y el monto de un plan YA mensual sólo se cambia
  * desde «Modificar monto mensual», que corrige el cargo del mes y el plan juntos (o deja el importe pendiente para el próximo mes).
  */
-export function BillingPlanCard({ studentId, studentName, plan }: { studentId: string; studentName: string; plan: StudentBillingPlan }) {
+export function BillingPlanCard({ studentId, studentName, plan, charges, todayDateKey }: { studentId: string; studentName: string; plan: StudentBillingPlan; charges: Array<{ chargeType: string; originalAmount: number; dueDate: string; voidedAt: string | null }>; todayDateKey: string }) {
   const [mode, setMode] = useState<"idle" | "plan" | "amount">("idle");
   const description = describePlan(plan);
   return (
@@ -51,13 +51,13 @@ export function BillingPlanCard({ studentId, studentName, plan }: { studentId: s
           </div>
         </div>
       </Card>
-      {mode === "plan" && <EditPlanDialog studentId={studentId} studentName={studentName} plan={plan} onClose={() => setMode("idle")} />}
+      {mode === "plan" && <EditPlanDialog studentId={studentId} studentName={studentName} plan={plan} charges={charges} currentPeriod={todayDateKey.slice(0, 7)} onClose={() => setMode("idle")} />}
       {mode === "amount" && plan.type === "monthly" && <MonthlyAmountDialog studentId={studentId} studentName={studentName} plan={plan} onClose={() => setMode("idle")} />}
     </section>
   );
 }
 
-function EditPlanDialog({ studentId, studentName, plan, onClose }: { studentId: string; studentName: string; plan: StudentBillingPlan; onClose: () => void }) {
+function EditPlanDialog({ studentId, studentName, plan, charges, currentPeriod, onClose }: { studentId: string; studentName: string; plan: StudentBillingPlan; charges: Array<{ chargeType: string; originalAmount: number; dueDate: string; voidedAt: string | null }>; currentPeriod: string; onClose: () => void }) {
   const uid = useId();
   const router = useRouter();
   const today = todayInArgentina();
@@ -65,6 +65,11 @@ function EditPlanDialog({ studentId, studentName, plan, onClose }: { studentId: 
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState<BillingPlanFormValues>(() => initialPlanFormValues(plan.type, plan, today, "amount" in plan ? formatMoneyForInput(plan.amount) : ""));
   const set = <K extends keyof BillingPlanFormValues>(key: K, value: BillingPlanFormValues[K]) => setValues((prev) => ({ ...prev, [key]: value }));
+  // Cobros del mes de otro tipo de plan: se conservan (un cambio de plan nunca borra ni reescribe cobros ni pagos); si los hay, el nuevo plan también generará el suyo y hay que confirmarlo.
+  const overlap = planTransitionOverlap(charges, plan.type, values.type, currentPeriod);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [monthlyStart, setMonthlyStart] = useState<"" | "this_period" | "next_period">("");
+  const needsMonthlyStart = overlap.count > 0 && values.type === "monthly";
 
   function selectType(type: BillingPlanType) {
     setError(null);
@@ -79,8 +84,16 @@ function EditPlanDialog({ studentId, studentName, plan, onClose }: { studentId: 
       setError(built.error);
       return;
     }
+    if (overlap.count > 0 && !acknowledged) {
+      setError("Confirmá que los cobros de este mes se conservan para poder cambiar el plan.");
+      return;
+    }
+    if (needsMonthlyStart && !monthlyStart) {
+      setError("Elegí si la mensualidad empieza este mes o el mes próximo.");
+      return;
+    }
     startTransition(async () => {
-      const result = await guardNetwork(() => changeBillingPlanAction({ studentId, plan: built.plan }));
+      const result = await guardNetwork(() => changeBillingPlanAction({ studentId, plan: built.plan, acknowledgeOverlap: acknowledged && overlap.count > 0, monthlyStart: needsMonthlyStart && monthlyStart === "next_period" ? "next_period" : "this_period" }));
       if (result.error) {
         setError(result.error);
         return;
@@ -147,6 +160,35 @@ function EditPlanDialog({ studentId, studentName, plan, onClose }: { studentId: 
         </Field>
       )}
       {values.type === "monthly" && <p className="text-[14.5px] text-textSecondary">Vence el día 10 de cada mes, igual para todos los alumnos mensuales.</p>}
+      {overlap.count > 0 && (
+        <div className="flex flex-col gap-3 rounded-md border-[1.5px] border-border bg-surface2 p-3.5" role="group" aria-label="Cobros de este mes que se conservan">
+          <p className="text-[14.5px] text-textPrimary">
+            Este mes ya hay {overlap.count} {overlap.count === 1 ? "cobro" : "cobros"} de otro tipo de plan por <span className="font-bold tf-num">{formatMoney(overlap.total)}</span>. El cambio no los borra ni los modifica, y el plan nuevo también generará el suyo: revisá si alguno queda cubierto y, de ser así, anulalo desde la lista de obligaciones.
+          </p>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[14.5px] font-[650] text-textPrimary">
+            <input type="checkbox" className={checkClass} checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} disabled={pending} />
+            Entiendo que esos cobros se conservan
+          </label>
+          {needsMonthlyStart && (
+            <div role="radiogroup" aria-label="Desde cuándo empieza la mensualidad" className={choiceGroupClass}>
+              <label className={choiceRowClass}>
+                <input type="radio" name={`${uid}-start`} className={checkClass} checked={monthlyStart === "next_period"} onChange={() => setMonthlyStart("next_period")} disabled={pending} />
+                <span className="min-w-0">
+                  <span className="block font-[650] text-textPrimary">La mensualidad empieza el mes próximo</span>
+                  <span className="block text-[13.5px] text-textMuted">Este mes no se genera mensualidad. Las clases que se registren de ahora en más este mes no generan cobro por clase.</span>
+                </span>
+              </label>
+              <label className={choiceRowClass}>
+                <input type="radio" name={`${uid}-start`} className={checkClass} checked={monthlyStart === "this_period"} onChange={() => setMonthlyStart("this_period")} disabled={pending} />
+                <span className="min-w-0">
+                  <span className="block font-[650] text-textPrimary">La mensualidad empieza este mes</span>
+                  <span className="block text-[13.5px] text-textMuted">Se genera la mensualidad completa de este mes además de los cobros ya emitidos.</span>
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
       {values.type === "class_package" && (
         <>
           <Field label="Clases incluidas" htmlFor={`${uid}-classes`}>

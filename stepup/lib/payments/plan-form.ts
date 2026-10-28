@@ -113,3 +113,28 @@ export function describePlan(plan: StudentBillingPlan): { title: string; lines: 
       return { title: "Sin cargo", lines: ["No genera cobros ni preguntas financieras"] };
   }
 }
+
+const PLAN_CHARGE_TYPE: Partial<Record<BillingPlanType, string>> = { per_class: "por_clase", weekly: "semanal", biweekly: "quincenal", monthly: "mensual" };
+const PLAN_CHARGE_TYPES = Object.values(PLAN_CHARGE_TYPE);
+
+export interface PlanTransitionOverlap {
+  count: number;
+  total: number;
+}
+
+/**
+ * Cobros vigentes del mes de OTRO tipo de plan que el nuevo plan no reemplaza (se conservan: un cambio de plan nunca borra ni reescribe cargos ni pagos). Si hay alguno, el nuevo plan
+ * también generará el suyo para ese período y la profesora debe confirmarlo. Espejo exacto de la regla de `set_student_billing_plan` (que la exige en la base): sólo cuenta cobros por clase, semanales,
+ * quincenales y mensuales no anulados con vencimiento en el mes; cambiar al mismo tipo de plan, o a «Paquete»/«Sin cargo», no es una transición.
+ */
+export function planTransitionOverlap(
+  charges: Array<{ chargeType: string; originalAmount: number; dueDate: string; voidedAt: string | null }>,
+  currentType: BillingPlanType,
+  newType: BillingPlanType,
+  currentPeriod: string,
+): PlanTransitionOverlap {
+  const newChargeType = PLAN_CHARGE_TYPE[newType];
+  if (!newChargeType || newType === currentType) return { count: 0, total: 0 };
+  const matching = charges.filter((charge) => !charge.voidedAt && PLAN_CHARGE_TYPES.includes(charge.chargeType) && charge.chargeType !== newChargeType && charge.dueDate.slice(0, 7) === currentPeriod);
+  return { count: matching.length, total: matching.reduce((sum, charge) => sum + charge.originalAmount, 0) };
+}

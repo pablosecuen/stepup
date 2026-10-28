@@ -89,3 +89,39 @@ test("recorrido del monto «próximo mes»: el plan que deja la base se consume 
   assert.equal(resolveEffectiveMonthlyAmount(afterRpc, "2026-11"), 30000);
   assert.equal(resolveEffectiveMonthlyAmount(afterRpc, "2027-03"), 30000);
 });
+
+test("transición entre planes: cuenta sólo cobros vigentes del mes de OTRO tipo de plan (espejo de la regla de la base)", async () => {
+  const { planTransitionOverlap } = await import("../plan-form.ts");
+  const charges = [
+    { chargeType: "por_clase", originalAmount: 8000, dueDate: "2026-10-06", voidedAt: null },
+    { chargeType: "por_clase", originalAmount: 8000, dueDate: "2026-10-13", voidedAt: "2026-10-14T10:00:00Z" }, // anulado: no cuenta
+    { chargeType: "por_clase", originalAmount: 8000, dueDate: "2026-09-29", voidedAt: null }, // otro mes: no cuenta
+    { chargeType: "mensual", originalAmount: 50000, dueDate: "2026-10-10", voidedAt: null },
+    { chargeType: "entrenamiento", originalAmount: 30000, dueDate: "2026-10-10", voidedAt: null }, // cuota de entrenamiento: acuerdo aparte, no cuenta
+  ];
+  assert.deepEqual(planTransitionOverlap(charges, "per_class", "weekly", "2026-10"), { count: 2, total: 58000 });
+  assert.deepEqual(planTransitionOverlap(charges, "per_class", "monthly", "2026-10"), { count: 1, total: 8000 });
+  assert.deepEqual(planTransitionOverlap(charges, "monthly", "per_class", "2026-10"), { count: 1, total: 50000 });
+  assert.deepEqual(planTransitionOverlap(charges, "weekly", "weekly", "2026-10"), { count: 0, total: 0 }, "mismo tipo: no es una transición");
+  assert.deepEqual(planTransitionOverlap(charges, "per_class", "complimentary", "2026-10"), { count: 0, total: 0 });
+  assert.deepEqual(planTransitionOverlap(charges, "per_class", "class_package", "2026-10"), { count: 0, total: 0 });
+  assert.deepEqual(planTransitionOverlap(charges, "per_class", "weekly", "2026-11"), { count: 0, total: 0 });
+});
+
+test("una mensualidad con startPeriod futuro no genera cargo hasta ese período (regla del original) y el repositorio la aplica", async () => {
+  const { hasMonthlyPlanStarted } = await import("../monthly-charge-plan.ts");
+  assert.equal(hasMonthlyPlanStarted({ startPeriod: "2026-11" }, "2026-10"), false);
+  assert.equal(hasMonthlyPlanStarted({ startPeriod: "2026-11" }, "2026-11"), true);
+  assert.equal(hasMonthlyPlanStarted({ startPeriod: "2026-11" }, "2027-01"), true);
+  assert.equal(hasMonthlyPlanStarted({}, "2026-10"), true);
+  assert.match(read("lib/repositories/payments.ts"), /if \(!hasMonthlyPlanStarted\(plan, billingPeriod\)\) continue;/);
+});
+
+test("cableado: el cambio de plan envía la confirmación y el inicio de la mensualidad, y el período lo calcula el servidor", () => {
+  const actions = read("lib/actions/payments.ts");
+  assert.match(actions, /acknowledgeOverlap: input\.acknowledgeOverlap === true/);
+  assert.match(actions, /const currentPeriod = billingPeriodOfDateKey\(localDateKeyInTimeZone\(new Date\(\)\)\);\s*await setStudentBillingPlan/);
+  const card = read("components/students/profile/billing-plan-card.tsx");
+  assert.match(card, /planTransitionOverlap\(charges, plan\.type, values\.type, currentPeriod\)/);
+  assert.match(card, /Entiendo que esos cobros se conservan/);
+});

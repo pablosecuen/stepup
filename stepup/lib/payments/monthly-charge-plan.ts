@@ -15,3 +15,11 @@ export function isStudentBillableForPeriod(input: {
   if (!input.statusChangeDate) return false;
   return input.statusChangeDate.slice(0, 7) >= input.billingPeriod;
 }
+
+/**
+ * `false` mientras `billingPeriod` sea anterior al `startPeriod` del plan mensual (p. ej. «la mensualidad empieza el mes próximo»): en ese período no se genera la mensualidad.
+ * Puerto de la regla de `selectMonthlyChargeCandidates` del original (`plan.startPeriod && billingPeriod < plan.startPeriod` → excluido).
+ */
+export function hasMonthlyPlanStarted(plan: { startPeriod?: string }, billingPeriod: string): boolean {
+  return !(plan.startPeriod && billingPeriod < plan.startPeriod);
+}

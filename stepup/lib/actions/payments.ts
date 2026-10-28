@@ -103,11 +103,13 @@ const PLAN_TYPES = ["per_class", "weekly", "biweekly", "monthly", "class_package
  * «Plan de cobro» del alumno (puerto de `EditBillingPlanSheet`/`applyBillingPlanChange`). Las reglas (importe > 0, día de vencimiento, paquete con clases y vigencia,
  * vencimiento mensual único, el monto de un plan YA mensual sólo por «Modificar monto mensual») las impone la base de datos en una transacción con auditoría.
  */
-export async function changeBillingPlanAction(input: { studentId: string; plan: StudentBillingPlan }): Promise<ActionResult> {
+export async function changeBillingPlanAction(input: { studentId: string; plan: StudentBillingPlan; acknowledgeOverlap?: boolean; monthlyStart?: "this_period" | "next_period" }): Promise<ActionResult> {
   if (!input?.studentId || !input.plan || !(PLAN_TYPES as readonly string[]).includes(input.plan.type)) return { error: "Elegí un plan de cobro." };
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await setStudentBillingPlan(ctx, input.studentId, input.plan);
+    // El período vigente lo calcula el servidor. La confirmación de cobros existentes y «desde cuándo empieza la mensualidad» las exige y valida la base de datos.
+    const currentPeriod = billingPeriodOfDateKey(localDateKeyInTimeZone(new Date()));
+    await setStudentBillingPlan(ctx, input.studentId, input.plan, { currentPeriod, acknowledgeOverlap: input.acknowledgeOverlap === true, monthlyStart: input.monthlyStart === "next_period" ? "next_period" : "this_period" });
   } catch (error) {
     return { error: actionErrorMessage("payments.plan", error) };
   }
