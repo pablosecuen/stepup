@@ -15,7 +15,8 @@ import { guardNetwork } from "@/lib/actions/network-guard";
 import { LessonPhotoThumbnail } from "@/components/registro/lesson-photo-thumbnail";
 import { MAX_REPORT_PHOTOS } from "@/lib/reports/evidence";
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
-import { ArrowDownTrayIcon, ArrowPathIcon, CheckIcon, DocumentTextIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowPathIcon, CheckIcon, DocumentTextIcon, ExclamationTriangleIcon, ShareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ShareReportDialog } from "@/components/students/profile/share-report-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -254,6 +255,7 @@ export function ReportesTabContent({
   const [history, setHistory] = useState(initialHistory);
   const [actionState, setActionState] = useState<{ id: string; kind: "view" | "regenerate" | "delete" } | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
   const [isRetryingCleanup, setIsRetryingCleanup] = useState(false);
 
   function resetForm() {
@@ -414,6 +416,7 @@ export function ReportesTabContent({
   }
 
   const confirmingRecord = confirmingDeleteId ? history.find((r) => r.id === confirmingDeleteId) : undefined;
+  const sharingRecord = sharingId ? history.find((r) => r.id === sharingId) : undefined;
   const isDeleting = actionState?.kind === "delete" && actionState.id === confirmingDeleteId;
 
   return (
@@ -541,6 +544,10 @@ export function ReportesTabContent({
                           </>
                         )}
                       </Button>
+                      <Button variant="secondary" onClick={() => setSharingId(record.id)} disabled={!record.hasPdf || busy} aria-haspopup="dialog">
+                        <ShareIcon className="h-4 w-4" aria-hidden />
+                        Compartir
+                      </Button>
                       <Button variant="ghost" onClick={() => handleRegenerate(record.id)} disabled={busy} busy={busy && actionState?.kind === "regenerate"}>
                         {busy && actionState?.kind === "regenerate" ? "Regenerando..." : (
                           <>
@@ -561,6 +568,16 @@ export function ReportesTabContent({
           </ul>
         )}
       </section>
+
+      {sharingRecord && (
+        <ShareReportDialog
+          reportId={sharingRecord.id}
+          title={sharingRecord.title}
+          periodLabel={formatCivilDateRange(sharingRecord.periodStart, sharingRecord.periodEnd)}
+          studentName={studentName}
+          onClose={() => setSharingId(null)}
+        />
+      )}
 
       {confirmingRecord && (
         <Dialog
