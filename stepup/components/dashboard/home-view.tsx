@@ -2,6 +2,7 @@ import Link from "@/components/nav/private-link";
 import { ArrowRightIcon, BellIcon, CheckCircleIcon, ChevronRightIcon, ExclamationTriangleIcon, PlusIcon, SunIcon } from "@heroicons/react/24/outline";
 import { DayPlanner } from "@/components/dashboard/day-planner";
 import { FirstSteps } from "@/components/dashboard/first-steps";
+import { DailyCollectionsNotice } from "@/components/dashboard/daily-collections-notice";
 import { REMINDER_ICONS } from "@/components/reminders/reminder-icons";
 import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink, linkClass } from "@/components/ui/button";
@@ -126,6 +127,8 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           <Figure value={remindersCount} label={remindersCount === 1 ? "recordatorio" : "recordatorios"} href="/recordatorios" />
         </section>
       )}
+
+      {!onboarding && <DailyCollectionsNotice summary={data.collectionsUrgency} todayDateKey={data.todayDateKey} />}
 
       {!onboarding && (
         <section aria-label="Indicadores" data-enter="2" className="tf-enter mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:divide-x nav:divide-border nav:gap-0">
