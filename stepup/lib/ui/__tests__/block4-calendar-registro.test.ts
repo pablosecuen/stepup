@@ -77,8 +77,8 @@ test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día e
   for (const step of ["Reprogramar", "Confirmar horario", "Cancelar clase"]) assert.ok(modal.includes(`${step} · \${lessonTitle}`), step);
   assert.match(modal, /<MetaChip>\{dateLabel\}<\/MetaChip>\s*<MetaChip>\{timeLabel\}<\/MetaChip>/, "día y hora siempre visibles");
   assert.match(modal, /cancelOccurrenceAction\(\{\s*lessonId: item\.materializedLessonId,/);
-  assert.match(modal, /rescheduleOccurrenceAction\(\{\s*recurrenceId: item\.recurrenceId,/);
-  assert.match(modal, /durationMinutes,\s*\}\)\);/, "la reprogramación conserva la duración");
+  assert.match(modal, /rescheduleWithAvailabilityAction\(\{id:item\.id,operationId:rescheduleOperation,originalStart:item\.start/);
+  assert.match(code("lib/actions/reschedule-parity.ts"), /Date\.parse\(start\)\+Date\.parse\(item\.end\)-Date\.parse\(item\.start\)/, "la reprogramación conserva la duración real resuelta en servidor");
   assert.match(modal, /<section className="border-t-\[1\.5px\] border-border pt-3">\s*<Button variant="dangerOutline" block onClick=\{\(\) => setConfirmingCancel\(true\)\}>/, "cancelar queda separado, al final");
   assert.match(modal, /<Button variant="danger" onClick=\{handleCancel\} busy=\{pending\}>/);
   assert.equal([...modal.matchAll(/data-autofocus/g)].length >= 3, true);

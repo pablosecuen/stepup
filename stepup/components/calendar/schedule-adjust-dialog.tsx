@@ -1,0 +1,13 @@
+"use client";
+import {useState,useTransition} from 'react';
+import {useRouter} from 'next/navigation';
+import type {CalendarViewItem} from '@/lib/calendar/occurrences';
+import {adjustCalendarScheduleAction} from '@/lib/actions/calendar-parity';
+import {formatInstantTime} from '@/lib/format/date-format';
+import {Dialog} from '@/components/ui/dialog';import {Button} from '@/components/ui/button';import {Notice} from '@/components/ui/notice';
+export function ScheduleAdjustDialog({item,onClose}:{item:CalendarViewItem;onClose:()=>void}){
+ const router=useRouter();const [direction,setDirection]=useState<'advanced'|'delayed'>('delayed'),[minutes,setMinutes]=useState(15),[reason,setReason]=useState<'teacher'|'mutual_agreement'>('teacher'),[error,setError]=useState(''),[pending,startTransition]=useTransition();
+ const [blocked,setBlocked]=useState(false),[allowBlocked,setAllowBlocked]=useState(false); const next=new Date(Date.parse(item.start)+minutes*60000*(direction==='delayed'?1:-1)).toISOString();
+ function save(){startTransition(async()=>{const result=await adjustCalendarScheduleAction({id:item.id,start:item.start,direction,minutes,reason,allowBlocked});if(result.error){setError(result.error);setBlocked(!!result.blocked);}else{router.refresh();onClose();}});}
+ return <Dialog title="Ajustar horario" onClose={onClose} busy={pending} onBeforeClose={()=>!pending} footer={<><Button variant="secondary" disabled={pending} onClick={onClose}>Cancelar</Button><Button busy={pending} onClick={save}>Aplicar cambios</Button></>}><p>Este cambio afecta únicamente esta clase.</p><div className="flex gap-2">{(['advanced','delayed'] as const).map(d=><Button key={d} variant={direction===d?'primary':'secondary'} onClick={()=>setDirection(d)}>{d==='advanced'?'Adelantar':'Atrasar'}</Button>)}</div><fieldset><legend>Minutos</legend><div className="mt-2 grid grid-cols-3 gap-2">{[15,20,30,40,50,60].map(m=><Button key={m} variant={minutes===m?'primary':'secondary'} onClick={()=>setMinutes(m)}>{m}</Button>)}</div></fieldset><label>Motivo<select className="mt-1 min-h-12 w-full rounded-md border border-borderStrong px-3 text-base" value={reason} onChange={e=>setReason(e.target.value as typeof reason)}><option value="teacher">Cambio de la profesora</option><option value="mutual_agreement">Acuerdo mutuo</option></select></label><p>Horario actual: {formatInstantTime(item.start)}. Nuevo: <strong>{formatInstantTime(next)}</strong>.</p>{blocked&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowBlocked} onChange={e=>setAllowBlocked(e.target.checked)} />Agendar igualmente en el horario bloqueado</label>}{error&&<Notice tone="bad">{error}</Notice>}</Dialog>;
+}

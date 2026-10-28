@@ -301,7 +301,7 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
   const calendarLesson = detail.registration.calendarLessonId ? await getCalendarLesson(ctx, detail.registration.calendarLessonId) : null;
   // Por alumno: la sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo y SU período (serie con acuerdo, o sesión suelta de un único acuerdo con el mismo grupo y la cuota de ese acuerdo en el mes). Nunca por tener alguna cuota de entrenamiento.
   const sessionAnchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
-  const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor });
+  const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor,calendarLessonId:detail.registration.calendarLessonId });
   const isCovered = (studentId: string) => coveredStudents.has(studentId);
 
   const participants = detail.participants

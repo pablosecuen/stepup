@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
-import { correctLiveClassStart, discardLiveClass, finishLiveClass, startLiveClass } from "@/lib/repositories/live-class";
+import { correctLiveClassStart, discardLiveClass, finishLiveClass, startLiveClass, getLiveClassSession } from "@/lib/repositories/live-class";
 import { startRegistrationAction } from "@/lib/actions/lesson-registrations";
 import { instantFromClockTime } from "@/lib/live-class/live-class";
 import { actionErrorMessage } from "@/lib/errors/action-error";
@@ -14,6 +14,8 @@ export interface ActionResult<T = undefined> {
   error?: string;
   data?: T;
 }
+
+export async function readLiveClassAction(){try{const ctx=await requireAuthenticatedDbContext();return {session:await getLiveClassSession(ctx)};}catch{return {error:'No pudimos comprobar la clase en curso.'};}}
 
 export interface StartLiveClassActionInput {
   calendarLessonId: string | null;

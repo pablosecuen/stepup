@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
-import { closeLiveClassNotification, LiveClassNotifier } from "@/components/dashboard/live-class-notifier";
+import { closeLiveClassNotification } from "@/components/dashboard/live-class-notifier";
 
 /**
  * «Clase en curso» (puerto de `ActiveClassCard`): reemplaza a «Próxima clase» mientras hay una clase comenzada. Muestra los alumnos, la hora de comienzo, la cuenta regresiva de los minutos asignados
@@ -121,7 +121,7 @@ export function ActiveClassCard({ session, nowIso }: { session: LiveClassSession
         </button>
       </div>
 
-      <LiveClassNotifier session={session} />
+
 
       {dialog === "correct" && (
         <CorrectStartDialog

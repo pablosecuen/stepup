@@ -167,16 +167,18 @@ async function checkConflictsAndAvailability(
   startAt: string,
   endAt: string,
   ignoredLessonId?: string,
-  excludeRecurrenceId?: string
+  excludeRecurrenceId?: string,
+  allowBlocked=false,
+  allowOverlap=false
 ): Promise<string | null> {
   const [candidates, availability] = await Promise.all([buildConflictCandidates(ctx, startAt, excludeRecurrenceId), getTeacherAvailability(ctx)]);
   const conflicts = findCalendarConflicts(startAt, endAt, candidates, ignoredLessonId);
-  if (hasBlockingConflict(conflicts)) {
+  if (hasBlockingConflict(conflicts)&&!allowOverlap) {
     return "El horario elegido se superpone con otra clase ya agendada.";
   }
   try {
     const evaluation = evaluateAvailability(startAt, endAt, availability);
-    if (!evaluation.isAvailable) {
+    if (!evaluation.isAvailable && !allowBlocked) {
       return `Ese horario está bloqueado en tu disponibilidad (${evaluation.label ?? "no disponible"}).`;
     }
   } catch {
@@ -251,7 +253,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
     // Si hay conflicto, se re-consulta una vez: una operación simultánea con la misma clave
     // pudo crear la clase entre medio.
     if (!(await findCalendarLessonIdByOperationId(ctx, operationId))) {
-      const conflictMessage = await checkConflictsAndAvailability(ctx, startAt, endAt);
+      const conflictMessage = await checkConflictsAndAvailability(ctx, startAt, endAt,undefined,undefined,readString(formData,'allowBlocked')==='true',readString(formData,'allowOverlap')==='true');
       if (conflictMessage && !(await findCalendarLessonIdByOperationId(ctx, operationId))) return { error: conflictMessage, values };
     }
 
@@ -345,6 +347,20 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     // mueve la fecha visible/facturable. Ver comentario de la función.
     const monday = mondayOfWeekContaining(startDate);
 
+    const {data:previousSeries,error:previousSeriesError}=await ctx.supabase.from('recurrence_rules').select('id').eq('owner_id',ctx.ownerId).eq('operation_id',operationId).maybeSingle();
+    if(previousSeriesError)throw previousSeriesError;
+    if(previousSeries){revalidatePath('/calendario');revalidatePath('/calendario/series');return {createdOperationId:operationId};}
+
+    const checkStart=localDateTimeToInstantIso({date:startDate,hour:0,minute:0,timeZone:TIMEZONE});
+    const checkEnd=new Date(Date.parse(checkStart)+FUTURE_VALIDATION_HORIZON_DAYS*86400000);
+    const [otherItems,availability]=await Promise.all([loadCalendarViewForRange(ctx,new Date(checkStart),checkEnd,undefined,{includeTestData:true}),getTeacherAvailability(ctx)]);
+    const planned=generateOccurrences({recurrenceId:'new-series',studentId:primaryResult.primaryStudentId,participantIds:studentIds,cycleLengthWeeks:weeks.length,weeks,modality,timezone:TIMEZONE,startDate:monday,endDate:endDate||null,status:'active',classTitle,activityKind},new Date(checkStart),checkEnd);
+    for(const occurrence of planned){
+      const evaluation=evaluateAvailability(occurrence.start,occurrence.end,availability);
+      if(!evaluation.isAvailable&&readString(formData,'allowBlocked')!=='true')return {error:`Ese horario está bloqueado en tu disponibilidad (${evaluation.label??'no disponible'}).`,values};
+      if(otherItems.some(item=>item.status!=='cancelled'&&item.occupiesSlot!==false&&item.start<occurrence.end&&item.end>occurrence.start)&&readString(formData,'allowOverlap')!=='true')return {error:'El patrón se superpone con otra clase ya agendada.',values};
+    }
+
     const created = await createRecurrenceSeries(ctx, {
       operationId,
       primaryStudentId: primaryResult.primaryStudentId,
@@ -384,7 +400,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
       // Se excluye la PROPIA serie recién creada: la vista ya incluye sus ocurrencias y se
       // solaparían consigo mismas (falso conflicto en toda creación). Cualquier otra serie o
       // clase suelta sigue detectándose.
-      const conflictMessage = await checkConflictsAndAvailability(ctx, occurrence.start, occurrence.end, undefined, created.id);
+      const conflictMessage = await checkConflictsAndAvailability(ctx, occurrence.start, occurrence.end, undefined, created.id,readString(formData,'allowBlocked')==='true',readString(formData,'allowOverlap')==='true');
       if (conflictMessage) {
         // La serie ya quedó creada (la profesora la ve y decide qué hacer) —
         // nunca se revierte en silencio; se informa el conflicto real

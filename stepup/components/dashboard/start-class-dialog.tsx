@@ -37,6 +37,7 @@ export function StartClassDialog({ item, studentNames, onClose }: { item: Calend
     // Se pide el permiso del aviso con este toque (los navegadores no lo permiten sin una acción de la persona); si se rechaza, la clase comienza igual.
     void requestLiveClassNotificationPermission();
     startTransition(async () => {
+      sessionStorage.setItem('tf-live-start-requested',String(Date.now()));
       const result = await guardNetwork(() => startLiveClassAction({ calendarLessonId: item.materializedLessonId, recurrenceId: item.recurrenceId, occurrenceKey: item.occurrenceKey, recurrenceIndex: null, arrival }));
       inFlight.current = false;
       if (result.error) {

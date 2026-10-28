@@ -1,3 +1,4 @@
+import {ReplacementNotices} from "@/components/registro/replacement-notices";
 import { PAGE_WIDTH } from "@/components/ui/page-header";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { StatusHistoryRecord, LevelHistoryRecord, PriceHistoryRecord } from "@/lib/repositories/student-history-mapping";
@@ -62,6 +63,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
         <ProfileTabsNav studentId={student.id} active={tab} />
       </div>
 
+      <ReplacementNotices studentId={student.id} />
       <EnterOnChange changeKey={tab} className="mt-5">
         {tab === "resumen" && (
           <div className="flex flex-col gap-6">

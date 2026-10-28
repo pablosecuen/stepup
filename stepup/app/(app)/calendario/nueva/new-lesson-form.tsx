@@ -1,4 +1,5 @@
 "use client";
+import {AvailabilityPicker} from '@/components/calendar/availability-picker';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,7 @@ export function NewLessonForm({
   // envío — nunca se pierde lo ya completado por un error de otro campo.
   const [modality, setModality] = useState(presetFromReplacement?.modality ?? "presencial");
   const [activityKind, setActivityKind] = useState("class");
+  const [allowBlocked,setAllowBlocked]=useState(false),[allowOverlap,setAllowOverlap]=useState(false);
   const [classTitle, setClassTitle] = useState("");
   const [date, setDate] = useState(presetFromReplacement?.date ?? "");
   const [hour, setHour] = useState(presetFromReplacement?.hour ?? "18");
@@ -228,6 +230,7 @@ export function NewLessonForm({
   return (
     <form action={formAction} className="flex flex-col gap-5" aria-label="Formulario de nueva clase">
       <input type="hidden" name="operationId" value={operationId ?? ""} />
+      <input type="hidden" name="allowBlocked" value={String(allowBlocked)} /><input type="hidden" name="allowOverlap" value={String(allowOverlap)} />
       {!isReplacement && (
         <div className="flex gap-1 rounded-md border-[1.5px] border-border bg-paperDeep p-1">
           {(
@@ -325,6 +328,7 @@ export function NewLessonForm({
 
       {mode === "single" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <AvailabilityPicker date={date} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onDurationChange={value=>setDurationMinutes(String(value))} onSelect={(date,time)=>{setDate(date);setHour(String(Number(time.slice(0,2))));setMinute(String(Number(time.slice(3,5))));}} />
           <Field label="Fecha *" htmlFor="date">
             <TextInput id="date" name="date" type="date" required value={date} onChange={(e) => { singleTouched.current = true; setDate(e.target.value); }} />
           </Field>
@@ -344,6 +348,7 @@ export function NewLessonForm({
             <Field label="Fecha de inicio *" htmlFor="startDate">
               <TextInput id="startDate" name="startDate" type="date" required value={startDate} onChange={(e) => { seriesTouched.current = true; setStartDate(e.target.value); }} />
             </Field>
+            <AvailabilityPicker date={startDate} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onDurationChange={value=>setDurationMinutes(String(value))} onSelect={(date,time)=>seedSeriesFrom({date,hour:Number(time.slice(0,2)),minute:Number(time.slice(3,5)),durationMinutes:Number(durationMinutes)||60})} />
             <Field label="Fecha de fin (opcional)" htmlFor="endDate">
               <TextInput id="endDate" name="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </Field>
@@ -357,6 +362,8 @@ export function NewLessonForm({
       {isReplacement && <input type="hidden" name="freedByLessonId" value={presetFromReplacement?.freedByLessonId} />}
 
       {state.error && <FormErrorBox message={state.error} />}
+      {(state.error?.includes('bloqueado')||allowBlocked)&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowBlocked} onChange={e=>setAllowBlocked(e.target.checked)} className="h-5 w-5" required />Agendar igualmente sobre este bloqueo de disponibilidad</label>}
+      {(state.error?.includes('superpone')||allowOverlap)&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowOverlap} onChange={e=>setAllowOverlap(e.target.checked)} className="h-5 w-5" required />Confirmo que quiero superponer estas clases</label>}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
         <PrivateButtonLink href={returnHref} variant="ghost">

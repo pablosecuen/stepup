@@ -14,11 +14,12 @@ const TIMEZONE = "America/Argentina/Buenos_Aires";
  */
 export async function listStudentsCoveredByTrainingPlan(
   ctx: AuthenticatedDbContext,
-  input: { activityKind: string; recurrenceId: string | null; participantIds: string[]; sessionAnchorIso: string }
+  input: { activityKind: string; recurrenceId: string | null; participantIds: string[]; sessionAnchorIso: string;calendarLessonId?:string|null }
 ): Promise<Set<string>> {
   if (input.activityKind !== "training" || input.participantIds.length === 0) return new Set();
   const seriesRule = input.recurrenceId ? await getRecurrenceRule(ctx, input.recurrenceId) : null;
-  const seriesAgreementId = seriesRule?.trainingBillingAgreementId ?? null;
+  let seriesAgreementId = seriesRule?.trainingBillingAgreementId ?? null;
+  if(!seriesAgreementId&&input.calendarLessonId){const {data,error}=await ctx.supabase.from('calendar_lessons').select('training_billing_agreement_id').eq('owner_id',ctx.ownerId).eq('id',input.calendarLessonId).maybeSingle();if(error)throw error;seriesAgreementId=data?.training_billing_agreement_id??null;}
   const dateKey = getLocalDateKey(input.sessionAnchorIso, TIMEZONE);
 
   let matchedAgreementId: string | null = null;

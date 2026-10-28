@@ -1,4 +1,5 @@
 "use client";
+import {rescheduleWithAvailabilityAction} from "@/lib/actions/reschedule-parity";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,7 @@ import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { lessonStatusLabel, MODALITY_LABELS } from "@/lib/calendar-theme";
-import { cancelOccurrenceAction, rescheduleOccurrenceAction } from "@/lib/actions/calendar";
+import { cancelOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { formatMinutes } from "@/lib/format/number-format";
 import { Button, PrivateButtonLink } from "@/components/ui/button";
@@ -17,6 +18,9 @@ import { Field, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { LessonEditDialog, type LessonEditMode } from "@/components/calendar/lesson-edit-dialog";
 import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
+import { AvailabilityPicker } from "@/components/calendar/availability-picker";
+import { ScheduleAdjustDialog } from "@/components/calendar/schedule-adjust-dialog";
+import { ActivityDialog } from "@/components/calendar/activity-dialog";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -50,6 +54,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   // Nombre, duración, restaurar y eliminar: pasos propios (`LessonEditDialog`) que vuelven a las acciones con «Volver».
   const [editMode, setEditMode] = useState<LessonEditMode | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [adjusting,setAdjusting]=useState(false);
+  const [activityOpen,setActivityOpen]=useState(false);
+  const [allowBlocked,setAllowBlocked]=useState(false);
+  const [rescheduleOperation]=useState(()=>crypto.randomUUID());
+  const [replaceConfirmed,setReplaceConfirmed]=useState(false);
+  const [pickedSlot,setPickedSlot]=useState<{date:string;time:string}|null>(null);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
   const [calendarPath, setCalendarPath] = useState<string | null>(null);
@@ -132,27 +142,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
     if (!reschedulePreview) return;
     setError(null);
     startTransition(async () => {
-      const result = await guardNetwork(() => rescheduleOccurrenceAction({
-        recurrenceId: item.recurrenceId,
-        occurrenceKey: item.occurrenceKey,
-        originalLessonId: item.materializedLessonId,
-        originalStartAt: item.start,
-        primaryStudentId: item.studentId ?? "",
-        participantIds: item.participantIds,
-        lessonType: item.lessonType,
-        modality: item.modality,
-        classTitle: item.title,
-        activityKind: item.activityKind,
-        newDate: reschedulePreview.date,
-        newHour: reschedulePreview.hour,
-        newMinute: reschedulePreview.minute,
-        durationMinutes,
-      }));
+      const result = await guardNetwork(() => rescheduleWithAvailabilityAction({id:item.id,operationId:rescheduleOperation,originalStart:item.start,date:reschedulePreview.date,hour:reschedulePreview.hour,minute:reschedulePreview.minute,allowBlocked:allowBlocked,replace:replaceConfirmed}));
       if (result.error) {
         // Vuelve al paso de elegir fecha/hora (nunca deja la vista previa
         // abierta con un resultado que en realidad falló) — el mensaje real
         // del conflicto/disponibilidad queda visible para reintentar.
-        setReschedulePreview(null);
+        if (result.confirmation === "blocked") setAllowBlocked(true); else if (result.confirmation === "replace") setReplaceConfirmed(true); else setReschedulePreview(null);
         setError(result.error);
         return;
       }
@@ -174,6 +169,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
 
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
+  if (adjusting) return <ScheduleAdjustDialog item={item} onClose={()=>setAdjusting(false)} />;
+  if (activityOpen) return <ActivityDialog item={item} onClose={onClose} />;
   if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
   const step: "actions" | "reschedule" | "confirm" | "cancel" = reschedulingOpen && reschedulePreview ? "confirm" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
@@ -182,11 +179,11 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const footer =
     step === "confirm" ? (
       <>
-        <Button variant="secondary" onClick={() => setReschedulePreview(null)} disabled={pending}>
+        <Button variant="secondary" onClick={() => {setReschedulePreview(null);setAllowBlocked(false);setReplaceConfirmed(false);}} disabled={pending}>
           Volver
         </Button>
         <Button variant="primary" onClick={confirmReschedule} busy={pending} data-autofocus>
-          {pending ? "Guardando..." : "Confirmar reprogramación"}
+          {pending ? "Guardando..." : replaceConfirmed ? "Eliminar y reemplazar" : allowBlocked ? "Agendar igualmente" : "Confirmar reprogramación"}
         </Button>
       </>
     ) : step === "reschedule" ? (
@@ -195,7 +192,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           variant="secondary"
           onClick={() => {
             setReschedulingOpen(false);
-            setReschedulePreview(null);
+            setReschedulePreview(null); setAllowBlocked(false); setReplaceConfirmed(false);
           }}
         >
           Cancelar
@@ -251,11 +248,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
 
         {step === "reschedule" && (
           <form id={RESCHEDULE_FORM_ID} action={(fd) => openReschedulePreview(fd)} className="flex flex-col gap-3.5">
+            <AvailabilityPicker date={pickedSlot?.date??startDateKey} time={pickedSlot?.time??timeLabel} duration={durationMinutes} ignoreId={item.id} onSelect={(date,time)=>setPickedSlot({date,time})} />
             <Field label="Nueva fecha" htmlFor="reschedule-date">
-              <TextInput id="reschedule-date" type="date" name="date" required aria-label="Nueva fecha" data-autofocus />
+              <TextInput id="reschedule-date" type="date" name="date" required aria-label="Nueva fecha" data-autofocus value={pickedSlot?.date??startDateKey} onChange={e=>setPickedSlot({date:e.target.value,time:pickedSlot?.time??timeLabel})} />
             </Field>
             <Field label="Nueva hora" htmlFor="reschedule-time">
-              <TextInput id="reschedule-time" type="time" name="time" required aria-label="Nueva hora" />
+              <TextInput id="reschedule-time" type="time" name="time" required aria-label="Nueva hora" value={pickedSlot?.time??timeLabel} onChange={e=>setPickedSlot({date:pickedSlot?.date??startDateKey,time:e.target.value})} />
             </Field>
             <p className="text-[13.5px] text-textMuted">La duración ({formatMinutes(durationMinutes)}) se mantiene igual a la clase original.</p>
           </form>
@@ -318,6 +316,9 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 </PrivateButtonLink>
               )}
               {canEdit && !isPast && (
+                <Button variant="secondary" block onClick={()=>setAdjusting(true)}>Ajustar horario de esta clase</Button>
+              )}
+              {canEdit && !isPast && (
                 <Button variant="secondary" block onClick={() => setReschedulingOpen(true)}>
                   <ArrowPathIcon className="h-5 w-5" aria-hidden />
                   Reprogramar esta clase
@@ -334,6 +335,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
             {(canEdit || canRestore || canDeleteCancelled) && (
               <section aria-label="Más acciones" className="flex flex-col gap-2 border-t-[1.5px] border-border pt-3">
                 {canEdit && <Button variant="secondary" block onClick={() => setParticipantsOpen(true)}><UserPlusIcon className="h-5 w-5" aria-hidden />Modificar participantes de esta clase</Button>}
+                {canEdit&&!isPast&&<Button variant="secondary" block onClick={()=>setActivityOpen(true)}>Cambiar tipo de actividad</Button>}
                 {canEdit && (
                   <Button variant="secondary" block onClick={() => setEditMode("title")}>
                     <PencilIcon className="h-5 w-5" aria-hidden />

@@ -2,7 +2,7 @@ import type { ConflictCandidateLesson } from "../calendar-conflicts.ts";
 import type { CalendarViewItem } from "./occurrences.ts";
 import { isFullyExcluded, participantsOf } from "../data-exclusion/exclusion.ts";
 
-type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId"> & Partial<Pick<CalendarViewItem, "studentName" | "title" | "studentId" | "participantIds">>;
+type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "status" | "isRecurring" | "lessonType" | "recurrenceId"> & Partial<Pick<CalendarViewItem, "studentName" | "title" | "studentId" | "participantIds" | "occupiesSlot">>;
 
 /**
  * Candidatos de solapamiento a partir de la vista real del calendario.
@@ -16,6 +16,7 @@ type ViewItemForConflict = Pick<CalendarViewItem, "id" | "start" | "end" | "stat
 export function toConflictCandidates(items: ViewItemForConflict[], options: { excludeRecurrenceId?: string; excludeRecurrenceIds?: readonly string[]; hiddenStudentIds?: ReadonlySet<string> } = {}): ConflictCandidateLesson[] {
   const excluded = new Set([...(options.excludeRecurrenceIds ?? []), ...(options.excludeRecurrenceId ? [options.excludeRecurrenceId] : [])]);
   return items
+    .filter((item) => item.occupiesSlot !== false)
     .filter((item) => !item.recurrenceId || !excluded.has(item.recurrenceId))
     .map((item) => {
       const label = item.title?.trim() || item.studentName?.trim();

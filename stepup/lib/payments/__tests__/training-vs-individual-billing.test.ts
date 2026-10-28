@@ -50,7 +50,7 @@ test("A/B: la MISMA alumna paga por clase sus clases individuales y su entrenami
   assert.deepEqual((await charge({ activityKind: "class" })).result, [{ studentId: "alumna", amount: 27500 }], "la clase individual conserva su cobro por clase");
   const training = await charge({ activityKind: "training", covered: true });
   assert.deepEqual(training.result, [{ studentId: "alumna", amount: null }], "sesión cubierta: sin cobro suelto (y retira uno viejo sin pagos)");
-  assert.deepEqual(training.coverageQueries, [{ activityKind: "training", recurrenceId: "serie-1", participantIds: ["alumna"], sessionAnchorIso: "2026-10-23T18:00:00.000Z" }], "la cobertura se consulta por actividad, serie, alumnos y fecha de la sesión");
+  assert.deepEqual(training.coverageQueries, [{ activityKind: "training", recurrenceId: "serie-1", participantIds: ["alumna"], sessionAnchorIso: "2026-10-23T18:00:00.000Z",calendarLessonId:'clase-1' }], "la cobertura se consulta por actividad, serie, alumnos, clase y fecha de la sesión");
 });
 
 test("C/D: sin cobertura de SU acuerdo y período (otro entrenamiento del mismo alumno, grupo distinto o sin cuota del mes) la sesión conserva su cobro; guardar de nuevo da lo mismo", async () => {

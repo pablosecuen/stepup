@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
+import {getLivePreferencesAction} from '@/lib/actions/calendar-parity';
 import { ArrowRightIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -8,7 +9,8 @@ import { RealLessonDetailModal } from "@/components/calendar/real-lesson-detail-
 import { Button } from "@/components/ui/button";
 import { ActiveClassCard } from "@/components/dashboard/active-class-card";
 import { StartClassDialog } from "@/components/dashboard/start-class-dialog";
-import { LiveClassNotifier } from "@/components/dashboard/live-class-notifier";
+import { ScheduleAdjustDialog } from "@/components/calendar/schedule-adjust-dialog";
+
 import type { LiveClassSession } from "@/lib/live-class/live-class";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { lessonStatusLabel, STATUS_LABELS } from "@/lib/calendar-theme";
@@ -69,7 +71,10 @@ export function DayPlanner({
   liveClass: LiveClassSession | null;
 }) {
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
+  const [tracking,setTracking]=useState(false);
+  useEffect(()=>{let active=true;getLivePreferencesAction().then(r=>{if(active)setTracking(r.enabled);}).catch(()=>{});return()=>{active=false;};},[]);
   const [starting, setStarting] = useState<CalendarViewItem | null>(null);
+  const [adjusting, setAdjusting] = useState<CalendarViewItem | null>(null);
   const now = new Date(nowIso);
   const groups = groupByStart(entries);
   const firstOpenIndex = entries.findIndex((entry) => entry.timing !== "finished");
@@ -107,10 +112,13 @@ export function DayPlanner({
             <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
           </span>
         </button>
-        {next.item.status === "scheduled" && (
+        {tracking && next.item.status === "scheduled" && (
+          <div className="flex flex-wrap gap-2">
           <Button variant="primary" size="lg" block onClick={() => setStarting(next.item)}>
             Comenzar clase
           </Button>
+          <Button variant="secondary" onClick={()=>setAdjusting(next.item)}>Ajustar horario</Button>
+          </div>
         )}
         </div>
       ) : (
@@ -213,8 +221,9 @@ export function DayPlanner({
       </section>
       )}
 
-      {!liveClass && <LiveClassNotifier session={null} />}
+
       {starting && <StartClassDialog item={starting} studentNames={starting.participantNames ?? [starting.studentName]} onClose={() => setStarting(null)} />}
+      {adjusting && <ScheduleAdjustDialog item={adjusting} onClose={()=>setAdjusting(null)} />}
       {selected && <RealLessonDetailModal item={selected} canReuseSlot={getCancelledSlotReuseDecision(selected, allItems, now).eligible} onClose={() => setSelected(null)} />}
     </>
   );

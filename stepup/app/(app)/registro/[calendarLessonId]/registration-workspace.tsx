@@ -41,6 +41,9 @@ import { listRegistrationPaymentPromptsAction } from "@/lib/actions/payments";
 import type { RegistrationPaymentPrompt } from "@/lib/payments/registration-payment-prompt";
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
 import { DraftsProvider, applyPendingToList, applyPendingToTopics, useDraftsStore } from "@/components/registro/draft-items";
+import { useRegistrationGuard } from "@/lib/lessons/use-registration-guard";
+import { HomeworkScheduleContext } from "@/components/registro/homework-schedule";
+
 import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
 import { flushPendingCaptions } from "@/components/registro/lesson-files-editor";
 import type { PedagogicalContentInput } from "@/lib/lessons/pedagogical-content";
@@ -200,7 +203,7 @@ export function ParticipantCard({
 
           <EvaluationFields studentName={name} studentId={studentId} form={form} onChange={onFormChange} />
 
-          {assignsHomework && <PersonalizedHomework studentName={name} form={form} onChange={onFormChange} />}
+          {assignsHomework && <PersonalizedHomework studentName={name} studentId={studentId} form={form} onChange={onFormChange} />}
 
           <div className="flex flex-col gap-2.5 sm:max-w-sm">
             <Button variant="primary" onClick={onComplete} busy={busy} disabled={busy}>
@@ -292,6 +295,8 @@ export function RegistrationWorkspace({
     consumesMonthlyPackage: initialContent?.consumesMonthlyPackage ?? registration.consumesMonthlyPackage ?? true,
   }));
   const [progressSaved, setProgressSaved] = useState(false);
+
+  const markSaved=useRegistrationGuard(JSON.stringify({content,formByStudentId,durationMinutes,commonHomeworkDescription,commonHomeworkDueDate}));
   function handleContentChange(next: PedagogicalContentInput | ((previous: PedagogicalContentInput) => PedagogicalContentInput)) {
     setContent(next);
     setProgressSaved(false);
@@ -333,6 +338,7 @@ export function RegistrationWorkspace({
   const [afterPromptHref, setAfterPromptHref] = useState<string>(returnHref ?? "/registro");
   /** Después de guardar: si hay cobros por clase con saldo, abre el aviso de pago; si no (o si no se pudo leer), sigue como siempre. */
   async function continueAfterSave(firstCompletion: boolean, destination: string) {
+    markSaved();
     const prompts = await guardNetwork(() => listRegistrationPaymentPromptsAction({ registrationId: registration.id, firstCompletion, knownChargeIds }));
     const items = prompts.data?.items ?? [];
     if (items.length > 0) {
@@ -479,6 +485,7 @@ export function RegistrationWorkspace({
         }
       }
       setProgressSaved(true);
+      markSaved();
       router.refresh();
     });
   }
@@ -559,6 +566,7 @@ export function RegistrationWorkspace({
   const savedAttendanceNote = !isGroup && singleForm.attendanceStatus && singleForm.attendanceStatus !== "presente" ? ATTENDANCE_STATUS_LABEL[singleForm.attendanceStatus] : null;
 
   return (
+    <HomeworkScheduleContext.Provider value={{studentIds:participants.map(p=>p.studentId),after:scheduledStartAt}}>
     <DraftsProvider value={draftsStore.api}>
     {paymentPrompts && <ClassPaymentPrompt items={paymentPrompts} classLabel={classLabel} registrationId={registration.id} onFinished={() => router.push(afterPromptHref)} />}
     <div className="flex flex-col gap-4">
@@ -612,7 +620,7 @@ export function RegistrationWorkspace({
       {showPerClassBillingControls && <Card><h2 className="font-display text-card font-semibold">Cobro de esta clase</h2><div className="mt-3 flex flex-col gap-3">
         <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4"><span>¿Es cobrable?</span><input type="checkbox" role="switch" checked={content.isBillable !== false} onChange={event => handleContentChange(current => ({...current,isBillable:event.target.checked}))} className="h-6 w-6 shrink-0 accent-accent" /></label>
         <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4"><span>¿Consume una clase de la cuota mensual?</span><input type="checkbox" role="switch" checked={content.consumesMonthlyPackage !== false} onChange={event => handleContentChange(current => ({...current,consumesMonthlyPackage:event.target.checked}))} className="h-6 w-6 shrink-0 accent-accent" /></label>
-      </div><p className="mt-3 text-sm text-textMuted">Estas opciones se aplican al cobro por clase. Los planes por período y los pagos ya registrados se conservan.</p></Card>}
+      </div><p className="mt-3 text-sm text-textMuted">Los planes por período y los pagos ya registrados se conservan.</p></Card>}
       {countsAsClass && (
         <Card>
           <div className="sm:w-60">
@@ -751,6 +759,6 @@ export function RegistrationWorkspace({
         )}
       </div>
     </div>
-    </DraftsProvider>
+    </DraftsProvider></HomeworkScheduleContext.Provider>
   );
 }

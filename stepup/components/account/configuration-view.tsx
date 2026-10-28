@@ -6,6 +6,7 @@ import { linkClass } from "@/components/ui/button";
 import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account/settings-ui";
 import { Avatar } from "@/components/ui/avatar";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
+import { LiveTrackingPreference } from "@/components/account/live-tracking-preference";
 
 /**
  * Contenido de Configuración con la cuenta ya cargada. Es sólo presentación: la página resuelve los datos. Sólo lo que realmente se
@@ -55,6 +56,7 @@ export function ConfigurationView({
       </SettingsSection>
 
       <SettingsSection id="preferencias" title="Preferencias" description="Organizá cómo funciona TeacherFlow." columns="max-w-[480px]">
+        <SettingsCard><LiveTrackingPreference /></SettingsCard>
         <SettingsCard><SettingsRow title="Dos dispositivos a la vez" description="Podés mantener dos sesiones abiertas. Al entrar desde un tercer dispositivo se elige cuál reemplazar. Cada sesión es independiente." /></SettingsCard>
         <SettingsCard><SettingsRow title="Tutorial de TeacherFlow" description="Volvé a recorrer las funciones principales."><PrivateLink href="/configuracion/tutorial" className={linkClass()}>Ver tutorial</PrivateLink></SettingsRow></SettingsCard>
         <SettingsCard>

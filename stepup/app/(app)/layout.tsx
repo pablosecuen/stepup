@@ -12,6 +12,7 @@ import type { AuthUser } from "@/lib/auth/auth-adapter";
 import { readBillingFlags } from "@/lib/billing/flags";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
+import { LiveClassGlobal } from "@/components/nav/live-class-global";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
 // CDN — se recalcula en cada request.
@@ -67,6 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <DeviceSessionWatcher />
       <NavigationProgress />
       <SoftKeyboardSync />
+      <LiveClassGlobal />
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
           fila propia de `--tf-shell-top` de alto: nunca se superpone con el título ni con las acciones de cada pantalla. */}

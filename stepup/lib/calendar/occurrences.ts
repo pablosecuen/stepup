@@ -34,6 +34,8 @@ export interface CalendarViewItem {
   end: string;
   modality: CalendarModality;
   status: CalendarLessonStatus;
+  /** False only for the original slot released by a reschedule. */
+  occupiesSlot?: boolean;
   /** Ver `ClosedOutcome`: sólo rotula, nunca cambia color, cobros ni asistencia. */
   closedOutcome?: ClosedOutcome | null;
   activityKind: ActivityKind;
@@ -69,6 +71,7 @@ export interface MaterializedLessonForMerge {
   endAt: string;
   modality: CalendarModality;
   status: CalendarLessonStatus;
+  recurrenceOriginalStart?: string | null;
   closedOutcome?: ClosedOutcome | null;
   isRecurring: boolean;
   classTitle: string | null;
@@ -183,6 +186,7 @@ export function buildCalendarViewForRange(input: {
       end: lesson.endAt,
       modality: lesson.modality,
       status: lesson.status,
+      ...(lesson.status === "rescheduled" && lesson.recurrenceOriginalStart === null ? { occupiesSlot: false } : {}),
       ...(lesson.closedOutcome ? { closedOutcome: lesson.closedOutcome } : {}),
       activityKind: lesson.activityKind,
       isRecurring: lesson.recurrenceId !== null,

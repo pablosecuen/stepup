@@ -11,6 +11,7 @@ import { normalizeSkillGradeValue } from "@/lib/lessons/grades";
 import { isStudentHomeworkPersonalized } from "@/lib/lessons/registration-form";
 import { SKILLS, SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
 import { formatCivilDate, formatInstantDate } from "@/lib/format/date-format";
+import { HomeworkDateChoices } from "./homework-schedule";
 
 /**
  * Piezas del formulario de registro de una clase que comparten la clase individual y cada participante de un grupo — mismos campos, mismos
@@ -189,6 +190,7 @@ export function ChipListField({ label, singular, placeholder, draftKey, items, o
  */
 export function EvaluationFields({ studentName, studentId, form, onChange }: { studentName: string; studentId: string; form: ParticipantForm; onChange: (patch: ParticipantFormPatch) => void }) {
   const id = useId();
+  const [hidden,setHidden]=useState<Set<Skill>>(new Set());
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <p className="text-[13.5px] text-textMuted">Todo lo de acá abajo es opcional — completá sólo lo que quieras calificar en esta clase.</p>
@@ -199,7 +201,8 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
       </div>
       <fieldset className="flex min-w-0 flex-col gap-4">
         <legend className="mb-1 text-[14px] font-bold text-textPrimary">Notas por área (opcional)</legend>
-        {SKILLS.map((skill) => (
+        <div className="flex flex-wrap gap-2">{SKILLS.map(skill=><Button key={skill} variant="secondary" aria-pressed={!hidden.has(skill)} onClick={()=>setHidden(v=>{const next=new Set(v);if(next.has(skill))next.delete(skill);else next.add(skill);return next;})}>{hidden.has(skill)?'Mostrar':'Ocultar'} {SKILL_LABEL[skill]}</Button>)}</div>
+        {SKILLS.filter(skill=>!hidden.has(skill)).map((skill) => (
           <SkillGradeField
             key={skill}
             skill={skill}
@@ -222,9 +225,10 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
 }
 
 /** «Tarea para realizar» + «Fecha de entrega (opcional)»: la caja de tarea de la clase (común) y, en un grupo, la personalizada de un alumno. */
-export function HomeworkFields({ idPrefix, description, dueDate, onDescriptionChange, onDueDateChange, ariaSuffix = "" }: { idPrefix: string; description: string; dueDate: string; onDescriptionChange: (value: string) => void; onDueDateChange: (value: string) => void; ariaSuffix?: string }) {
+export function HomeworkFields({ idPrefix, description, dueDate, onDescriptionChange, onDueDateChange, ariaSuffix = "", studentId }: { idPrefix: string; description: string; dueDate: string; onDescriptionChange: (value: string) => void; onDueDateChange: (value: string) => void; ariaSuffix?: string;studentId?:string }) {
   return (
     <div className="flex min-w-0 flex-col gap-3.5">
+      <HomeworkDateChoices value={dueDate} onChange={onDueDateChange} studentId={studentId} />
       <Field label="Tarea para realizar" htmlFor={`${idPrefix}-desc`} hint="Esta tarea aparecerá como pendiente cuando registres la próxima clase del alumno.">
         <TextArea id={`${idPrefix}-desc`} rows={3} placeholder="Ej. Ejercicios de present perfect, unidad 5" aria-label={`Tarea para realizar${ariaSuffix}`} value={description} onChange={(e) => onDescriptionChange(e.target.value)} />
       </Field>
@@ -242,7 +246,7 @@ export function HomeworkFields({ idPrefix, description, dueDate, onDescriptionCh
  * (reabrir nunca esconde datos guardados). Desactivarla limpia la tarea personalizada y vuelve a heredar la común — nunca dos cajas de tarea
  * a la vez para el mismo alumno.
  */
-export function PersonalizedHomework({ studentName, form, onChange }: { studentName: string; form: ParticipantForm; onChange: (patch: ParticipantFormPatch) => void }) {
+export function PersonalizedHomework({ studentName, studentId, form, onChange }: { studentName: string; studentId?:string; form: ParticipantForm; onChange: (patch: ParticipantFormPatch) => void }) {
   const id = useId();
   const [expanded, setExpanded] = useState(isStudentHomeworkPersonalized(form.homeworkDescription));
   return (
@@ -263,7 +267,7 @@ export function PersonalizedHomework({ studentName, form, onChange }: { studentN
       {expanded && (
         <>
           <p className="text-[13px] text-textMuted">Reemplaza la tarea común sólo para {studentName}.</p>
-          <HomeworkFields idPrefix={id} ariaSuffix={` de ${studentName}`} description={form.homeworkDescription} dueDate={form.homeworkDueDate} onDescriptionChange={(homeworkDescription) => onChange({ homeworkDescription })} onDueDateChange={(homeworkDueDate) => onChange({ homeworkDueDate })} />
+          <HomeworkFields idPrefix={id} studentId={studentId} ariaSuffix={` de ${studentName}`} description={form.homeworkDescription} dueDate={form.homeworkDueDate} onDescriptionChange={(homeworkDescription) => onChange({ homeworkDescription })} onDueDateChange={(homeworkDueDate) => onChange({ homeworkDueDate })} />
         </>
       )}
     </div>

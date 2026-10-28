@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/states";
 import { formatInstantDayLong, formatInstantTime } from "@/lib/format/date-format";
 import { OriginIncidentNote } from "@/components/registro/origin-incidents-card";
 import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
+import { SessionCorrection } from "@/components/registro/session-correction";
 
 function statusLabel(registration: LessonRegistrationRecord): string {
   if (!registration.countsAsClass) return ADHOC_OUTCOME_LABEL[registration.outcome];
@@ -63,6 +64,7 @@ export function ClasesTabContent({
                 {[statusLabel(registration), timeRange, modality, attendance ? `Asistencia: ${ATTENDANCE_STATUS_LABEL[attendance]}` : null].filter(Boolean).join(" · ")}
               </p>
               <OriginIncidentNote incidents={incidentsByRegistrationId[registration.id] ?? []} />
+              <SessionCorrection registration={registration} />
               <Link href={registration.calendarLessonId ? `/registro/${registration.calendarLessonId}` : `/registro/libre/${registration.id}`} className={`mt-1 ${linkClass()}`}>
                 Ver registro →
               </Link>
