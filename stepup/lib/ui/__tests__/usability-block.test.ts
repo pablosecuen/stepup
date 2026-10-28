@@ -130,7 +130,8 @@ test("la fila completa del alumno abre el perfil con UN solo enlace por fila (un
   assert.match(card, /min-h-\[72px\]/);
   // Seguimos con una tabla legible: encabezados, badges de estado y niveles.
   assert.match(table, /<Th>Alumno<\/Th>[\s\S]*<Th>Estado de pago<\/Th>/);
-  assert.match(table, /<StudentStatusBadge status=\{student\.status\} \/>/);
+  assert.match(table, /<PaymentStatusChip row=\{row\} \/>/, "el estado de pago del mes se ve en la fila (texto + ícono, nunca sólo color)");
+  assert.match(table, /<StudentBadges row=\{row\} \/>/, "el estado del alumno (pausado, inactivo, archivado) y los avisos salen como insignias con texto");
 });
 
 // ------------------------------------------------------------------------------------------------ 4. consultas
