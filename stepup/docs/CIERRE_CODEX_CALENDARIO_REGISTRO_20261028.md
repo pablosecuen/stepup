@@ -52,3 +52,7 @@ Un alumno QA Paridad Inline; una clase QA Paridad Codex convertida y reprogramad
 La comprobación del aviso nativo de salida encontró una limitación del panel: al abrir la confirmación se bloquearon los clics automatizados. Se solicitó cancelar el aviso sin cerrar la sesión. La cuenta sigue autenticada. Esto no acredita el cierre/recarga en todos los navegadores.
 
 El ciclo global de clase en vivo, el corte de serie al convertir y los errores/reintentos están cubiertos por pruebas de código y base; no se atribuye a esta ronda un recorrido visual de todas sus variantes. La prueba física de iPhone anclado/Mac Safari sigue separada. El bloque entregado a Claude y los pendientes fuera de este reparto no se declaran terminados.
+
+## Publicación final
+
+Commit de código edd7cc7, despliegue dpl_HhqWrWAjojQ6sAwQdwKLtgir2Phs, READY. teacherflowapp.com está asignado a teacherflow-oevesa2k9-teacherflow.vercel.app. Última verificación: 5076/5076 pruebas, tipos/lint/build correctos; base remota al día. El tamaño temporal del navegador se restauró y se conservan las pestañas autenticadas de QA. El aviso nativo de la prueba de salida sigue pendiente de cancelación por la persona; no se cerró sesión ni se guardó ese texto de prueba.
