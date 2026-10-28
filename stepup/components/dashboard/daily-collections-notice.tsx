@@ -1,44 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Button, linkClass } from "@/components/ui/button";
-import { buildDismissedNoticeState, shouldShowDailyCollectionsNotice, type DailyCollectionsNoticeState } from "@/lib/payments/engine/features/payments/utils/dailyCollectionsNotice";
+import { buildDismissedNoticeState, shouldShowDailyCollectionsNotice } from "@/lib/payments/engine/features/payments/utils/dailyCollectionsNotice";
 import { DAILY_NOTICE_STORAGE_KEY, parseStoredNotice, worstNoticeRank } from "@/lib/dashboard/daily-collections-notice";
 import type { CollectionsUrgencySummary } from "@/lib/payments/collections-urgency";
+
+const CHANGE_EVENT = "teacherflow:daily-notice-changed";
+/** En el servidor (y antes de hidratar) todavía no se sabe qué recuerda este dispositivo: no se dibuja nada, así no parpadea. */
+const NOT_READY = "__not-ready__";
+// Si el navegador no deja guardar, lo descartado se recuerda mientras la pantalla esté abierta.
+let memoryFallback: string | null = null;
+
+function subscribe(onChange: () => void) {
+  window.addEventListener(CHANGE_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readStored(): string | null {
+  try {
+    return window.localStorage.getItem(DAILY_NOTICE_STORAGE_KEY) ?? memoryFallback;
+  } catch {
+    return memoryFallback;
+  }
+}
 
 /**
  * Aviso diario «Cobros que requieren atención» (puerto de `DailyCollectionsNoticeBanner`). Aparece si hay cobros que vencen hoy o ya vencidos; «Recordarme mañana» lo oculta por hoy en este
  * dispositivo y sólo vuelve antes si la situación empeora (de «vence hoy» a vencido). Sin nombres ni importes: el detalle está en Cobros. Si el navegador no deja guardar, el aviso simplemente se
- * sigue mostrando (nunca se pierde un aviso por no poder recordarlo).
+ * oculta mientras la pantalla esté abierta y vuelve en la próxima visita (nunca se pierde un aviso por no poder recordarlo).
  */
 export function DailyCollectionsNotice({ summary, todayDateKey }: { summary: CollectionsUrgencySummary; todayDateKey: string }) {
-  const [persisted, setPersisted] = useState<DailyCollectionsNoticeState | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      setPersisted(parseStoredNotice(window.localStorage.getItem(DAILY_NOTICE_STORAGE_KEY)));
-    } catch {
-      setPersisted(null);
-    }
-    setReady(true);
-  }, []);
-
+  const raw = useSyncExternalStore(subscribe, readStored, () => NOT_READY);
   const rank = worstNoticeRank(summary);
-  if (!ready || rank === null || !shouldShowDailyCollectionsNotice({ today: todayDateKey, worstUrgencyRank: rank, persisted })) return null;
 
-  function remindTomorrow() {
+  const remindTomorrow = useCallback(() => {
     if (rank === null) return;
-    const next = buildDismissedNoticeState({ today: todayDateKey, worstUrgencyRank: rank });
-    setPersisted(next);
+    const serialized = JSON.stringify(buildDismissedNoticeState({ today: todayDateKey, worstUrgencyRank: rank }));
+    memoryFallback = serialized;
     try {
-      window.localStorage.setItem(DAILY_NOTICE_STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(DAILY_NOTICE_STORAGE_KEY, serialized);
     } catch {
-      // Sin almacenamiento: se oculta mientras la pantalla esté abierta y vuelve a mostrarse en la próxima visita.
+      // Sin almacenamiento: queda sólo en memoria.
     }
-  }
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }, [rank, todayDateKey]);
+
+  if (raw === NOT_READY || rank === null) return null;
+  if (!shouldShowDailyCollectionsNotice({ today: todayDateKey, worstUrgencyRank: rank, persisted: parseStoredNotice(raw) })) return null;
 
   return (
     <section role="alert" aria-label="Cobros que requieren atención" className="mt-4 rounded-xl border-[1.5px] border-badLine bg-badSoft p-4 nav:p-5">
