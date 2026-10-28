@@ -10,6 +10,7 @@ import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from
 import type { ReportRecordSummary } from "@/lib/repositories/reports-mapping";
 import type { ProfileClassStats, StudentNextClass } from "@/lib/students/profile-overview";
 import { ChangeStatusForm } from "@/components/students/change-status-form";
+import { DeleteStudentButton } from "@/components/students/delete-student-button";
 import { StudentProfileHeader } from "@/components/students/profile/profile-header";
 import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
@@ -70,6 +71,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
             <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} totalCollected={data.totalCollected} />
             <div id="cambiar-estado" className="scroll-mt-24">
             <ChangeStatusForm studentId={student.id} currentStatus={student.status} monthlyPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price }).type === "monthly"} />
+            <DeleteStudentButton studentId={student.id} />
             </div>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/auth/config";
+import { cookies } from "next/headers";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getTeacherProfile } from "@/lib/repositories/teacher-profile";
@@ -36,7 +37,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
   // Si no se puede leer, el acceso simplemente no se ofrece (nunca rompe la pantalla).
   const testData = testDataResult.status === "fulfilled" && testDataResult.value.students.length > 0 ? { hidden: testDataResult.value.hiddenCount > 0 } : null;
 
-  return <ConfigurationView email={email} displayName={profile.displayName} billingEnabled={readBillingFlags(process.env).enabled} testData={testData} />;
+  return <ConfigurationView email={email} displayName={profile.displayName} billingEnabled={readBillingFlags(process.env).enabled} testData={testData} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />;
 }
 
 function UnavailableState() {

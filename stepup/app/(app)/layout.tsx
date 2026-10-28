@@ -1,5 +1,6 @@
 import type { Viewport } from "next";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { PrimaryNav } from "@/components/nav/primary-nav";
 import { NavigationProgress } from "@/components/nav/navigation-progress";
 import { SoftKeyboardSync } from "@/components/nav/soft-keyboard-sync";
@@ -13,6 +14,7 @@ import { readBillingFlags } from "@/lib/billing/flags";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
 import { LiveClassGlobal } from "@/components/nav/live-class-global";
+import { StudentFileCleanup } from "@/components/nav/student-file-cleanup";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
 // CDN — se recalcula en cada request.
@@ -64,12 +66,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen nav:pl-[236px]">
+    <div data-tf-navigation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} className="min-h-screen nav:pl-[236px]">
       <DeviceSessionWatcher />
       <NavigationProgress />
       <SoftKeyboardSync />
       <LiveClassGlobal />
-      <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} />
+      {configured && user && <StudentFileCleanup />}
+      <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
           fila propia de `--tf-shell-top` de alto: nunca se superpone con el título ni con las acciones de cada pantalla. */}
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">

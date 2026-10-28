@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ComponentType, SVGProps } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Cog6ToothIcon,
   CreditCardIcon,
@@ -53,8 +54,9 @@ function Logo({ className = "" }: { className?: string }) {
  *    más la barra inferior con los mismos cinco destinos. Objetivos táctiles de 44 px como mínimo; respeta las safe areas.
  * Activo por segmento completo (destino o subruta). Ningún enlace precarga (`PrivateLink`).
  */
-export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolean }) {
+export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra" }: { billingEnabled?: boolean; navigationLocation?: "barra" | "menu" }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
   const settingsActive = isPrimaryNavActive(pathname, "/configuracion");
   const billingActive = isPrimaryNavActive(pathname, "/facturacion");
 
@@ -62,7 +64,7 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
     <>
       <header data-tf-top-bar className="sticky top-0 z-30 box-border h-[calc(var(--tf-m-header)+var(--tf-safe-top))] border-b-[1.5px] border-border bg-background pt-[var(--tf-safe-top)] nav:hidden">
         <div className="flex h-full items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
-          <Logo className="text-textPrimary" />
+          {navigationLocation === "menu" ? <button type="button" aria-label="Abrir navegación de TeacherFlow" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} className="flex min-h-11 items-center rounded-md text-textPrimary focus-visible:outline focus-visible:outline-2"><BrandMark size="sm" compact /><span aria-hidden className="ml-2">⌄</span></button> : <Logo className="text-textPrimary" />}
           <div className="flex items-center gap-1">
             <PrivateLink
               href="/configuracion"
@@ -76,6 +78,11 @@ export function PrimaryNav({ billingEnabled = false }: { billingEnabled?: boolea
           </div>
         </div>
       </header>
+      {menuOpen && navigationLocation === "menu" && <Dialog title="Navegación" size="sm" onClose={() => setMenuOpen(false)}>
+        <nav aria-label="Menú del logo"><ul className="flex flex-col gap-2">
+          {PRIMARY_NAV_ITEMS.map(item => { const Icon = ICONS[item.icon].outline; return <li key={item.href}><PrivateLink href={item.href} onClick={() => setMenuOpen(false)} aria-current={isPrimaryNavActive(pathname, item.href) ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-4 py-3 font-semibold"><Icon className="h-6 w-6" aria-hidden />{item.label}</PrivateLink></li>; })}
+        </ul></nav>
+      </Dialog>}
 
       <nav
         aria-label="Navegación principal"

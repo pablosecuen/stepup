@@ -7,6 +7,7 @@ import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account
 import { Avatar } from "@/components/ui/avatar";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { LiveTrackingPreference } from "@/components/account/live-tracking-preference";
+import { NavigationPreference } from "@/components/account/navigation-preference";
 
 /**
  * Contenido de Configuración con la cuenta ya cargada. Es sólo presentación: la página resuelve los datos. Sólo lo que realmente se
@@ -21,9 +22,11 @@ export function ConfigurationView({
   displayName,
   billingEnabled = false,
   testData = null,
+  navigationLocation = "barra",
 }: {
   email: string | null;
   displayName: string;
+  navigationLocation?: "barra" | "menu";
   /** Sólo con la facturación encendida: el diálogo de eliminar cuenta explica qué pasa con la suscripción. */
   billingEnabled?: boolean;
   /** Hay datos de prueba marcados: se ofrece consultarlos y volver a mostrarlos (`hidden`: hoy están ocultos). */
@@ -56,6 +59,7 @@ export function ConfigurationView({
       </SettingsSection>
 
       <SettingsSection id="preferencias" title="Preferencias" description="Organizá cómo funciona TeacherFlow." columns="max-w-[480px]">
+        <SettingsCard><NavigationPreference value={navigationLocation} /></SettingsCard>
         <SettingsCard><LiveTrackingPreference /></SettingsCard>
         <SettingsCard><SettingsRow title="Dos dispositivos a la vez" description="Podés mantener dos sesiones abiertas. Al entrar desde un tercer dispositivo se elige cuál reemplazar. Cada sesión es independiente." /></SettingsCard>
         <SettingsCard><SettingsRow title="Tutorial de TeacherFlow" description="Volvé a recorrer las funciones principales."><PrivateLink href="/configuracion/tutorial" className={linkClass()}>Ver tutorial</PrivateLink></SettingsRow></SettingsCard>
@@ -63,7 +67,7 @@ export function ConfigurationView({
           <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />
         </SettingsCard>
         <SettingsCard>
-          <SettingsRow title="Revisar consistencia" description="Revisa tus cobros y pagos en busca de repetidos, importes que no coinciden con el plan o pagos sin cobro. Sólo lee: no cambia nada.">
+          <SettingsRow title="Revisar consistencia" description="Detecta diferencias y permite revisar las correcciones seguras. Los casos ambiguos conservan sus pagos y quedan para revisión.">
             <PrivateLink href="/configuracion/consistencia" className={linkClass()}>
               Revisar ahora
             </PrivateLink>

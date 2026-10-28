@@ -29,6 +29,7 @@ import { billingPeriodOfDateKey, isValidDateKey, localDateKeyInTimeZone, resolve
 import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
 import type { ActionResult } from "./lesson-registrations";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { reconcileFinancialFacts } from "@/lib/repositories/financial-reconciliation";
 
 // Server Actions — Cobros. Mismo patrón que Fase 4: nunca reciben ownerId
 // del navegador, siempre ActionResult<T> uniforme, nunca lanzan al cliente.
@@ -49,6 +50,7 @@ export async function registerPaymentAction(input: RegisterPaymentActionInput): 
   if (!input.amount || input.amount <= 0) return { error: "El importe tiene que ser mayor a 0." };
   try {
     const ctx = await requireAuthenticatedDbContext();
+    await reconcileFinancialFacts(ctx);
     const payment = await registerPayment(ctx, input);
     return { data: { paymentId: payment.id } };
   } catch (error) {
@@ -93,7 +95,8 @@ export async function ensureCurrentChargesAction(): Promise<ActionResult<{ creat
     const [monthly, training] = await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
     // Semanales y quincenales: misma idempotencia por clave natural; se generan al terminar las anteriores para no mezclar sus errores.
     const periodic = await ensureCurrentPeriodicCharges(ctx, todayKey);
-    return { data: { created: monthly + training + periodic } };
+    const reconciliation = await reconcileFinancialFacts(ctx);
+    return { data: { created: monthly + training + periodic + reconciliation.repaired } };
   } catch (error) {
     return { error: actionErrorMessage("payments.ensure", error) };
   }

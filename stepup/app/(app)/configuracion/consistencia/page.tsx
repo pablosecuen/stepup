@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
+import { ConsistencyRepairs } from "@/components/payments/consistency-repairs";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Revisar consistencia · TeacherFlow" };
@@ -68,7 +69,8 @@ export default async function ConsistenciaPage() {
           ))
         )}
       </div>
-      <p className="mt-5 text-[13.5px] text-textMuted">La revisión sólo lee: no cambia cobros ni pagos. Un cargo anterior conserva siempre el importe con el que se emitió.</p>
+      <ConsistencyRepairs />
+      <p className="mt-5 text-[13.5px] text-textMuted">La revisión sólo lee. Las correcciones se aplican después de confirmarlas y dejan auditoría; los casos ambiguos se conservan para revisión.</p>
     </div>
   );
 }

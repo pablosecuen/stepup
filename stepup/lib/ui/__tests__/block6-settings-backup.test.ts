@@ -47,7 +47,7 @@ test("Las páginas sólo resuelven los datos como antes y delegan el dibujo; Res
   const page = code("app/(app)/configuracion/page.tsx");
   assert.ok(page.includes("getTeacherProfile(ctx)"));
   assert.doesNotMatch(page, /getBudgetDistributionSettings|getActiveSession/, "la distribución vive en Resumen financiero y no hay sesiones web que mostrar");
-  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} billingEnabled=\{readBillingFlags\(process\.env\)\.enabled\} testData=\{testData\} \/>;/);
+  assert.match(page, /return <ConfigurationView email=\{email\} displayName=\{profile\.displayName\} billingEnabled=\{readBillingFlags\(process\.env\)\.enabled\} testData=\{testData\}[\s\S]*navigationLocation=[\s\S]* \/>;/);
   assert.match(page, /<PageHeader title="Configuración"/);
   assert.match(page, /export const maxDuration = 60;/);
   const view = code("components/account/configuration-view.tsx");
@@ -113,3 +113,4 @@ test("Nada de lo que no existe: sin «Crear respaldo» en la web ni un historial
     assert.doesNotMatch(source, /Crear respaldo|Descargar respaldo|Exportar datos/i, file);
   }
 });
+

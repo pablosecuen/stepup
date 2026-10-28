@@ -51,7 +51,9 @@ test("móvil: encabezado con logo, acceso directo a Configuración (enlace propi
   assert.equal((header.match(/href="\/configuracion"/g) ?? []).length, 1);
   const bottomBar = nav.slice(nav.indexOf("fixed inset-x-0 bottom-0"));
   assert.match(bottomBar, /nav:hidden/, "barra inferior sólo en móvil (< 820 px)");
-  assert.equal((nav.match(/PRIMARY_NAV_ITEMS\.map/g) ?? []).length, 2, "móvil y escritorio recorren la MISMA lista de destinos");
+  assert.equal((nav.match(/PRIMARY_NAV_ITEMS\.map/g) ?? []).length, 3, "barra, menú del logo y escritorio recorren la MISMA lista de destinos");
+  assert.match(nav, /navigationLocation === "menu"/);
+  assert.match(nav, /aria-label="Menú del logo"/);
 });
 
 test("«Cerrar sesión»: único control de sesión, arriba a la derecha del área principal en todas las pantallas privadas, sólo ese texto", () => {

@@ -57,6 +57,11 @@
   --tf-side-w: 236px;
 }
 
+@media (max-width: 819px) {
+  [data-tf-navigation="menu"] { --tf-m-nav: 0px; }
+  [data-tf-navigation="menu"] [data-tf-bottom-nav] { display: none; }
+}
+
 /* Teclado en pantalla abierto (`SoftKeyboardSync` marca <html data-tf-keyboard="open">): la barra inferior pertenece al borde inferior de la aplicación, no al teclado. Se oculta mientras
    está abierto y se anulan su alto y la zona segura inferior, así no queda ni barra flotante ni franja vacía encima del teclado; al cerrarlo todo vuelve en el mismo cuadro. Sólo móvil (< 820 px). */
 @media (max-width: 819.98px) {

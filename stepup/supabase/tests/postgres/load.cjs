@@ -76,6 +76,14 @@ async function start({ port = 5441, upTo = null, migrationsDir = null } = {}) {
   }
   async function stop() {
     try { await admin.end(); } catch {}
+    if (process.platform === "win32" && server.process) {
+      const binaries = await import(require("url").pathToFileURL(require.resolve("@embedded-postgres/windows-x64")).href);
+      // taskkill está restringido en algunos entornos. pg_ctl apaga sólo ESTE
+      // cluster temporal y deja que Postgres cierre sus conexiones normalmente.
+      require("child_process").execFileSync(binaries.pg_ctl, ["-D", dir, "stop", "-m", "fast", "-W"], { timeout: 15000, windowsHide: true, stdio: "pipe" });
+      server.process = undefined;
+      return;
+    }
     // embedded-postgres espera un evento `exit` nuevo incluso si el hijo ya terminó en Windows.
     // En ese caso no hay servidor que detener y esperar de nuevo deja colgada la prueba.
     if (server.process && (server.process.exitCode !== null || server.process.signalCode !== null)) return;

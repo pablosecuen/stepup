@@ -8,7 +8,7 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { RealLessonDetailModal } from "@/components/calendar/real-lesson-detail-modal";
 import { Button } from "@/components/ui/button";
 import { ActiveClassCard } from "@/components/dashboard/active-class-card";
-import { StartClassDialog } from "@/components/dashboard/start-class-dialog";
+import { StartClassButton } from "@/components/dashboard/start-class-dialog";
 import { ScheduleAdjustDialog } from "@/components/calendar/schedule-adjust-dialog";
 
 import type { LiveClassSession } from "@/lib/live-class/live-class";
@@ -73,7 +73,6 @@ export function DayPlanner({
   const [selected, setSelected] = useState<CalendarViewItem | null>(null);
   const [tracking,setTracking]=useState(false);
   useEffect(()=>{let active=true;getLivePreferencesAction().then(r=>{if(active)setTracking(r.enabled);}).catch(()=>{});return()=>{active=false;};},[]);
-  const [starting, setStarting] = useState<CalendarViewItem | null>(null);
   const [adjusting, setAdjusting] = useState<CalendarViewItem | null>(null);
   const now = new Date(nowIso);
   const groups = groupByStart(entries);
@@ -114,9 +113,7 @@ export function DayPlanner({
         </button>
         {tracking && next.item.status === "scheduled" && (
           <div className="flex flex-wrap gap-2">
-          <Button variant="primary" size="lg" block onClick={() => setStarting(next.item)}>
-            Comenzar clase
-          </Button>
+          <StartClassButton item={next.item} />
           <Button variant="secondary" onClick={()=>setAdjusting(next.item)}>Ajustar horario</Button>
           </div>
         )}
@@ -222,7 +219,6 @@ export function DayPlanner({
       )}
 
 
-      {starting && <StartClassDialog item={starting} studentNames={starting.participantNames ?? [starting.studentName]} onClose={() => setStarting(null)} />}
       {adjusting && <ScheduleAdjustDialog item={adjusting} onClose={()=>setAdjusting(null)} />}
       {selected && <RealLessonDetailModal item={selected} canReuseSlot={getCancelledSlotReuseDecision(selected, allItems, now).eligible} onClose={() => setSelected(null)} />}
     </>
