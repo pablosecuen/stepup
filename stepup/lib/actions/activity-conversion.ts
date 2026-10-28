@@ -1,10 +1,11 @@
 "use server";
+import {activityPreviewFingerprint} from '@/lib/calendar/change-preview';
 import {requireAuthenticatedDbContext} from '@/lib/db/server-context';import {revalidatePath} from 'next/cache';
 import {loadCalendarViewForRange} from '@/lib/calendar/view';import {listStudents} from '@/lib/repositories/students';import {getRecurrenceRule,listRecurrenceRules} from '@/lib/repositories/recurrence-rules';import {buildSplitPayload} from '@/lib/repositories/recurrence-split';
 import {calendarEditPayload} from '@/lib/calendar/parity';import {instantDateKey} from '@/lib/calendar/civil-calendar';import {todayInArgentina} from '@/lib/format/date-format';import {parseMoneyInput} from '@/lib/format/money-input';import {actionErrorMessage} from '@/lib/errors/action-error';
 import {computeTrainingFirstPeriodCharge} from '@/lib/payments/training-charge-plan';import {resolveEditableSegment} from '@/lib/calendar/lineage';
 import {listRecurrenceExceptionsForRules} from '@/lib/repositories/recurrence-exceptions';import {listCalendarLessonsForRecurrence} from '@/lib/repositories/calendar-lessons';
-export async function convertActivityAction(input:{id:string;start:string;kind:'class'|'training';scope:'series'|'thisAndFuture';fee:string;criterion:'proportional'|'full'|'no_charge';operationId:string;confirm?:boolean}){
+export async function convertActivityAction(input:{id:string;start:string;kind:'class'|'training';scope:'series'|'thisAndFuture';fee:string;criterion:'proportional'|'full'|'no_charge';operationId:string;confirm?:boolean;previewFingerprint?:string}){
  try{
   if(!['class','training'].includes(input.kind)||!['series','thisAndFuture'].includes(input.scope)||!['proportional','full','no_charge'].includes(input.criterion)||!/^[-\da-f]{36}$/i.test(input.operationId))throw new Error('Cambio inválido');
   const ctx=await requireAuthenticatedDbContext();
@@ -21,8 +22,11 @@ export async function convertActivityAction(input:{id:string;start:string;kind:'
    if(input.criterion==='no_charge')amount=0;else if(input.criterion==='proportional'&&rule){const [exceptions,existingLessons]=await Promise.all([listRecurrenceExceptionsForRules(ctx,[rule.id]),listCalendarLessonsForRecurrence(ctx,rule.id)]);const suggestion=computeTrainingFirstPeriodCharge({monthlyFee:fee,effectiveJoinDate:effective,rule:{...rule,recurrenceId:rule.id,studentId:rule.primaryStudentId},exceptions,existingLessons});amount=suggestion.amount;}
   }
   const warnings=endIds.length?`Se reemplazan ${endIds.length} cambios futuros de esta serie.`:'';
-  if(!input.confirm)return {preview:{amount,fee,period,participants:ids.map(id=>students.find(s=>s.id===id)?.name??''),warnings,effective}};
   const payload={source_id:input.id,operation_id:input.operationId,activity_kind:input.kind,expected_kind:rule?.activityKind??item.activityKind,expected_rule_updated_at:rule?.updatedAt,title:item.title??item.studentName,start_period:period,monthly_fee:fee,charges:input.kind==='training'?ids.map(id=>({student_id:id,amount,due_date:effective})):[],...(split?{split,end_rule_ids:endIds}:{edit:calendarEditPayload(item,students)})};
+  // Compare semantic inputs; split payloads contain a new technical successor UUID on each read.
+  const fingerprint=activityPreviewFingerprint({source:input.id,start:item.start,end:item.end,kind:input.kind,scope:input.scope,fee,amount,effective,criterion:input.criterion,rule:rule?.id,version:rule?.updatedAt,endIds,participants:ids,title:payload.title});
+  if(!input.confirm)return {preview:{amount,fee,period,participants:ids.map(id=>students.find(s=>s.id===id)?.name??''),warnings,effective,fingerprint}};
+  if(input.previewFingerprint!==fingerprint)throw new Error('Los datos cambiaron desde la vista previa. Volvé y revisá los cambios antes de confirmar.');
   const {error}=await ctx.supabase.rpc('convert_calendar_activity',{p_payload:payload});if(error)throw error;
   for(const p of ['/calendario','/registro','/inicio','/cobros','/alumnos'])revalidatePath(p);return {done:true};
  }catch(error){return {error:actionErrorMessage('activity-conversion',error)};}

@@ -1,6 +1,6 @@
 # Cierre del bloque Codex — calendario, clase en vivo y registro
 
-Fecha: 28/10/2026. Código base del bloque: d8c25a0. Proyecto existente teacherflow-web; dominio teacherflowapp.com. La app original no se modificó.
+Fecha: 28/10/2026. Código base del bloque: d8c25a0; mejora de rendimiento y evidencia en 78e0271. Proyecto existente teacherflow-web; dominio teacherflowapp.com. La app original no se modificó.
 
 ## Entregado
 
@@ -9,7 +9,7 @@ Fecha: 28/10/2026. Código base del bloque: d8c25a0. Proyecto existente teacherf
 - Ajustar horario de una clase con dirección, minutos y motivo; conserva duración y el inicio programado para la puntualidad.
 - Selector mensual y horarios de 15 minutos con ocupación y disponibilidad reales; ampliación de duración por pulsación prolongada o botón.
 - Confirmación explícita para agendar en bloqueos. Reprogramación y reemplazo con avisos por alumno, transacción y clave de reintento.
-- Conversión Clase/Entrenamiento con acuerdo y cargo inicial coordinados; corte de serie y control de versión. Las clases anteriores, cobros y pagos se conservan.
+- Conversión Clase/Entrenamiento con acuerdo y cargo inicial coordinados; corte de serie y control de versión. Las clases anteriores, cobros y pagos se conservan. La confirmación se vincula a la vista previa: si cambian cuota, fecha, participantes o versión, debe revisarse de nuevo. El reemplazo también exige confirmar el mismo conjunto de clases.
 - Alta de alumno integrada en participantes, sin pestaña nueva.
 - Corrección de inicio, fin y puntualidad de registros guardados desde Clases, sin escritura financiera.
 - Protección al abandonar cambios sin guardar; mostrar/ocultar áreas sin borrar las notas; fechas de tareas desde próximas clases reales.
@@ -23,7 +23,7 @@ REG-04: consumeMonthlyPackage se guarda en el original, pero no tiene consumidor
 
 ## Verificación automática
 
-- 5073/5073 pruebas, tipos, lint y build correctos.
+- 5076/5076 pruebas, tipos, lint y build correctos.
 - 34 comprobaciones en Postgres local aislado: control de cuenta, RLS, actualización concurrente, reintentos, dos operaciones concurrentes, fallos con reversión, conversión suelta/de serie, avisos y preservación financiera.
 - Migraciones 20261031100000 y 20261031110000 aplicadas antes de publicar.
 - Reprogramación: el origen libera su espacio; el destino sigue ocupado. Una serie creada no choca consigo misma al reintentar.

@@ -59,6 +59,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [allowBlocked,setAllowBlocked]=useState(false);
   const [rescheduleOperation]=useState(()=>crypto.randomUUID());
   const [replaceConfirmed,setReplaceConfirmed]=useState(false);
+  const [replacementKey,setReplacementKey]=useState<string>();
   const [pickedSlot,setPickedSlot]=useState<{date:string;time:string}|null>(null);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
@@ -142,12 +143,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
     if (!reschedulePreview) return;
     setError(null);
     startTransition(async () => {
-      const result = await guardNetwork(() => rescheduleWithAvailabilityAction({id:item.id,operationId:rescheduleOperation,originalStart:item.start,date:reschedulePreview.date,hour:reschedulePreview.hour,minute:reschedulePreview.minute,allowBlocked:allowBlocked,replace:replaceConfirmed}));
+      const result = await guardNetwork(() => rescheduleWithAvailabilityAction({id:item.id,operationId:rescheduleOperation,originalStart:item.start,date:reschedulePreview.date,hour:reschedulePreview.hour,minute:reschedulePreview.minute,allowBlocked:allowBlocked,replace:replaceConfirmed,replacementKey}));
       if (result.error) {
         // Vuelve al paso de elegir fecha/hora (nunca deja la vista previa
         // abierta con un resultado que en realidad falló) — el mensaje real
         // del conflicto/disponibilidad queda visible para reintentar.
-        if (result.confirmation === "blocked") setAllowBlocked(true); else if (result.confirmation === "replace") setReplaceConfirmed(true); else setReschedulePreview(null);
+        if (result.confirmation === "blocked") setAllowBlocked(true); else if (result.confirmation === "replace") {setReplaceConfirmed(true);setReplacementKey(result.replacementKey);} else setReschedulePreview(null);
         setError(result.error);
         return;
       }
