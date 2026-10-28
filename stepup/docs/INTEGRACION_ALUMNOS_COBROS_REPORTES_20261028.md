@@ -35,3 +35,7 @@ Lista a 430 px: el menú de QA Tres Prueba abrió sus reportes, no los de otro a
 Se detectó además que el selector de próxima clase aún incluía el origen liberado de una reprogramación; se corrigió para que el menú y el perfil utilicen el destino real, conservando la tarjeta histórica del origen en el calendario. Se agregó prueba de regresión. Continúan separadas las pruebas físicas de iPhone/Safari y las ocho diferencias listadas arriba.
 
 Verificación final tras la corrección de próxima clase: 5105/5105 pruebas, tipos/lint/build sin errores. La reapertura de la edición de QA Integración Mensual confirmó edad 31 y los objetivos actualizados. No se enviaron reportes ni se cerró la sesión de QA.
+
+## Publicación y control final
+
+Código final 1226c1e, despliegue dpl_2rPVJ6XJ6xsY7c7baqr9EMByvMTq READY en teacherflowapp.com (teacherflow-kssxyvdii-teacherflow.vercel.app). Base remota al día, sin migraciones pendientes. Tras recargar producción, la fila QA Paridad Inline muestra «Mañana 20:30», el destino real, y no el origen liberado 09:30. La sesión de QA queda iniciada; no se cambió nada de la cuenta real.
