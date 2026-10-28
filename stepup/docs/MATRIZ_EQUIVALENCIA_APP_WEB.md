@@ -111,10 +111,10 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 | ID | Función | Original | Web | Estado / diferencia |
 |---|---|---|---|---|
-| PAG-01 | Generación de cargos por plan: por clase, mensual, **semanal, quincenal, paquete**, sin cargo | `monthlyChargeGenerationPlan`, `weeklyCharge…`, `packagePurchaseService` | por clase y mensual (`billing-plan.ts` documenta semanal/quincenal/paquete como pendientes) | FALTA (afecta dinero si hay alumnos con esos planes; **comprobar en la cuenta real qué planes existen**) |
+| PAG-01 | Generación de cargos por plan: por clase, mensual, **semanal, quincenal, paquete**, sin cargo | `monthlyChargeGenerationPlan`, `periodicChargeGenerationService`, `packagePurchaseService` | por clase y mensual ya existían; semanal y quincenal implementados (`ensure_periodic_charges`, `periodic-charge-candidates.ts`, commit local `0ec6faf`) | **IMPLEMENTADO Y PUBLICADO** (`718d455`, despliegue `9thqrxhtn`); verificación en navegador PENDIENTE de sesión de QA. Evidencia: 45/45 comprobaciones en Postgres real (idempotencia, dos conexiones a la vez, alumno ajeno, importe 0) y prueba diferencial de semana ISO/bloque quincenal contra el núcleo original en 2300 días. **Paquete:** la búsqueda de llamadores en el original no encuentra NINGUNO fuera de sus propios archivos y pruebas para `registerPackagePurchase`, `planPackageCreditConsumption`, `findActivePackage` ni `computePackageCreditsSummary`: el original tiene el motor pero ninguna pantalla ni flujo lo invoca (no genera cargo de paquete ni consume créditos al dictar). La paridad exacta es entonces: plan «Paquete de clases» editable, sin cargo automático (igual en la web). |
 | PAG-02 | Registrar pago: clase/semana/quincena/mes/paquete/entrenamiento, completo/parcial/previo, asignación al cargo más antiguo | `RegisterPaymentSheet`, `registerPaymentService` | `ChargeActions`, `register_payment` | VERIF |
 | PAG-03 | Anular pago y anular cobro erróneo (con motivo) | `VoidPaymentDialog`, `VoidChargeDialog` | `charge-actions.tsx` | VERIF |
-| PAG-04 | Modificar monto mensual (desde este mes / próximo mes, con recálculo del saldo) | `EditMonthlyAmountSheet`, `monthlyAmountCorrectionService` | — (sólo `edit_training_billing_fee` para entrenamiento) | FALTA |
+| PAG-04 | Modificar monto mensual (desde este mes / próximo mes, con recálculo del saldo) | `EditMonthlyAmountSheet`, `monthlyAmountCorrectionService` | «Modificar monto mensual» en la pestaña Cobros (`billing-plan-card.tsx`, RPC `change_student_monthly_amount`) | **IMPLEMENTADO Y PUBLICADO** (verificación en navegador pendiente de sesión de QA): cargo del mes y plan se corrigen en una sola transacción; período saldado o importe menor a lo ya pagado se rechazan; «próximo mes» no toca el cargo; auditoría; sin divergencia plan/cargo con dos cambios simultáneos (comprobado). Misma regla de «editar plan» (el monto de un plan YA mensual sólo por acá). Verificación en navegador pendiente de aplicar migración y de sesión de QA. |
 | PAG-05 | Situación inicial del alumno mensual («este mes está pago/pendiente») y su corrección | `initialMonthlyBillingService`, `initialPaidSurchargeRepairService` | — | FALTA |
 | PAG-06 | Recargos automáticos y su configuración | `SurchargeSettingsPanel`, `surchargeSettingsService` | apagado estructuralmente | AUT (decisión de negocio ya tomada: sin recargos automáticos) |
 | PAG-07 | Historial y riesgo de deuda por alumno (evolución 12 meses, racha, en término/fuera de término) | `PaymentHistorySection` | — | FALTA |
@@ -149,7 +149,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 ## Bloqueos de herramientas (acciones concretas)
 
-- **Aplicar la migración `20261027100000_calendar_lesson_actions.sql` en Production:** `npx supabase db push --yes` fue denegado por el clasificador automático el 27/10/2026 (sin explicación). Comprobado antes: `migration list --linked` y `db push --dry-run` muestran SÓLO esa migración pendiente; el ensayo `BEGIN … RAISE EXCEPTION` contra Production compiló y se revirtió (nada quedó); la migración sólo agrega 4 funciones nuevas (no toca tablas ni datos). El bloque de acciones de clase no se despliega hasta que se aplique.
+- **`20261027100000_calendar_lesson_actions.sql`:** APLICADA en Production (autorizada por el mecanismo normal de aprobación) y publicada con `84b34a0`.
+- **`20261028100000_billing_plans_and_amounts.sql`:** APLICADA en Production el 28/10/2026 con la autorización expresa de Joaquín, por el mecanismo normal de aprobación (primer intento denegado por el clasificador como «Production Deploy»; el segundo, autorizado, se aplicó). Antes se reconfirmó que era la única pendiente y se ensayó la versión final con `BEGIN … RAISE EXCEPTION` (revertida). Verificado después: `db push --dry-run` → `upToDate: true`; las tres funciones existen, sin permiso para `anon` y con permiso para `authenticated`.
 
 ## Pendientes que requieren decisión de Joaquín
 
@@ -157,9 +158,73 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 ## Registro de cambios de esta matriz
 
+- 28/10/2026 (2): migración aplicada y bloque «planes y montos» publicado (`718d455`). Antes de publicar se corrió el gate completo sobre el código final: suite completa 4982/4982 (copia LF), `tsc` sin errores, `eslint` sin errores ni advertencias, `next build` correcto. Endurecimiento previo a aplicar la migración (misma migración, aún no aplicada): transiciones entre planes con confirmación obligatoria cuando el mes ya tiene cobros de otro tipo de plan, «la mensualidad empieza el mes próximo» (`startPeriod`, que la generación mensual ahora respeta, igual que el original), y «Modificar monto mensual» sobre una mensualidad que todavía no empezó. Estado: inventariado ✔ · comparado ✔ · implementado ✔ · publicado ✔ · verificado en producción ✘ (falta sesión de QA).
+
+- 28/10/2026: circuito «planes y montos» implementado en local: plan de cobro editable (semanal, quincenal, mensual, paquete, por clase, sin cargo), «Modificar monto mensual», generación de cargos semanales/quincenales, «Editar alumno» ya no cambia precio ni tipo de facturación (regla del original del 10/08/2026) y la ficha muestra el plan vigente. 45/45 en Postgres real + pruebas de lógica/cableado + diferencial contra el núcleo original (`lib/original-core`, 2864 pruebas originales). Estado: inventariado ✔ · comparado ✔ · implementado ✔ (commits locales `faa940a`, `0ec6faf`) · publicado ✘ (migración bloqueada) · verificado en producción ✘.
+
 - 27/10/2026 (2): acciones de clase del calendario (CAL-06/07/10/11) implementadas en código y base con 51 comprobaciones en Postgres real y 6 pruebas de lógica/cableado; «Marcar todos presentes» (REG-02) revisado e integrado. Quedan FALTA: cambiar tipo de actividad (CAL-08: implica acuerdo de cobro de entrenamiento) y agregar/quitar alumnos de una clase (CAL-09).
 
 - 27/10/2026: creada con el primer inventario basado en código. REG-05 cerrado en lógica y estructura (commit `de55143` publicado en Production); su verificación en navegador queda pendiente de sesión de QA.
+
+
+## Parte C — Clasificación justificada de las 91 diferencias «AUT» (28/10/2026)
+
+Regla: una diferencia sólo es **AUT-INSTRUCCIÓN** si cito la instrucción que la autoriza; **AUT-TÉCNICA** si demuestro que la función se conserva con otro mecanismo; si no puedo hacer ninguna de las dos queda **PENDIENTE** y vuelve a la lista de trabajo. Nada se llama «inevitable» sin demostrarlo. Cuentas: 23 + 43 + 25 = 91.
+
+### C.1 AUT-INSTRUCCIÓN (23 archivos)
+
+| Archivos | Instrucción que lo autoriza | Alcance de la autorización / lo que NO cubre |
+|---|---:|---|
+| REG-07/08: `ChipTextList`, `EvaluationSection`, `PedagogicalContentSection`, `SkillGradeChips`, `SkillGradeInput`, `TopicChecklist`, `skillGradeDomain`, `textItemEditDomain`, `TextItemEditSheet` (9) | Joaquín, 27/10/2026 («Decisiones vigentes»): sin Planificado/Visto en temas · edición de listas sin borrar · calificaciones accesibles (barra 1–10, botones − y +) | Sólo esas tres decisiones. Las demás funciones de cada archivo (agregar/quitar ítems, destacar, mínimos de evaluación, etc.) siguen en **VERIF** (comparación campo por campo pendiente). |
+| PAG-02: `CurrencyInput`, `currencyAmountInput` (2) | Joaquín: «importes con interpretación estricta y centavos exactos» | El original sólo admitía pesos enteros y formateaba al escribir. La web interpreta con reglas estrictas (`parseMoneyInput`, 40+ casos de prueba). |
+| PAG-06: `SurchargeSettingsPanel`, `surchargeSettingsService`, `surchargeSettingsStore`, `useSurchargeSettings`, `surchargeSettings` (5) | Decisión de negocio vigente «recargos automáticos desactivados» (CLAUDE.md del original; commit `94ce7be` del móvil) | Sin recargos no hay nada que configurar. Los pagos por encima del importe base se informan como «por encima del importe base» (`excess.ts`). |
+| UX-02: `BrandedScreenHeader`, `HighlightPulse`, `PastelScreenBackground`, `accountStyles`, `brand`, `colors`, `typography` (7) | Joaquín: la web conserva su estética actual; escala visual del calendario congelada (CLAUDE.md) | Sólo la presentación. `HighlightPulse` (resaltar lo recién creado) es retroalimentación: su equivalente se revisa en **VERIF**. |
+
+### C.2 AUT-TÉCNICA con función conservada (43 archivos)
+
+| Archivos | Demostración | Riesgo residual |
+|---|---|---|
+| ACC-07 (7): `chunkedSecureStore`, `secureStorageAdapter`, `supabaseClient`, `supabaseConfig`, `deepLinkAuth`, `AuthSessionContext`, `SupabaseNotConfiguredScreen` | Almacenamiento seguro y cliente de sesión nativos: en la web la sesión vive en cookies de Supabase Auth (`proxy.ts`, `lib/auth/*`). Los enlaces de recuperación/confirmación llegan a `/nueva-contrasena` y `/recuperar-contrasena`. | Ninguno conocido; recorrido de recuperación de contraseña a verificar con QA. |
+| CFG-01 respaldo y recuperación **automáticos** (18): `CloudBackupRecoveryGate`, `CloudBackupSyncContext`, `cloudRecoveryOfferStore`, `postRestoreActiveSessionWarningStore`, `useCloudBackupSync`, `useLastCloudBackupDate`, `RecoveryStatusScreen`, `OfflineProtectionBanner`, `cloud/*` (6), `localRevisionStore`, `backupStorage`, `backupKeys`, `backupTypes` | En el original el respaldo es 100 % automático y sin controles manuales (regla del CLAUDE.md del móvil). En la web los datos **ya están** en la base: todo navegador lee lo mismo, no existe un almacenamiento local vacío que pueda pisar una copia válida («la nube siempre gana» se cumple por construcción). | No hay «fecha del último respaldo» visible; no afecta a datos. |
+| CFG-01 archivo de respaldo/restauración (9): `backupFile`, `buildBackup`, `buildBackupV2`, `runBackup`, `restoreFile`, `restoreService`, `restoreExecutor`, `restorePreview`, `restoreValidation` | La entrada de datos del móvil a la web la cubre el importador de copias (`lib/backup/*`, R6/R6.1: validación, vista previa, importación atómica y deshacer), con sus propias pruebas. La creación de copias no es una función visible del original. | El traslado web→móvil no existe (no pedido). |
+| UX-01 (7): `DismissKeyboardView`, `KeyboardDismissScrollView`, `useActiveFieldVisibility`, `activeFieldVisibility`, `attendanceScrollTarget`, `savedLessonsStore`, `savedLessonLinkageDiagnostics` | Teclado nativo: el navegador desplaza el campo enfocado; los diálogos tienen scroll propio y los campos ≥ 16 px. Almacén local y diagnóstico de vínculos: la integridad la garantizan claves foráneas (`payment_charges_saved_lesson_fk` … `on delete restrict`). | **Prueba física en iPhone pendiente** (la emulación de tamaño no la sustituye). |
+| PLAT-02 `teacherFlowStorage` (1) | AsyncStorage → base de datos. | — |
+| CAL-01 `CalendarScreen` (1) | Reexporta la pantalla (1 línea): no tiene lógica. | — |
+
+### C.3 PENDIENTES: no se pueden clasificar como autorizadas ni demostradas como inevitables (25 archivos)
+
+| Archivos | Por qué no es AUT | Qué falta | Estado nuevo |
+|---|---|---|---|
+| ACC-02: `AccountScreen`, `AccountConnectedScreen` (2) | Son pantallas equivalentes, no una diferencia. | Comparar campo por campo con `/configuracion`. | **VERIF** |
+| ACC-07 sesión única por dispositivo: `deviceId`, `activeSessionService`, `SignedOutElsewhereScreen`, `ConfirmDeviceTransferScreen` (4) | Es una función de seguridad que la web no tiene. `docs/design/web-v1/14` (opción B) sólo decidió no *mostrar* nada; deja «Sesiones abiertas» como pendiente de implementación real. No hay instrucción de Joaquín que la descarte. | Decisión de Joaquín: implementar sesiones web con cierre remoto, o aceptar que la web no limita dispositivos. | **PENDIENTE (decisión)** |
+| ACC-07 uso sin conexión: `authorizationCacheStore`, `sessionAuthorization`, `OfflineUnavailableScreen` (3) | El original abre 24 h sin conexión; la web exige conexión. Una web instalable con caché es técnicamente posible, así que no es «inevitable». | Decisión de Joaquín: ¿hace falta modo sin conexión en la web? | **PENDIENTE (decisión)** |
+| ACC-07 mixtos: `AuthGate`, `useAuthSession`, `authSessionReducer` (3) | Mezclan sesión (equivalente) con sesión única/sin conexión. | Separar y comparar por función. | **VERIF** |
+| INI-14: `LogoMenuSheet`, `SettingsScreen`, `navigationPreferenceStore`, `useNavigationLocation` (4) | La preferencia «barra abajo / menú del logo» deja de existir (la web adapta la barra al ancho). No hay instrucción que la descarte. | Decidir si se ofrece la preferencia; comparar el resto del menú. | **PARCIAL** |
+| PLAT-03 `RootNavigator` (1) | Navegación nativa (equivalente) pero incluye la entrada «Ver tutorial», que la web no tiene (ACC-04). | Implementar «volver a ver el tutorial». | **PARCIAL** |
+| INI-07 `classSessionNotification` (1) | Notificación persistente de Android durante la clase en curso. La API de notificaciones web existe: no es inevitable. | Decisión de Joaquín (notificaciones web). | **PENDIENTE (decisión)** |
+| CFG-02: `BackupScreen`, `dataIntegrity`, `dataIntegrityService` (3) | Funciones visibles del original: «Revisar consistencia», «Limpiar registros huérfanos», «Eliminar reservas sin alumno», «Reparar problemas seguros». La web no tiene una pantalla equivalente. | Implementar el análisis de sólo lectura y las reparaciones seguras, o demostrar caso por caso que la base los impide. | **PARCIAL** |
+| PAG-09: `financialReconciliation`, `financialReconciliationService`, `paymentsStore`, `types/index` (4) | La afirmación «la web evita el estado inconsistente» se verifica por categoría en C.4: 11 de 13 están impedidas o cubiertas; 2 no. | Detección de sólo lectura para las 2 restantes. | **PARCIAL** |
+
+### C.4 Reconciliación financiera: las 13 categorías del original contra la web
+
+| Categoría del original | En la web | Evidencia |
+|---|---|---|
+| duplicate_monthly_charge | Impedida | índice único `payment_charges_mensual_unique` (también semanal/quincenal/por clase/entrenamiento) |
+| charge_without_billing_period | Impedida | check `payment_charges_billing_period_required` |
+| charge_without_student / payment_without_student | Impedida | `student_id not null references students on delete restrict` |
+| allocation_without_payment / allocation_without_charge | Impedida | claves foráneas no nulas en `payment_allocations` |
+| negative_balance | Impedida | `register_payment` rechaza superar el saldo («Todavía no se admite saldo a favor»); «Modificar monto mensual» rechaza bajar de lo ya pagado (prueba de Postgres) |
+| settled_charge_with_residual_balance | No aplica | importes `numeric(12,2)` exactos; sin redondeo flotante |
+| voided_charge_with_active_allocations | Impedida | `void_charge` se rechaza si tiene pagos vigentes |
+| voided_payment_with_active_allocations | Equivalente | las asignaciones de un pago anulado se excluyen del cálculo (`paymentVoidedAt`) |
+| per_class_charge_incompatible_with_monthly_plan | Cubierta desde hoy | un plan mensual no genera cobros por clase; al cambiar de plan con cobros del mes se exige confirmación y nada se borra (prueba de Postgres, 60 comprobaciones) |
+| **plan_amount_diverges_from_charge** | **No detectada** | el flujo nuevo es atómico, pero un cargo importado o anterior puede divergir; falta detección de sólo lectura |
+| **monthly_student_without_current_charge** | **No detectada** | la generación ocurre al visitar; una cuenta sin visitas en el mes no recibe su cargo hasta la próxima visita |
+| (reparaciones: primer mes proporcional, vencimientos, alumno inactivo, recargo fantasma) | Parcial | primer mes proporcional existe (PAG-05/08 en VERIF); el resto no se mide |
+
+### C.5 Cuentas
+- AUT-INSTRUCCIÓN 23 · AUT-TÉCNICA 43 · PENDIENTES 25 (VERIF 5 · PARCIAL 12 · PENDIENTE de decisión 8 — dentro de estos, 4 de sesión única, 3 sin conexión y 1 notificación).
+- Resultado: sólo **66 de 91** quedan como diferencias legítimas; 25 vuelven a la lista de trabajo. La Parte B (generada) sigue mostrando la clasificación anterior de los archivos; esta Parte C la corrige para esos 25.
 
 <!-- INICIO INVENTARIO ARCHIVOS -->
 
