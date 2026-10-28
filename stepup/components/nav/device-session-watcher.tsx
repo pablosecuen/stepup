@@ -20,7 +20,7 @@ export function DeviceSessionWatcher() {
       running.current = true;
       try {
         const result = await checkDeviceSessionAction();
-        if (!stopped && "status" in result && result.status !== "authorized") window.location.assign(result.status === "taken-elsewhere" ? "/dispositivo?motivo=otro" : "/dispositivo");
+        if (!stopped && result.status !== "authorized" && result.status !== "unavailable") window.location.assign(result.status === "taken-elsewhere" ? "/dispositivo?motivo=otro" : "/dispositivo");
       } catch {
         // Sin conexión o error del servidor: se reintenta luego.
       } finally {

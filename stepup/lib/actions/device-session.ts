@@ -21,7 +21,8 @@ export async function claimDeviceAction(next: string, _prev: ClaimDeviceState): 
   redirect(sanitizeNextPath(next, DEFAULT_AUTH_REDIRECT));
 }
 
-export type DeviceCheckResult = { status: DeviceAccessState["kind"] } | { error: true };
+/** `unavailable`: no se pudo comprobar (red o servidor): nunca se interpreta como «autorizado» ni como «cerrado». */
+export type DeviceCheckResult = { status: DeviceAccessState["kind"] | "unavailable" };
 
 /** Revisión periódica mientras la pantalla está abierta: renueva el vencimiento de este dispositivo y avisa si otro tomó la cuenta. Un fallo de red nunca cierra nada. */
 export async function checkDeviceSessionAction(): Promise<DeviceCheckResult> {
@@ -31,6 +32,6 @@ export async function checkDeviceSessionAction(): Promise<DeviceCheckResult> {
     const access = await touchThisDevice(user.id);
     return { status: access.kind };
   } catch {
-    return { error: true };
+    return { status: "unavailable" };
   }
 }
