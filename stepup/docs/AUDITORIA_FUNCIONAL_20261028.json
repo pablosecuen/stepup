@@ -208,25 +208,25 @@
       "id": "ALU-03",
       "function": "Acciones rápidas por alumno (registrar clase, registrar pago, reprogramar, ver perfil, enviar PDF, editar, archivar, eliminar, restaurar)",
       "original": "`SwipeableStudentRow`, `StudentCardAction`",
-      "web": "perfil + editar",
-      "status": "PARCIAL",
-      "note": "Hay acciones en el resumen del perfil, pero no todas están disponibles directamente en cada fila de la lista. Faltan accesos de compartir reporte y varios cambios de estado desde ese lugar."
+      "web": "components/students/row-actions-menu.tsx; lib/students/row-actions.ts; student-card.tsx",
+      "status": "DISPONIBLE",
+      "note": "Menú «Acciones de <alumno>» en cada fila (móvil y escritorio): ver perfil, registrar clase, registrar pago, reprogramar su próxima clase, reporte, editar y archivar/cambiar estado o restaurar según su estado; cada destino lleva el id de esa fila y reutiliza el circuito existente. Hallazgo: el original sólo ofrecía archivar/restaurar/eliminar por deslizamiento en la lista (el resto vivía en el perfil). Eliminar definitivamente (ALU-10) no se ofrece. Prueba: row-actions.test.ts (4). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-04",
       "function": "Alta y edición con validaciones (nombre, apellido, edad 3–120, email, precio > 0, duración ≤ 480, frecuencia ≤ 14, horarios habituales)",
       "original": "`NewStudentScreen`, `studentValidation.ts`",
-      "web": "`student-form-page.tsx`, `createStudentAction`/`updateStudentAction`",
-      "status": "PARCIAL",
-      "note": "Alta y edición básicas existen. La acción no recibe edad, objetivos académicos ni días/hora habituales como el formulario original; el perfil tampoco los ofrece completos. El nombre completo en un campo conserva el dato, pero no es la misma captura separada."
+      "web": "student-form-fields.tsx; first-month-fields.tsx; lib/students/student-form-fields.ts; createStudentAction/updateStudentAction",
+      "status": "DISPONIBLE",
+      "note": "Nombre y apellido separados y obligatorios, edad 3–120 (fecha estimada; se conserva la exacta si la edad no cambia), objetivos, precio mayor que cero (como el original; antes la web aceptaba cero) y límites 14/480/correo en cliente, servidor y base. Hallazgo: días y horario habituales NO existen en ninguna pantalla del original ni se guardan al crear (sólo llegan desde una copia importada), por eso no se agregaron. Pruebas: student-form-fields.test.ts (8, ejecuta el original) y student_initial_month.cjs (47, Postgres real). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-05",
       "function": "Forma de cobro en el alta: por clase, mensual (+ «Este mes está pendiente/ya está pago»), paquete, semanal, quincenal, sin cargo",
       "original": "`NewStudentScreen`, `EditBillingPlanSheet`, `studentBillingPlan.ts`",
-      "web": "sólo por clase y mensual (`BILLING_TYPE_OPTIONS`)",
-      "status": "PARCIAL",
-      "note": "Los planes semanal/quincenal/paquete/sin cargo ya existen al editar el plan. El alta no ofrece la misma configuración completa ni la decisión inicial pago/pendiente del mes."
+      "web": "first-month-fields.tsx; create_student_with_operation (migración 20261031100000)",
+      "status": "DISPONIBLE",
+      "note": "Hallazgo: el alta del original ofrece sólo Por clase y Mensual; los demás planes se cambian después en Cobros (ya existía en la web). Implementada la decisión «¿Desde cuándo querés comenzar a controlar sus pagos?» (próximo mes por defecto / este mes ya está pago con fecha real / este mes está pendiente con confirmación), aplicada en la misma transacción del alta, idempotente por clave de operación y sin restos si falla. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-06",
@@ -256,9 +256,9 @@
       "id": "ALU-09",
       "function": "Reactivar con decisión «Retomar el cobro mensual: comenzar el próximo mes / cobrar desde este mes»",
       "original": "`StudentsListScreen`, `initialMonthlyBillingService`",
-      "web": "—",
-      "status": "FALTA",
-      "note": "Falta reactivar ofreciendo comenzar la mensualidad este mes o el próximo, conservando historial y sin duplicar deuda."
+      "web": "change-status-form.tsx; changeStudentStatusAction; resume_monthly_billing",
+      "status": "DISPONIBLE",
+      "note": "Al restaurar un alumno mensual se elige «Comenzar el próximo mes» o «Cobrar desde este mes» (obligatorio, sin preseleccionar). «Este mes» genera el cargo sólo si no existe; «próximo mes» conserva el cargo ya generado; nunca duplica deuda ni restaura series. Diferencia: la web lo pregunta en cualquier reactivación (pausado, inactivo o archivado); el original sólo al restaurar archivados. Probado en Postgres real (repetición, cargo existente, simultaneidad). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-10",
@@ -312,9 +312,9 @@
       "id": "ALU-16",
       "function": "Cobros del alumno: obligaciones, pagos, **editar plan de cobro**, **modificar monto mensual** (desde este mes / próximo mes), **marcar mes actual pagado**, situación inicial declarada y su corrección, revisar primer mes proporcional, anular cobro/pago, registrar pago de clase/semana/quincena/mes/paquete",
       "original": "`CobrosTab`, `EditBillingPlanSheet`, `EditMonthlyAmountSheet`, `RegisterPaymentSheet`, `initialMonthlyBillingPlan.ts`",
-      "web": "`cobros-tab.tsx` (Obligaciones y Pagos; registrar/anular por cargo)",
-      "status": "PARCIAL",
-      "note": "Plan y monto mensual ya editables; faltan situación inicial/corrección y accesos equivalentes a marcar mes pagado. Ver PAG-05: es el mismo trabajo, no dos faltas distintas."
+      "web": "cobros-tab.tsx; monthly-status-card.tsx; student-payment-history.tsx; mark_current_month_paid; resume_monthly_billing",
+      "status": "DISPONIBLE",
+      "note": "Se suman «Marcar mes actual como pagado», «Cambiar desde cuándo se cobra», la etiqueta «Situación inicial declarada» y el historial de pagos del alumno. La corrección de una declaración equivocada es anular ese pago (queda en el historial; el mes vuelve a pendiente). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "ALU-17",
@@ -600,9 +600,9 @@
       "id": "PAG-05",
       "function": "Situación inicial del alumno mensual («este mes está pago/pendiente») y su corrección",
       "original": "`initialMonthlyBillingService`, `initialPaidSurchargeRepairService`",
-      "web": "—",
-      "status": "FALTA",
-      "note": "Falta declarar Este mes ya está pago/pendiente, fecha real e historial de declaración y su corrección. Debe distinguirse de un pago registrado con dinero y asignaciones."
+      "web": "_apply_first_month_situation / mark_current_month_paid (migración 20261031100000); payments.source = initial_student_setup",
+      "status": "DISPONIBLE",
+      "note": "Declaración (alta) y «marcar mes pagado» distinguidas de un pago observado, con importe = saldo real, sin segundo pago ni segunda mensualidad, fecha recortada al vencimiento sólo en el alta, período obsoleto/fecha futura/alumno no activo/cargo anulado rechazados. Comparado en Postgres real contra planEnsureMonthlyChargeSituation del original (6 escenarios) y probado con dos llamadas simultáneas. El «Corregir situación inicial» del original repara un recargo (desactivado en la web): no aplica. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "PAG-06",
@@ -616,9 +616,9 @@
       "id": "PAG-07",
       "function": "Historial y riesgo de deuda por alumno (evolución 12 meses, racha, en término/fuera de término)",
       "original": "`PaymentHistorySection`",
-      "web": "—",
-      "status": "FALTA",
-      "note": "Falta historial individual de pagos de 12 meses, puntaje/riesgo, racha y obligaciones resueltas. El gráfico agregado de todos los alumnos no lo sustituye."
+      "web": "components/payments/student-payment-history.tsx; lib/payments/student-cobros.ts",
+      "status": "DISPONIBLE",
+      "note": "Últimos 12 meses, categoría y puntaje en texto, historial insuficiente, obligaciones en término / fuera de término, deuda actual y racha, con el motor idéntico al original y datos sólo del alumno. Prueba: student-cobros.test.ts (7). Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "PAG-08",
@@ -664,9 +664,9 @@
       "id": "REP-03",
       "function": "Compartir: WhatsApp, otra aplicación, copiar mensaje",
       "original": "`reportSharing.ts`",
-      "web": "—",
-      "status": "PARCIAL",
-      "note": "Abrir/descargar PDF existe; falta compartir el archivo con selector del sistema, WhatsApp y copiar el mensaje, con alternativa si el navegador no puede compartir archivos."
+      "web": "share-report-dialog.tsx; lib/reports/share-pdf.ts",
+      "status": "DISPONIBLE",
+      "note": "Selector del sistema con el PDF real si el navegador lo admite; si no, Descargar PDF, Copiar mensaje y Abrir WhatsApp Web (sin contacto ni texto). Aviso de privacidad del original una vez; enlace firmado de corta vida; nunca se afirma que se envió. Diferencia: el original no tiene mensaje sugerido (el de la web lleva solo primer nombre, título y período). Prueba: share-pdf.test.ts (8, navegadores simulados). Sin iPhone/Safari físico. Rama alumnos-cobros-reportes (commit sobre 7dde04b), sin integrar ni publicar; pendiente el recorrido autenticado y dispositivos físicos. Detalle y pruebas: docs/PARIDAD_ALUMNOS_COBROS_REPORTES_20261031.md."
     },
     {
       "id": "REP-04",
