@@ -18,7 +18,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | ID | Función | Original | Web | Estado / diferencia |
 |---|---|---|---|---|
 | ACC-01 | Inicio de sesión, crear cuenta, confirmar correo, recuperar y cambiar contraseña | `account/screens/SignIn,SignUp,AuthEmailConfirmation,ForgotPassword,NewPassword` | `/login`, `/crear-cuenta`, `/auth/confirm`, `/recuperar-contrasena`, `/nueva-contrasena` | VERIF (código de confirmación por enlace en lugar de código; mismo resultado) |
-| ACC-02 | Cerrar sesión; sesión única por dispositivo («Tu cuenta se abrió en otro dispositivo») | `SignedOutElsewhereScreen`, `activeSessionService` | `endActiveSessionAction`; decisión B documentada (`docs/design/web-v1/14`) | AUT: la web no limita la sesión a un dispositivo (decisión del bloque de cuenta) |
+| ACC-02 | Cerrar sesión; sesión única por dispositivo («Tu cuenta se abrió en otro dispositivo») | `SignedOutElsewhereScreen`, `ConfirmDeviceTransferScreen`, `activeSessionService` | `/dispositivo`, `lib/auth/device-session/*`, `lib/actions/device-session.ts`, `DeviceSessionWatcher`, control en `requireAuthenticatedDbContext`, layout privado y `proxy.ts` | **IMPLEMENTADO** (commit local; no publicado). Mismas tres funciones de la base que usa el original (`transfer/touch/end_active_session`) y su motor de decisión copiado idéntico (16 pruebas originales pasan). Circuito web probado con un modelo fiel de la base: primer ingreso sin preguntar, confirmación al haber otro dispositivo, cierre del otro, vencimiento 24 h con renovación, liberación al cerrar sesión, cookie alterada. Verificación en navegador y en dos dispositivos reales: pendiente. |
 | ACC-03 | Nombre de la profesora (alta y edición) y saludo en Inicio | `TeacherNameOnboardingScreen`, `SettingsScreen` | `saveTeacherProfileAction`, Configuración | VERIF |
 | ACC-04 | Tutorial de bienvenida salteable y «Ver tutorial» | `OnboardingTutorialScreen` | `components/dashboard/first-steps.tsx` (primeros pasos) | AUT parcial: otra forma de guiar; falta «volver a verlo» → VERIF |
 | ACC-05 | Eliminar cuenta | `accountDeletionService` | `deleteOwnAccountAction` | VERIF |
@@ -49,8 +49,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 | ID | Función | Original | Web | Estado / diferencia |
 |---|---|---|---|---|
-| ALU-01 | Lista con búsqueda tolerante, filtros (nivel, modalidad, estado, **estado de pago**), orden (nombre, **próxima clase**, **último pago**) | `StudentsListScreen`, `useFilteredStudents`, `FiltersPanel` | `lib/students/filters.ts` (sólo nombre; comentario «pendiente») | FALTA: filtro de pago y órdenes por próxima clase/último pago |
-| ALU-02 | Tarjeta con badges: estado, Destacado, Nuevo, **Pago vencido con el período** («Julio vencido»), **Reporte pendiente**, **Tarea pendiente**, próxima clase, clases del mes, promedio, último pago | `StudentCard`, `StudentBadges`, `buildStudentListItem` | `student-card.tsx` (nombre, nivel, modalidad, estado) | FALTA |
+| ALU-01 | Lista con búsqueda tolerante, filtros (nivel, modalidad, estado, **estado de pago**), orden (nombre, **próxima clase**, **último pago**) | `StudentsListScreen`, `useFilteredStudents`, `FiltersPanel` | `app/(app)/alumnos/page.tsx`, `lib/students/list-filters.ts`, `students-filters-form.tsx` | **IMPLEMENTADO** (commit local; no publicado). Pruebas del circuito web: `student-list-circuit.test.ts` (filtros, orden, parámetros inválidos). Verificación en navegador pendiente. |
+| ALU-02 | Tarjeta con badges: estado, Destacado, Nuevo, **Pago vencido con el período** («Julio vencido»), **Reporte pendiente**, **Tarea pendiente**, próxima clase, clases del mes, promedio, último pago | `StudentCard`, `StudentBadges`, `buildStudent…` | `student-card.tsx`, `student-list-parts.tsx`, `lib/students/list-status.ts` (motor del original, copia idéntica en `lib/payments/engine`) | **IMPLEMENTADO** salvo «Reporte pendiente»: en el original ningún flujo real lo activa (siempre `false`; comprobado por búsqueda de escritores), así que no se muestra. El «último pago» se usa para ordenar y filtrar, como en el original (la tarjeta del original no lo muestra). |
 | ALU-03 | Acciones rápidas por alumno (registrar clase, registrar pago, reprogramar, ver perfil, enviar PDF, editar, archivar, eliminar, restaurar) | `SwipeableStudentRow`, `StudentCardAction` | perfil + editar | AUT parcial (el deslizamiento es nativo); acciones faltantes → FALTA |
 | ALU-04 | Alta y edición con validaciones (nombre, apellido, edad 3–120, email, precio > 0, duración ≤ 480, frecuencia ≤ 14, horarios habituales) | `NewStudentScreen`, `studentValidation.ts` | `student-form-page.tsx`, `createStudentAction`/`updateStudentAction` | VERIF (contrastar cada regla) |
 | ALU-05 | Forma de cobro en el alta: por clase, mensual (+ «Este mes está pendiente/ya está pago»), paquete, semanal, quincenal, sin cargo | `NewStudentScreen`, `EditBillingPlanSheet`, `studentBillingPlan.ts` | sólo por clase y mensual (`BILLING_TYPE_OPTIONS`) | FALTA (planes semanal/quincenal/paquete/sin cargo y su generación de cargos; ver PAG-01) |
@@ -158,6 +158,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 ## Registro de cambios de esta matriz
 
+- 28/10/2026 (3): lista de Alumnos con estado de pago del mes, próxima clase, promedio, clases del mes, avisos, filtro por estado de pago y orden (motor de pagos del original promovido a producción como copia idéntica, con guarda byte a byte); sesión única por dispositivo implementada. Estado: comparado ✔ · implementado ✔ · publicado ✘ (en proceso) · verificado en producción ✘.
+
 - 28/10/2026 (2): migración aplicada y bloque «planes y montos» publicado (`718d455`). Antes de publicar se corrió el gate completo sobre el código final: suite completa 4982/4982 (copia LF), `tsc` sin errores, `eslint` sin errores ni advertencias, `next build` correcto. Endurecimiento previo a aplicar la migración (misma migración, aún no aplicada): transiciones entre planes con confirmación obligatoria cuando el mes ya tiene cobros de otro tipo de plan, «la mensualidad empieza el mes próximo» (`startPeriod`, que la generación mensual ahora respeta, igual que el original), y «Modificar monto mensual» sobre una mensualidad que todavía no empezó. Estado: inventariado ✔ · comparado ✔ · implementado ✔ · publicado ✔ · verificado en producción ✘ (falta sesión de QA).
 
 - 28/10/2026: circuito «planes y montos» implementado en local: plan de cobro editable (semanal, quincenal, mensual, paquete, por clase, sin cargo), «Modificar monto mensual», generación de cargos semanales/quincenales, «Editar alumno» ya no cambia precio ni tipo de facturación (regla del original del 10/08/2026) y la ficha muestra el plan vigente. 45/45 en Postgres real + pruebas de lógica/cableado + diferencial contra el núcleo original (`lib/original-core`, 2864 pruebas originales). Estado: inventariado ✔ · comparado ✔ · implementado ✔ (commits locales `faa940a`, `0ec6faf`) · publicado ✘ (migración bloqueada) · verificado en producción ✘.
@@ -225,6 +227,38 @@ Regla: una diferencia sólo es **AUT-INSTRUCCIÓN** si cito la instrucción que 
 ### C.5 Cuentas
 - AUT-INSTRUCCIÓN 23 · AUT-TÉCNICA 43 · PENDIENTES 25 (VERIF 5 · PARCIAL 12 · PENDIENTE de decisión 8 — dentro de estos, 4 de sesión única, 3 sin conexión y 1 notificación).
 - Resultado: sólo **66 de 91** quedan como diferencias legítimas; 25 vuelven a la lista de trabajo. La Parte B (generada) sigue mostrando la clasificación anterior de los archivos; esta Parte C la corrige para esos 25.
+
+
+## Parte D — Limitaciones compartidas, política de datos y qué prueba cada cosa (28/10/2026)
+
+### D.1 Generación de cobros bajo demanda: limitación COMPARTIDA con el original
+Los cobros mensuales, semanales, quincenales y de entrenamiento se generan **al abrir** Inicio, Cobros, Recordatorios o la ficha del alumno (`ChargeGenerationTrigger` → `ensureCurrentChargesAction`), sólo para el período vigente y con la fecha de Buenos Aires calculada en el servidor. El original hace lo mismo (`runMonthlyChargeGeneration` / `runPeriodicChargeGeneration` al iniciar la aplicación). Consecuencias idénticas en ambos: si no se abre la aplicación durante un período, ese período no se genera hasta la próxima visita, y los períodos salteados **no se rellenan**. Decisión vigente de Joaquín (28/10/2026): no agregar cobros retroactivos ni procesos automáticos que cambien esa regla. La categoría `monthly_student_without_current_charge` del analizador de consistencia lo muestra como aviso, sin generar nada.
+
+### D.2 Importe del plan frente a cargos anteriores: política
+- Un cargo ya emitido **nunca** se ajusta con el precio actual. Cada cargo conserva el importe con el que se emitió; el historial de precios (`student_price_history`), las decisiones de primer mes proporcional y la auditoría de cambios de monto (`student_billing_audit`) explican por qué dos meses distintos tienen importes distintos.
+- El analizador de consistencia del original (`analyzeFinancialConsistency`) sólo compara el plan con el cargo del **período vigente** y excusa los primeros meses con decisión propia: no mira meses anteriores. La web usa ese mismo analizador (copia idéntica) y mantiene esa regla.
+- No se repara ningún dato sin evidencia: la detección es de sólo lectura y las reparaciones del original quedan pendientes hasta que haya un caso concreto con respaldo.
+
+### D.3 Qué pruebas comprueban la implementación web y cuáles son de referencia
+| Tipo | Qué prueba | Acredita paridad de la web |
+|---|---|---|
+| **Referencia** (`lib/original-core`, 2864 pruebas originales) | Que el núcleo copiado del original conserva sus reglas | **No por sí solas**: ejecutan el código del original, no el circuito web |
+| **Original sobre copia idéntica en producción** (`lib/payments/engine`, `lib/auth/device-session/sessionAuthorization.ts`, `annual-budget-plan`) | Pruebas originales corriendo contra el código que sí se despliega + guarda byte a byte contra el núcleo | **Sí para esas reglas**, no para la pantalla ni la base |
+| **Circuito web** (`student-list-circuit`, `device-circuit`, `plan-form`, `periodic-charge-candidates`) | Registros con la forma de la base → resultado visible, con filtros, orden, persistencia y efectos | **Sí** |
+| **Postgres real** (`supabase/tests/postgres/*.cjs`, fuera de la suite de `node --test`) | RPC y restricciones reales: concurrencia, aislamiento entre cuentas, sin duplicados | **Sí** para integridad de datos |
+| **Navegador sobre Production** | Recorridos reales con la cuenta de QA | Pendiente (sesión de QA vencida) |
+| **Dispositivo físico** | iPhone/Android | Sólo la hace Joaquín |
+
+### D.4 Evidencia de las 43 diferencias técnicas (Parte C.2)
+| Grupo | Función que debe conservarse | Evidencia ejecutada | Falta |
+|---|---|---|---|
+| Sesión y almacenamiento seguro (7) | Sesión persistente y protegida; recuperación de contraseña | Sesión en cookies `HttpOnly`/`Secure`/`SameSite=Lax` (`cookie-options.test`); recuperación por enlace y código (`recovery-session.test`, `login-stale-cookies.test`) | Recorrido de recuperación en navegador (QA) |
+| Respaldo y recuperación automáticos (18) | Los datos sobreviven a un cambio de dispositivo y ningún dispositivo vacío pisa datos válidos | Los datos viven en la base: escrituras por RPC atómicas e idempotentes (Postgres real: `billing_plans_amounts`, `calendar_lesson_actions`, `end_series_atomic`); aislamiento entre cuentas (RLS, pruebas de cada RPC); no existe almacenamiento local que pueda sobrescribir | Fecha del último respaldo no se muestra (no hay respaldo que fechar) |
+| Archivo de respaldo/restauración (9) | Entrar datos de una copia | Importador `lib/backup/*` (validación, vista previa, importación atómica y deshacer; pruebas `r61_import*`, `transfer-compare`) | Traslado web→móvil: no existe y no se pidió |
+| Teclado y almacenes locales (7) | Escribir en un campo nunca queda tapado; integridad de vínculos | Campos ≥ 16 px y diálogos con scroll (guardas de interfaz); claves foráneas `on delete restrict` (migraciones) | **Prueba física en iPhone** |
+| Almacenamiento (1) y reexportación (1) | Persistencia / sin lógica | Base de datos; archivo de una línea | — |
+
+Las diferencias de sesión única por dispositivo, que figuraban como pendientes, se **implementaron** (ver ACC-02). Siguen como requisitos por implementar: uso sin conexión (ACC-07) y aviso de clase en curso (INI-07); ver el informe de incompatibilidades.
 
 <!-- INICIO INVENTARIO ARCHIVOS -->
 
