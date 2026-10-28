@@ -48,7 +48,7 @@ test("Inicio sigue sin loading.tsx (la recuperación B0 es un redirect HTTP real
   assert.match(error, /<ErrorState message=\{message\} \/>/);
 });
 
-const ALLOWED_FIELDS = new Set([
+const ALLOWED_FIELDS = new Set(["stats", 
   "localHour", "todayDateKey", "todayLessons", "nextClass", "pendingLessons", "emptyClasses", "remindersSummary", "collectionsUrgency",
   "studentCount", "activeStudentCount", "todayAgenda", "todayAllItems", "nowIso",
 ]);

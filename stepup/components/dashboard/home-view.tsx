@@ -9,6 +9,7 @@ import { PAGE_WIDTH } from "@/components/ui/page-header";
 import { agendaLessonLabel } from "@/lib/dashboard/lesson-label";
 import { buildFirstSteps, buildGreeting, homeDateLabel, resolveHomeStage, type HomeWelcome } from "@/lib/dashboard/home-welcome";
 import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
+import { formatGrade, formatHours } from "@/lib/format/number-format";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 
 const MAX_VISIBLE_PENDING = 4;
@@ -30,6 +31,16 @@ function Figure({ value, label, href }: { value: number; label: string; href?: s
     </Link>
   ) : (
     <div className={cls}>{body}</div>
+  );
+}
+
+/** Cifra con texto (horas, promedio, «Sin datos»): mismo estilo que `Figure`, pero acepta texto. */
+function TextFigure({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="block min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
+      <span className="block font-display text-[26px] font-medium leading-none tracking-tight tf-num max-[420px]:text-[22px]">{value}</span>
+      <span className="mt-1 block text-[13px] font-medium leading-tight text-textMuted">{label}</span>
+    </div>
   );
 }
 
@@ -113,6 +124,15 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           <Figure value={todayCount} label={todayCount === 1 ? "clase hoy" : "clases hoy"} />
           <Figure value={pending.length} label={pending.length === 1 ? "clase por registrar" : "clases por registrar"} href="/registro" />
           <Figure value={remindersCount} label={remindersCount === 1 ? "recordatorio" : "recordatorios"} href="/recordatorios" />
+        </section>
+      )}
+
+      {!onboarding && (
+        <section aria-label="Indicadores" data-enter="2" className="tf-enter mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:divide-x nav:divide-border nav:gap-0">
+          <TextFigure value={String(data.stats.activeStudents)} label={data.stats.activeStudents === 1 ? "alumno activo" : "alumnos activos"} />
+          <TextFigure value={String(data.stats.lessonsThisWeek)} label={data.stats.lessonsThisWeek === 1 ? "clase esta semana" : "clases esta semana"} />
+          <TextFigure value={data.stats.hoursTaughtThisMonth === null ? "Sin datos" : formatHours(data.stats.hoursTaughtThisMonth)} label="enseñadas este mes" />
+          <TextFigure value={data.stats.averageGrade === null ? "Sin datos" : formatGrade(data.stats.averageGrade)} label="promedio de evaluaciones" />
         </section>
       )}
 

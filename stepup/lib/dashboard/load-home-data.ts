@@ -5,6 +5,8 @@ import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons"
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
 import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
+import { loadHomeStatsInputs } from "@/lib/repositories/home-stats-inputs";
+import { buildHomeStats, weekBounds, type HomeStats } from "@/lib/dashboard/home-stats";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
@@ -38,6 +40,8 @@ export interface HomeData {
   /** Instante de la carga (el reloj con el que se calcularon los estados de «Clases de hoy»). */
   nowIso: string;
   nextClass: HomeNextClass | null;
+  /** Indicadores de la cuenta (alumnos activos, clases de la semana, horas del mes, promedio de evaluaciones). */
+  stats: HomeStats;
   /** Clases de hoy NO canceladas (alimentan el contador y «próxima clase»). */
   todayLessons: CalendarViewItem[];
   /** Agenda completa del día civil de Argentina, cronológica y sin límite (incluye las canceladas que el calendario muestra). */
@@ -86,6 +90,10 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const horizonEnd = new Date(now.getTime() + DEFAULT_RECURRENCE_HORIZON_DAYS * 24 * 60 * 60 * 1000);
 
   const pendingLookbackStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  // Semana de lunes a domingo (días civiles de Argentina) para «Clases esta semana».
+  const week = weekBounds(todayDateKey);
+  const weekStart = new Date(localDateTimeToInstantIso({ date: week.startKey, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE }));
+  const weekEndExclusive = new Date(new Date(localDateTimeToInstantIso({ date: week.endExclusiveKey, hour: 0, minute: 0, timeZone: ARGENTINA_TIME_ZONE })).getTime() - 1);
 
   // Ola 1: todo lo que no depende de otra lectura sale junto (antes eran seis esperas seguidas, cada una con su ida y vuelta a la
   // base). El resultado es exactamente el mismo.
@@ -95,6 +103,8 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
   // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
   const dayStart = new Date(dayStartIso);
+  // Información complementaria (horas del mes y promedio): arranca a la vez que las demás lecturas; si no se puede leer, esas dos cifras dicen «Sin datos» y el resto de Inicio sigue igual.
+  const statsInputsPromise = loadHomeStatsInputs(ctx, todayDateKey.slice(0, 7)).catch(() => null);
   const [{ rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds }, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
@@ -102,6 +112,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     listCalendarLessonsInRange(ctx, pendingLookbackStart.toISOString(), now.toISOString()),
     listOpenChargeBalances(ctx),
   ]);
+  const statsInputs = await statsInputsPromise;
   const calendarBase = { rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds };
   // Datos de prueba confirmados (R16): fuera de la agenda, los pendientes y las clases vacías; con la lista vacía no cambia nada.
   const rules = withoutExcludedRules(allRules, excludedStudentIds);
@@ -116,6 +127,13 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
   // Misma lectura acotada al día (una sola consulta): sin una consulta por clase ni historia que filtrar en el cliente.
   const todayAgenda = buildTodayAgenda(todayItems, now, todayDateKey);
+  // La semana sale de las lecturas que ya se hicieron (los últimos 90 días hasta ahora + el horizonte desde ahora): sin una consulta más.
+  const weekLessonRows = [...new Map([...pendingLessonRows, ...allHorizonLessons].map((lesson) => [lesson.id, lesson])).values()];
+  const weekItems = composeCalendarView(calendarBase, weekLessonRows, weekStart, weekEndExclusive);
+  const activeStudentCount = students.filter((student) => student.status === "activo").length;
+  const stats: HomeStats = statsInputs
+    ? buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: statsInputs.monthMinutes, grades: statsInputs.grades })
+    : { ...buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: [], grades: [] }), hoursTaughtThisMonth: null, averageGrade: null };
   const nextClassSelection = selectCurrentOrNextOccurrence(todayLessons, now);
   const nextClass: HomeNextClass | null = nextClassSelection ? { item: nextClassSelection.occurrence, timing: nextClassSelection.timing } : null;
 
@@ -164,6 +182,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     hasClassSignal: rules.length > 0 || todayItems.length > 0 || horizonLessons.length > 0 || pendingItems.length > 0,
     nowIso: now.toISOString(),
     nextClass,
+    stats,
     todayLessons,
     todayAgenda,
     todayAllItems: todayItems,
