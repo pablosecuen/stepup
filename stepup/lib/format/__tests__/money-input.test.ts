@@ -51,7 +51,10 @@ test("cableado: ningún campo de importe es un <input type=number> ni usa Number
   assert.match(student, /id="price" name="price" type="text" inputMode="decimal"/);
   assert.doesNotMatch(student, /id="price"[^>]*type="number"/);
   assert.match(read("lib/actions/students.ts"), /function readMoney\(formData: FormData, key: string\): number \{[\s\S]*parseMoneyInput\(/);
-  assert.equal([...read("lib/actions/students.ts").matchAll(/price: readMoney\(formData, "price"\)/g)].length, 2, "alta y edición del alumno");
+  assert.equal([...read("lib/actions/students.ts").matchAll(/price: readMoney\(formData, "price"\)/g)].length, 1, "sólo el alta del alumno: «Editar alumno» ya no cambia el precio (se cambia desde Cobros, por el plan)");
+  const planDialog = read("components/students/profile/billing-plan-card.tsx");
+  assert.ok(/parseMoneyInput\(amountText\)/.test(planDialog) && !/Number\(amountText\)/.test(planDialog), "el diálogo del monto mensual parsea con parseMoneyInput");
+  assert.match(read("lib/payments/plan-form.ts"), /parseMoneyInput\(values\.amountText\)/);
   const charge = read("components/payments/charge-actions.tsx");
   assert.match(charge, /parseMoneyInput\(amount\)/);
   assert.doesNotMatch(charge, /Number\(amount\)/);

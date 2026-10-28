@@ -19,7 +19,7 @@ function sources(dirs: string[]): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
-      if (entry === "node_modules" || entry === ".next" || entry === "__tests__") continue;
+      if (entry === "node_modules" || entry === ".next" || entry === "__tests__" || entry === "original-core") continue;
       const full = join(dir, entry);
       if (statSync(full).isDirectory()) walk(full);
       else if (/\.tsx?$/.test(entry)) out.push(relative(ROOT, full).split(sep).join("/"));

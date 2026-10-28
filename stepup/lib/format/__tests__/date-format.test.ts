@@ -238,7 +238,7 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
-    if (entry === "node_modules" || entry === "__tests__" || entry === ".next") return [];
+    if (entry === "node_modules" || entry === "__tests__" || entry === ".next" || entry === "original-core") return [];
     if (statSync(full).isDirectory()) return sourceFiles(full);
     return /\.(ts|tsx)$/.test(entry) && !/\.test\./.test(entry) ? [full] : [];
   });

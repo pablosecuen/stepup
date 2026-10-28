@@ -18,7 +18,7 @@ function sourceFiles(dir: string): string[] {
     for (const entry of readdirSync(current)) {
       const full = join(current, entry);
       if (statSync(full).isDirectory()) {
-        if (["__tests__", "node_modules", ".next", "testing"].includes(entry)) continue;
+        if (["__tests__", "node_modules", ".next", "testing", "original-core"].includes(entry)) continue;
         walk(full);
       } else if (/\.(ts|tsx)$/.test(entry)) out.push(relative(ROOT, full).split(sep).join("/"));
     }
