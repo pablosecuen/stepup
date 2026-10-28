@@ -1,5 +1,4 @@
 import { LevelPicker } from "./level-picker";
-import { formatMoneyForInput } from "@/lib/format/money-input";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import {
@@ -65,8 +64,17 @@ export function StudentFormFields({
               </SelectInput>
             </Field>
 
+            {defaultValues ? (
+              <div className="sm:col-span-2" role="note">
+                <p className="text-[14.5px] font-[650] text-textPrimary">Plan de cobro</p>
+                <p className="mt-0.5 text-[14px] text-textSecondary">
+                  Para cambiar cómo se cobra a este alumno o su importe, usá la pestaña <span className="font-[650]">Cobros</span> de su ficha: ahí se corrige el cargo del mes y queda registrado.
+                </p>
+              </div>
+            ) : (
+              <>
             <Field label="Tipo de facturación *" htmlFor="billingType">
-              <SelectInput id="billingType" name="billingType" required defaultValue={defaultValues?.billingType ?? "por_clase"}>
+              <SelectInput id="billingType" name="billingType" required defaultValue="por_clase">
                 {BILLING_TYPE_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {BILLING_LABEL[option]}
@@ -76,8 +84,10 @@ export function StudentFormFields({
             </Field>
 
             <Field label="Precio (ARS) *" htmlFor="price" hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
-              <TextInput id="price" name="price" type="text" inputMode="decimal" autoComplete="off" required defaultValue={formatMoneyForInput(defaultValues?.price)} placeholder="0" />
+              <TextInput id="price" name="price" type="text" inputMode="decimal" autoComplete="off" required defaultValue="" placeholder="0" />
             </Field>
+              </>
+            )}
 
             <Field label="Frecuencia semanal" htmlFor="weeklyFrequency">
               <TextInput id="weeklyFrequency" name="weeklyFrequency" type="number" min="0" step="1" defaultValue={defaultValues?.weeklyFrequency ?? 1} />

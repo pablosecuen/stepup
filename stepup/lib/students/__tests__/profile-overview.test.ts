@@ -252,7 +252,9 @@ test("Información: actividad real (clases, horas, total cobrado) y fecha de cam
   assert.doesNotMatch(info, /Total invertido|Horas totales|Cantidad (total )?de clases/, "los nombres del móvil ambiguos no vuelven");
   assert.match(info, /statusChangeLabel && student\.statusChangeDate/);
   assert.doesNotMatch(info, /Fecha de pausa\/archivo/);
-  assert.match(info, /monthlyDueDay !== null && <Row label="Vencimiento mensual"/);
+  // El plan de cobro (tipo, importe, vencimiento y vigencia pendiente) sale del plan vigente — no de los campos legados, que quedan viejos tras un cambio de plan.
+  assert.match(info, /<Row label="Plan de cobro" value=\{planDescription\.title\} \/>/);
+  assert.doesNotMatch(info, /BILLING_LABEL\[student\.billingType\]|formatMoney\(student\.price\)/);
 });
 
 test("Clases, Progreso y Tareas muestran datos reales antes ocultos: día del registro libre, horario, asistencia, habilidades, fecha de asignación", () => {

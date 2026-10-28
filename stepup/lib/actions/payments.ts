@@ -9,7 +9,10 @@ import {
   configureTrainingBilling,
   editTrainingBillingFee,
   ensureCurrentMonthlyCharges,
+  ensureCurrentPeriodicCharges,
   ensureTrainingCharges,
+  setStudentBillingPlan,
+  changeStudentMonthlyAmount,
   listChargeStatusForRegistration,
   PaymentNotFoundError,
   ChargeNotFoundError,
@@ -20,7 +23,8 @@ import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-
 import { listStudents } from "@/lib/repositories/students";
 import { selectPaymentPrompts, type RegistrationPaymentPrompt } from "@/lib/payments/registration-payment-prompt";
 import { computeTrainingFirstPeriodCharge } from "@/lib/payments/training-charge-plan";
-import { billingPeriodOfDateKey, localDateKeyInTimeZone } from "@/lib/payments/dates";
+import { billingPeriodOfDateKey, isValidDateKey, localDateKeyInTimeZone, resolveMonthlyDueDate } from "@/lib/payments/dates";
+import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
 import type { ActionResult } from "./lesson-registrations";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 
@@ -82,11 +86,57 @@ export async function listRegistrationPaymentPromptsAction(input: { registration
 export async function ensureCurrentChargesAction(): Promise<ActionResult<{ created: number }>> {
   try {
     const ctx = await requireAuthenticatedDbContext();
-    const currentPeriod = billingPeriodOfDateKey(localDateKeyInTimeZone(new Date()));
+    const todayKey = localDateKeyInTimeZone(new Date());
+    const currentPeriod = billingPeriodOfDateKey(todayKey);
     const [monthly, training] = await Promise.all([ensureCurrentMonthlyCharges(ctx, currentPeriod), ensureTrainingCharges(ctx, currentPeriod)]);
-    return { data: { created: monthly + training } };
+    // Semanales y quincenales: misma idempotencia por clave natural; se generan al terminar las anteriores para no mezclar sus errores.
+    const periodic = await ensureCurrentPeriodicCharges(ctx, todayKey);
+    return { data: { created: monthly + training + periodic } };
   } catch (error) {
     return { error: actionErrorMessage("payments.ensure", error) };
+  }
+}
+
+const PLAN_TYPES = ["per_class", "weekly", "biweekly", "monthly", "class_package", "complimentary"] as const;
+
+/**
+ * «Plan de cobro» del alumno (puerto de `EditBillingPlanSheet`/`applyBillingPlanChange`). Las reglas (importe > 0, día de vencimiento, paquete con clases y vigencia,
+ * vencimiento mensual único, el monto de un plan YA mensual sólo por «Modificar monto mensual») las impone la base de datos en una transacción con auditoría.
+ */
+export async function changeBillingPlanAction(input: { studentId: string; plan: StudentBillingPlan }): Promise<ActionResult> {
+  if (!input?.studentId || !input.plan || !(PLAN_TYPES as readonly string[]).includes(input.plan.type)) return { error: "Elegí un plan de cobro." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await setStudentBillingPlan(ctx, input.studentId, input.plan);
+  } catch (error) {
+    return { error: actionErrorMessage("payments.plan", error) };
+  }
+  revalidatePath("/cobros");
+  revalidatePath("/alumnos");
+  revalidatePath(`/alumnos/${input.studentId}`);
+  return {};
+}
+
+/**
+ * «Modificar monto mensual»: el período vigente y el vencimiento los calcula el servidor (nunca vienen del navegador). «Este mes» corrige el cargo del mes y el plan juntos;
+ * «Próximo mes» sólo deja el importe pendiente. Un período saldado, o un importe menor a lo ya pagado, se rechaza con un mensaje claro.
+ */
+export async function changeMonthlyAmountAction(input: { studentId: string; newAmount: number; effectiveFrom: "this_month" | "next_month" }): Promise<ActionResult<{ chargeCreated: boolean; chargeUpdated: boolean }>> {
+  if (!input?.studentId || (input.effectiveFrom !== "this_month" && input.effectiveFrom !== "next_month")) return { error: "Elegí desde cuándo se aplica el nuevo monto." };
+  if (!Number.isFinite(input.newAmount) || input.newAmount <= 0) return { error: "El nuevo importe mensual debe ser un número mayor a cero." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const todayKey = localDateKeyInTimeZone(new Date());
+    const currentPeriod = billingPeriodOfDateKey(todayKey);
+    const dueDate = resolveMonthlyDueDate(currentPeriod, 10);
+    if (!isValidDateKey(dueDate)) return { error: "No se pudo calcular el vencimiento del mes." };
+    const result = await changeStudentMonthlyAmount(ctx, { studentId: input.studentId, newAmount: input.newAmount, effectiveFrom: input.effectiveFrom, currentPeriod, dueDate });
+    revalidatePath("/cobros");
+    revalidatePath("/alumnos");
+    revalidatePath(`/alumnos/${input.studentId}`);
+    return { data: { chargeCreated: result.chargeCreated, chargeUpdated: result.chargeUpdated } };
+  } catch (error) {
+    return { error: actionErrorMessage("payments.monthly-amount", error) };
   }
 }
 

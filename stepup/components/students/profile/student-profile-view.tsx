@@ -18,6 +18,7 @@ import { ClasesTabContent } from "@/components/students/profile/clases-tab";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
+import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 import type { OriginIncidentView } from "@/lib/repositories/origin-incidents-mapping";
 import { ReportesTabContent } from "@/components/students/profile/reportes-tab";
 
@@ -68,7 +69,7 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
         {tab === "progreso" && <ProgresoTabContent entries={data.evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
         {tab === "cobros" && (
-          <CobrosTabContent studentId={student.id} studentName={student.name} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />
+          <CobrosTabContent studentId={student.id} studentName={student.name} billingPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price })} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />
         )}
         {tab === "reportes" && (
           <ReportesTabContent studentId={student.id} studentName={student.name} monthsWithClasses={data.monthsWithClasses} initialHistory={data.reportHistory} />

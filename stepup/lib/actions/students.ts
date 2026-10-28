@@ -141,12 +141,13 @@ export async function updateStudentAction(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
+  // Regla del original (2026-08-10): el tipo de facturación y el precio NO se editan desde «Editar alumno» (con esa vía el importe cambiaba sin corregir el cargo
+  // del mes ni dejar historial). Se cambian sólo desde la pestaña Cobros («Editar plan de cobro» / «Modificar monto mensual»), que lo hacen de forma atómica y auditada.
+  // Aunque un navegador alterado mande esos campos, esta acción nunca los lee.
   const patch: UpdateStudentInput = {
     name: readString(formData, "name"),
     modality: readString(formData, "modality") as StudentModality,
     category: readString(formData, "category") as StudentCategory,
-    billingType: readString(formData, "billingType") as BillingType,
-    price: readMoney(formData, "price"),
     levels: readLevels(formData),
     initialLevel: readOptionalString(formData, "initialLevel") ?? undefined,
     usualDurationMinutes: readString(formData, "usualDurationMinutes").trim()

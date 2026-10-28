@@ -100,7 +100,7 @@ test("el perfil del alumno quita los campos provisorios pero conserva todo dato 
 
   const info = code("components/students/profile/informacion-tab.tsx");
   assert.doesNotMatch(info, /Horas totales tomadas|Total invertido|Cantidad total de clases/);
-  for (const kept of ["Nivel inicial", "Fecha de alta", "Duración habitual", "Frecuencia semanal", "Precio de referencia", "Teléfono"]) assert.match(info, new RegExp(kept));
+  for (const kept of ["Nivel inicial", "Fecha de alta", "Duración habitual", "Frecuencia semanal", "Plan de cobro", "Teléfono"]) assert.match(info, new RegExp(kept));
 
   assert.equal((code("components/students/profile/profile-tabs-nav.tsx").match(/\{ key: "/g) ?? []).length, 7, "las 7 pestañas siguen");
   assert.throws(() => read("components/students/profile/pending-tab.tsx"), "el componente provisorio sin uso ya no existe");

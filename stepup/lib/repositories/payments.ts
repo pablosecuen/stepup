@@ -18,7 +18,8 @@ import type { ChargeWithPaidAmount } from "@/lib/payments/collections-center";
 import { listRecurrenceRules, type RecurrenceRuleRecord } from "./recurrence-rules";
 import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
-import { resolveEffectiveMonthlyAmount, resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
+import { resolveEffectiveMonthlyAmount, resolveStudentBillingPlan, type MonthlyBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
+import { buildPeriodicChargeCandidates, type PeriodicChargeCandidate } from "@/lib/payments/periodic-charge-candidates";
 import { isStudentBillableForPeriod } from "@/lib/payments/monthly-charge-plan";
 import { resolveMonthlyDueDate, billingPeriodOfDateKey, firstDayOfBillingPeriod, lastDateKeyOfBillingPeriod } from "@/lib/payments/dates";
 import {
@@ -316,6 +317,56 @@ export async function ensureCurrentMonthlyCharges(ctx: AuthenticatedDbContext, b
     candidates.push({ studentId: student.id, amount, dueDate: resolveMonthlyDueDate(billingPeriod, plan.dueDay) });
   }
   return ensureMonthlyCharges(ctx, billingPeriod, candidates);
+}
+
+async function ensurePeriodicChargesRpc(ctx: AuthenticatedDbContext, kind: "semanal" | "quincenal", candidates: PeriodicChargeCandidate[]): Promise<number> {
+  if (candidates.length === 0) return 0;
+  const { data, error } = await ctx.supabase.rpc("ensure_periodic_charges", {
+    p_kind: kind,
+    p_candidates: candidates.map((c) => ({ student_id: c.studentId, amount: c.amount, period_key: c.periodKey, due_date: c.dueDate })),
+  });
+  if (error) throw error;
+  return data as number;
+}
+
+/**
+ * Genera los cargos SEMANALES y QUINCENALES del día `todayKey` (fecha civil de Buenos Aires) para los alumnos con ese plan — puerto de
+ * `runPeriodicChargeGeneration` (móvil). Idempotente por (alumno, período) en la base: llamarla varias veces o desde dos pestañas nunca duplica.
+ */
+export async function ensureCurrentPeriodicCharges(ctx: AuthenticatedDbContext, todayKey: string): Promise<number> {
+  const students = await listStudents(ctx);
+  const { weekly, biweekly } = buildPeriodicChargeCandidates(
+    students.map((student) => ({ id: student.id, status: student.status, statusChangeDate: student.statusChangeDate, billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price })),
+    todayKey,
+  );
+  const [created, createdBiweekly] = await Promise.all([ensurePeriodicChargesRpc(ctx, "semanal", weekly), ensurePeriodicChargesRpc(ctx, "quincenal", biweekly)]);
+  return created + createdBiweekly;
+}
+
+/** Guarda el plan de cobro elegido (atómico, con auditoría). El monto de un plan YA mensual no se cambia por acá: ver `changeStudentMonthlyAmount`. */
+export async function setStudentBillingPlan(ctx: AuthenticatedDbContext, studentId: string, plan: StudentBillingPlan): Promise<void> {
+  const { error } = await ctx.supabase.rpc("set_student_billing_plan", { p_payload: { student_id: studentId, plan } });
+  if (error) throw error;
+}
+
+export interface ChangeMonthlyAmountResult {
+  chargeCreated: boolean;
+  chargeUpdated: boolean;
+  previousChargeAmount: number | null;
+  effectiveFrom: "this_month" | "next_month";
+}
+
+/** «Modificar monto mensual»: corrige el cargo del mes junto con el plan («este mes») o deja el importe pendiente («próximo mes»), todo en una sola transacción. */
+export async function changeStudentMonthlyAmount(
+  ctx: AuthenticatedDbContext,
+  input: { studentId: string; newAmount: number; effectiveFrom: "this_month" | "next_month"; currentPeriod: string; dueDate: string },
+): Promise<ChangeMonthlyAmountResult> {
+  const { data, error } = await ctx.supabase.rpc("change_student_monthly_amount", {
+    p_payload: { student_id: input.studentId, new_amount: input.newAmount, effective_from: input.effectiveFrom, current_period: input.currentPeriod, due_date: input.dueDate },
+  });
+  if (error) throw error;
+  const result = data as { charge_created: boolean; charge_updated: boolean; previous_charge_amount: number | null; effective_from: "this_month" | "next_month" };
+  return { chargeCreated: result.charge_created, chargeUpdated: result.charge_updated, previousChargeAmount: result.previous_charge_amount === null ? null : Number(result.previous_charge_amount), effectiveFrom: result.effective_from };
 }
 
 export interface TrainingChargeCandidate {
