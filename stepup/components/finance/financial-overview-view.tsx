@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
-import { linkClass } from "@/components/ui/button";
+import { PrivateButtonLink, linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { CollectedEvolutionChart } from "@/components/finance/collected-evolution-chart";
@@ -94,7 +94,15 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
 
   return (
     <div className={PAGE_WIDTH.wide}>
-      <PageHeader title="Resumen financiero" subtitle="Tus cobros, actividad y una guía para organizar lo ingresado." />
+      <PageHeader
+        title="Resumen financiero"
+        subtitle="Tus cobros, actividad y una guía para organizar lo ingresado."
+        action={
+          <PrivateButtonLink href="/resumen-financiero/comportamiento-de-pago" variant="secondary">
+            Comportamiento de pago
+          </PrivateButtonLink>
+        }
+      />
       <PaymentsSectionNav current="overview" />
 
       <nav aria-label="Período" className="mt-5">
