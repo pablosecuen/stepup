@@ -169,3 +169,28 @@ export function normalizeBudgetDistribution(distribution: BudgetDistribution): B
 export function resetBudgetDistribution(): BudgetDistribution {
   return { ...DEFAULT_BUDGET_DISTRIBUTION };
 }
+
+export interface BudgetDistributionAmounts {
+  needs: number;
+  wants: number;
+  savings: number;
+}
+
+/**
+ * Convierte la distribución (porcentajes) en importes reales sobre el
+ * dinero REALMENTE cobrado — nunca sobre facturación generada ni saldo
+ * pendiente. Corrige el residuo de redondeo en centavos sobre "Ahorro"
+ * (el último renglón, igual criterio que la corrección de porcentajes) para
+ * que los tres importes sumen EXACTO el total recibido, nunca $0.01 de más
+ * o de menos por redondeo independiente de cada fila.
+ */
+export function applyBudgetDistribution(
+  collectedAmount: number,
+  distribution: BudgetDistribution
+): BudgetDistributionAmounts {
+  if (collectedAmount <= 0) return { needs: 0, wants: 0, savings: 0 };
+  const needs = Math.round((collectedAmount * distribution.needs) / 100);
+  const wants = Math.round((collectedAmount * distribution.wants) / 100);
+  const savings = Math.round(collectedAmount) - needs - wants;
+  return { needs, wants, savings };
+}
