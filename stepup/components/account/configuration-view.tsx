@@ -58,6 +58,13 @@ export function ConfigurationView({
         <SettingsCard>
           <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />
         </SettingsCard>
+        <SettingsCard>
+          <SettingsRow title="Revisar consistencia" description="Revisa tus cobros y pagos en busca de repetidos, importes que no coinciden con el plan o pagos sin cobro. Sólo lee: no cambia nada.">
+            <PrivateLink href="/configuracion/consistencia" className={linkClass()}>
+              Revisar ahora
+            </PrivateLink>
+          </SettingsRow>
+        </SettingsCard>
         {testData && (
           <SettingsCard>
             <SettingsRow title="Datos de prueba" description={testData.hidden ? "Hay alumnos de prueba ocultos de la agenda, las listas y las estadísticas. Se pueden consultar y volver a mostrar." : "Hay alumnos de prueba marcados que hoy se muestran mezclados con tus datos."}>
