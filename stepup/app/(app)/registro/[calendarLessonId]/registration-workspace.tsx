@@ -9,7 +9,7 @@ import { guardNetwork } from "@/lib/actions/network-guard";
 import type { LessonRegistrationRecord } from "@/lib/repositories/lesson-registrations";
 import type { LessonRegistrationAttendanceRecord, LessonRegistrationEvaluationRecord } from "@/lib/repositories/lesson-registrations-mapping";
 import type { ParticipantRegistrationStatus } from "@/lib/lessons/group-progress";
-import { ATTENDANCE_STATUS_LABEL, hasResolvedAttendanceStatus } from "@/lib/lessons/attendance";
+import { ATTENDANCE_STATUS_LABEL, hasResolvedAttendanceStatus, planBulkAttendance, type BulkAttendanceMode } from "@/lib/lessons/attendance";
 import { getBlockingHomeworkTasks, homeworkReviewSelectionKey, type PendingHomeworkTask, type HomeworkReviewOutcome } from "@/lib/lessons/homework";
 import { ADHOC_OUTCOME_LABEL, type AdhocOutcome } from "@/lib/lessons/adhoc";
 import { activityKindAssignsHomework, activityKindSupportsHomework } from "@/lib/calendar/activity-kind";
@@ -269,6 +269,7 @@ export function RegistrationWorkspace({
   );
   const [openParticipantId, setOpenParticipantId] = useState<string | null>(() => firstOpenParticipant(order, participantStatusByStudentId));
   const [attendanceErrorId, setAttendanceErrorId] = useState<string | null>(null);
+  const [bulkAttendance, setBulkAttendance] = useState<BulkAttendanceMode | null>(null);
   const [homeworkErrorId, setHomeworkErrorId] = useState<string | null>(null);
   const [busyParticipantId, setBusyParticipantId] = useState<string | null>(null);
   const [scrollRequest, setScrollRequest] = useState<{ anchor: string; nonce: number } | null>(null);
@@ -356,6 +357,24 @@ export function RegistrationWorkspace({
     if (typeof patch === "function") return;
     if ("attendanceStatus" in patch && attendanceErrorId === studentId) setAttendanceErrorId(null);
     if ("homeworkReviews" in patch && homeworkErrorId === studentId) setHomeworkErrorId(null);
+  }
+
+  /** «Marcar todos presentes» / «Limpiar asistencia»: pide confirmar antes de reemplazar o borrar una asistencia ya cargada; no toca a los alumnos ya completados u omitidos. */
+  function requestBulkAttendance(mode: BulkAttendanceMode) {
+    const plan = planBulkAttendance(participants, Object.fromEntries(participants.map((p) => [p.studentId, formByStudentId[p.studentId]?.attendanceStatus])), statusByStudentId, mode);
+    if (plan.studentIds.length === 0) return;
+    if (plan.needsConfirmation) {
+      setBulkAttendance(mode);
+      return;
+    }
+    applyBulkAttendance(mode);
+  }
+
+  function applyBulkAttendance(mode: BulkAttendanceMode) {
+    const plan = planBulkAttendance(participants, Object.fromEntries(participants.map((p) => [p.studentId, formByStudentId[p.studentId]?.attendanceStatus])), statusByStudentId, mode);
+    for (const studentId of plan.studentIds) handleParticipantFormChange(studentId, plan.patch);
+    setAttendanceErrorId(null);
+    setBulkAttendance(null);
   }
 
   /** Tareas anteriores de un alumno que bloquean «Completar»: sólo las que se ven y sólo si no las revisó (un entrenamiento nunca bloquea). */
@@ -612,6 +631,33 @@ export function RegistrationWorkspace({
       {countsAsClass && isGroup && (
         <section aria-label="Participantes" className="flex flex-col gap-3">
           <h2 className="font-display text-card font-semibold">Participantes</h2>
+          {!isFinalized && participants.length > 1 && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => requestBulkAttendance("present")}>
+                  Marcar todos presentes
+                </Button>
+                <Button variant="ghost" onClick={() => requestBulkAttendance("clear")}>
+                  Limpiar asistencia
+                </Button>
+              </div>
+              {bulkAttendance && (
+                <Notice tone="warn" title={bulkAttendance === "present" ? "¿Reemplazar la asistencia ya cargada?" : "¿Borrar la asistencia ya cargada?"}>
+                  <p>
+                    {bulkAttendance === "present" ? "Esto va a reemplazar la asistencia ya cargada de los alumnos que todavía no completaste." : "Esto va a borrar la asistencia ya cargada de los alumnos que todavía no completaste."} Los alumnos ya completados no cambian.
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    <Button variant="primary" onClick={() => applyBulkAttendance(bulkAttendance)}>
+                      {bulkAttendance === "present" ? "Marcar todos presentes" : "Limpiar asistencia"}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setBulkAttendance(null)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </Notice>
+              )}
+            </div>
+          )}
           {participants.map((p) => (
             <ParticipantCard
               key={p.studentId}
