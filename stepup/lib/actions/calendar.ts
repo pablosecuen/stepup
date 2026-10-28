@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { planEndSeriesFromDate } from "@/lib/calendar/end-series";
-import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError } from "@/lib/repositories/calendar-lessons";
-import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError, editCalendarLesson, restoreCalendarOccurrence, deleteCancelledCalendarLesson, type EditCalendarLessonInput } from "@/lib/repositories/calendar-lessons";
+import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, editRecurrenceClassTitle, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
 import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
@@ -30,6 +30,7 @@ import { MISSING_OPERATION_ID_MESSAGE, parseOperationId } from "@/lib/calendar/o
 import type { CalendarModality, CalendarLessonType, ActivityKind } from "@/lib/db/database.types";
 import type { RecurrenceWeek } from "@/lib/calendar/types";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { CLASS_TITLE_MAX_LENGTH, applyDurationToWeeks, computeEndFromDuration, isValidDurationOption, normalizeClassTitle, sessionSlotForInstant, type LessonEditScope, type SessionSlot } from "@/lib/calendar/lesson-edit";
 
 // Server Actions — Calendario. Nunca reciben `ownerId` del navegador;
 // siempre resuelven la sesión real en el servidor. Toda validación de
@@ -556,15 +557,31 @@ export interface EditFutureActionInput {
 export async function editFutureRecurrenceAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const originalRecurrenceId = readString(formData, "originalRecurrenceId");
   const effectiveDate = readString(formData, "effectiveDate");
-  const participantIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
-  let weeks: RecurrenceWeek[];
-  try {
-    weeks = JSON.parse(readString(formData, "weeksJson"));
-  } catch {
-    return { error: "El patrón semanal no es válido." };
+  // Cambios que NO tocan el patrón (nombre, duración de una sesión): el patrón y los alumnos son los del tramo que rige en esa fecha (`keepPattern`).
+  const keepPattern = readString(formData, "keepPattern") === "true";
+  let participantIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
+  let weeks: RecurrenceWeek[] = [];
+  if (!keepPattern) {
+    try {
+      weeks = JSON.parse(readString(formData, "weeksJson"));
+    } catch {
+      return { error: "El patrón semanal no es válido." };
+    }
+  }
+  const titleChange = formData.has("classTitle") ? normalizeClassTitle(readString(formData, "classTitle")) : undefined;
+  if (typeof titleChange === "string" && titleChange.length > CLASS_TITLE_MAX_LENGTH) return { error: `El nombre no puede superar los ${CLASS_TITLE_MAX_LENGTH} caracteres.` };
+  let durationPatch: { slot: SessionSlot; minutes: number } | null = null;
+  if (keepPattern && formData.has("durationPatchJson")) {
+    try {
+      const parsed = JSON.parse(readString(formData, "durationPatchJson")) as { weekday: number; hour: number; minute: number; minutes: number };
+      if (![parsed.weekday, parsed.hour, parsed.minute, parsed.minutes].every(Number.isInteger) || !isValidDurationOption(parsed.minutes)) throw new Error("duración");
+      durationPatch = { slot: { weekday: parsed.weekday, hour: parsed.hour, minute: parsed.minute }, minutes: parsed.minutes };
+    } catch {
+      return { error: "La duración elegida no es válida." };
+    }
   }
   if (!effectiveDate) return { error: "Elegí la fecha efectiva." };
-  if (participantIds.length === 0) return { error: "Elegí al menos un alumno." };
+  if (!keepPattern && participantIds.length === 0) return { error: "Elegí al menos un alumno." };
 
   try {
     const ctx = await requireAuthenticatedDbContext();
@@ -575,8 +592,9 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     // real de la serie se resuelve siempre del lado del servidor, contra
     // la regla actual, nunca se recibe del cliente ni se infiere de
     // `participantIds` (que acá siempre es el roster viejo sin cambios).
-    const currentRule = await getRecurrenceRule(ctx, originalRecurrenceId);
+    let currentRule = await getRecurrenceRule(ctx, originalRecurrenceId);
     if (!currentRule) return { error: "Serie no encontrada." };
+    if (keepPattern) participantIds = currentRule.participantIds;
     if (!currentRule.primaryStudentId || !participantIds.includes(currentRule.primaryStudentId)) {
       return { error: "El alumno principal de la serie ya no forma parte del grupo — usá \"Modificar participantes\" primero." };
     }
@@ -590,6 +608,21 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       return { error: `Ningún tramo de esta serie rige el ${formatCivilDate(effectiveDate)} (empieza el ${formatCivilDate(currentRule.startDate)}). Elegí una fecha dentro de la serie.` };
     }
     const target = segment.target;
+    if (keepPattern) {
+      // El tramo que rige en la fecha puede ser otro que el de la clase tocada: sus alumnos, su principal y su patrón son los que continúan.
+      const targetRule = target.id === currentRule.id ? currentRule : await getRecurrenceRule(ctx, target.id);
+      if (!targetRule || !targetRule.primaryStudentId) return { error: "Serie no encontrada." };
+      currentRule = targetRule;
+      participantIds = targetRule.participantIds;
+      weeks = targetRule.weeks;
+      if (durationPatch) {
+        const patched = applyDurationToWeeks(weeks, durationPatch.slot, durationPatch.minutes);
+        if (patched.matched === 0) return { error: "No se encontró el horario de esta clase en el patrón de la serie: no se cambió nada." };
+        weeks = patched.weeks;
+      }
+    }
+    const primaryStudentId = currentRule.primaryStudentId;
+    if (!primaryStudentId) return { error: "Serie no encontrada." };
     const replacedRuleIds = [target.id, ...segment.superseded.map((rule) => rule.id)];
     const successorEndDate = segment.superseded.length > 0 ? currentRule.endDate : target.endDate;
 
@@ -604,7 +637,8 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     // Se valida ANTES de guardar; si choca no se escribe nada.
     // La profesora puede aceptar el choque a propósito (`allowOverlap`, tras ver el aviso): nunca queda un conflicto en silencio.
     const allowOverlap = readString(formData, "allowOverlap") === "true";
-    if (!allowOverlap) {
+    const patternUnchanged = keepPattern && !durationPatch;
+    if (!allowOverlap && !patternUnchanged) {
       const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, replacedRuleIds, successorEndDate, effectiveDate, todayDate, weeks, participantIds });
       if (conflictMessage) return { error: conflictMessage, conflict: true };
     }
@@ -617,7 +651,8 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
       weeks,
       participantIds,
-      primaryStudentId: currentRule.primaryStudentId,
+      primaryStudentId,
+      ...(titleChange !== undefined ? { classTitle: titleChange ?? "" } : {}),
       successorEndDate,
       // Los tramos posteriores al de la fecha ya no generan clases: los reemplaza la sucesora (mismo RPC, misma transacción).
       endRuleIds: segment.superseded.map((rule) => rule.id),
@@ -870,4 +905,214 @@ export async function getRecurrenceRuleAction(ruleId: string) {
 export async function getCalendarLessonAction(lessonId: string) {
   const ctx = await requireAuthenticatedDbContext();
   return getCalendarLesson(ctx, lessonId);
+}
+
+// ---------------------------------------------------------------------------
+// Acciones de una clase: nombre, duración, restaurar, eliminar (paridad con la hoja de acciones de la app original)
+// ---------------------------------------------------------------------------
+
+/** La clase tal como la ve la pantalla. Los nombres y niveles de los alumnos NUNCA se toman del navegador: se resuelven acá contra los alumnos reales de la cuenta. */
+export interface LessonRefInput {
+  /** Id de la tarjeta (`virtual:<clave>` si todavía no es una clase creada): se usa para no contar la propia clase como choque de horario. */
+  viewItemId: string;
+  lessonId: string | null;
+  recurrenceId: string | null;
+  occurrenceKey: string | null;
+  primaryStudentId: string;
+  participantIds: string[];
+  lessonType: CalendarLessonType;
+  startAt: string;
+  endAt: string;
+  modality: CalendarModality;
+  classTitle: string | null;
+  activityKind: ActivityKind;
+}
+
+const MODALITY_COLOR: Record<string, string> = { online: "#DDEBFF", mixta: "#F2E8FF", presencial: "#FFE4D2" };
+
+async function resolveMaterializeBase(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, ref: LessonRefInput): Promise<{ error: string } | { base: NonNullable<EditCalendarLessonInput["base"]> }> {
+  const students = await listStudents(ctx);
+  const byId = new Map(students.map((student) => [student.id, student]));
+  const primary = byId.get(ref.primaryStudentId);
+  if (!primary) return { error: "El alumno principal ya no está disponible." };
+  const participants = ref.participantIds.map((id) => byId.get(id));
+  if (participants.some((student) => !student)) return { error: "Alguno de los alumnos ya no está disponible." };
+  return {
+    base: {
+      primaryStudentId: primary.id,
+      studentName: primary.name,
+      level: primary.levels[0] ?? "",
+      lessonType: ref.lessonType,
+      startAt: ref.startAt,
+      endAt: ref.endAt,
+      modality: ref.modality,
+      color: MODALITY_COLOR[ref.modality] ?? MODALITY_COLOR.presencial,
+      recurrenceIndex: null,
+      classTitle: ref.classTitle,
+      activityKind: ref.activityKind,
+      participants: participants.map((student) => ({ studentId: student!.id, studentName: student!.name, level: student!.levels[0] ?? "" })),
+    },
+  };
+}
+
+/** «Sólo esta clase» (una clase suelta, o una ocurrencia de serie que se crea en su horario): cambia nombre y/o fin con `edit_calendar_lesson`. */
+async function editSingleLesson(ctx: Awaited<ReturnType<typeof requireAuthenticatedDbContext>>, ref: LessonRefInput, changes: { classTitle?: string | null; endAt?: string }): Promise<FormState> {
+  let base: NonNullable<EditCalendarLessonInput["base"]> | undefined;
+  if (!ref.lessonId) {
+    if (!ref.recurrenceId || !ref.occurrenceKey) return { error: "No se pudo identificar la clase. Recargá el calendario." };
+    const resolved = await resolveMaterializeBase(ctx, ref);
+    if ("error" in resolved) return { error: resolved.error };
+    base = resolved.base;
+  }
+  await editCalendarLesson(ctx, { lessonId: ref.lessonId, recurrenceId: ref.recurrenceId, occurrenceKey: ref.occurrenceKey, ...(base ? { base } : {}), changes });
+  return {};
+}
+
+function futureEditFormData(ref: LessonRefInput, extra: Record<string, string>, flags: { confirmReplace?: boolean; allowOverlap?: boolean }): FormData {
+  const formData = new FormData();
+  formData.set("originalRecurrenceId", ref.recurrenceId ?? "");
+  // Fecha civil de la clase tocada (hora de la cuenta): desde ahí rige el cambio. Nunca «hoy».
+  formData.set("effectiveDate", getLocalDateKey(ref.startAt, TIMEZONE));
+  formData.set("keepPattern", "true");
+  for (const [key, value] of Object.entries(extra)) formData.set(key, value);
+  if (flags.confirmReplace) formData.set("confirmReplace", "true");
+  if (flags.allowOverlap) formData.set("allowOverlap", "true");
+  return formData;
+}
+
+function revalidateCalendar() {
+  revalidatePath("/calendario");
+  revalidatePath("/calendario/series");
+  revalidatePath("/inicio");
+}
+
+export interface EditLessonTitleActionInput {
+  ref: LessonRefInput;
+  /** Vacío = volver al nombre automático según los alumnos. */
+  title: string;
+  scope: LessonEditScope;
+  confirmReplace?: boolean;
+}
+
+export async function editLessonTitleAction(input: EditLessonTitleActionInput): Promise<FormState> {
+  const title = normalizeClassTitle(input.title);
+  if (title !== null && title.length > CLASS_TITLE_MAX_LENGTH) return { error: `El nombre no puede superar los ${CLASS_TITLE_MAX_LENGTH} caracteres.` };
+  const { ref } = input;
+  const scope: LessonEditScope = ref.recurrenceId ? input.scope : "occurrence";
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    if (scope === "occurrence") {
+      const result = await editSingleLesson(ctx, ref, { classTitle: title });
+      if (result.error) return result;
+    } else if (scope === "series") {
+      await editRecurrenceClassTitle(ctx, { ruleId: ref.recurrenceId as string, classTitle: title });
+    } else {
+      const result = await editFutureRecurrenceAction({}, futureEditFormData(ref, { classTitle: title ?? "" }, { confirmReplace: input.confirmReplace }));
+      if (result.error) return result;
+    }
+  } catch (error) {
+    if (error instanceof CalendarLessonNotFoundError) return { error: "Clase no encontrada." };
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "La serie ya no existe. Recargá el calendario." };
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidateCalendar();
+  return {};
+}
+
+export interface ChangeLessonDurationActionInput {
+  ref: LessonRefInput;
+  minutes: number;
+  /** La duración sólo admite «sólo esta clase» o «esta y las siguientes». */
+  scope: Exclude<LessonEditScope, "series">;
+  confirmReplace?: boolean;
+  allowOverlap?: boolean;
+}
+
+export async function changeLessonDurationAction(input: ChangeLessonDurationActionInput): Promise<FormState> {
+  if (!Number.isInteger(input.minutes) || !isValidDurationOption(input.minutes)) return { error: "Elegí una duración de la lista." };
+  const { ref } = input;
+  const scope = ref.recurrenceId ? input.scope : "occurrence";
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    if (scope === "occurrence") {
+      const newEnd = computeEndFromDuration(ref.startAt, input.minutes);
+      if (!input.allowOverlap) {
+        // Igual que reprogramar: la nueva duración no puede superponerse con otra clase ni caer en un horario bloqueado (la propia clase no cuenta como choque).
+        const conflictMessage = await checkConflictsAndAvailability(ctx, ref.startAt, newEnd, ref.viewItemId);
+        if (conflictMessage) return { error: conflictMessage, conflict: true };
+      }
+      const result = await editSingleLesson(ctx, ref, { endAt: newEnd });
+      if (result.error) return result;
+    } else {
+      const timezone = (await getRecurrenceRule(ctx, ref.recurrenceId as string))?.timezone ?? TIMEZONE;
+      const slot = sessionSlotForInstant(ref.startAt, timezone);
+      const result = await editFutureRecurrenceAction(
+        {},
+        futureEditFormData(ref, { durationPatchJson: JSON.stringify({ ...slot, minutes: input.minutes }) }, { confirmReplace: input.confirmReplace, allowOverlap: input.allowOverlap })
+      );
+      if (result.error) return result;
+    }
+  } catch (error) {
+    if (error instanceof CalendarLessonNotFoundError) return { error: "Clase no encontrada." };
+    if (error instanceof RangeError) return { error: "La duración elegida no es válida." };
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidateCalendar();
+  return {};
+}
+
+export interface RestoreOccurrenceActionInput {
+  lessonId: string;
+  /** La profesora vio el aviso de superposición/bloqueo y decidió restaurar igual. */
+  confirmOverlap?: boolean;
+}
+
+/** Restaurar una ocurrencia cancelada o reprogramada a su fecha original. Como la app original, avisa si ese horario está bloqueado y deja restaurar igual si la profesora lo decide. */
+export async function restoreOccurrenceAction(input: RestoreOccurrenceActionInput): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const lesson = await getCalendarLesson(ctx, input.lessonId);
+    if (!lesson) return { error: "Clase no encontrada." };
+    if (lesson.status !== "scheduled" && !input.confirmOverlap) {
+      const originalStart = lesson.recurrenceOriginalStart ?? lesson.startAt;
+      const originalEnd = new Date(new Date(originalStart).getTime() + (new Date(lesson.endAt).getTime() - new Date(lesson.startAt).getTime())).toISOString();
+      const message = await checkConflictsAndAvailability(ctx, originalStart, originalEnd, lesson.id);
+      if (message) return { error: `${message} ¿Querés restaurarla igual?`, conflict: true };
+    }
+    await restoreCalendarOccurrence(ctx, input.lessonId);
+  } catch (error) {
+    if (error instanceof CalendarLessonNotFoundError) return { error: "Clase no encontrada." };
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidateCalendar();
+  return {};
+}
+
+/** Eliminar la tarjeta de una clase cancelada. Nunca con registro o cobro asociado (lo valida la base). */
+export async function deleteCancelledLessonAction(input: { lessonId: string }): Promise<FormState> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    await deleteCancelledCalendarLesson(ctx, input.lessonId);
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidateCalendar();
+  return {};
+}
+
+/** «Eliminar esta y todas las siguientes»: quita la serie DESDE la fecha de esta clase (las anteriores se conservan; las clases futuras sin registro pasan a canceladas). */
+export async function deleteSeriesFromOccurrenceAction(input: { ruleId: string; startAt: string }): Promise<FormState & { removedFrom?: string }> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const effectiveDate = getLocalDateKey(input.startAt, TIMEZONE);
+    const rules = (await listRecurrenceRules(ctx)).map((rule) => ({ ...rule, recurrenceId: rule.id }));
+    const plan = planEndSeriesFromDate(rules, input.ruleId, effectiveDate);
+    if (!plan) return { error: "Esta serie ya estaba terminada." };
+    await endRecurrenceSeriesFromDate(ctx, { plan, effectiveDate, timezone: TIMEZONE });
+    revalidateCalendar();
+    return { removedFrom: effectiveDate };
+  } catch (error) {
+    if (error instanceof RecurrenceRuleNotFoundError) return { error: "La serie cambió o ya no existe. No se cambió nada: volvé a abrir el calendario y reintentá." };
+    return { error: friendlyErrorMessage(error) };
+  }
 }

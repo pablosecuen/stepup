@@ -226,3 +226,13 @@ export async function endRecurrenceSeriesFromDate(
   const result = data as { truncated?: number; ended?: number; cancelled?: number } | null;
   return { truncated: Number(result?.truncated ?? 0), ended: Number(result?.ended ?? 0), cancelled: Number(result?.cancelled ?? 0) };
 }
+
+/** Nombre de TODA la serie (`edit_recurrence_class_title`): la regla y sus clases ya creadas que todavía no pasaron. `null` vuelve al nombre automático. */
+export async function editRecurrenceClassTitle(ctx: AuthenticatedDbContext, input: { ruleId: string; classTitle: string | null }): Promise<{ lessons: number }> {
+  const { data, error } = await ctx.supabase.rpc("edit_recurrence_class_title", { p_payload: { rule_id: input.ruleId, class_title: input.classTitle } });
+  if (error) {
+    if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
+    throw error;
+  }
+  return { lessons: Number((data as { lessons?: number } | null)?.lessons ?? 0) };
+}
