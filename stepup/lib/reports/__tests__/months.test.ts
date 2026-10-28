@@ -59,5 +59,5 @@ test("buildMonthsSummaryLabel: meses consecutivos, mismo año", () => {
 });
 
 test("buildMonthsSummaryLabel: meses NO consecutivos", () => {
-  assert.equal(buildMonthsSummaryLabel(["2026-03", "2026-06"]), "marzo 2026 y junio 2026");
+  assert.equal(buildMonthsSummaryLabel(["2026-03", "2026-06"]), "marzo y junio 2026");
 });

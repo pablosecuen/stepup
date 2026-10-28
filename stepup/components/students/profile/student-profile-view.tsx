@@ -15,6 +15,9 @@ import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profil
 import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
 import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
 import { ClasesTabContent } from "@/components/students/profile/clases-tab";
+import { PunctualitySection } from "@/components/students/profile/punctuality-section";
+import { buildStudentPunctuality } from "@/lib/live-class/punctuality";
+import { todayInArgentina } from "@/lib/format/date-format";
 import { TareasTabContent } from "@/components/students/profile/tareas-tab";
 import { ProgresoTabContent } from "@/components/students/profile/progreso-tab";
 import { CobrosTabContent } from "@/components/students/profile/cobros-tab";
@@ -65,7 +68,12 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
             <ChangeStatusForm studentId={student.id} currentStatus={student.status} />
           </div>
         )}
-        {tab === "clases" && <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />}
+        {tab === "clases" && (
+          <div className="flex flex-col gap-4">
+            <PunctualitySection summary={buildStudentPunctuality(data.registrations, todayInArgentina())} />
+            <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />
+          </div>
+        )}
         {tab === "progreso" && <ProgresoTabContent entries={data.evaluationEntries} />}
         {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
         {tab === "cobros" && (

@@ -49,38 +49,53 @@ export function computeSelectedMonthsRange(
 
 const MONTH_NAMES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
-function monthLabel(month: string): { name: string; year: number } {
-  const [year, monthNumber] = month.split("-").map(Number);
-  return { name: MONTH_NAMES[monthNumber - 1], year };
+function monthKeyToName(monthKey: string): string {
+  const [, monthNumber] = monthKey.split("-").map(Number);
+  return MONTH_NAMES[monthNumber - 1] ?? monthKey;
 }
 
-function areConsecutiveMonths(sortedMonths: readonly string[]): boolean {
-  for (let i = 1; i < sortedMonths.length; i += 1) {
-    const [prevYear, prevMonth] = sortedMonths[i - 1].split("-").map(Number);
-    const [year, month] = sortedMonths[i].split("-").map(Number);
-    const prevTotal = prevYear * 12 + prevMonth;
-    const total = year * 12 + month;
-    if (total - prevTotal !== 1) return false;
+function nextMonthKey(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+}
+
+/** Agrupa meses ordenados en tandas de meses seguidos: [03, 04, 06] → [03 a 04], [06]. */
+function groupConsecutiveMonths(sortedMonths: readonly string[]): Array<{ startKey: string; endKey: string }> {
+  const runs: Array<{ startKey: string; endKey: string }> = [];
+  for (const monthKey of sortedMonths) {
+    const lastRun = runs[runs.length - 1];
+    if (lastRun && nextMonthKey(lastRun.endKey) === monthKey) lastRun.endKey = monthKey;
+    else runs.push({ startKey: monthKey, endKey: monthKey });
   }
-  return true;
+  return runs;
 }
 
-/** Puerto de `buildMonthsSummaryLabel` — título distinto según sean consecutivos o no. */
+function joinWithY(phrases: string[]): string {
+  if (phrases.length <= 1) return phrases.join("");
+  return `${phrases.slice(0, -1).join(", ")} y ${phrases[phrases.length - 1]}`;
+}
+
+/**
+ * Puerto de `buildMonthsSummaryLabel` (misma lógica que el original, comparada contra él en `report-months-parity.test.ts`): el título sale de los meses elegidos, nunca escrito a mano.
+ * Un mes → «julio 2026»; seguidos → «mayo a julio 2026»; salteados → «marzo y junio 2026» (el año una sola vez si es el mismo) o, de años distintos, con el año en cada extremo.
+ */
 export function buildMonthsSummaryLabel(selectedMonths: readonly string[]): string {
   if (selectedMonths.length === 0) return "";
-  const sorted = [...selectedMonths].sort();
-  if (sorted.length === 1) {
-    const { name, year } = monthLabel(sorted[0]);
-    return `${name} ${year}`;
+  const sorted = Array.from(new Set(selectedMonths)).sort();
+  const runs = groupConsecutiveMonths(sorted);
+  const years = new Set(sorted.map((key) => Number(key.slice(0, 4))));
+  if (years.size === 1) {
+    const phrases = runs.map((run) => (run.startKey === run.endKey ? monthKeyToName(run.startKey) : `${monthKeyToName(run.startKey)} a ${monthKeyToName(run.endKey)}`));
+    return `${joinWithY(phrases)} ${[...years][0]}`;
   }
-  if (areConsecutiveMonths(sorted)) {
-    const first = monthLabel(sorted[0]);
-    const last = monthLabel(sorted[sorted.length - 1]);
-    return first.year === last.year ? `${first.name} a ${last.name} ${last.year}` : `${first.name} ${first.year} a ${last.name} ${last.year}`;
-  }
-  const labels = sorted.map((m) => {
-    const { name, year } = monthLabel(m);
-    return `${name} ${year}`;
+  // Meses de años distintos: se aclara el año en cada extremo para no perder precisión.
+  const phrasesWithYears = runs.map((run) => {
+    const startYear = run.startKey.slice(0, 4);
+    const endYear = run.endKey.slice(0, 4);
+    if (run.startKey === run.endKey) return `${monthKeyToName(run.startKey)} ${startYear}`;
+    return `${monthKeyToName(run.startKey)} ${startYear} a ${monthKeyToName(run.endKey)} ${endYear}`;
   });
-  return labels.length === 2 ? labels.join(" y ") : `${labels.slice(0, -1).join(", ")} y ${labels[labels.length - 1]}`;
+  return joinWithY(phrasesWithYears);
 }

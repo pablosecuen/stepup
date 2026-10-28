@@ -459,6 +459,12 @@ export interface LessonRegistrationRow {
   late_cancellation_percentage: number | null;
   /** El registro de la clase de RECUPERACIÓN apunta al original (`outcome = 'reprogramada'`) — nunca al revés. Fase 5. */
   rescheduled_from_registration_id: UUID | null;
+  /** Ciclo real de la clase (migración 20261029100000): horario efectivo, origen del inicio, ajuste y respuesta de puntualidad. Ausente/null = sin dato. */
+  effective_start_at?: ISODateTimeString | null;
+  start_source?: "button" | "manual_correction" | null;
+  schedule_adjustment?: unknown;
+  student_arrival?: { status: string; lateMinutes: number; manuallyCorrected: boolean; arrivedAt?: string } | null;
+  session_updated_at?: ISODateTimeString | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }

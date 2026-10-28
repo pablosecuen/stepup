@@ -6,6 +6,8 @@ import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories
 import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
 import { loadHomeStatsInputs } from "@/lib/repositories/home-stats-inputs";
+import { getLiveClassSession } from "@/lib/repositories/live-class";
+import type { LiveClassSession } from "@/lib/live-class/live-class";
 import { buildHomeStats, weekBounds, type HomeStats } from "@/lib/dashboard/home-stats";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
@@ -42,6 +44,8 @@ export interface HomeData {
   nextClass: HomeNextClass | null;
   /** Indicadores de la cuenta (alumnos activos, clases de la semana, horas del mes, promedio de evaluaciones). */
   stats: HomeStats;
+  /** La clase en curso (comenzada con «Comenzar clase»), o `null`. Si no se pudo leer también es `null`: comenzar otra sigue siendo seguro (la base rechaza una segunda). */
+  liveClass: LiveClassSession | null;
   /** Clases de hoy NO canceladas (alimentan el contador y «próxima clase»). */
   todayLessons: CalendarViewItem[];
   /** Agenda completa del día civil de Argentina, cronológica y sin límite (incluye las canceladas que el calendario muestra). */
@@ -105,6 +109,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const dayStart = new Date(dayStartIso);
   // Información complementaria (horas del mes y promedio): arranca a la vez que las demás lecturas; si no se puede leer, esas dos cifras dicen «Sin datos» y el resto de Inicio sigue igual.
   const statsInputsPromise = loadHomeStatsInputs(ctx, todayDateKey.slice(0, 7)).catch(() => null);
+  const liveClassPromise = getLiveClassSession(ctx).catch(() => null);
   const [{ rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds }, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
@@ -113,6 +118,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     listOpenChargeBalances(ctx),
   ]);
   const statsInputs = await statsInputsPromise;
+  const liveClass = await liveClassPromise;
   const calendarBase = { rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds };
   // Datos de prueba confirmados (R16): fuera de la agenda, los pendientes y las clases vacías; con la lista vacía no cambia nada.
   const rules = withoutExcludedRules(allRules, excludedStudentIds);
@@ -183,6 +189,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     nowIso: now.toISOString(),
     nextClass,
     stats,
+    liveClass,
     todayLessons,
     todayAgenda,
     todayAllItems: todayItems,

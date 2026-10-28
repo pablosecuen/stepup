@@ -270,30 +270,31 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 
 | Estado | Archivos | Significado |
 |---|---:|---|
-| EQ | 18 | Equivalente comprobado (con la evidencia citada) |
-| VERIF | 206 | Existe un equivalente en la web, falta la comparación campo por campo y el recorrido |
-| PARCIAL | 54 | Existe, con diferencias conocidas |
-| FALTA | 92 | Falta implementar |
-| AUT | 91 | Diferencia inevitable o autorizada, con alternativa |
-| N/A | 12 | No aplica (herramienta de QA/prueba del móvil) |
+| EQ | 23 | Equivalente comprobado (con la evidencia citada: prueba diferencial o copia idéntica) |
+| VERIF | 191 | Existe un equivalente en la web, falta la comparación campo por campo y el recorrido |
+| IMPL | 8 | Implementado en código y base con pruebas; **publicado y verificado en producción: pendiente** (ver Parte E) |
+| PARCIAL | 61 | Existe, con diferencias conocidas |
+| FALTA | 80 | Falta implementar |
+| AUT | 90 | Diferencia inevitable o autorizada, con alternativa |
+| N/A | 20 | No aplica (herramienta de QA/prueba del móvil, archivo vacío o código del original sin pantalla) |
 
-| Módulo | Archivos | EQ | VERIF | PARCIAL | FALTA | AUT | N/A |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| features/account | 44 | 0 | 21 | 2 | 1 | 20 | 0 |
-| features/backup | 8 | 0 | 0 | 0 | 0 | 8 | 0 |
-| features/calendar | 72 | 1 | 41 | 16 | 13 | 1 | 0 |
-| features/dashboard | 54 | 2 | 26 | 3 | 18 | 5 | 0 |
-| features/new-class | 56 | 0 | 20 | 15 | 8 | 13 | 0 |
-| features/new-student | 12 | 0 | 12 | 0 | 0 | 0 | 0 |
-| features/payments | 88 | 3 | 42 | 6 | 26 | 11 | 0 |
-| features/reportes | 15 | 0 | 15 | 0 | 0 | 0 | 0 |
-| features/student-profile | 32 | 0 | 17 | 5 | 10 | 0 | 0 |
-| features/students | 35 | 1 | 12 | 7 | 15 | 0 | 0 |
-| features/transfer | 6 | 6 | 0 | 0 | 0 | 0 | 0 |
-| navigation | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
-| qa | 12 | 0 | 0 | 0 | 0 | 0 | 12 |
-| shared | 35 | 5 | 0 | 0 | 1 | 29 | 0 |
-| theme | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
+| Módulo | Archivos | EQ | VERIF | IMPL | PARCIAL | FALTA | AUT | N/A |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| features/account | 44 | 0 | 21 | 0 | 2 | 1 | 20 | 0 |
+| features/backup | 8 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
+| features/calendar | 72 | 1 | 41 | 0 | 16 | 13 | 1 | 0 |
+| features/dashboard | 54 | 3 | 26 | 5 | 4 | 11 | 5 | 0 |
+| features/new-class | 56 | 3 | 20 | 1 | 15 | 4 | 13 | 0 |
+| features/new-student | 12 | 0 | 0 | 0 | 5 | 0 | 0 | 7 |
+| features/payments | 88 | 3 | 42 | 0 | 6 | 26 | 11 | 0 |
+| features/reportes | 15 | 1 | 12 | 0 | 1 | 0 | 0 | 1 |
+| features/student-profile | 32 | 0 | 17 | 1 | 5 | 9 | 0 | 0 |
+| features/students | 35 | 1 | 12 | 0 | 7 | 15 | 0 | 0 |
+| features/transfer | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
+| navigation | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| qa | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 12 |
+| shared | 35 | 5 | 0 | 1 | 0 | 1 | 28 | 0 |
+| theme | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 
 ### features/account
 
@@ -444,7 +445,7 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `PendingClassesScreen.tsx` | 154 | VERIF | `/registro`, `lib/lessons/pending.ts` | INI-08 | Regla «por registrar sólo después de finalizar». |
 | `RemindersCenterScreen.tsx` | 284 | EQ | `/recordatorios`, `lib/dashboard/reminders-center.ts` | INI-09 | Cerrado en §21 de TRASLADO. |
 | `SettingsScreen.tsx` | 229 | AUT | `/configuracion`, `components/nav/primary-nav.tsx` | INI-14 | Ubicación de la navegación y menú del logo: navegación propia de la web. |
-| `components/ActiveClassCard.tsx` | 342 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `components/ActiveClassCard.tsx` | 342 | IMPL | `components/dashboard/active-class-card.tsx` | INI-07 | Circuito «Clase en curso» implementado (migración 20261029100000, 44 comprobaciones en Postgres real; 16 pruebas del circuito web). Publicado: no. Verificado en producción: no. Sin «pendiente de tarea / aspectos a mejorar» en la tarjeta (diferencia a cerrar). |
 | `components/AnnualBudgetChart.tsx` | 430 | PARCIAL | `components/finance/annual-projection.tsx` | INI-10 | Implementado el 28/10/2026: lógica portada con las 13 pruebas originales (`annual-budget-plan.test.ts`) y 7 propias; pantalla `components/finance/annual-projection.tsx`. **Sin publicar**; falta verificar en navegador con QA. |
 | `components/BudgetDistributionCard.tsx` | 249 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `components/CollectionsCenterSummaryCard.tsx` | 111 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
@@ -459,7 +460,7 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `components/LiveClassTrackingSwitch.tsx` | 68 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `components/LogoMenuSheet.tsx` | 410 | AUT | `/configuracion`, `components/nav/primary-nav.tsx` | INI-14 | Ubicación de la navegación y menú del logo: navegación propia de la web. |
 | `components/MonthlyPaymentBehaviorChart.tsx` | 207 | FALTA | — | INI-12 | Comportamiento de pago, últimos 12 meses. |
-| `components/NextClassCard.tsx` | 282 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `components/NextClassCard.tsx` | 282 | PARCIAL | `components/dashboard/day-planner.tsx` (tarjeta de próxima clase + botón «Comenzar clase») | INI-07 | Botón «Comenzar clase» agregado (sólo clases agendadas); resto de la tarjeta sin comparar campo a campo. |
 | `components/NotificationBell.tsx` | 74 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `components/OfflineProtectionBanner.tsx` | 63 | AUT | — | CFG-01 | Aviso de protección sin conexión del respaldo local. |
 | `components/PendingClasses.tsx` | 171 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
@@ -467,12 +468,12 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `components/RestoredActiveSessionNotice.tsx` | 113 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `components/SavingsGoalControl.tsx` | 251 | PARCIAL | `components/finance/savings-goal-form.tsx`, `lib/payments/savings-goal.ts`, `saveSavingsGoalAction`, `applyBudgetPresetAction` | INI-11 | Implementado el 28/10/2026 (progreso, reserva mensual, % sugerido, aplicar sugerencia; monto con interpretación estricta). **Sin publicar**; falta verificar en navegador. Además se corrigió la pérdida de datos: ajustar porcentajes ya no borra el objetivo importado. |
 | `components/ScheduleAdjustSheet.tsx` | 248 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
-| `components/StartClassPunctualityDialog.tsx` | 254 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `components/StartClassPunctualityDialog.tsx` | 254 | IMPL | `components/dashboard/start-class-dialog.tsx` | INI-07 | Circuito «Clase en curso» implementado (migración 20261029100000, 44 comprobaciones en Postgres real; 16 pruebas del circuito web). Publicado: no. Verificado en producción: no. Las seis respuestas y sus textos coinciden; hora a mano con selector de hora del navegador. |
 | `components/StatsRow.tsx` | 73 | FALTA | — | INI-03 | Horas enseñadas del mes y promedio de evaluaciones (fórmula en `buildDashboardData.ts`). |
-| `hooks/activeClassSessionStore.ts` | 94 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `hooks/activeClassSessionStore.ts` | 94 | IMPL | tabla `live_class_sessions` + `lib/repositories/live-class.ts` | INI-07 | La sesión vive en el servidor (una por profesora), no en el dispositivo: sobrevive a recarga y a otra pestaña. Diferencia de arquitectura deliberada. |
 | `hooks/liveClassTrackingStore.ts` | 42 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `hooks/navigationPreferenceStore.ts` | 68 | AUT | `/configuracion`, `components/nav/primary-nav.tsx` | INI-14 | Ubicación de la navegación y menú del logo: navegación propia de la web. |
-| `hooks/useActiveClassSession.ts` | 110 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `hooks/useActiveClassSession.ts` | 110 | IMPL | `lib/actions/live-class.ts`, `active-class-card.tsx`, `live-class-notifier.tsx` | INI-07 | Comenzar / corregir inicio / descartar / finalizar, idempotentes en la base. El aviso se refresca cada 30 s como el original (sólo con TeacherFlow abierto en Inicio). |
 | `hooks/useDashboardData.ts` | 105 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `hooks/useFinancialAnalytics.ts` | 289 | VERIF | `components/finance/financial-overview-view.tsx`, `lib/dashboard/load-financial-overview.ts`, `lib/reports/*` (§22 de TRASLADO: cifras reproducidas) | INI-13 | Comparar secciones y definiciones («Cómo se calcula»). |
 | `hooks/useHomeFinancialSummary.ts` | 73 | VERIF | `components/finance/financial-overview-view.tsx`, `lib/dashboard/load-financial-overview.ts`, `lib/reports/*` (§22 de TRASLADO: cifras reproducidas) | INI-13 | Comparar secciones y definiciones («Cómo se calcula»). |
@@ -481,10 +482,10 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `hooks/useNavigationLocation.ts` | 37 | AUT | `/configuracion`, `components/nav/primary-nav.tsx` | INI-14 | Ubicación de la navegación y menú del logo: navegación propia de la web. |
 | `hooks/usePostRestoreActiveSessionWarning.ts` | 35 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `types/index.ts` | 189 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
-| `utils/activeClassTiming.ts` | 58 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `utils/activeClassTiming.ts` | 58 | EQ | `lib/payments/engine/features/dashboard/utils/activeClassTiming.ts` (copia idéntica) | INI-07 | Copia byte a byte con prueba de igualdad; usada por la tarjeta y el aviso. |
 | `utils/annualActivitySummary.ts` | 200 | VERIF | `components/finance/financial-overview-view.tsx`, `lib/dashboard/load-financial-overview.ts`, `lib/reports/*` (§22 de TRASLADO: cifras reproducidas) | INI-13 | Comparar secciones y definiciones («Cómo se calcula»). |
 | `utils/buildDashboardData.ts` | 165 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
-| `utils/buildFinishClassNavigationParams.ts` | 48 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
+| `utils/buildFinishClassNavigationParams.ts` | 48 | IMPL | `finish_live_class` (base) + `finishLiveClassAction` | INI-07 | En vez de pasar el paquete de tiempos por parámetros de navegación, se guardan en el registro en borrador en la misma operación (no se pierden si se cierra la pestaña). |
 | `utils/calendarOccurrenceRange.ts` | 53 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `utils/emptyClasses.ts` | 140 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `utils/formatCurrency.ts` | 8 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
@@ -543,10 +544,10 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `utils/lessonAttachments.ts` | 257 | VERIF | `lesson-files-editor.tsx`, `lib/lessons/attachments.ts`, `lib/repositories/lesson-files-write.ts` | REG-10 | Fotos, HEIC, PDF, leyendas, alcance, biblioteca (§25). Cámara = prueba en dispositivo. |
 | `utils/lessonRegistrationDomain.ts` | 283 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
 | `utils/manualSessionCorrection.ts` | 61 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
-| `utils/punctualityClassification.ts` | 61 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
-| `utils/punctualityScoreEntries.ts` | 25 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
-| `utils/punctualityScoring.ts` | 140 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
-| `utils/punctualityStats.ts` | 10 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
+| `utils/punctualityClassification.ts` | 61 | EQ | `lib/payments/engine/features/new-class/utils/punctualityClassification.ts` (copia idéntica) | ALU-13/15 | Usada por el diálogo de comienzo. |
+| `utils/punctualityScoreEntries.ts` | 25 | IMPL | `lib/live-class/punctuality.ts` | ALU-13/15 | Adaptación a los registros de la web (sólo clases FINALIZADAS); probada con registros con forma de la base. |
+| `utils/punctualityScoring.ts` | 140 | EQ | `lib/payments/engine/.../punctualityScoring.ts` (copia idéntica) | ALU-13/15 | Alimenta la sección Puntualidad del alumno. |
+| `utils/punctualityStats.ts` | 10 | EQ | `lib/payments/engine/.../punctualityStats.ts` (copia idéntica) | ALU-13/15 | Re-exportación. |
 | `utils/savedLessonLinkageDiagnostics.ts` | 228 | AUT | Base de datos / navegador | UX-01 | Almacén local, diagnóstico de vínculos (la web usa claves foráneas) y seguimiento de campo con teclado nativo. |
 | `utils/skillGradeDomain.ts` | 64 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `utils/studentSessionHistory.ts` | 47 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
@@ -558,18 +559,18 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 
 | Archivo del original | LOC | Estado | Equivalente en la web | Ref. | Nota |
 |---|---:|---|---|---|---|
-| `NewStudentScreen.tsx` | 988 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentAcademicSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentBasicInfoSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentBillingSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentContactSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentFormFooter.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentNotesSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `components/StudentScheduleSection.tsx` | 1 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `hooks/useNewStudentForm.ts` | 85 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `types/index.ts` | 68 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `utils/studentMapper.ts` | 258 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
-| `utils/studentValidation.ts` | 111 | VERIF | `student-form-page.tsx`, `student-form-fields.tsx`, `createStudentAction`/`updateStudentAction` | ALU-04/05 | Campos y validaciones; faltan planes semanal/quincenal/paquete/sin cargo y «Situación del primer mes» (ALU-05). |
+| `NewStudentScreen.tsx` | 988 | PARCIAL | `student-form-page.tsx`, `student-form-fields.tsx` | ALU-04/05 | Comparado campo a campo (ver Parte E.1). Faltan en el alta: apellido separado y obligatorio, edad, objetivos, días y horario habitual, situación del primer mes; el precio acepta cero. |
+| `components/StudentAcademicSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentBasicInfoSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentBillingSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentContactSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentFormFooter.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentNotesSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `components/StudentScheduleSection.tsx` | 1 | N/A | — | ALU-04/05 | Archivo vacío en el original (0 líneas): no hay comportamiento. |
+| `hooks/useNewStudentForm.ts` | 85 | PARCIAL | `student-form-fields.tsx` | ALU-04/05 | Comparado: estado inicial y campos (E.1). Defaults del original no verificados uno por uno. |
+| `types/index.ts` | 68 | PARCIAL | `NewStudentInput` (`students-mapping.ts`) | ALU-04/05 | Comparado campo a campo (E.1). |
+| `utils/studentMapper.ts` | 258 | PARCIAL | `studentInputToRowPatch` | ALU-04/05 | Comparado el mapeo de campos; plan inicial y nivel inicial no verificados por completo. |
+| `utils/studentValidation.ts` | 111 | PARCIAL | `validateNewStudentInput`/`validateStudentLimits` | ALU-04/05 | Prueba diferencial contra el original: límites de frecuencia (≤ 14), duración (≤ 480) y correo ahora coinciden. Siguen distintas: apellido, edad, precio > 0, horario habitual. |
 
 ### features/payments
 
@@ -677,12 +678,12 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `services/reportSharePrivacyNotice.ts` | 25 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
 | `services/reportSharing.ts` | 87 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
 | `types/index.ts` | 162 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
-| `utils/buildDeterministicReportNarrative.ts` | 87 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
+| `utils/buildDeterministicReportNarrative.ts` | 87 | PARCIAL | `lib/reports/narrative.ts` | REP-01/02 | Comparado: el texto es DISTINTO (E.2). Pendiente decisión de Joaquín sobre el texto del borrador. |
 | `utils/buildReportHtml.ts` | 151 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
 | `utils/buildReportPrompt.ts` | 44 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
 | `utils/buildStudentReportData.ts` | 184 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
-| `utils/reportMonths.ts` | 162 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
-| `utils/reportPeriods.ts` | 78 | VERIF | `components/students/profile/reportes-tab.tsx`, `lib/reports/*`, `lib/actions/reports.ts` | REP-01/02 | Generación, historial y descarga del PDF verificados con QA el 21/10 (§25); compartir por WhatsApp/otra app/copiar mensaje: AUT parcial (REP-03). |
+| `utils/reportMonths.ts` | 162 | EQ | `lib/reports/months.ts` | REP-01/02 | Prueba diferencial contra el original (meses con clases, período real, título). Se corrigió el título de meses salteados («marzo y junio 2026»). |
+| `utils/reportPeriods.ts` | 78 | N/A | — | REP-01/02 | Código del original NO conectado a ninguna pantalla (sólo lo menciona un comentario): no hay comportamiento que replicar. |
 
 ### features/student-profile
 
@@ -699,7 +700,7 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `components/ProfileHeader.tsx` | 171 | VERIF | `components/students/profile/*`, `lib/students/profile-overview.ts` | ALU-11 | Pestañas del perfil. |
 | `components/ProfileQuickActions.tsx` | 111 | PARCIAL | `resumen-tab.tsx`, `profile-header.tsx`, `change-status-form.tsx` | ALU-12 | Falta «Inversión histórica», «Horas tomadas» y las acciones rápidas del perfil. |
 | `components/ProfileSkeleton.tsx` | 90 | VERIF | `components/students/profile/*`, `lib/students/profile-overview.ts` | ALU-11 | Pestañas del perfil. |
-| `components/PunctualitySection.tsx` | 145 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
+| `components/PunctualitySection.tsx` | 145 | IMPL | `components/students/profile/punctuality-section.tsx` | ALU-13/15 | Pestaña Clases del alumno. La puntualidad de clases IMPORTADAS del móvil todavía no se copia a la columna (el traslado la conserva sólo como dato de origen): diferencia abierta. |
 | `components/QuickSummary.tsx` | 151 | PARCIAL | `resumen-tab.tsx`, `profile-header.tsx`, `change-status-form.tsx` | ALU-12 | Falta «Inversión histórica», «Horas tomadas» y las acciones rápidas del perfil. |
 | `components/RescheduleCancellationNoticeBanner.tsx` | 82 | FALTA | — | ALU-17 |  |
 | `components/SegmentedTabs.tsx` | 148 | VERIF | `components/students/profile/*`, `lib/students/profile-overview.ts` | ALU-11 | Pestañas del perfil. |
@@ -829,7 +830,7 @@ Las diferencias de sesión única por dispositivo, que figuraban como pendientes
 | `components/SuccessToast.tsx` | 72 | FALTA | — | ALU-20 | Confirmación breve «alumno creado» tras el alta (flujo clases→alumnos). |
 | `components/TextItemEditSheet.tsx` | 499 | AUT | `components/registro/editable-text-list.tsx` | REG-07 | Edición de elementos de lista sin borrar (decisión vigente); el panel nativo con teclado propio no aplica. |
 | `hooks/useReduceMotion.ts` | 30 | EQ | `prefers-reduced-motion` en `components/ui/dialog.tsx`, `app/globals.css` | UX-01 |  |
-| `notifications/classSessionNotification.ts` | 111 | AUT | — | INI-07 | Notificación persistente de Android durante la clase en curso (depende del seguimiento en vivo). |
+| `notifications/classSessionNotification.ts` | 111 | IMPL | `public/sw.js`, `live-class-notifier.tsx`, `lib/live-class/notification.ts` | INI-07 | Mismo título y texto. Diferencias demostradas documentadas en `docs/AVISO_CLASE_EN_CURSO.md`. Probado en dispositivos físicos: no. |
 | `storage/teacherFlowStorage.ts` | 293 | AUT | Base de datos (Supabase) | PLAT-02 | AsyncStorage del móvil. |
 | `types.ts` | 38 | EQ | `lib/db/database.types.ts`, `lib/students/constants.ts` | ALU-04 |  |
 | `utils/gradeAverage.ts` | 30 | EQ | `lib/lessons/grades.ts` (`calculateAverageGrade`) | REG-08 | Promedios reales (sin 0 ni vacíos). |
@@ -883,3 +884,63 @@ Revisado el árbol de la web (`app/`, `components/`, `lib/`, `supabase/`, 936 ar
 2. `lib/payments/billing-plan.ts` documenta semanal/quincenal/paquete como «no están en el alcance pedido»: contradice el pedido actual de equivalencia completa (PAG-01).
 3. `docs/TRASLADO_EXPO_GO_A_WEB.md` §25/§26 listaba «sigue faltando…»: varias entradas deben recomprobarse (niveles personalizados: ya existen `renameLevelAction`/`deleteLevelAction`; resultado de una clase finalizada: existe `changeRegistrationOutcomeAction`, falta confirmar si admite registros ya finalizados) y otras siguen siendo ciertas; esta matriz reemplaza esa lista como fuente de verdad.
 4. `lib/payments/due-stage.ts` conserva umbrales de «vencimiento 1/2/último» sólo para la etapa visual (sin recargos): consistente con la decisión de negocio; no se toca.
+
+
+## Parte E — Comparación detallada de los casos «VERIF» (29/10/2026)
+
+**Método.** Para cada archivo del original se lee su código, se identifica el equivalente de la web y se comparan campo por campo los datos, las reglas y los efectos. Donde hay lógica pura se ejecutan **las dos implementaciones con los mismos datos** (prueba diferencial: `student-form-parity.test.ts`, `report-months-parity.test.ts`). Contar archivos o pruebas del original no cuenta como comparación.
+
+**Avance real.** De los **206** casos «VERIF» del inicio de esta ronda quedan **191**: se cerraron **15** (12 de alta de alumno y 3 de reportes). **No se declara completa la auditoría**: faltan **191** casos por comparar, distribuidos así: account 21, calendar 41, dashboard 26, new-class 20, payments 42, reportes 12, student-profile 17, students 12 (más los de estado PARCIAL/FALTA ya identificados). Ver la tabla de arriba, que se recalcula desde las filas.
+
+### E.1 Alta de alumno (`features/new-student`): campo por campo
+
+| Campo del original | Regla del original | En la web | Resultado |
+|---|---|---|---|
+| Nombre y apellido | Los dos obligatorios, por separado | Un solo campo «Nombre completo» (obligatorio) | **Diferente**: la web acepta un nombre de una sola palabra. El valor guardado es el mismo («nombre apellido»). |
+| Edad | Opcional; entero entre 3 y 120 | No hay campo en el alta (la base tiene fecha de nacimiento) | **Falta** |
+| Teléfono, WhatsApp | Opcionales | Iguales | Igual |
+| Correo | Opcional; formato `algo@dominio.ext` | Antes sólo la validación del navegador; **ahora el servidor aplica la misma regla** (prueba diferencial) | Igualado en esta ronda |
+| Niveles | Opcionales, combinables | Selector de niveles (combinables, personalizados) | Igual |
+| Modalidad, categoría | Selectores | Iguales | Igual |
+| Tipo de cobro | Por clase / mensual | Por clase / mensual en el alta; el resto de planes se cambia en Cobros del alumno | Igual en el alta |
+| Situación del primer mes (pago / pendiente / empieza el mes siguiente) y fecha de pago | Sólo si es mensual | No hay en el alta (existe «empezar el mes próximo» al cambiar de plan) | **Falta** (PAG-05) |
+| Precio | **Mayor que cero** | Acepta **cero** (rechaza negativos y texto) | **Diferente** — pendiente de decisión: alinear exige revisar alumnos importados con precio cero |
+| Cantidad de clases por semana | De 0 a 14 | **Ahora de 0 a 14** (antes sin tope) | Igualado en esta ronda |
+| Duración habitual | Mayor que 0 y hasta 480 minutos | **Ahora hasta 480** (antes sin tope) | Igualado en esta ronda |
+| Días y horario habitual | Si hay días, el horario es obligatorio | No hay en el alta (la base lo guarda) | **Falta** |
+| Objetivos | Texto | No hay en el alta (existe en la edición del perfil) | **Falta** en el alta |
+| Estado inicial | Sin selector: el estado de partida es «activo» (verificado en `useNewStudentForm.ts`) | Siempre «activo» | Igual |
+| Fecha de alta | No se pide (es hoy) | Se pide, por defecto hoy | Diferencia de la web (conservada por decisión previa) |
+
+Los 7 archivos `components/Student*Section.tsx` del original tienen **0 líneas**: no hay comportamiento que comparar (N/A).
+
+### E.2 Reportes (`features/reportes`)
+
+| Archivo | Resultado de la comparación |
+|---|---|
+| `reportMonths.ts` | **Igual** tras corregir una diferencia: el título de meses salteados era «marzo 2026 y junio 2026» y ahora es «marzo y junio 2026», como el original (prueba diferencial: meses con clases, período real y 9 combinaciones de título). |
+| `reportPeriods.ts` | **N/A**: el original no lo conecta a ninguna pantalla. |
+| `buildDeterministicReportNarrative.ts` | **Distinto** (sin cambiar, a la espera de decisión). El original arma un párrafo inicial con el nombre del alumno y el período («Durante julio 2026, Ana tuvo 8 clases registradas, con 7 asistencias y 1 ausencia (88% de asistencia), sumando 8 horas reales»), muestra temas, promedio, habilidades, fortalezas y tareas **aunque no haya clases**, une las listas con «y» y escribe las notas como «7/10». La web escribe «Durante el período se dictaron N clases…», no nombra al alumno ni al período en el texto, sólo muestra lo demás si hubo clases, une con comas y usa el formato numérico argentino. |
+
+**Decisión que necesito de Joaquín:** ¿el borrador del informe debe tener exactamente el texto del original (con números en formato argentino) o se conserva el de la web? Es el texto editable que ve la profesora antes de generar el PDF.
+
+### E.3 Estado por circuito (comparado · implementado · publicado · verificado en producción)
+
+| Circuito | Comparado | Implementado | Publicado | Verificado en producción |
+|---|---|---|---|---|
+| Planes y montos | sí | sí | sí | **no** (sesión de QA vencida) |
+| Lista de Alumnos | sí | sí | sí | **no** |
+| Sesión por dispositivo | sí | sí | sí | **no** |
+| Revisar consistencia | sí | sí (lectura) | sí | **no** |
+| Indicadores y aviso de Inicio | sí | sí | sí | **no** |
+| Comportamiento de pago | sí | sí | sí | **no** |
+| **Clase en curso** (comenzar, puntualidad, corregir inicio, finalizar, descartar) | sí | **sí** | **no** | **no** |
+| **Aviso de clase en curso** | sí | **sí** (con diferencias documentadas) | **no** | **no** (sin prueba física) |
+| **Puntualidad del alumno** | sí | **sí** | **no** | **no** |
+| Alta de alumno: límites y correo | sí | sí | **no** | **no** |
+| Reportes: título de meses | sí | sí | **no** | **no** |
+| Sin conexión | sí | **no** (propuesta en `docs/PROPUESTA_SIN_CONEXION.md`) | — | — |
+
+### E.4 Pendiente de implementar (se mantienen como FALTA)
+
+«Ajustar horario» (atrasar/adelantar una clase desde Inicio), «Corrección manual de la sesión», aviso de sesión restaurada, interruptor «Seguimiento de clases» (ACC-06), participantes de una clase suelta (CAL-09), cambio Clase↔Entrenamiento (CAL-08), «es cobrable» / «consume cuota» (REG-04), logro de nivel (ALU-14) y situación inicial del mes (PAG-05). Requieren cambios de base: se presentan para aprobación normal cuando corresponda.

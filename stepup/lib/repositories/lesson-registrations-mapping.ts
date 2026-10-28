@@ -39,6 +39,10 @@ export interface LessonRegistrationRecord {
   lateCancellationPolicy: LessonRegistrationRow["late_cancellation_policy"];
   lateCancellationPercentage: number | null;
   rescheduledFromRegistrationId: string | null;
+  /** Puntualidad del alumno registrada con «Comenzar clase» (o corregida); `null`/ausente = sin dato. */
+  studentArrival?: { status: string; lateMinutes: number; manuallyCorrected: boolean; arrivedAt?: string } | null;
+  effectiveStartAt?: string | null;
+  startSource?: "button" | "manual_correction" | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +69,9 @@ export function toLessonRegistrationRecord(row: LessonRegistrationRow): LessonRe
     lateCancellationPolicy: row.late_cancellation_policy,
     lateCancellationPercentage: row.late_cancellation_percentage,
     rescheduledFromRegistrationId: row.rescheduled_from_registration_id,
+    studentArrival: row.student_arrival ?? null,
+    effectiveStartAt: row.effective_start_at ?? null,
+    startSource: row.start_source ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

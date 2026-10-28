@@ -108,6 +108,16 @@ export interface StudentValidationError {
   message: string;
 }
 
+/** Mismo criterio que el original (`validateNewStudentForm`): como máximo 14 clases por semana y 480 minutos por clase, y un correo escrito tiene que tener formato de correo (vacío es válido). */
+export function validateStudentLimits(input: { weeklyFrequency?: number; usualDurationMinutes?: number; email?: string | null }): StudentValidationError[] {
+  const errors: StudentValidationError[] = [];
+  if (input.weeklyFrequency !== undefined && input.weeklyFrequency > 14) errors.push({ field: "weeklyFrequency", message: "La frecuencia semanal no puede superar 14 clases." });
+  if (input.usualDurationMinutes !== undefined && input.usualDurationMinutes > 480) errors.push({ field: "usualDurationMinutes", message: "La duración habitual no puede superar 480 minutos." });
+  const email = input.email?.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push({ field: "email", message: "El email ingresado no es válido." });
+  return errors;
+}
+
 /**
  * Mismas validaciones mínimas que exige el esquema real (constraints CHECK
  * de la migración), verificadas ANTES del round-trip de red para dar un
@@ -127,6 +137,7 @@ export function validateNewStudentInput(input: NewStudentInput): StudentValidati
   if (input.weeklyFrequency !== undefined && input.weeklyFrequency < 0) {
     errors.push({ field: "weeklyFrequency", message: "La frecuencia semanal no puede ser negativa." });
   }
+  errors.push(...validateStudentLimits(input));
   if (!input.dateJoined.trim()) errors.push({ field: "dateJoined", message: "La fecha de alta es obligatoria." });
   return errors;
 }
@@ -234,6 +245,7 @@ export function validateUpdateStudentInput(input: UpdateStudentInput): StudentVa
   if (input.weeklyFrequency !== undefined && input.weeklyFrequency < 0) {
     errors.push({ field: "weeklyFrequency", message: "La frecuencia semanal no puede ser negativa." });
   }
+  errors.push(...validateStudentLimits(input));
   if (input.dateJoined !== undefined && !input.dateJoined.trim()) {
     errors.push({ field: "dateJoined", message: "La fecha de alta es obligatoria." });
   }

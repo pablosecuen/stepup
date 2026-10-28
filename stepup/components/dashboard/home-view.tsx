@@ -148,7 +148,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
       <div className={`mt-5 grid grid-cols-1 items-start gap-5 ${onboarding ? "" : "nav:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]"}`}>
         {!onboarding && (
           <div className="flex min-w-0 flex-col gap-5">
-            <DayPlanner entries={data.todayAgenda} allItems={data.todayAllItems} nowIso={data.nowIso} next={data.nextClass} />
+            <DayPlanner entries={data.todayAgenda} allItems={data.todayAllItems} nowIso={data.nowIso} next={data.nextClass} liveClass={data.liveClass} />
           </div>
         )}
 
