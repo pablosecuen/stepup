@@ -6,7 +6,7 @@ import { checkDeviceSessionAction } from "@/lib/actions/device-session";
 const CHECK_EVERY_MS = 60_000;
 
 /**
- * Mientras la pantalla está abierta revisa cada minuto (y al volver a la pestaña) que este navegador siga siendo el dispositivo activo de la cuenta, y renueva su vencimiento de 24 h.
+ * Revisa cada minuto y al volver a la pestaña que este navegador conserve uno de los dos lugares y renueva su autorización.
  * Si otro dispositivo tomó la cuenta, lleva a «Tu cuenta se abrió en otro dispositivo». Un fallo de red o del servidor NUNCA cierra la sesión: se reintenta en la próxima revisión
  * (sin conexión no hay forma de saber que otro dispositivo la tomó, igual que en la app original).
  */

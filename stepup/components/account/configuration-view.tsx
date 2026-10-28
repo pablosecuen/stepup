@@ -11,7 +11,7 @@ import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
  * Contenido de Configuración con la cuenta ya cargada. Es sólo presentación: la página resuelve los datos. Sólo lo que realmente se
  * configura acá: Cuenta (con el nombre visible), Contraseña, Políticas de cobro y Acciones sensibles (Eliminar cuenta). Disponibilidad
  * se administra desde Calendario y los niveles personalizados desde Alumnos (no se repiten acá); no hay copias de seguridad ni
- * sesiones (la base no guarda sesiones web: ver docs/design/web-v1/14-cuenta-configuracion-y-resumen.md). Con tan pocas secciones no
+ * copias locales. Las sesiones web se autorizan en /dispositivo. Con tan pocas secciones no
  * hace falta un índice lateral. Las tarjetas se reparten en dos columnas cuando entran y los bloques cortos (políticas, acciones
  * sensibles) tienen un ancho proporcionado a su contenido: no se estiran de lado a lado.
  */
@@ -55,6 +55,7 @@ export function ConfigurationView({
       </SettingsSection>
 
       <SettingsSection id="preferencias" title="Preferencias" description="Organizá cómo funciona TeacherFlow." columns="max-w-[480px]">
+        <SettingsCard><SettingsRow title="Dos dispositivos a la vez" description="Podés mantener dos sesiones abiertas. Al entrar desde un tercer dispositivo se elige cuál reemplazar. Cada sesión es independiente." /></SettingsCard>
         <SettingsCard><SettingsRow title="Tutorial de TeacherFlow" description="Volvé a recorrer las funciones principales."><PrivateLink href="/configuracion/tutorial" className={linkClass()}>Ver tutorial</PrivateLink></SettingsRow></SettingsCard>
         <SettingsCard>
           <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />

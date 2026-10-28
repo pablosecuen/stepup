@@ -39,6 +39,6 @@ Migraciones `20261029100000` (heredada), `20261030100000`, `20261030110000` y `2
 
 Gate final: 5067/5067 pruebas, lint y compilación de producción correctos. El build incluye el chequeo TypeScript. Compilación local con `--webpack` porque Turbopack rechaza un `node_modules` enlazado fuera del worktree; no se cambió la configuración de producción. Webpack advierte sobre una dependencia dinámica ya existente de `libheif-js`.
 
-Publicación todavía pendiente del acceso normal de Vercel CLI. El navegador conserva la sesión de Vercel de `xmetrallax`, pero exige autorización «Allow Access» para el CLI. La sesión de TeacherFlow existe pero la pantalla de transferencia de dispositivo no permite verificar qué cuenta es; no se desplazó al otro dispositivo sin confirmación.
+Publicado `de9cd61` por la integración oficial Vercel, en `teacherflow-web`, despliegue `dpl_AqCMUtFuv1XcVhCYUCigXgmXLxtv`, READY y asignado a teacherflowapp.com. No depende del inicio de sesión del CLI por correo. La auditoría actualizada, diferencias concretas y método del porcentaje están en `AUDITORIA_FUNCIONAL_20261028.md` y su JSON reproducible. La sesión única del original se cambia por pedido expreso de Joaquín a dos navegadores/PWA simultáneos; el permiso de respaldo de la app nativa queda separado.
 
 La comparación estructural queda agrupada aquí; el detalle de funciones previo permanece en `MATRIZ_EQUIVALENCIA_APP_WEB.md`. Esta ronda no convierte los casos pendientes de esa matriz en equivalentes ni declara terminada la migración.

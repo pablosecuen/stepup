@@ -174,9 +174,10 @@ test("cableado: toda pantalla y acción pasa por el control; sólo una Server Ac
   const server = read("lib/auth/device-session/server.ts");
   assert.equal((server.match(/store\.set\(/g) ?? []).length, 1);
   assert.match(read("lib/actions/device-session.ts"), /^"use server";/);
-  assert.match(read("lib/actions/device-session.ts"), /claimThisDevice\(\)/);
+  assert.match(read("lib/actions/device-session.ts"), /claimThisDevice\(replacement\)/);
   assert.doesNotMatch(read("app/dispositivo/page.tsx"), /claimThisDevice|touchThisDevice/);
   // La cookie es HttpOnly (el navegador no la lee) y las acciones nunca aceptan un identificador de dispositivo del cliente.
   assert.match(server, /httpOnly: true/);
-  assert.doesNotMatch(read("lib/actions/device-session.ts"), /deviceId:/);
+  assert.match(server, /p_device_id: deviceId/);
+  assert.doesNotMatch(server, /rpc\("(?:transfer|touch|end)_active_session"/);
 });

@@ -1,5 +1,7 @@
 # Matriz única de equivalencia: aplicación original ↔ web
 
+> Estado corregido al 28/10: consultar `AUDITORIA_FUNCIONAL_20261028.md` para los 89 bloques del catálogo, sus diferencias actuales y el porcentaje estructural. Las filas históricas de abajo conservan afirmaciones obsoletas de publicación: `de9cd61` está publicado y las migraciones hasta `20261030120000` aplicadas. No interpretar «FALTA» antiguo de logros, participantes, planes, puntualidad o clase en vivo sin cruzarlo con la auditoría actual.
+
 > Actualización Codex 28/10: mapa por módulos y cambios de esta ronda en `ESTRUCTURA_FUNCIONAL_APP_WEB.md`. Las descripciones antiguas «migración sin aplicar» de secciones anteriores no reflejan la ejecución más reciente: `20261029100000` y las tres migraciones `20261030*` están aplicadas. Nuevo código aún pendiente de publicar por acceso de Vercel CLI. Logros de nivel (ALU-14), participantes de clase suelta/ocurrencia (CAL-09), Información del Calendario (CAL-17), tutorial reabrible (ACC-04), controles cobrable/consumo (REG-04), accesos del resumen e inversión histórica (ALU-12) implementados en esta ronda. Esto no convierte el resto del inventario en equivalente ni acredita una prueba física.
 
 Estado vivo. Fuente de verdad del cierre de la migración funcional. **La migración NO está cerrada** mientras exista alguna fila en «falta implementar» o «falta verificar».

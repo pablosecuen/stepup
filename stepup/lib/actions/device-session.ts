@@ -13,11 +13,15 @@ export interface ClaimDeviceState {
 }
 
 /** «Usar TeacherFlow en este dispositivo»: autoriza este navegador (la sesión del que estaba activo se cierra de inmediato) y vuelve a la pantalla pedida. */
-export async function claimDeviceAction(next: string, _prev: ClaimDeviceState): Promise<ClaimDeviceState> {
+export async function claimDeviceAction(next: string, _prev: ClaimDeviceState, formData: FormData): Promise<ClaimDeviceState> {
   const user = await getRenderUser();
   if (!user) redirect("/login");
-  const claimed = await claimThisDevice();
-  if (!claimed.ok) return { error: "No pudimos autorizar este dispositivo. Revisá tu conexión e intentá de nuevo." };
+  const selected = String(formData.get("replacement") ?? "");
+  const cut = selected.lastIndexOf("|");
+  const generation = Number(selected.slice(cut + 1));
+  const replacement = cut > 0 && Number.isSafeInteger(generation) && generation > 0 ? { deviceId: selected.slice(0,cut), generation } : undefined;
+  const claimed = await claimThisDevice(replacement);
+  if (!claimed.ok) return { error: claimed.reason ?? "No pudimos autorizar este dispositivo. Revisá tu conexión e intentá de nuevo." };
   redirect(sanitizeNextPath(next, DEFAULT_AUTH_REDIRECT));
 }
 

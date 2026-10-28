@@ -48,7 +48,7 @@ export async function requireAuthenticatedDbContext(): Promise<AuthenticatedDbCo
   const user = await getRenderUser();
   if (!user) throw new DbUnauthenticatedError();
 
-  // «Un solo dispositivo activo a la vez»: ni una pantalla ni una acción trabaja con la cuenta desde un navegador que no es el dispositivo autorizado (comparte la lectura con el layout).
+  // Toda pantalla y acción exige uno de los dos dispositivos autorizados (lectura compartida con el layout).
   const access = await readDeviceAccess(user.id);
   if (access.kind !== "authorized") throw new DeviceNotAuthorizedError(access);
 

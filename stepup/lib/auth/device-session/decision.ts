@@ -1,11 +1,13 @@
 import { evaluateSessionAuthorization, needsTransferConfirmation, type ActiveSessionRow } from "./sessionAuthorization.ts";
 
 /**
- * «Un solo dispositivo activo a la vez» en la web. Un «dispositivo» es un navegador: lleva una cookie propia (`tf_device`) con un identificador al azar y la generación que recibió la última
- * vez que se autorizó. Es la contraparte de lo que la app original guarda en su almacenamiento seguro; el servidor (`active_sessions`, una fila por cuenta) decide quién está autorizado.
+ * Cookie compartida por las pestañas de un navegador. La web usa dos lugares
+ * independientes del permiso de respaldo de la app móvil. El motor de sesión
+ * única que sigue abajo sólo se conserva como referencia del original.
  */
-export const DEVICE_COOKIE = "tf_device";
-/** Un año: el dispositivo se reconoce hasta que otro lo reemplace o se cierre la sesión; la validez real la decide el vencimiento del servidor (24 h sin actividad). */
+// Separate from the native app's single backup writer.
+export const DEVICE_COOKIE = "tf_web_device";
+/** Identidad del navegador; la autorización real vence a los 30 días sin actividad. */
 export const DEVICE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 /** `DEVICE_SESSION_ENFORCEMENT=off` desactiva el control (interruptor de emergencia de despliegue, no una opción de la profesora). Por defecto está activo. */
@@ -37,6 +39,26 @@ export function parseDeviceCookie(value: string | undefined | null): LocalDevice
 
 export function generateDeviceId(random: () => string = () => crypto.randomUUID()): string {
   return `web-${random()}`;
+}
+
+export interface WebDeviceRow {
+  device_id: string;
+  generation: number;
+  label: string;
+  last_seen_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+}
+
+export function resolveWebDeviceAccess(cookieValue: string | undefined, rows: WebDeviceRow[], now: Date): DeviceAccessState {
+  const local = parseDeviceCookie(cookieValue);
+  const own = local ? rows.find(row => row.device_id === local.deviceId) : null;
+  if (own && local) {
+    if (own.revoked_at || Number(own.generation) !== local.generation) return { kind: "taken-elsewhere" };
+    if (new Date(own.expires_at).getTime() > now.getTime()) return { kind: "authorized" };
+  }
+  const active = rows.filter(row => !row.revoked_at && new Date(row.expires_at).getTime() > now.getTime());
+  return { kind: active.length < 2 ? "claim" : "confirm-transfer" };
 }
 
 export type DeviceAccessState =

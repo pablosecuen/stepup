@@ -5,17 +5,15 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { getRenderUser } from "@/lib/auth/render-user";
 import { sanitizeNextPath, DEFAULT_AUTH_REDIRECT } from "@/lib/auth/safe-redirect";
-import { readDeviceAccess } from "@/lib/auth/device-session/server";
+import { listActiveWebDevices, readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceTransferForm, type DeviceTransferMode } from "./device-transfer-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dispositivo · TeacherFlow" };
 
 /**
- * «Un solo dispositivo activo a la vez» (igual que la app original). Tres situaciones:
- *  - nadie tiene la cuenta autorizada (primer ingreso, sesión vencida): se autoriza este navegador solo, sin preguntar;
- *  - otro dispositivo la tiene: «Esta cuenta ya está en uso» y se pide confirmación antes de cerrar la otra sesión;
- *  - este navegador la tenía y otro la tomó: «Tu cuenta se abrió en otro dispositivo».
+ * Hasta dos navegadores/PWA: un lugar libre se ocupa sin expulsar a nadie;
+ * con ambos ocupados se elige explícitamente la sesión a reemplazar.
  * La pantalla sólo lee; autorizar es una acción (POST).
  */
 export default async function DevicePage({ searchParams }: { searchParams: Promise<{ next?: string; motivo?: string }> }) {
@@ -30,6 +28,7 @@ export default async function DevicePage({ searchParams }: { searchParams: Promi
   if (access.kind === "authorized") redirect(next);
 
   const mode: DeviceTransferMode = access.kind === "taken-elsewhere" || motivo === "otro" ? "taken-elsewhere" : access.kind === "confirm-transfer" ? "confirm-transfer" : "claim";
+  const devices = await listActiveWebDevices(user.id);
 
   if (mode === "claim") {
     return (
@@ -40,16 +39,16 @@ export default async function DevicePage({ searchParams }: { searchParams: Promi
   }
   return (
     <AuthShell
-      title={mode === "taken-elsewhere" ? "Tu cuenta se abrió en otro dispositivo" : "Esta cuenta ya está en uso"}
+      title={mode === "taken-elsewhere" ? "Este dispositivo fue reemplazado" : "Tenés dos dispositivos activos"}
       subtitle={
         mode === "taken-elsewhere"
-          ? "Por seguridad, sólo puede haber un dispositivo activo a la vez. La sesión en este dispositivo se cerró."
-          : "Tu cuenta de TeacherFlow ya está abierta en otro dispositivo. Sólo puede haber uno activo a la vez."
+          ? "Podés usar tu cuenta en dos dispositivos a la vez. Para volver a entrar acá, elegí cuál reemplazar si ambos lugares están ocupados."
+          : "Para entrar desde un tercer dispositivo, elegí qué sesión cerrar. La otra seguirá abierta."
       }
       layout="card"
       status={{ tone: "warn", icon: ExclamationTriangleIcon }}
     >
-      <DeviceTransferForm mode={mode} next={next} />
+      <DeviceTransferForm mode={mode} next={next} devices={devices.map(row=>({ id:row.device_id,generation:Number(row.generation),label:row.label,lastSeen:row.last_seen_at }))} />
     </AuthShell>
   );
 }
