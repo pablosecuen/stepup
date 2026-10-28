@@ -1,10 +1,10 @@
 import PrivateLink from "@/components/nav/private-link";
-import type { StudentRecord } from "@/lib/repositories/students-mapping";
-import { BILLING_LABEL, MODALITY_LABEL } from "@/lib/students/constants";
+import { MODALITY_LABEL } from "@/lib/students/constants";
+import type { StudentListRow } from "@/lib/students/list-filters";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
-import { StudentStatusBadge } from "./student-status-badge";
+import { GradeAndMonthText, NextClassText, PaymentStatusChip, StudentBadges } from "./student-list-parts";
 
 /** Chip de nivel: se parte si el nombre del nivel es largo (nunca desborda ni se corta con «…»). */
 export function LevelChip({ children }: { children: string }) {
@@ -15,12 +15,13 @@ export function LevelChip({ children }: { children: string }) {
   );
 }
 
-/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, y el estado. Toda la tarjeta es el enlace al perfil. */
-export function StudentCard({ student }: { student: StudentRecord }) {
+/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, próxima clase, estado de pago del mes, promedio, clases del mes y avisos. Toda la tarjeta es el enlace al perfil. */
+export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
+  const { student } = row;
   return (
     <PrivateLink
       href={`/alumnos/${student.id}`}
-      className="flex min-h-[72px] items-center gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-borderMid hover:shadow-cardHover"
+      className="flex min-h-[72px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-borderMid hover:shadow-cardHover"
     >
       <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="l" />
       <div className="min-w-0 flex-1">
@@ -28,8 +29,19 @@ export function StudentCard({ student }: { student: StudentRecord }) {
         <p className="mt-0.5 text-[13.5px] text-textMuted [overflow-wrap:anywhere]">
           {student.levels.length > 0 ? `Nivel ${student.levels.join(", ")}` : "Sin nivel"} · {MODALITY_LABEL[student.modality]}
         </p>
+        <p className="mt-1 text-[13.5px] text-textSecondary">
+          <NextClassText row={row} now={now} />
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <PaymentStatusChip row={row} />
+          <span className="text-[13.5px] text-textSecondary">
+            <GradeAndMonthText row={row} />
+          </span>
+        </div>
+        <div className="mt-2 empty:hidden">
+          <StudentBadges row={row} />
+        </div>
       </div>
-      <StudentStatusBadge status={student.status} />
     </PrivateLink>
   );
 }
@@ -41,7 +53,7 @@ export function StudentCard({ student }: { student: StudentRecord }) {
  * Si en el futuro una fila suma botones independientes, deben llevar `relative z-10` para quedar por encima de la superficie
  * clicable y no disparar la navegación.
  */
-export function StudentsTable({ students }: { students: StudentRecord[] }) {
+export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date }) {
   return (
     <Table caption="Alumnos">
       <thead>
@@ -49,12 +61,15 @@ export function StudentsTable({ students }: { students: StudentRecord[] }) {
           <Th>Alumno</Th>
           <Th>Niveles</Th>
           <Th>Modalidad</Th>
-          <Th>Facturación</Th>
-          <Th align="right">Estado</Th>
+          <Th>Próxima clase</Th>
+          <Th>Estado de pago</Th>
+          <Th>Notas y clases</Th>
         </tr>
       </thead>
       <tbody>
-        {students.map((student) => (
+        {rows.map((row) => {
+          const { student } = row;
+          return (
           <Tr key={student.id} className="relative cursor-pointer">
             <Td className="min-w-[220px]">
               <PrivateLink
@@ -65,6 +80,9 @@ export function StudentsTable({ students }: { students: StudentRecord[] }) {
                 <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="m" />
                 <span className="font-[650] text-textPrimary [overflow-wrap:anywhere]">{student.name}</span>
               </PrivateLink>
+              <div className="mt-1 empty:hidden">
+                <StudentBadges row={row} />
+              </div>
             </Td>
             <Td>
               {student.levels.length > 0 ? (
@@ -80,12 +98,18 @@ export function StudentsTable({ students }: { students: StudentRecord[] }) {
               )}
             </Td>
             <Td>{MODALITY_LABEL[student.modality]}</Td>
-            <Td>{BILLING_LABEL[student.billingType]}</Td>
-            <Td align="right">
-              <StudentStatusBadge status={student.status} />
+            <Td>
+              <NextClassText row={row} now={now} />
+            </Td>
+            <Td>
+              <PaymentStatusChip row={row} />
+            </Td>
+            <Td>
+              <GradeAndMonthText row={row} />
             </Td>
           </Tr>
-        ))}
+          );
+        })}
       </tbody>
     </Table>
   );
