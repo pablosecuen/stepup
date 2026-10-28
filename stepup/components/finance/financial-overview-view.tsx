@@ -6,6 +6,7 @@ import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { CollectedEvolutionChart } from "@/components/finance/collected-evolution-chart";
 import { BudgetSuggestion } from "@/components/finance/budget-suggestion";
+import { AnnualProjection } from "@/components/finance/annual-projection";
 import { ErrorState } from "@/components/ui/states";
 import type { FinancialOverviewData } from "@/lib/dashboard/load-financial-overview";
 import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib/reports/period";
@@ -160,6 +161,8 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           </div>
         </section>
       </div>
+
+      <AnnualProjection annual={data.annual} savingsGoal={data.savingsGoal} distributionSavingsPercent={data.budget.savings} preset={preset} />
 
       <section aria-labelledby="actividad-titulo" className={`${CARD} mt-5`}>
         <h2 id="actividad-titulo" className="font-display text-card font-semibold">

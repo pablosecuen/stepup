@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { saveTeacherDisplayName } from "@/lib/repositories/teacher-profile";
-import { saveBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
+import { getBudgetDistributionSettings, saveBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
+import { adjustSavings, resetBudgetDistribution } from "@/lib/payments/budget-distribution";
+import { parseSavingsGoalInput } from "@/lib/payments/savings-goal";
+import { todayInArgentina } from "@/lib/format/date-format";
 import { endActiveSession } from "@/lib/repositories/active-sessions";
 import { deleteOwnAccount, removeOwnReportPdfs } from "@/lib/repositories/account-deletion";
 import { verifyOwnPassword } from "@/lib/auth/reauth-supabase";
@@ -71,10 +74,45 @@ export async function saveBudgetDistributionAction(_prevState: FormState, formDa
 
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await saveBudgetDistributionSettings(ctx, {
-      distribution,
-      savingsGoal: { enabled: false, targetAmount: null, targetDate: null },
-    });
+    // El objetivo de ahorro NO se toca al cambiar los porcentajes: se conserva el que ya estaba guardado (también el importado de la app anterior).
+    const current = await getBudgetDistributionSettings(ctx);
+    await saveBudgetDistributionSettings(ctx, { distribution, savingsGoal: current.savingsGoal });
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/resumen-financiero");
+  return { saved: true };
+}
+
+/**
+ * Objetivo de ahorro (monto y fecha objetivo; opcional, desactivado por defecto). Puede guardarse incompleto (activado sin monto o sin fecha), como en la app original. Nunca cambia los
+ * porcentajes 50/30/20: conserva los guardados. Un único `upsert` de la fila de la profesora: atómico e idempotente.
+ */
+export async function saveSavingsGoalAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const parsed = parseSavingsGoalInput({ enabled: formData.get("enabled"), targetAmount: formData.get("targetAmount"), targetDate: formData.get("targetDate") }, todayInArgentina());
+  if (!parsed.ok) return { error: parsed.error };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const current = await getBudgetDistributionSettings(ctx);
+    await saveBudgetDistributionSettings(ctx, { distribution: current.distribution, savingsGoal: parsed.goal });
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
+  revalidatePath("/resumen-financiero");
+  return { saved: true };
+}
+
+/**
+ * «Aplicar sugerencia» (porcentaje de ahorro que cubriría la reserva mensual del objetivo) y «Restablecer 50/30/20». Siempre con confirmación explícita de la profesora (botón propio) y
+ * conservando el objetivo de ahorro. El porcentaje sugerido se reparte entre las otras dos barras con el mismo motor de siempre (`adjustSavings`: la suma queda en 100).
+ */
+export async function applyBudgetPresetAction(input: { kind: "reset" } | { kind: "savings"; percent: number }): Promise<FormState> {
+  if (input.kind === "savings" && (!Number.isInteger(input.percent) || input.percent < 0 || input.percent > 100)) return { error: "El porcentaje de ahorro no es válido." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const current = await getBudgetDistributionSettings(ctx);
+    const distribution = input.kind === "reset" ? resetBudgetDistribution() : adjustSavings(current.distribution, input.percent);
+    await saveBudgetDistributionSettings(ctx, { distribution, savingsGoal: current.savingsGoal });
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }

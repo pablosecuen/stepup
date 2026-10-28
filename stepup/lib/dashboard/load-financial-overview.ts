@@ -2,8 +2,9 @@ import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { listAllCharges, listAllAllocations, listAllPayments } from "@/lib/repositories/payments";
 import { getBudgetDistributionSettings } from "@/lib/repositories/budget-distribution";
-import { DEFAULT_BUDGET_DISTRIBUTION, type BudgetDistribution } from "@/lib/payments/budget-distribution";
-import { buildMonthlyCollectedSeries, chartMonthsForRange, type MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
+import { DEFAULT_BUDGET_DISTRIBUTION, DEFAULT_SAVINGS_GOAL, type BudgetDistribution, type SavingsGoal } from "@/lib/payments/budget-distribution";
+import { buildAnnualBudgetPlan, type AnnualBudgetPlan } from "@/lib/payments/annual-budget-plan";
+import { buildMonthlyCollectedSeries, chartMonthsForRange, collectedCentsByMonth, type MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
@@ -30,6 +31,9 @@ export interface FinancialOverviewData {
   collectedSeries: MonthlyCollectedPoint[];
   /** Porcentajes guardados de la distribución sugerida (50/30/20 por defecto). */
   budget: BudgetDistribution;
+  /** «Proyección y ahorro»: plan anual de 12 meses (real / mes actual / proyectado) del año elegido y objetivo de ahorro. Mismas reglas que la app anterior (`buildAnnualBudgetPlan`). */
+  annual: { year: string; availableYears: string[]; plan: AnnualBudgetPlan; evaluationDate: string; monthlyCollected: number };
+  savingsGoal: SavingsGoal;
   comparison: { generated: ReturnType<typeof comparePeriodValues>; collected: ReturnType<typeof comparePeriodValues> } | null;
   /** Actividad del período elegido (mismas reglas que el resumen anual). */
   activity: AnnualActivitySummary;
@@ -56,7 +60,7 @@ const REGISTRATION_COLUMNS =
  *
  * Las estadísticas de actividad (valor de la hora, demanda, resumen anual, modalidad, alumnos del año) usan las MISMAS reglas que la app anterior: ver `lib/reports/financial-statistics.ts`.
  */
-export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, preset: FinancialPeriodPreset): Promise<FinancialOverviewData> {
+export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, preset: FinancialPeriodPreset, annualYear?: string): Promise<FinancialOverviewData> {
   const now = new Date();
   const evaluationDate = localDateKeyInTimeZone(now, ARGENTINA_TIME_ZONE);
   const range = resolveFinancialPeriodRange(preset, evaluationDate);
@@ -140,6 +144,27 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     chartMonthsForRange(range, evaluationDate, preset)
   );
   const budget = budgetSettings ? budgetSettings.distribution : DEFAULT_BUDGET_DISTRIBUTION;
+  const savingsGoal = budgetSettings ? budgetSettings.savingsGoal : DEFAULT_SAVINGS_GOAL;
+
+  // Proyección anual: los 12 meses del año elegido + hasta 3 meses ANTERIORES al mes actual (para promediar), con lo realmente cobrado por fecha de pago (mismo criterio que la app anterior).
+  const collectedInput = { charges, allocations: allocations.map((a) => ({ chargeId: a.chargeId, paymentId: a.paymentId, amount: a.amount })), payments: payments.map((p) => ({ id: p.id, paidAt: p.paidAt, voidedAt: p.voidedAt })) };
+  const currentYear = evaluationDate.slice(0, 4);
+  const availableYears = [...new Set([currentYear, ...payments.filter((p) => p.voidedAt === null).map((p) => p.paidAt.slice(0, 4))])].sort((a, b) => Number(b) - Number(a));
+  const annualYearResolved = annualYear && availableYears.includes(annualYear) ? annualYear : currentYear;
+  const annualPeriods: string[] = [];
+  for (let month = 1; month <= 12; month++) annualPeriods.push(`${annualYearResolved}-${String(month).padStart(2, "0")}`);
+  let lookback = evaluationDate.slice(0, 7);
+  for (let i = 0; i < 3; i++) {
+    const [y, m] = lookback.split("-").map(Number);
+    const total = y * 12 + (m - 1) - 1;
+    lookback = `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+    if (!annualPeriods.includes(lookback)) annualPeriods.push(lookback);
+  }
+  const annualCents = collectedCentsByMonth(collectedInput, annualPeriods);
+  const monthlyCollectedByPeriod: Record<string, number> = {};
+  for (const [period, cents] of annualCents) monthlyCollectedByPeriod[period] = cents / 100;
+  const annualPlan = buildAnnualBudgetPlan({ year: annualYearResolved, evaluationDate, distribution: budget, monthlyCollectedByPeriod });
+  const currentMonthCollected = (collectedCentsByMonth(collectedInput, [evaluationDate.slice(0, 7)]).get(evaluationDate.slice(0, 7)) ?? 0) / 100;
 
   // La comparación con el período anterior SÓLO aplica al mes actual —
   // mismo criterio real del móvil (nunca para los otros 4 presets).
@@ -166,6 +191,8 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     monthSnapshot,
     collectedSeries,
     budget,
+    annual: { year: annualYearResolved, availableYears, plan: annualPlan, evaluationDate, monthlyCollected: currentMonthCollected },
+    savingsGoal,
     comparison,
     activity: statistics.periodActivity,
     year,

@@ -38,8 +38,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | INI-07 | Comenzar clase / Finalizar clase / puntualidad del alumno / Ajustar horario / Corregir hora de inicio / aviso de clase en curso restaurada | `ActiveClassCard`, `StartClassPunctualityDialog`, `ScheduleAdjustSheet`, `activeClassSessionStore`, `RestoredActiveSessionNotice`, `manualSessionCorrectionService` | — (sólo lectura de «clase en curso») | FALTA (requiere esquema para guardar sesión activa y puntualidad) |
 | INI-08 | Pantalla «Clases por registrar» completa | `PendingClassesScreen`, `pendingClasses.ts` | `/registro` | VERIF |
 | INI-09 | Centro de recordatorios | `RemindersCenterScreen`, `remindersCenter.ts` | `/recordatorios` | EQ (§21) |
-| INI-10 | Distribución 50/30/20 y proyección anual | `BudgetDistributionCard`, `AnnualBudgetChart` | `budget-suggestion.tsx`, `/resumen-financiero` | VERIF |
-| INI-11 | Meta/objetivo de ahorro (monto + fecha + sugerencia) | `SavingsGoalControl` | — | FALTA |
+| INI-10 | Distribución 50/30/20 y proyección anual | `BudgetDistributionCard`, `AnnualBudgetChart` | `annual-budget-plan.ts` (13 pruebas originales portadas), `annual-projection.tsx`, tarjeta de distribución con «Restablecer 50/30/20» | Implementado (28/10), **sin publicar**; VERIF en navegador |
+| INI-11 | Meta/objetivo de ahorro (monto + fecha + sugerencia) | `SavingsGoalControl` | `savings-goal.ts`, `savings-goal-form.tsx`, `saveSavingsGoalAction`, `applyBudgetPresetAction` | Implementado (28/10), **sin publicar**; VERIF en navegador. **Defecto de datos corregido:** ajustar los porcentajes borraba el objetivo de ahorro importado |
 | INI-12 | Comportamiento de pago mensual (12 meses) | `MonthlyPaymentBehaviorScreen/Chart` | — | FALTA |
 | INI-13 | Analíticas: facturación/demanda/horas dictadas, reprogramadas y canceladas, alumnos nuevos | `FinancialAnalyticsSections`, `calendarDemandSummary` | `financial-overview-view.tsx` (§22 de TRASLADO) | VERIF |
 | INI-14 | Navegación: ubicación de la barra (abajo/menú del logo), Configuración | `SettingsScreen`, `LogoMenuSheet`, `navigationPreferenceStore` | navegación propia de la web | AUT: mecánica nativa |
@@ -171,11 +171,11 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 
 | Estado | Archivos | Significado |
 |---|---:|---|
-| EQ | 37 | Equivalente comprobado (con la evidencia citada) |
+| EQ | 18 | Equivalente comprobado (con la evidencia citada) |
 | VERIF | 206 | Existe un equivalente en la web, falta la comparación campo por campo y el recorrido |
-| PARCIAL | 45 | Existe, con diferencias conocidas |
-| FALTA | 93 | Falta implementar |
-| AUT | 80 | Diferencia inevitable o autorizada, con alternativa |
+| PARCIAL | 54 | Existe, con diferencias conocidas |
+| FALTA | 92 | Falta implementar |
+| AUT | 91 | Diferencia inevitable o autorizada, con alternativa |
 | N/A | 12 | No aplica (herramienta de QA/prueba del móvil) |
 
 | Módulo | Archivos | EQ | VERIF | PARCIAL | FALTA | AUT | N/A |
@@ -183,17 +183,17 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | features/account | 44 | 0 | 21 | 2 | 1 | 20 | 0 |
 | features/backup | 8 | 0 | 0 | 0 | 0 | 8 | 0 |
 | features/calendar | 72 | 1 | 41 | 16 | 13 | 1 | 0 |
-| features/dashboard | 54 | 4 | 26 | 0 | 19 | 5 | 0 |
-| features/new-class | 56 | 8 | 20 | 15 | 8 | 5 | 0 |
+| features/dashboard | 54 | 2 | 26 | 3 | 18 | 5 | 0 |
+| features/new-class | 56 | 0 | 20 | 15 | 8 | 13 | 0 |
 | features/new-student | 12 | 0 | 12 | 0 | 0 | 0 | 0 |
-| features/payments | 88 | 11 | 42 | 0 | 26 | 9 | 0 |
+| features/payments | 88 | 3 | 42 | 6 | 26 | 11 | 0 |
 | features/reportes | 15 | 0 | 15 | 0 | 0 | 0 | 0 |
 | features/student-profile | 32 | 0 | 17 | 5 | 10 | 0 | 0 |
 | features/students | 35 | 1 | 12 | 7 | 15 | 0 | 0 |
 | features/transfer | 6 | 6 | 0 | 0 | 0 | 0 | 0 |
 | navigation | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | qa | 12 | 0 | 0 | 0 | 0 | 0 | 12 |
-| shared | 35 | 6 | 0 | 0 | 1 | 28 | 0 |
+| shared | 35 | 5 | 0 | 0 | 1 | 29 | 0 |
 | theme | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
 
 ### features/account
@@ -346,8 +346,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `RemindersCenterScreen.tsx` | 284 | EQ | `/recordatorios`, `lib/dashboard/reminders-center.ts` | INI-09 | Cerrado en §21 de TRASLADO. |
 | `SettingsScreen.tsx` | 229 | AUT | `/configuracion`, `components/nav/primary-nav.tsx` | INI-14 | Ubicación de la navegación y menú del logo: navegación propia de la web. |
 | `components/ActiveClassCard.tsx` | 342 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
-| `components/AnnualBudgetChart.tsx` | 430 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
-| `components/BudgetDistributionCard.tsx` | 249 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
+| `components/AnnualBudgetChart.tsx` | 430 | PARCIAL | `components/finance/annual-projection.tsx` | INI-10 | Implementado el 28/10/2026: lógica portada con las 13 pruebas originales (`annual-budget-plan.test.ts`) y 7 propias; pantalla `components/finance/annual-projection.tsx`. **Sin publicar**; falta verificar en navegador con QA. |
+| `components/BudgetDistributionCard.tsx` | 249 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `components/CollectionsCenterSummaryCard.tsx` | 111 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `components/DailyCollectionsNoticeBanner.tsx` | 160 | FALTA | — | INI-05 | Aviso diario de cobros con «Recordarme mañana». |
 | `components/DayAgenda.tsx` | 141 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
@@ -366,7 +366,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `components/PendingClasses.tsx` | 171 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `components/QuickActions.tsx` | 58 | VERIF | `components/dashboard/home-view.tsx`, `lib/dashboard/load-home-data.ts`, `lib/calendar/empty-classes.ts` | INI-01 | Agenda, próxima clase, sin alumnos, campana, accesos (§21 de TRASLADO). |
 | `components/RestoredActiveSessionNotice.tsx` | 113 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
-| `components/SavingsGoalControl.tsx` | 251 | FALTA | — (50/30/20 sí existe: `budget-suggestion.tsx`) | INI-11 | Objetivo de ahorro (monto, fecha, sugerencia, progreso). |
+| `components/SavingsGoalControl.tsx` | 251 | PARCIAL | `components/finance/savings-goal-form.tsx`, `lib/payments/savings-goal.ts`, `saveSavingsGoalAction`, `applyBudgetPresetAction` | INI-11 | Implementado el 28/10/2026 (progreso, reserva mensual, % sugerido, aplicar sugerencia; monto con interpretación estricta). **Sin publicar**; falta verificar en navegador. Además se corrigió la pérdida de datos: ajustar porcentajes ya no borra el objetivo importado. |
 | `components/ScheduleAdjustSheet.tsx` | 248 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `components/StartClassPunctualityDialog.tsx` | 254 | FALTA | — (la web sólo muestra «clase en curso» como lectura en `home-view.tsx`) | INI-07 | Comenzar clase, contador, puntualidad, ajustar horario, finalizar, aviso de sesión restaurada. |
 | `components/StatsRow.tsx` | 73 | FALTA | — | INI-03 | Horas enseñadas del mes y promedio de evaluaciones (fórmula en `buildDashboardData.ts`). |
@@ -403,26 +403,26 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `components/AttendanceRow.tsx` | 145 | PARCIAL | `registration-workspace.tsx` (+ «Marcar todos presentes» `95e56b4`) | REG-01/02 | Asistencia por alumno y resumen; resumen «Revisá estos datos» → VERIF. |
 | `components/AttendanceSection.tsx` | 143 | PARCIAL | `registration-workspace.tsx` (+ «Marcar todos presentes» `95e56b4`) | REG-01/02 | Asistencia por alumno y resumen; resumen «Revisá estos datos» → VERIF. |
 | `components/BillingSection.tsx` | 206 | FALTA | — | REG-04 | ¿Es cobrable? / ¿Consume una clase de la cuota mensual? + política de cancelación tardía (sólo alumnos por clase). |
-| `components/ChipTextList.tsx` | 194 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `components/ChipTextList.tsx` | 194 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `components/CollapsibleSection.tsx` | 130 | PARCIAL | `registration-workspace.tsx` (+ «Marcar todos presentes» `95e56b4`) | REG-01/02 | Asistencia por alumno y resumen; resumen «Revisá estos datos» → VERIF. |
 | `components/DateTimeField.tsx` | 274 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
 | `components/DurationField.tsx` | 74 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
 | `components/EditRegisteredLessonSheet.tsx` | 692 | VERIF | `editCompletedRegistrationAction`, `/registro/[id]` en edición | REG-06 | Editar registro finalizado; cambiar el resultado de una clase ya finalizada → comprobar. |
-| `components/EvaluationSection.tsx` | 312 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `components/EvaluationSection.tsx` | 312 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `components/HomeworkSection.tsx` | 410 | VERIF | `registration-form-parts.tsx`, `lib/lessons/homework*.ts` | REG-09 | Tareas comunes/personalizadas, revisión posterior y fecha de entrega entre las próximas clases reales. |
 | `components/LateCancellationPolicySheet.tsx` | 227 | VERIF | `registration-outcome-field.tsx`, `lib/lessons/registration-outcome.ts` | REG-03 | Resultados y política de cancelación tardía. |
 | `components/LessonOutcomeField.tsx` | 170 | VERIF | `registration-outcome-field.tsx`, `lib/lessons/registration-outcome.ts` | REG-03 | Resultados y política de cancelación tardía. |
 | `components/MaterialLibraryPicker.tsx` | 360 | VERIF | `lesson-files-editor.tsx`, `lib/lessons/attachments.ts`, `lib/repositories/lesson-files-write.ts` | REG-10 | Fotos, HEIC, PDF, leyendas, alcance, biblioteca (§25). Cámara = prueba en dispositivo. |
 | `components/ParticipantRegistrationBlock.tsx` | 358 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
-| `components/PedagogicalContentSection.tsx` | 138 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `components/PedagogicalContentSection.tsx` | 138 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `components/PendingClassOutcomeSelector.tsx` | 146 | VERIF | `registration-outcome-field.tsx`, `lib/lessons/registration-outcome.ts` | REG-03 | Resultados y política de cancelación tardía. |
 | `components/PendingHomeworkCard.tsx` | 170 | VERIF | `registration-form-parts.tsx`, `lib/lessons/homework*.ts` | REG-09 | Tareas comunes/personalizadas, revisión posterior y fecha de entrega entre las próximas clases reales. |
 | `components/PendingHomeworkSection.tsx` | 53 | VERIF | `registration-form-parts.tsx`, `lib/lessons/homework*.ts` | REG-09 | Tareas comunes/personalizadas, revisión posterior y fecha de entrega entre las próximas clases reales. |
 | `components/RegisterPendingClassSheet.tsx` | 1459 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
-| `components/SkillGradeChips.tsx` | 231 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
-| `components/SkillGradeInput.tsx` | 75 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `components/SkillGradeChips.tsx` | 231 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
+| `components/SkillGradeInput.tsx` | 75 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `components/StudentOrGroupPicker.tsx` | 204 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
-| `components/TopicChecklist.tsx` | 271 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `components/TopicChecklist.tsx` | 271 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `hooks/materialsLibraryStore.ts` | 36 | VERIF | `lesson-files-editor.tsx`, `lib/lessons/attachments.ts`, `lib/repositories/lesson-files-write.ts` | REG-10 | Fotos, HEIC, PDF, leyendas, alcance, biblioteca (§25). Cámara = prueba en dispositivo. |
 | `hooks/savedLessonsStore.ts` | 39 | AUT | Base de datos / navegador | UX-01 | Almacén local, diagnóstico de vínculos (la web usa claves foráneas) y seguimiento de campo con teclado nativo. |
 | `hooks/useActiveFieldVisibility.ts` | 316 | AUT | Base de datos / navegador | UX-01 | Almacén local, diagnóstico de vínculos (la web usa claves foráneas) y seguimiento de campo con teclado nativo. |
@@ -449,9 +449,9 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `utils/punctualityScoring.ts` | 140 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
 | `utils/punctualityStats.ts` | 10 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
 | `utils/savedLessonLinkageDiagnostics.ts` | 228 | AUT | Base de datos / navegador | UX-01 | Almacén local, diagnóstico de vínculos (la web usa claves foráneas) y seguimiento de campo con teclado nativo. |
-| `utils/skillGradeDomain.ts` | 64 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `utils/skillGradeDomain.ts` | 64 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `utils/studentSessionHistory.ts` | 47 | FALTA | — (sólo hay texto de puntualidad en el reporte) | ALU-13/15 | Puntualidad del alumno (clasificación, puntaje, evolución) y corrección manual de la sesión; depende de la clase en vivo (INI-07). |
-| `utils/textItemEditDomain.ts` | 19 | EQ | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx` | REG-07/08 | Por decisiones vigentes: sin Planificado/Visto, listas editables, notas accesibles. |
+| `utils/textItemEditDomain.ts` | 19 | AUT | `registration-form-parts.tsx` (barra 1–10), `pedagogical-content-editor.tsx`, `editable-text-list.tsx` | REG-07/08 | Diferencia autorizada por decisiones de Joaquín: sin Planificado/Visto, listas editables sin borrar, calificaciones accesibles (barra, botones − y +). El resto del contenido (temas, objetivos, actividades, notas, observaciones) → VERIF. |
 | `utils/upcomingHomeworkOccurrences.ts` | 99 | VERIF | `registration-form-parts.tsx`, `lib/lessons/homework*.ts` | REG-09 | Tareas comunes/personalizadas, revisión posterior y fecha de entrega entre las próximas clases reales. |
 | `utils/validation.ts` | 123 | PARCIAL | `registration-workspace.tsx`, `/registro/nuevo`, `lib/lessons/registration-form.ts` | REG-01/11/12/13 | Falta el «ciclo real» (horario efectivo, finalización real, demora computable); aviso de vacaciones en la fecha. |
 
@@ -478,7 +478,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 |---|---:|---|---|---|---|
 | `CollectionsCenterScreen.tsx` | 345 | VERIF | `/cobros`, `lib/payments/{collections-center,collections-urgency,due-stage,dates}.ts` | PAG-08 | Centro de cobros. |
 | `components/ClassPaymentPromptModal.tsx` | 654 | EQ | `components/registro/class-payment-prompt.tsx`, `lib/payments/registration-payment-prompt.ts` | REG-05 | Estructura y reglas recuperadas (`de55143`); verificación en navegador y dispositivo pendientes. |
-| `components/CurrencyInput.tsx` | 102 | EQ | `lib/format/money-input.ts` | PAG-02 | Interpretación estricta de importes (decisión vigente; reemplaza el campo entero del original). |
+| `components/CurrencyInput.tsx` | 102 | AUT | `lib/format/money-input.ts` (interpretación estricta, centavos exactos) | PAG-02 | Diferencia autorizada: el original aceptaba sólo pesos enteros y formateaba al escribir; la web interpreta con reglas estrictas (decisión vigente). |
 | `components/EditMonthlyAmountSheet.tsx` | 327 | FALTA | — | PAG-04 | Modificar monto mensual (desde este mes / próximo mes) con recálculo del saldo. |
 | `components/PaymentHistorySection.tsx` | 292 | FALTA | — | PAG-07 | Historial y riesgo de deuda por alumno (12 meses, racha, en término/fuera de término). |
 | `components/PaymentsHydrationErrorScreen.tsx` | 104 | VERIF | `lib/dashboard/load-financial-overview.ts`, `lib/reports/financial-summary.ts` | INI-04 | Resúmenes por período. |
@@ -486,7 +486,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `components/SurchargeSettingsPanel.tsx` | 566 | AUT | Recargos apagados estructuralmente (`lib/payments/due-stage.ts`) | PAG-06 | Decisión de negocio confirmada: sin recargos automáticos. |
 | `components/VoidChargeDialog.tsx` | 239 | VERIF | `charge-actions.tsx`, `lib/payments/register-payment-plan.ts`, RPC `register_payment`/`void_*` | PAG-02/03 | Pagos completos/parciales/previos, asignación, anulaciones. |
 | `components/VoidPaymentDialog.tsx` | 186 | VERIF | `charge-actions.tsx`, `lib/payments/register-payment-plan.ts`, RPC `register_payment`/`void_*` | PAG-02/03 | Pagos completos/parciales/previos, asignación, anulaciones. |
-| `hooks/budgetDistributionStore.ts` | 245 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
+| `hooks/budgetDistributionStore.ts` | 245 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `hooks/dailyCollectionsNoticeStore.ts` | 54 | FALTA | — | INI-05 | Aviso diario. |
 | `hooks/firstMonthProrationDecisionStore.ts` | 220 | VERIF | `lib/payments/proration.ts`, `lib/payments/training-charge-plan.ts` | CAL-15 | Primer mes proporcional y primer vencimiento. |
 | `hooks/initialPaidSurchargeCorrectionLogStore.ts` | 86 | FALTA | — | PAG-05 | Situación inicial del alumno mensual, «marcar mes actual pagado» y retomar el cobro al reactivar. |
@@ -496,8 +496,8 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `hooks/pendingTrainingBillingOperationsStore.ts` | 305 | VERIF | `lib/payments/training-*.ts`, `configure_training_billing`, `training-billing-config.tsx` | CAL-14 | Acuerdos de entrenamiento (operaciones atómicas en base reemplazan la cola de reconciliación del móvil). |
 | `hooks/surchargeSettingsStore.ts` | 255 | AUT | Recargos apagados estructuralmente (`lib/payments/due-stage.ts`) | PAG-06 | Decisión de negocio confirmada: sin recargos automáticos. |
 | `hooks/trainingBillingAgreementsStore.ts` | 265 | VERIF | `lib/payments/training-*.ts`, `configure_training_billing`, `training-billing-config.tsx` | CAL-14 | Acuerdos de entrenamiento (operaciones atómicas en base reemplazan la cola de reconciliación del móvil). |
-| `hooks/useAnnualBudgetPlan.ts` | 65 | EQ | `lib/payments/budget-suggestion.ts`, `collected-evolution-chart.tsx` | INI-10 | Serie de 12 meses para la proyección. |
-| `hooks/useBudgetDistribution.ts` | 111 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
+| `hooks/useAnnualBudgetPlan.ts` | 65 | PARCIAL | `lib/payments/annual-budget-plan.ts`, `lib/dashboard/load-financial-overview.ts` (`annual`) | INI-10 | Implementado el 28/10/2026: lógica portada con las 13 pruebas originales (`annual-budget-plan.test.ts`) y 7 propias; pantalla `components/finance/annual-projection.tsx`. **Sin publicar**; falta verificar en navegador con QA. |
+| `hooks/useBudgetDistribution.ts` | 111 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `hooks/useCollectionsCenter.ts` | 70 | VERIF | `/cobros`, `lib/payments/{collections-center,collections-urgency,due-stage,dates}.ts` | PAG-08 | Centro de cobros. |
 | `hooks/useDailyCollectionsNotice.ts` | 77 | FALTA | — | INI-05 | Aviso diario. |
 | `hooks/useStudentPaymentHistory.ts` | 49 | FALTA | — (hay `due-stage.ts` y urgencias, sin semáforo ni estado del período) | ALU-02/PAG-10 | Semáforo de cobro y estado del período mensual para chips de Alumnos y perfil. |
@@ -526,12 +526,12 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `services/voidChargeService.ts` | 65 | VERIF | `charge-actions.tsx`, `lib/payments/register-payment-plan.ts`, RPC `register_payment`/`void_*` | PAG-02/03 | Pagos completos/parciales/previos, asignación, anulaciones. |
 | `services/voidPaymentService.ts` | 49 | VERIF | `charge-actions.tsx`, `lib/payments/register-payment-plan.ts`, RPC `register_payment`/`void_*` | PAG-02/03 | Pagos completos/parciales/previos, asignación, anulaciones. |
 | `types/index.ts` | 449 | AUT | Restricciones y RPC atómicos en base; `docs/P0_REGISTRO_20261021.md` | PAG-09 | Reconciliación automática del almacén local: la web evita el estado inconsistente en la base. |
-| `utils/annualBudgetProjection.ts` | 196 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
-| `utils/budgetDistribution.ts` | 245 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
+| `utils/annualBudgetProjection.ts` | 196 | PARCIAL | `lib/payments/annual-budget-plan.ts`, `lib/dashboard/load-financial-overview.ts` (`annual`) | INI-10 | Implementado el 28/10/2026: lógica portada con las 13 pruebas originales (`annual-budget-plan.test.ts`) y 7 propias; pantalla `components/finance/annual-projection.tsx`. **Sin publicar**; falta verificar en navegador con QA. |
+| `utils/budgetDistribution.ts` | 245 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `utils/buildClassPaymentPromptQueue.ts` | 58 | EQ | `components/registro/class-payment-prompt.tsx`, `lib/payments/registration-payment-prompt.ts` | REG-05 | Estructura y reglas recuperadas (`de55143`); verificación en navegador y dispositivo pendientes. |
 | `utils/buildHomeFinancialSummary.ts` | 209 | VERIF | `lib/dashboard/load-financial-overview.ts`, `lib/reports/financial-summary.ts` | INI-04 | Resúmenes por período. |
 | `utils/collectionsCenter.ts` | 334 | VERIF | `/cobros`, `lib/payments/{collections-center,collections-urgency,due-stage,dates}.ts` | PAG-08 | Centro de cobros. |
-| `utils/currencyAmountInput.ts` | 60 | EQ | `lib/format/money-input.ts` | PAG-02 | Interpretación estricta de importes (decisión vigente; reemplaza el campo entero del original). |
+| `utils/currencyAmountInput.ts` | 60 | AUT | `lib/format/money-input.ts` (interpretación estricta, centavos exactos) | PAG-02 | Diferencia autorizada: el original aceptaba sólo pesos enteros y formateaba al escribir; la web interpreta con reglas estrictas (decisión vigente). |
 | `utils/dailyCollectionsNotice.ts` | 70 | FALTA | — | INI-05 | Aviso diario. |
 | `utils/financialReconciliation.ts` | 1218 | AUT | Restricciones y RPC atómicos en base; `docs/P0_REGISTRO_20261021.md` | PAG-09 | Reconciliación automática del almacén local: la web evita el estado inconsistente en la base. |
 | `utils/firstMonthProration.ts` | 366 | VERIF | `lib/payments/proration.ts`, `lib/payments/training-charge-plan.ts` | CAL-15 | Primer mes proporcional y primer vencimiento. |
@@ -540,7 +540,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `utils/initialPaidSurchargeRepair.ts` | 250 | FALTA | — | PAG-05 | Situación inicial del alumno mensual, «marcar mes actual pagado» y retomar el cobro al reactivar. |
 | `utils/monthlyAmountCorrection.ts` | 206 | FALTA | — | PAG-04 | Modificar monto mensual (desde este mes / próximo mes) con recálculo del saldo. |
 | `utils/monthlyChargeGenerationPlan.ts` | 162 | VERIF | `lib/payments/monthly-charge-plan.ts`, `ensure_monthly_charges`, `sync_per_class_charge` | PAG-01 | Generación mensual y por clase; semanal/quincenal/paquete: FALTA. |
-| `utils/monthlyCollectedSeries.ts` | 36 | EQ | `components/finance/*`, `lib/payments/budget-distribution.ts`, `lib/payments/budget-suggestion.ts` | INI-10 | Plan 50/30/20 y proyección (cerrado en bloque Cuenta y Resumen; reglas congeladas). |
+| `utils/monthlyCollectedSeries.ts` | 36 | PARCIAL | `components/finance/budget-suggestion.tsx`, `budget-adjust-dialog.tsx`, `lib/payments/budget-distribution.ts`, `saveBudgetDistributionAction` | INI-10 | Tres barras 50/30/20 sobre lo cobrado, ajuste y «Restablecer 50/30/20» (agregado el 28/10, sin publicar). **Defecto corregido: guardar los porcentajes ya no borra el objetivo de ahorro.** |
 | `utils/monthlyPeriodStatus.ts` | 639 | FALTA | — (hay `due-stage.ts` y urgencias, sin semáforo ni estado del período) | ALU-02/PAG-10 | Semáforo de cobro y estado del período mensual para chips de Alumnos y perfil. |
 | `utils/packageCredits.ts` | 102 | FALTA | — | PAG-01 | Paquetes de clases (compra, créditos, consumo) y cargos semanales/quincenales. |
 | `utils/paymentCalculations.ts` | 337 | VERIF | `/cobros`, `lib/payments/{collections-center,collections-urgency,due-stage,dates}.ts` | PAG-08 | Centro de cobros. |
@@ -728,7 +728,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | `components/ModalCloseButton.tsx` | 58 | EQ | `components/ui/dialog.tsx` (botón «Cerrar» de 44 px) | UX-02 |  |
 | `components/PastelScreenBackground.tsx` | 22 | AUT | `components/ui/page-header.tsx`, tema propio | UX-02 | Presentación nativa; la web conserva su estética. |
 | `components/SuccessToast.tsx` | 72 | FALTA | — | ALU-20 | Confirmación breve «alumno creado» tras el alta (flujo clases→alumnos). |
-| `components/TextItemEditSheet.tsx` | 499 | EQ | `components/registro/editable-text-list.tsx` | REG-07 | Edición de listas sin borrar (decisión vigente). |
+| `components/TextItemEditSheet.tsx` | 499 | AUT | `components/registro/editable-text-list.tsx` | REG-07 | Edición de elementos de lista sin borrar (decisión vigente); el panel nativo con teclado propio no aplica. |
 | `hooks/useReduceMotion.ts` | 30 | EQ | `prefers-reduced-motion` en `components/ui/dialog.tsx`, `app/globals.css` | UX-01 |  |
 | `notifications/classSessionNotification.ts` | 111 | AUT | — | INI-07 | Notificación persistente de Android durante la clase en curso (depende del seguimiento en vivo). |
 | `storage/teacherFlowStorage.ts` | 293 | AUT | Base de datos (Supabase) | PLAT-02 | AsyncStorage del móvil. |

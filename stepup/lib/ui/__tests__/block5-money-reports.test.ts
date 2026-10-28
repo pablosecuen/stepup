@@ -40,7 +40,7 @@ test("Las páginas sólo resuelven los datos como antes y delegan el dibujo a un
   assert.match(recordatorios, /const data = await loadHomeData\(ctx\);\s*summary = data\.remindersSummary;/);
   assert.match(recordatorios, /<RemindersView summary=\{summary\} \/>/);
   const resumen = code(PAGES[2]);
-  assert.match(resumen, /data = await loadFinancialOverviewData\(ctx, preset\)/);
+  assert.match(resumen, /data = await loadFinancialOverviewData\(ctx, preset, anio\)/, "el año de la proyección anual viaja como parámetro de lectura");
   assert.match(resumen, /<FinancialOverviewView data=\{data\} preset=\{preset\} \/>/);
   for (const file of VIEWS) {
     const source = code(file);

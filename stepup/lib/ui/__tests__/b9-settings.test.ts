@@ -161,7 +161,7 @@ test("comportamiento preservado: las mismas acciones, los mismos destinos y la m
 
 test("los guardados devuelven `saved: true` y los errores siguen igual; la pantalla lo anuncia sin depender del color", () => {
   const actions = code("lib/actions/account.ts");
-  assert.equal((actions.match(/return \{ saved: true \};/g) ?? []).length, 2, "perfil y distribución (la distribución se edita desde Resumen financiero)");
+  assert.equal((actions.match(/return \{ saved: true \};/g) ?? []).length, 4, "perfil, distribución, objetivo de ahorro y «aplicar sugerencia/restablecer» (se editan desde Resumen financiero)");
   // R1: los errores pasan por el normalizador seguro (antes se devolvía `error.message` tal cual).
   assert.match(actions, /return actionErrorMessage\("account", error\);/);
   assert.doesNotMatch(actions.replace(/result\.error\.message/g, ""), /error\.message/, "salvo el texto ya traducido por el adaptador de autenticación");

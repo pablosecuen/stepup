@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { saveBudgetDistributionAction, type FormState } from "@/lib/actions/account";
 import { useGuardedActionState } from "@/lib/actions/use-guarded-action-state";
-import { adjustNeeds, adjustSavings, adjustWants, type BudgetDistribution } from "@/lib/payments/budget-distribution";
+import { adjustNeeds, adjustSavings, adjustWants, resetBudgetDistribution, type BudgetDistribution } from "@/lib/payments/budget-distribution";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -64,6 +64,11 @@ export function BudgetAdjustDialog({ initial, onClose, onSaved }: { initial: Bud
         <p role="status" aria-live="polite" className="text-[14.5px] font-[650] text-textPrimary tf-num">
           Suma: {sum} %
         </p>
+        <div>
+          <Button variant="ghost" onClick={() => setDraft(resetBudgetDistribution())} disabled={pending}>
+            Restablecer 50/30/20
+          </Button>
+        </div>
         <input type="hidden" name="needs" value={draft.needs} />
         <input type="hidden" name="wants" value={draft.wants} />
         <input type="hidden" name="savings" value={draft.savings} />

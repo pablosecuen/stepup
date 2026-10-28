@@ -8,18 +8,18 @@ import type { FinancialPeriodPreset } from "@/lib/reports/period";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Resumen financiero · TeacherFlow" };
 
-export default async function ResumenFinancieroPage({ searchParams }: { searchParams: Promise<{ preset?: string }> }) {
+export default async function ResumenFinancieroPage({ searchParams }: { searchParams: Promise<{ preset?: string; anio?: string }> }) {
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
 
-  const { preset: rawPreset } = await searchParams;
+  const { preset: rawPreset, anio } = await searchParams;
   const preset: FinancialPeriodPreset = FINANCIAL_PRESETS.includes(rawPreset as FinancialPeriodPreset) ? (rawPreset as FinancialPeriodPreset) : "current_month";
 
   let data: Awaited<ReturnType<typeof loadFinancialOverviewData>>;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    data = await loadFinancialOverviewData(ctx, preset);
+    data = await loadFinancialOverviewData(ctx, preset, anio);
   } catch {
     return <FinancialOverviewErrorView />;
   }
