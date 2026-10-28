@@ -77,12 +77,12 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | CAL-03 | «Buscar horario libre» y disponibilidad en el selector de horario (libres en blanco / ocupados en gris, mantener presionado para sumar 15 min) | `NewCalendarLessonSheet`, `RescheduleTimeSlotGrid` | — | FALTA |
 | CAL-04 | Vacaciones y bloqueos (Mi disponibilidad) con aviso al agendar encima y «Agendar igualmente» | `TeacherAvailabilitySheet`, `teacherAvailabilityEngine` | `/calendario/disponibilidad` | VERIF (falta el aviso al agendar encima de un bloqueo) |
 | CAL-05 | Acciones de una clase: reprogramar con calendario mensual de disponibilidad (verde/amarillo/rojo) y grilla de horarios | `CalendarLessonActionsSheet`, `RescheduleMonthCalendar` | `real-lesson-detail-modal.tsx` (fecha y hora libres) | FALTA parcial (sin disponibilidad visual) |
-| CAL-06 | **Editar nombre de la clase** (sólo esta / esta y siguientes) | `EditClassTitleSheet` | — | FALTA (la tabla permite UPDATE por RLS; sin RPC) |
-| CAL-07 | **Cambiar duración** (sólo esta / esta y siguientes; nunca clases pasadas) | `ChangeLessonDurationSheet`, `calendarDurationEdit` | — | FALTA |
+| CAL-06 | **Editar nombre de la clase** (sólo esta / esta y siguientes) | `EditClassTitleSheet` | `edit_calendar_lesson`, `edit_recurrence_class_title`, `editLessonTitleAction` (`lesson-edit-dialog.tsx`) | Implementado en código y base (51 comprobaciones en Postgres real); **migración 20261027100000 sin aplicar en Production** (bloqueada por el clasificador); VERIF en navegador |
+| CAL-07 | **Cambiar duración** (sólo esta / esta y siguientes; nunca clases pasadas) | `ChangeLessonDurationSheet`, `calendarDurationEdit` | `changeLessonDurationAction`: sólo esta clase (`edit_calendar_lesson`) o esta y las siguientes (corte de serie con el patrón del tramo vigente); valida choques y bloqueos | Implementado en código y base; migración sin aplicar; VERIF en navegador |
 | CAL-08 | **Cambiar tipo de actividad** Clase ↔ Entrenamiento (+ cuota de entrenamiento) | `EditActivityKindSheet` | — | FALTA |
 | CAL-09 | **Agregar/quitar alumnos** de una clase o desde una fecha, con «Crear alumno nuevo» | `AddParticipantsSheet`, `calendarParticipantsFromDate` | `changeParticipantsAction` (sólo series) | FALTA parcial (clases sueltas) |
-| CAL-10 | **Eliminar clase** (sólo esta / desde esta fecha) | `CalendarLessonActionsSheet` | sólo cancelar | FALTA |
-| CAL-11 | Cancelar con/sin aviso, **restaurar** clase cancelada, **reemplazar** una cancelación con otra clase en ese horario | `CalendarLessonActionsSheet`, `cancelledSlotReuse` | `cancelOccurrenceAction`; reemplazo por regla de tarjetas | VERIF (falta «restaurar» explícito) |
+| CAL-10 | **Eliminar clase** (sólo esta / desde esta fecha) | `CalendarLessonActionsSheet` | `deleteCancelledLessonAction` (cancelada: tarjeta eliminada + fecha excluida de la serie) y `deleteSeriesFromOccurrenceAction` (esta y las siguientes). Diferencia: no se elimina una cancelada con registro o cobro (se conserva el historial) | Implementado; diferencia autorizada por la regla de historial; migración sin aplicar; VERIF en navegador |
+| CAL-11 | Cancelar con/sin aviso, **restaurar** clase cancelada, **reemplazar** una cancelación con otra clase en ese horario | `CalendarLessonActionsSheet`, `cancelledSlotReuse` | `restoreOccurrenceAction` / `restore_calendar_occurrence` (vuelve a la fecha original; avisa si está bloqueada y permite «Restaurar igual»; nunca con registro o cobro); reemplazar ya existía | Implementado; migración sin aplicar; VERIF en navegador |
 | CAL-12 | Series: crear con patrón semanal, ciclos de 2–4 semanas, varios días/horarios, fecha de fin, pendiente de asignar | `RecurrenceOptions`, `calendarRecurrenceEngine` | `/calendario/nueva`, `weekday-schedule-editor.tsx` | VERIF |
 | CAL-13 | Series: pausar, reanudar, finalizar, editar futuras (versiones), cambiar participantes desde una fecha, intercambiar horarios | `RecurrenceRulesSheet`, `EditFutureRecurrenceSheet`, `calendarRecurrenceSplit` | `/calendario/series[/id]`, `editFutureRecurrenceAction`, `changeParticipantsAction`, `swapSeriesAction` | VERIF |
 | CAL-14 | Acuerdo de cobro de entrenamiento (cuota, mes de inicio, vista previa de cargos) y su edición | `TrainingBillingAgreementSheet` | `training-billing-config.tsx` | VERIF |
@@ -94,7 +94,7 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | ID | Función | Original | Web | Estado / diferencia |
 |---|---|---|---|---|
 | REG-01 | Registro individual/grupal: asistencia por alumno, duración, evaluación, contenido, observaciones, tarea, guardar progreso, finalizar | `NewClassScreen`, `RegisterPendingClassSheet`, `ParticipantRegistrationBlock` | `registration-workspace.tsx` | VERIF (P0 registro 21/10) |
-| REG-02 | **Marcar todos presentes / Limpiar asistencia** (con confirmación de reemplazo/borrado) | `NewClassScreen`, `useNewClassForm` | — | FALTA |
+| REG-02 | **Marcar todos presentes / Limpiar asistencia** (con confirmación de reemplazo/borrado) | `NewClassScreen`, `useNewClassForm` | `planBulkAttendance` + botones en `registration-workspace.tsx` (sólo alumnos no completados; confirma antes de reemplazar o borrar) | Implementado y probado en lógica (commit local `95e56b4`); VERIF en navegador |
 | REG-03 | Resultado de la clase (realizada, profesora ausente, alumno ausente con/sin aviso, cancelada con aviso, cancelada tarde con política, reprogramada, feriado + excepción) | `PendingClassOutcomeSelector`, `LessonOutcomeField`, `LateCancellationPolicySheet` | `registration-outcome-field.tsx`, `change_lesson_registration_outcome` | VERIF; política «descontar del paquete» y «excepción: no genera cobro» → VERIF |
 | REG-04 | ¿Es cobrable? / ¿Consume una clase de la cuota mensual? (sólo alumnos por clase) | `BillingSection` | — (no hay interruptores) | FALTA |
 | REG-05 | Cobro de la clase al finalizar: aviso con cinco respuestas | `ClassPaymentPromptModal` | `class-payment-prompt.tsx` | **EQ en lógica y estructura, publicado** (commit `de55143`); VERIF en navegador (QA) y dispositivo |
@@ -147,10 +147,16 @@ Sin Planificado/Visto en temas · edición de listas sin borrar · tareas en ent
 | UX-01 | Controles ≥ 44 px, letra ≥ 16 px en campos, sin desbordes a 375/390/430 px | VERIF por pantalla (aviso de pago: comprobado en emulación 375/390/430 y altura de teclado; **Safari/teclado/modo anclado de iPhone: prueba física pendiente**) |
 | UX-02 | Diálogo compacto y centrado; cierre controlado | EQ para el aviso de pago (`Dialog placement="center"`, `onBeforeClose`); resto de diálogos siguen como hoja inferior en móvil |
 
+## Bloqueos de herramientas (acciones concretas)
+
+- **Aplicar la migración `20261027100000_calendar_lesson_actions.sql` en Production:** `npx supabase db push --yes` fue denegado por el clasificador automático el 27/10/2026 (sin explicación). Comprobado antes: `migration list --linked` y `db push --dry-run` muestran SÓLO esa migración pendiente; el ensayo `BEGIN … RAISE EXCEPTION` contra Production compiló y se revirtió (nada quedó); la migración sólo agrega 4 funciones nuevas (no toca tablas ni datos). El bloque de acciones de clase no se despliega hasta que se aplique.
+
 ## Pendientes que requieren decisión de Joaquín
 
 1. **ALU-10 Eliminar definitivamente un alumno.** El original borra en cascada su historial financiero, reportes y clases; la web conserva historial. ¿Se implementa igual que el original (con resumen del impacto y copia de seguridad previa), sólo para alumnos sin cobros ni pagos, o no se implementa?
 
 ## Registro de cambios de esta matriz
+
+- 27/10/2026 (2): acciones de clase del calendario (CAL-06/07/10/11) implementadas en código y base con 51 comprobaciones en Postgres real y 6 pruebas de lógica/cableado; «Marcar todos presentes» (REG-02) revisado e integrado. Quedan FALTA: cambiar tipo de actividad (CAL-08: implica acuerdo de cobro de entrenamiento) y agregar/quitar alumnos de una clase (CAL-09).
 
 - 27/10/2026: creada con el primer inventario basado en código. REG-05 cerrado en lógica y estructura (commit `de55143` publicado en Production); su verificación en navegador queda pendiente de sesión de QA.
