@@ -48,8 +48,11 @@ function parseDateKey(dateKey: string): DateKeyParts {
   return parts;
 }
 
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
 function zonedParts(instant: Date, timeZone: string): ZonedParts {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
+  let formatter = zonedFormatters.get(timeZone);
+  if (!formatter) {
+  formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
     month: "2-digit",
@@ -59,6 +62,9 @@ function zonedParts(instant: Date, timeZone: string): ZonedParts {
     second: "2-digit",
     hourCycle: "h23",
   });
+  if (zonedFormatters.size >= 32) zonedFormatters.clear();
+  zonedFormatters.set(timeZone, formatter);
+  }
 
   const values = new Map(
     formatter

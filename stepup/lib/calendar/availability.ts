@@ -64,6 +64,16 @@ const EXCEPTION_REASON_LABELS: Record<AvailabilityExceptionReason, string> = {
   leave: "Licencia",
   other: "Otro",
 };
+const timeFormatters = new Map<string, Intl.DateTimeFormat>();
+function timeFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = timeFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    if (timeFormatters.size >= 32) timeFormatters.clear();
+    timeFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
 
 function timeToMinutes(time: string): number {
   const [hour, minute] = time.split(":").map(Number);
@@ -119,12 +129,7 @@ export function evaluateAvailability(startIso: string, endIso: string, availabil
   function minutesSinceRangeStart(instantIso: string): number {
     const dateKey = getLocalDateKey(instantIso, timeZone);
     const dayOffset = daysBetweenDateKeys(localDates[0], dateKey);
-    const [hourStr, minuteStr] = new Intl.DateTimeFormat("en-GB", {
-      timeZone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
+    const [hourStr, minuteStr] = timeFormatter(timeZone)
       .format(new Date(instantIso))
       .split(":");
     return dayOffset * 1440 + Number(hourStr) * 60 + Number(minuteStr);

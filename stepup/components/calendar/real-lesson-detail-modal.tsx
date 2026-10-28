@@ -169,7 +169,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
 
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
-  if (adjusting) return <ScheduleAdjustDialog item={item} onClose={()=>setAdjusting(false)} />;
+  if (adjusting) return <ScheduleAdjustDialog item={item} onClose={()=>setAdjusting(false)} onDone={onClose} />;
   if (activityOpen) return <ActivityDialog item={item} onClose={onClose} />;
   if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
