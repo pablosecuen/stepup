@@ -20,7 +20,7 @@ import { listRecurrenceExceptionsForRules } from "./recurrence-exceptions";
 import { listCalendarLessonsForRecurrence } from "./calendar-lessons";
 import { resolveEffectiveMonthlyAmount, resolveStudentBillingPlan, type MonthlyBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 import { buildPeriodicChargeCandidates, type PeriodicChargeCandidate } from "@/lib/payments/periodic-charge-candidates";
-import { isStudentBillableForPeriod } from "@/lib/payments/monthly-charge-plan";
+import { hasMonthlyPlanStarted, isStudentBillableForPeriod } from "@/lib/payments/monthly-charge-plan";
 import { resolveMonthlyDueDate, billingPeriodOfDateKey, firstDayOfBillingPeriod, lastDateKeyOfBillingPeriod } from "@/lib/payments/dates";
 import {
   computeTrainingFirstPeriodCharge,
@@ -312,6 +312,8 @@ export async function ensureCurrentMonthlyCharges(ctx: AuthenticatedDbContext, b
     if (!isStudentBillableForPeriod({ status: student.status, statusChangeDate: student.statusChangeDate, billingPeriod })) continue;
     const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
     if (plan.type !== "monthly") continue;
+    // Una mensualidad que empieza en un período futuro (`startPeriod`, p. ej. «empieza el mes próximo» al cambiar de plan) no genera cargo todavía. Regla del original.
+    if (!hasMonthlyPlanStarted(plan, billingPeriod)) continue;
     const amount = resolveEffectiveMonthlyAmount(plan, billingPeriod);
     if (amount <= 0) continue;
     candidates.push({ studentId: student.id, amount, dueDate: resolveMonthlyDueDate(billingPeriod, plan.dueDay) });
@@ -344,8 +346,15 @@ export async function ensureCurrentPeriodicCharges(ctx: AuthenticatedDbContext, 
 }
 
 /** Guarda el plan de cobro elegido (atómico, con auditoría). El monto de un plan YA mensual no se cambia por acá: ver `changeStudentMonthlyAmount`. */
-export async function setStudentBillingPlan(ctx: AuthenticatedDbContext, studentId: string, plan: StudentBillingPlan): Promise<void> {
-  const { error } = await ctx.supabase.rpc("set_student_billing_plan", { p_payload: { student_id: studentId, plan } });
+export async function setStudentBillingPlan(
+  ctx: AuthenticatedDbContext,
+  studentId: string,
+  plan: StudentBillingPlan,
+  options: { currentPeriod: string; acknowledgeOverlap: boolean; monthlyStart: "this_period" | "next_period" },
+): Promise<void> {
+  const { error } = await ctx.supabase.rpc("set_student_billing_plan", {
+    p_payload: { student_id: studentId, plan, current_period: options.currentPeriod, acknowledge_overlap: options.acknowledgeOverlap, monthly_start: options.monthlyStart },
+  });
   if (error) throw error;
 }
 

@@ -64,7 +64,7 @@ export function CobrosTabContent({
 
   return (
     <div className="flex flex-col gap-8">
-      <BillingPlanCard studentId={studentId} studentName={studentName} plan={billingPlan} />
+      <BillingPlanCard studentId={studentId} studentName={studentName} plan={billingPlan} charges={charges} todayDateKey={todayDateKey} />
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-section font-semibold">Obligaciones</h2>

@@ -7,7 +7,8 @@
 --                                          transacción; nunca reescribe un período ya saldado ni baja el importe por debajo de lo ya asignado.
 -- 4) ensure_periodic_charges(kind, candidates) — cargos semanales y quincenales del período vigente, idempotentes por (alumno, período).
 --
--- Todas SECURITY INVOKER (RLS de quien llama), search_path vacío, sin acceso anónimo. Ninguna toca pagos ni asignaciones.
+-- ensure_periodic_charges es SECURITY INVOKER (RLS de quien llama); set_student_billing_plan y change_student_monthly_amount son SECURITY DEFINER porque `students` sólo permite UPDATE por lista de columnas
+-- (billing_plan no está) y el plan sólo debe cambiar por estas reglas: cada consulta filtra por la dueña (auth.uid()). Todas con search_path vacío y sin acceso anónimo. Ninguna toca pagos ni asignaciones.
 
 create table if not exists public.student_billing_audit (
   id uuid primary key default gen_random_uuid(),
@@ -42,6 +43,12 @@ declare
   v_student public.students;
   v_plan jsonb := p_payload->'plan';
   v_type text := p_payload->'plan'->>'type';
+  v_period text := p_payload->>'current_period';
+  v_start text := coalesce(nullif(p_payload->>'monthly_start', ''), 'this_period');
+  v_ack boolean := coalesce(p_payload->>'acknowledge_overlap', 'false') = 'true';
+  v_charge_type text;
+  v_overlap_count int := 0;
+  v_overlap_total numeric := 0;
   v_current jsonb;
   v_new jsonb;
   v_amount numeric;
@@ -137,14 +144,39 @@ begin
     raise exception 'El tipo de plan no es válido.' using errcode = '22023';
   end if;
 
+  -- Transición entre planes: un cambio NUNCA borra ni reescribe cargos ni pagos existentes; sólo cambia lo que se genera de ahora en más. Si el período vigente ya tiene cobros de OTRO tipo de plan
+  -- (por clase, semanal, quincenal o mensual), el nuevo plan también generará el suyo para ese período: se exige confirmación explícita (y, para el mensual, elegir desde cuándo empieza)
+  -- en vez de duplicar la deuda en silencio. Cambiar al mismo tipo de plan (p. ej. otro día de la semana) no cuenta como transición.
+  if v_start not in ('this_period', 'next_period') then
+    raise exception 'Elegí desde cuándo empieza la mensualidad.' using errcode = '22023';
+  end if;
+  if v_type in ('per_class', 'weekly', 'biweekly', 'monthly') and v_type <> coalesce(v_current->>'type', '') then
+    if v_period is null or v_period !~ '^\d{4}-(0[1-9]|1[0-2])$' then
+      raise exception 'El período no es válido.' using errcode = '22023';
+    end if;
+    v_charge_type := case v_type when 'per_class' then 'por_clase' when 'weekly' then 'semanal' when 'biweekly' then 'quincenal' else 'mensual' end;
+    select count(*), coalesce(sum(original_amount), 0) into v_overlap_count, v_overlap_total
+      from public.payment_charges
+      where owner_id = v_owner and student_id = v_student.id and voided_at is null
+        and charge_type in ('por_clase', 'semanal', 'quincenal', 'mensual') and charge_type <> v_charge_type
+        and to_char(due_date, 'YYYY-MM') = v_period;
+    if v_overlap_count > 0 and not v_ack then
+      raise exception 'Este mes ya tiene % cobro(s) de otro tipo de plan. Confirmá que se conservan antes de cambiar el plan: no se borran ni se modifican.', v_overlap_count using errcode = '22023';
+    end if;
+    if v_type = 'monthly' and v_start = 'next_period' then
+      v_new := v_new || jsonb_build_object('startPeriod', to_char((v_period || '-01')::date + interval '1 month', 'YYYY-MM'));
+    end if;
+  end if;
+
   update public.students
     set billing_plan = v_new,
         billing_type = case when v_type = 'monthly' then 'mensual' when v_type = 'per_class' then 'por_clase' else billing_type end
     where id = v_student.id and owner_id = v_owner
     returning * into v_student;
 
-  insert into public.student_billing_audit (owner_id, student_id, kind, before_state, after_state)
-  values (v_owner, v_student.id, 'plan_change', v_current, v_new);
+  insert into public.student_billing_audit (owner_id, student_id, kind, before_state, after_state, detail)
+  values (v_owner, v_student.id, 'plan_change', v_current, v_new,
+          jsonb_build_object('period', v_period, 'overlap_count', v_overlap_count, 'overlap_total', v_overlap_total, 'acknowledged', v_ack, 'monthly_start', v_start));
 
   return v_student;
 end;
@@ -179,6 +211,7 @@ declare
   v_updated boolean := false;
   v_previous numeric;
   v_new_plan jsonb;
+  v_not_started boolean;
 begin
   if v_owner is null then
     raise exception 'No hay una sesión autenticada.' using errcode = '28000';
@@ -211,6 +244,8 @@ begin
   end if;
 
   v_next := to_char((v_period || '-01')::date + interval '1 month', 'YYYY-MM');
+  -- Una mensualidad que empieza en un período futuro (startPeriod) todavía no tiene cargo en el período vigente: no hay nada que corregir ni crear ahora.
+  v_not_started := v_plan->>'startPeriod' is not null and v_plan->>'startPeriod' > v_period;
 
   select * into v_charge from public.payment_charges
     where owner_id = v_owner and student_id = v_student.id and charge_type = 'mensual' and billing_period = v_period and voided_at is null
@@ -220,6 +255,8 @@ begin
   if v_effective = 'next_month' then
     -- Nunca toca el cargo del período actual: el importe nuevo queda pendiente hasta que empiece el próximo.
     v_new_plan := v_plan || jsonb_build_object('pendingAmount', v_new, 'pendingAmountEffectiveFrom', v_next);
+  elsif v_not_started then
+    v_new_plan := (v_plan - 'pendingAmount' - 'pendingAmountEffectiveFrom') || jsonb_build_object('amount', v_new);
   else
     if v_charge.id is null then
       begin
