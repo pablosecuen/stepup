@@ -4,9 +4,10 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 
+// `lib/original-core` es la copia verbatim del dominio de la app original (referencia para pruebas, no se despliega): no se edita para contentar al linter.
 const eslintConfig = defineConfig([
   ...nextVitals,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "tools/phone-extraction/mobile-patch/**", "tools/legacy-readonly/mobile-patch/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "tools/phone-extraction/mobile-patch/**", "tools/legacy-readonly/mobile-patch/**", "lib/original-core/**"]),
 ]);
 
 export default eslintConfig;
