@@ -4,7 +4,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { listAllAllocations, listAllCharges, listAllPayments } from "@/lib/repositories/payments";
 import { listFirstMonthProrationDecisions } from "@/lib/repositories/proration-decisions";
 import { buildConsistencyReport } from "@/lib/payments/consistency";
-import { localDateKeyInTimeZone } from "@/lib/payments/dates";
+import { todayInArgentina } from "@/lib/format/date-format";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,7 @@ export default async function ConsistenciaPage() {
   try {
     const ctx = await requireAuthenticatedDbContext();
     const [students, charges, payments, allocations, decisions] = await Promise.all([listStudents(ctx), listAllCharges(ctx), listAllPayments(ctx), listAllAllocations(ctx), listFirstMonthProrationDecisions(ctx)]);
-    view = buildConsistencyReport({ students, charges, payments, allocations, decisions, todayDateKey: localDateKeyInTimeZone(new Date()) });
+    view = buildConsistencyReport({ students, charges, payments, allocations, decisions, todayDateKey: todayInArgentina() });
   } catch {
     return (
       <div className={PAGE_WIDTH.medium}>

@@ -131,7 +131,7 @@ test("Configuración no contiene 50/30/20, respaldo, app móvil ni dispositivos:
   assert.doesNotMatch(code(VIEW), />\s*\{[^}]*(deviceId|generation|checksum)/i, "ningún dato técnico en pantalla");
   // Preferencias: Políticas de cobro y, sólo si hay datos de prueba marcados, el acceso para consultarlos y volver a mostrarlos
   const preferences = sections().find((s) => s.id === "preferencias")!.body;
-  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Políticas de cobro", "Datos de prueba"]);
+  assert.deepEqual([...preferences.matchAll(/title="([^"]+)"/g)].map((m) => m[1]), ["Políticas de cobro", "Revisar consistencia", "Datos de prueba"]);
   assert.match(preferences, /\{testData && \(/, "el acceso a los datos de prueba sólo aparece si hay algo marcado");
   // Siguen accesibles desde donde se administran: Disponibilidad desde Calendario y los niveles desde Alumnos (sus rutas y su lógica no se tocan)
   assert.match(code("components/calendar/calendar-view.tsx"), /href="\/calendario\/disponibilidad"/);
