@@ -7,6 +7,8 @@ import { determineDueStage, isChargeOverdueForDisplay } from "@/lib/payments/due
 import { EmptyState } from "@/components/ui/states";
 import { Badge } from "@/components/ui/badge";
 import { ChargeActions } from "@/components/payments/charge-actions";
+import { BillingPlanCard } from "@/components/students/profile/billing-plan-card";
+import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
 import { VoidPaymentButton } from "@/components/payments/void-payment-button";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from "@/lib/repositories/payments";
 import { formatCivilDate, formatDateValue } from "@/lib/format/date-format";
@@ -35,6 +37,7 @@ const ICON = "h-3.5 w-3.5";
 export function CobrosTabContent({
   studentId,
   studentName,
+  billingPlan,
   charges,
   payments,
   allocations,
@@ -43,6 +46,8 @@ export function CobrosTabContent({
 }: {
   studentId: string;
   studentName: string;
+  /** Plan de cobro vigente (resuelto: el explícito o el derivado del tipo de facturación legado). */
+  billingPlan: StudentBillingPlan;
   charges: PaymentChargeRecord[];
   payments: PaymentRecord[];
   allocations: PaymentAllocationRecord[];
@@ -59,6 +64,7 @@ export function CobrosTabContent({
 
   return (
     <div className="flex flex-col gap-8">
+      <BillingPlanCard studentId={studentId} studentName={studentName} plan={billingPlan} />
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-section font-semibold">Obligaciones</h2>

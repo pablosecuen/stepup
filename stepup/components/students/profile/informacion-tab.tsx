@@ -1,7 +1,9 @@
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import type { StatusHistoryRecord, LevelHistoryRecord, PriceHistoryRecord } from "@/lib/repositories/student-history-mapping";
-import { CATEGORY_LABEL, BILLING_LABEL, STUDENT_STATUS_LABEL } from "@/lib/students/constants";
-import { monthlyDueDayOf, type ProfileClassStats } from "@/lib/students/profile-overview";
+import { CATEGORY_LABEL, STUDENT_STATUS_LABEL } from "@/lib/students/constants";
+import type { ProfileClassStats } from "@/lib/students/profile-overview";
+import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
+import { describePlan } from "@/lib/payments/plan-form";
 import { formatHours, formatMinutes, formatMoney } from "@/lib/format/number-format";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { Card } from "@/components/ui/card";
@@ -52,7 +54,7 @@ export function InformacionTabContent({
   stats: ProfileClassStats;
   totalCollected: number;
 }) {
-  const monthlyDueDay = monthlyDueDayOf(student.billingPlan);
+  const planDescription = describePlan(resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price }));
   const statusChangeLabel = STATUS_CHANGE_LABEL[student.status];
   return (
     <div className="flex flex-col gap-3.5">
@@ -67,9 +69,10 @@ export function InformacionTabContent({
             <Row label="Duración habitual" value={formatMinutes(student.usualDurationMinutes)} />
             <Row label="Frecuencia semanal" value={`${student.weeklyFrequency}x por semana`} />
             <Row label="Categoría" value={CATEGORY_LABEL[student.category]} />
-            <Row label="Tipo de facturación" value={BILLING_LABEL[student.billingType]} />
-            <Row label="Precio de referencia" value={formatMoney(student.price)} />
-            {monthlyDueDay !== null && <Row label="Vencimiento mensual" value={`Día ${monthlyDueDay} de cada mes`} />}
+            <Row label="Plan de cobro" value={planDescription.title} />
+            {planDescription.lines.map((line) => (
+              <Row key={line} label="" value={line} />
+            ))}
           </dl>
         </Section>
 

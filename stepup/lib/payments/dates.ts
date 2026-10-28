@@ -139,6 +139,38 @@ export function isDateKeyBeforeOrEqual(a: string, b: string): boolean {
   return daysBetweenDateKeys(a, b) >= 0;
 }
 
+/** Clave de semana ISO-8601 ('YYYY-Www') de un date key — `billing_period` de los cargos semanales. Puerto exacto de `isoWeekKey` (móvil). */
+export function isoWeekKey(dateKey: string): string {
+  assertDateKey(dateKey, "dateKey");
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isoDay = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+  date.setUTCDate(date.getUTCDate() + 4 - isoDay);
+  const isoYear = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const weekNumber = Math.ceil(((date.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${isoYear}-W${String(weekNumber).padStart(2, "0")}`;
+}
+
+/** Lunes de la semana ISO que contiene `dateKey`. Puerto exacto de `startOfIsoWeek` (móvil). */
+export function startOfIsoWeek(dateKey: string): string {
+  assertDateKey(dateKey, "dateKey");
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isoDay = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+  date.setUTCDate(date.getUTCDate() - (isoDay - 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Inicio del bloque de 14 días que contiene `dateKey`, contado desde `anchorDate` — clave de período quincenal. Puerto exacto de `biweeklyPeriodKey` (móvil). */
+export function biweeklyPeriodKey(dateKey: string, anchorDate: string): string {
+  assertDateKey(dateKey, "dateKey");
+  assertDateKey(anchorDate, "anchorDate");
+  const daysSinceAnchor = daysBetweenDateKeys(anchorDate, dateKey);
+  const periodIndex = Math.floor(daysSinceAnchor / 14);
+  return addDaysToDateKey(anchorDate, periodIndex * 14);
+}
+
 /** Zona horaria de referencia del negocio: generar cargos y evaluar deuda "hoy" siempre usa la fecha de Buenos Aires. */
 export const ARGENTINA_TIME_ZONE = "America/Argentina/Buenos_Aires";
 
