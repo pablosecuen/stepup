@@ -54,7 +54,7 @@ test("Lista: filtros por GET sin lógica en el cliente, hoja de filtros móvil c
   const view = code("components/students/students-list-view.tsx");
   assert.match(view, /totalItems\} alumno\{totalItems === 1 \? "" : "s"\}/);
   assert.equal([...view.matchAll(/variant="primary"/g)].length, 1, "«Nuevo alumno» es la única acción principal");
-  assert.match(view, /<StudentsTable students=\{items\} \/>/);
+  assert.match(view, /<StudentsTable rows=\{rows\} now=\{now\} \/>/);
   assert.match(view, /nav:hidden/, "tarjetas por debajo de 820 px");
   assert.match(code("components/students/students-filters-form.tsx"), /variant="secondary" className="hidden nav:inline-flex"/, "«Aplicar filtros» pesa menos que «Nuevo alumno»");
 });

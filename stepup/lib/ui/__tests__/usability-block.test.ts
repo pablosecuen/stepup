@@ -129,7 +129,7 @@ test("la fila completa del alumno abre el perfil con UN solo enlace por fila (un
   assert.equal((card.match(/<PrivateLink\b/g) ?? []).length, 1);
   assert.match(card, /min-h-\[72px\]/);
   // Seguimos con una tabla legible: encabezados, badges de estado y niveles.
-  assert.match(table, /<Th>Alumno<\/Th>[\s\S]*<Th align="right">Estado<\/Th>/);
+  assert.match(table, /<Th>Alumno<\/Th>[\s\S]*<Th>Estado de pago<\/Th>/);
   assert.match(table, /<StudentStatusBadge status=\{student\.status\} \/>/);
 });
 
