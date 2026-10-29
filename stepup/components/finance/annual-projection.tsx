@@ -1,4 +1,5 @@
 import { CheckIcon } from "@heroicons/react/24/outline";
+import { FinanceMotion } from "@/components/finance/finance-motion";
 import PrivateLink from "@/components/nav/private-link";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { SavingsGoalForm } from "@/components/finance/savings-goal-form";
@@ -38,6 +39,7 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   const scale = (HEIGHT - PAD.top - PAD.bottom) / max;
   const summary = plan.months.map((month) => `${MONTH_LONG[Number(month.billingPeriod.slice(5, 7)) - 1]}: ${STATUS_LABEL[month.status].toLowerCase()}, ${formatMoney(month.totalForDistribution)}`).join("; ");
   return (
+    <FinanceMotion signature={`${year}:${plan.months.map(month => month.totalForDistribution).join(":")}`} className="w-full max-w-[600px]">
     <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="tf-chart-enter h-auto w-full max-w-[600px]">
       <defs>
         {(Object.keys(PART_STYLE) as BudgetPartKey[]).map((key) => (
@@ -61,6 +63,7 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
         const current = month.status === "current_month";
         return (
           <g key={month.billingPeriod}>
+            <g data-tf-finance-bar>
             {parts.map((part) => {
               const height = part.value * scale;
               y -= height;
@@ -80,6 +83,7 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
                 strokeDasharray={estimated ? "3 2" : undefined}
               />
             )}
+            </g>
             <text x={x + barWidth / 2} y={HEIGHT - 6} textAnchor="middle" className={current ? "fill-ink" : "fill-textMuted"} fontSize={11} fontWeight={current ? 800 : 650}>
               {MONTH_SHORT[index]}
             </text>
@@ -87,6 +91,7 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
         );
       })}
     </svg>
+    </FinanceMotion>
   );
 }
 

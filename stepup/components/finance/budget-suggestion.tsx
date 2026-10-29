@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { splitCollectedByPercent, type BudgetCategory } from "@/lib/payments/budget-suggestion";
 import type { BudgetDistribution } from "@/lib/payments/budget-distribution";
 import { formatMoney } from "@/lib/format/number-format";
+import { FinanceMotion } from "@/components/finance/finance-motion";
 
 /** Un color por categoría, el mismo en dona, barra, leyenda e indicadores (y en las barras de «Proyección y ahorro»): azul, violeta y verde. Siempre sólidos, sin opacidad. */
 const CATEGORY_UI: Record<BudgetCategory, { label: string; swatch: string; stroke: string }> = {
@@ -30,6 +31,7 @@ function Donut({ shares }: { shares: ReturnType<typeof splitCollectedByPercent> 
           const gap = share.percent >= 100 ? 0 : 0.6; // separación fina entre tramos (no depende sólo del color)
           return (
             <circle
+              data-tf-finance-arc
               key={share.category}
               cx="18"
               cy="18"
@@ -66,7 +68,7 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
   }, []);
 
   return (
-    <div>
+    <FinanceMotion signature={`${collected}:${shares.map(share => share.percent).join(":")}`}>
       <p className="text-[14px] text-textMuted">Proyección orientativa sobre lo cobrado; no representa tus gastos ni tu ahorro real.</p>
       {!hasCollected && (
         <p className="mt-3 max-w-[540px] rounded-md border-2 border-dashed border-borderMid px-4 py-3 text-[14.5px] text-textMuted">
@@ -122,6 +124,6 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
           onSaved={onSaved}
         />
       )}
-    </div>
+    </FinanceMotion>
   );
 }

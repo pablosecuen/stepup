@@ -19,7 +19,7 @@ const TABS: { key: ProfileTabKey; label: string }[] = [
 // Mismas 7 pestañas que StudentProfileScreen.tsx en móvil (SegmentedTabs). Cada pestaña es un enlace (navega a ?tab=) con
 // `aria-current="page"` en la activa. En un móvil la fila hace scroll horizontal: la pestaña activa se desplaza a la vista
 // al montar y cuando cambia (sólo en horizontal: la página no se mueve en vertical).
-export function ProfileTabsNav({ studentId, active }: { studentId: string; active: ProfileTabKey }) {
+export function ProfileTabsNav({ studentId, active, fromPayments = false }: { studentId: string; active: ProfileTabKey; fromPayments?: boolean }) {
   const scrollerRef = useRef<HTMLElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
 
@@ -44,7 +44,7 @@ export function ProfileTabsNav({ studentId, active }: { studentId: string; activ
             <li key={tab.key}>
               <Link
                 ref={isActive ? activeRef : undefined}
-                href={`/alumnos/${studentId}?tab=${tab.key}`}
+                href={`${fromPayments ? "/cobros/alumnos" : "/alumnos"}/${studentId}?tab=${tab.key}`}
                 aria-current={isActive ? "page" : undefined}
                 className={`-mb-[1.5px] inline-flex min-h-11 items-center whitespace-nowrap border-b-[3px] px-3.5 text-[14.5px] transition-colors duration-150 ease-premium nav:px-4 ${
                   isActive ? "border-accent font-bold text-textPrimary" : "border-transparent font-[650] text-textSecondary hover:text-textPrimary"

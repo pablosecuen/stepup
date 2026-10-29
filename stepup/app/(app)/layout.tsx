@@ -16,6 +16,9 @@ import { readBillingFlags } from "@/lib/billing/flags";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
 import { StudentFileCleanup } from "@/components/nav/student-file-cleanup";
+import { LoginWelcome } from "@/components/auth/login-welcome";
+import { LOGIN_MOTION_COOKIE } from "@/lib/ui/login-motion";
+import { SharedNameTransition } from "@/components/nav/shared-name-transition";
 
 // Área con datos privados: nunca cacheable, nunca ISR, nunca servida desde
 // CDN — se recalcula en cada request.
@@ -69,8 +72,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div data-tf-navigation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} className="min-h-screen nav:pl-[236px]">
       <DeviceSessionWatcher />
+      <LoginWelcome enabled={(await cookies()).get(LOGIN_MOTION_COOKIE)?.value === "1"} />
       <NavigationProgress />
       <ScreenReveal />
+      <SharedNameTransition />
       <SoftKeyboardSync />
       {configured && user && <StudentFileCleanup />}
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />

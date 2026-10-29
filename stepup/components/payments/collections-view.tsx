@@ -70,7 +70,8 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar initial={avatarInitials(entry.studentName)} tone={avatarToneFor(entry.studentId)} size="m" />
                     <PrivateLink
-                      href={`/alumnos/${entry.studentId}`}
+                      href={`/cobros/alumnos/${entry.studentId}?tab=cobros`}
+                      data-tf-shared-name
                       className="-my-1 inline-flex min-h-11 min-w-0 items-center font-display text-[18px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere] hover:underline hover:decoration-borderMid hover:underline-offset-[3px] nav:font-sans nav:text-[14.5px] nav:font-[650] nav:tracking-normal"
                     >
                       {entry.studentName}

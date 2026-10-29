@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { startRegistrationAction } from "@/lib/actions/lesson-registrations";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { Button, type ButtonVariant } from "@/components/ui/button";
+import { captureSharedName, startSharedName } from "@/lib/ui/shared-name";
 
 export function StartRegistrationButton({
   calendarLessonId,
@@ -25,7 +26,8 @@ export function StartRegistrationButton({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function handleClick() {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+    const snapshot = captureSharedName(event.currentTarget.closest("[data-tf-shared-card]")?.querySelector("[data-tf-shared-name]") ?? null);
     setError(null);
     startTransition(async () => {
       const result = await guardNetwork(() => startRegistrationAction({ calendarLessonId, recurrenceId, occurrenceKey, recurrenceIndex }));
@@ -33,7 +35,9 @@ export function StartRegistrationButton({
         setError(result.error ?? "No se pudo empezar el registro.");
         return;
       }
-      router.push(`/registro/${result.data.calendarLessonId}`);
+      const destination = `/registro/${result.data.calendarLessonId}`;
+      startSharedName(snapshot, destination);
+      router.push(destination);
     });
   }
 

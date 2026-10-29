@@ -56,13 +56,13 @@ export interface StudentProfileData {
  * quedan fijos y el cuerpo entra cuando llega, también al cambiar de pestaña. Las tareas de fondo (generar mensualidades, limpiar PDFs) las
  * dispara la página, no la vista.
  */
-export function StudentProfileView({ student, tab, children }: { student: StudentRecord; tab: ProfileTabKey; children: ReactNode }) {
+export function StudentProfileView({ student, tab, children, fromPayments = false }: { student: StudentRecord; tab: ProfileTabKey; children: ReactNode; fromPayments?: boolean }) {
   return (
     <div className={PAGE_WIDTH.medium}>
-      <StudentProfileHeader student={student} />
+      <StudentProfileHeader student={student} fromPayments={fromPayments} />
 
       <div className="mt-6">
-        <ProfileTabsNav studentId={student.id} active={tab} />
+        <ProfileTabsNav studentId={student.id} active={tab} fromPayments={fromPayments} />
       </div>
 
       <ReplacementNotices studentId={student.id} />

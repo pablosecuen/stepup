@@ -20,7 +20,7 @@ export function PendingListView({ pending }: { pending: PendingLessonItem[] }) {
   return (
     <div className={PAGE_WIDTH.wide}>
       <PageHeader
-        title="Clases por registrar"
+        title={<span className="flex flex-wrap items-center gap-3">Clases por registrar{pending.length > 0 && <span aria-label={`${pending.length} pendientes`} className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#B7242A] px-1.5 font-sans text-[12px] font-bold leading-none tracking-normal text-white">{pending.length}</span>}</span>}
         subtitle={`${pending.length} actividad${pending.length === 1 ? "" : "es"} pendiente${pending.length === 1 ? "" : "s"} de registrar.`}
         action={
           <PrivateButtonLink href="/registro/nuevo" variant="secondary">
@@ -43,7 +43,7 @@ export function PendingListView({ pending }: { pending: PendingLessonItem[] }) {
             const title = item.title?.trim() || item.studentName || "Sin alumnos";
             const inProgress = registrationState === "in_progress";
             return (
-              <li key={item.id}>
+              <li key={item.id} data-tf-shared-card>
                 <Card className="!p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <div className="flex min-w-0 flex-1 items-start gap-3.5">
@@ -56,7 +56,7 @@ export function PendingListView({ pending }: { pending: PendingLessonItem[] }) {
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                          <p className="min-w-0 font-display text-[20px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{title}</p>
+                          <p data-tf-shared-name className="min-w-0 font-display text-[20px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{title}</p>
                           <Badge tone={item.activityKind === "training" ? "accent" : "neutral"}>{ACTIVITY_KIND_LABEL[item.activityKind]}</Badge>
                         </div>
                         <p className="mt-0.5 text-[14.5px] text-textMuted">

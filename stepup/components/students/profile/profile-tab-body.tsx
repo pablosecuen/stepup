@@ -23,7 +23,7 @@ import { StudentProfileTabContent } from "@/components/students/profile/student-
  * sólo lectura (las tareas de fondo las dispara la página). Un fallo muestra su mensaje y «Reintentar» en el lugar de la pestaña, nunca un esqueleto
  * infinito ni la pantalla entera reemplazada.
  */
-export async function ProfileTabBody({ ctx, student, tab }: { ctx: AuthenticatedDbContext; student: StudentRecord; tab: ProfileTabKey }) {
+export async function ProfileTabBody({ ctx, student, tab, fromPayments = false }: { ctx: AuthenticatedDbContext; student: StudentRecord; tab: ProfileTabKey; fromPayments?: boolean }) {
   const id = student.id;
   let statusHistory: Awaited<ReturnType<typeof listStatusHistory>> = [];
   let levelHistory: Awaited<ReturnType<typeof listLevelHistory>> = [];
@@ -100,7 +100,7 @@ export async function ProfileTabBody({ ctx, student, tab }: { ctx: Authenticated
         <div className="w-full">
           <ErrorState message="No pudimos cargar esta sección del perfil." />
         </div>
-        <a href={`/alumnos/${id}?tab=${tab}`} className={buttonClass({ variant: "secondary" })}>
+        <a href={`${fromPayments ? "/cobros/alumnos" : "/alumnos"}/${id}?tab=${tab}`} className={buttonClass({ variant: "secondary" })}>
           Reintentar
         </a>
       </div>

@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LOGIN_MOTION_COOKIE, LOGIN_MOTION_MAX_AGE_SECONDS } from "@/lib/ui/login-motion";
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { canSubmitSignIn, canSubmitSignUp, canSubmitForgotPassword, canSubmitNewPassword } from "@/lib/auth/validation";
 import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
@@ -46,6 +48,8 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
 
   // Un inicio de sesión normal abandona cualquier recuperación que haya quedado a medias en este dispositivo.
   await clearRecoveryMarker();
+  // No credentials or authorization state: a one-shot presentation cue after confirmed success only.
+  (await cookies()).set(LOGIN_MOTION_COOKIE, "1", { path: "/", maxAge: LOGIN_MOTION_MAX_AGE_SECONDS, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   redirect(sanitizeNextPath(nextParam));
 }
 

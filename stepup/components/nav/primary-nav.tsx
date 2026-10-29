@@ -22,6 +22,7 @@ import {
 import PrivateLink from "@/components/nav/private-link";
 import { useEffectivePathname } from "@/components/nav/use-effective-pathname";
 import { SignOutButton } from "@/components/nav/sign-out-button";
+import { RegistrationNavBadge } from "@/components/nav/registration-nav-badge";
 import { BrandMark } from "@/components/ui/brand";
 import { PRIMARY_NAV_ITEMS, isPrimaryNavActive, isPrimarySectionActive, type PrimaryNavIconKey } from "@/lib/nav/primary-nav-items";
 
@@ -82,7 +83,7 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
       </header>
       {menuOpen && navigationLocation === "menu" && <Dialog title="Navegación" size="sm" onClose={() => setMenuOpen(false)}>
         <nav aria-label="Menú del logo"><ul className="flex flex-col gap-2">
-          {PRIMARY_NAV_ITEMS.map(item => { const Icon = ICONS[item.icon].outline; return <li key={item.href}><PrivateLink href={item.href} onClick={() => setMenuOpen(false)} aria-current={isPrimaryNavActive(pathname, item.href) ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-4 py-3 font-semibold"><Icon className="h-6 w-6" aria-hidden />{item.label}</PrivateLink></li>; })}
+          {PRIMARY_NAV_ITEMS.map(item => { const Icon = ICONS[item.icon].outline; return <li key={item.href}><PrivateLink href={item.href} onClick={() => setMenuOpen(false)} aria-current={isPrimaryNavActive(pathname, item.href) ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-4 py-3 font-semibold"><Icon className="h-6 w-6" aria-hidden />{item.label}{item.icon === "registry" && <RegistrationNavBadge />}</PrivateLink></li>; })}
         </ul></nav>
       </Dialog>}
 
@@ -109,7 +110,7 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
                       isActive ? "bg-accentSoft text-accentText" : "group-active:bg-paperDeep"
                     }`}
                   >
-                    <Icon className="h-6 w-6" aria-hidden />
+                      <span className="relative"><Icon className="h-6 w-6" aria-hidden />{item.icon === "registry" && <RegistrationNavBadge floating />}</span>
                   </span>
                   <span>{item.label}</span>
                 </PrivateLink>
@@ -141,6 +142,7 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden />
                     {item.label}
+                    {item.icon === "registry" && <RegistrationNavBadge />}
                   </PrivateLink>
                   {/* Entradas secundarias de la sección (siempre presentes: ni ensanchan la barra ni mueven a las demás secciones). */}
                   {item.secondary && (

@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/format/number-format";
 import type { MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
 
 import { monthlyChartModel } from "@/lib/ui/monthly-chart";
+import { FinanceMotion } from "@/components/finance/finance-motion";
 
 // Categorical chart colors: keep each month stable when the displayed period changes.
 // Full opacity keeps the slice identical to its legend; selection uses thickness instead of fading other data.
@@ -80,7 +81,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
   }
 
   return (
-    <div>
+    <FinanceMotion signature={`${presentation}:${series.map(point => `${point.month}:${point.amount}`).join("|")}`}>
       <p className="text-[13.5px] text-textMuted">
         {caption}
         {peak && (
@@ -118,7 +119,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
                   onKeyDown={(event) => onKeyDown(event, index)}
                   className="group flex h-44 w-full items-end justify-center rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-1"
                 >
-                  <span aria-hidden className="block w-[22px] max-w-[22px] rounded-t-md bg-ok transition-opacity group-hover:opacity-85 motion-reduce:transition-none" style={{ height: `${height}%` }} />
+                  <span aria-hidden data-tf-finance-bar className="block w-[22px] max-w-[22px] rounded-t-md bg-ok transition-opacity group-hover:opacity-85 motion-reduce:transition-none" style={{ height: `${height}%` }} />
                 </button>
               </li>
             );
@@ -140,7 +141,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
       {presentation === "pie" && <div className="tf-chart-enter mt-5 grid max-w-[620px] grid-cols-1 items-start gap-5 min-[480px]:grid-cols-[160px_minmax(0,1fr)]">
         <div className="w-40 shrink-0">
           <svg viewBox="0 0 36 36" role="img" aria-label={`Cobrado por mes: ${series.map(label).join("; ")}`} className="h-40 w-40">
-            {model.segments.map((point,index) => point.percent > 0 ? <circle key={point.month} cx="18" cy="18" r="15.9155" fill="none" stroke={monthColor(point.month)} strokeWidth={activeIndex === index || point.isPeak ? 5.2 : 4.2} strokeDasharray={`${Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))} ${100-Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))}`} strokeDashoffset={point.offset} /> : null)}
+            {model.segments.map((point,index) => point.percent > 0 ? <circle data-tf-finance-arc key={point.month} cx="18" cy="18" r="15.9155" fill="none" stroke={monthColor(point.month)} strokeWidth={activeIndex === index || point.isPeak ? 5.2 : 4.2} strokeDasharray={`${Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))} ${100-Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))}`} strokeDashoffset={point.offset} /> : null)}
           </svg>
           <p className="mt-2 text-[12px] text-textMuted">Total del período<span className="mt-1 block whitespace-nowrap font-semibold tf-num text-textPrimary">{formatMoney(model.total)}</span></p>
         </div>
@@ -195,6 +196,6 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
           {tip.text}
         </div>
       )}
-    </div>
+    </FinanceMotion>
   );
 }

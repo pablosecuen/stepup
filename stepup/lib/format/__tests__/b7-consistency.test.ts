@@ -179,7 +179,7 @@ test("anchos: los nombres y títulos sin espacios se parten en vez de desbordar 
   const css = read("app/globals.css");
   assert.match(css, /h1,\s*h2,\s*h3,\s*p\s*\{\s*overflow-wrap: anywhere;\s*\}/);
   const cobros = code("components/payments/collections-view.tsx");
-  assert.match(cobros, /<PrivateLink\s+href=\{`\/alumnos\/\$\{entry\.studentId\}`\}\s+className="[^"]*\[overflow-wrap:anywhere\]/);
+  assert.match(cobros, /<PrivateLink\s+href=\{`\/cobros\/alumnos\/\$\{entry\.studentId\}\?tab=cobros`\}\s+data-tf-shared-name\s+className="[^"]*\[overflow-wrap:anywhere\]/);
   assert.match(code("components/payments/training-billing-config.tsx"), /<li key=\{c\.studentId\} className="[^"]*\[overflow-wrap:anywhere\]/);
 });
 

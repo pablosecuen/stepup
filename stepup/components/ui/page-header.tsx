@@ -35,7 +35,7 @@ export const PAGE_TITLE_COMPACT_CLASS =
   "font-display text-[28px] font-medium leading-[1.1] tracking-[-0.03em] text-textPrimary [overflow-wrap:anywhere] nav:text-[30px]";
 
 export function PageTitle({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
-  return <h1 className={compact ? PAGE_TITLE_COMPACT_CLASS : PAGE_TITLE_CLASS}>{children}</h1>;
+  return <h1 data-tf-shared-name className={compact ? PAGE_TITLE_COMPACT_CLASS : PAGE_TITLE_CLASS}>{children}</h1>;
 }
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
