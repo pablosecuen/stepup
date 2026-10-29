@@ -199,7 +199,6 @@ export function ChipListField({ label, singular, placeholder, draftKey, items, o
  */
 export function EvaluationFields({ studentName, studentId, form, onChange }: { studentName: string; studentId: string; form: ParticipantForm; onChange: (patch: ParticipantFormPatch) => void }) {
   const id = useId();
-  const [hidden,setHidden]=useState<Set<Skill>>(new Set());
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <p className="text-[13.5px] text-textMuted">Todo lo de acá abajo es opcional — completá sólo lo que quieras calificar en esta clase.</p>
@@ -210,8 +209,7 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
       </div>
       <fieldset className="flex min-w-0 flex-col gap-4">
         <legend className="mb-1 text-[14px] font-bold text-textPrimary">Notas por área (opcional)</legend>
-        <div className="flex flex-wrap gap-2">{SKILLS.map(skill=><Button key={skill} variant="secondary" aria-pressed={!hidden.has(skill)} onClick={()=>setHidden(v=>{const next=new Set(v);if(next.has(skill))next.delete(skill);else next.add(skill);return next;})}>{SKILL_LABEL[skill]}</Button>)}</div>
-        {SKILLS.filter(skill=>!hidden.has(skill)).map((skill) => (
+        {SKILLS.map((skill) => (
           <SkillGradeField
             key={skill}
             skill={skill}

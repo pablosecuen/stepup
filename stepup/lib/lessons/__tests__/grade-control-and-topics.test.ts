@@ -28,6 +28,9 @@ test("control de calificación: compacto, zona táctil de 48 px, botones «−»
   assert.match(field, /className="tf-grade min-w-0 flex-1"/);
   assert.match(field, /onChange=\{\(e\) => onChange\(normalizeSkillGradeValue\(Number\(e\.target\.value\)\)\)\}/, "clic en la pista y arrastre actualizan el valor");
   assert.match(parts, /<fieldset className="flex min-w-0 flex-col gap-4">\n\s+<legend[^>]*>Notas por área/, "separación entre criterios");
+  const evaluation = parts.slice(parts.indexOf("export function EvaluationFields"), parts.indexOf("export function HomeworkFields"));
+  assert.doesNotMatch(evaluation, /hidden\.has|setHidden|aria-pressed|<Button/, "sin botones duplicados de áreas encima de las barras");
+  assert.match(evaluation, /\{SKILLS\.map\(\(skill\) => \(/, "todas las barras siguen disponibles");
   const css = read("app/globals.css");
   const grade = css.slice(css.indexOf(".tf-grade {"), css.indexOf("/* Tabla apilable"));
   assert.match(grade, /height: 48px;/);
@@ -35,6 +38,13 @@ test("control de calificación: compacto, zona táctil de 48 px, botones «−»
   assert.equal([...grade.matchAll(/width: 44px;\n\s+height: 30px;/g)].length, 2, "tirador rectangular en WebKit y Firefox");
   assert.equal([...grade.matchAll(/border-radius: 8px;/g)].length, 2, "bordes suaves en ambos navegadores");
   assert.doesNotMatch(grade, /overflow: hidden|user-scalable|maximum-scale/);
+});
+
+test("las cinco listas comparten una sola indicación visible de agregar y mantienen el nombre accesible del campo", () => {
+  const list = read("components/registro/editable-text-list.tsx");
+  assert.match(list, /<legend[^>]*>\{placeholder\}<\/legend>/);
+  assert.match(list, /<label htmlFor=\{id\} className="sr-only">\{placeholder\}<\/label>/);
+  assert.match(list, /<AddItemRow draftKey=\{draftKey\} id=\{id\} label=\{placeholder\} onAdd=\{onAdd\}/);
 });
 
 test("temas sin casilla «Visto» ni rótulo «Planificado»; agregar, editar y eliminar siguen igual y editar sólo cambia el texto (el estado guardado no se toca)", () => {

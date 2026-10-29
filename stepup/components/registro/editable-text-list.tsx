@@ -70,8 +70,8 @@ export function EditableTextList({
   }
 
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2.5">
-      <legend className="mb-1 text-[14px] font-bold text-textPrimary">{label}</legend>
+    <fieldset aria-label={label} className="flex min-w-0 flex-col gap-2.5">
+      <legend className="mb-1 text-[14px] font-bold text-textPrimary">{placeholder}</legend>
       {items.length > 0 && (
         <ul className="flex min-w-0 flex-col gap-2">
           {items.map((item, index) =>
@@ -122,7 +122,7 @@ export function EditableTextList({
         </ul>
       )}
       <div className="flex min-w-0 flex-col gap-1.5">
-        <label htmlFor={id} className="text-sm font-[650] text-textSecondary">{placeholder}</label>
+        <label htmlFor={id} className="sr-only">{placeholder}</label>
         <AddItemRow draftKey={draftKey} id={id} label={placeholder} onAdd={onAdd} />
       </div>
     </fieldset>
