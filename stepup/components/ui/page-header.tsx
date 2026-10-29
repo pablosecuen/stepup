@@ -15,10 +15,17 @@ import type { ReactNode } from "react";
  * Arriba hay poco relleno en escritorio porque la fila superior del shell («Cerrar sesión») ya separa el contenido del borde.
  */
 export const PAGE_WIDTH = {
-  wide: "mx-auto w-full max-w-[1180px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
-  medium: "mx-auto w-full max-w-[960px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
-  narrow: "mx-auto w-full max-w-[760px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
+  wide: "tf-screen mx-auto w-full max-w-[1180px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
+  medium: "tf-screen mx-auto w-full max-w-[960px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
+  narrow: "tf-screen mx-auto w-full max-w-[760px] px-4 py-5 nav:px-10 nav:pb-[30px] nav:pt-2",
 } as const;
+
+/**
+ * Ancho de lectura de una lista de filas o tarjetas (Recordatorios, Clases por registrar): sin tope, en un escritorio de 1366 px cada fila
+ * se estira ~1.100 px y el dato queda lejos de su acción. En móvil no limita nada (la pantalla ya es más angosta); a la grilla de dos
+ * columnas de Recordatorios cada sección le queda por debajo de este máximo.
+ */
+export const READING_WIDTH = "w-full max-w-[720px]";
 
 export const PAGE_TITLE_CLASS =
   "font-display text-[34px] font-medium leading-[1.06] tracking-[-0.03em] text-textPrimary [overflow-wrap:anywhere] max-[360px]:text-[30px] nav:text-[44px]";

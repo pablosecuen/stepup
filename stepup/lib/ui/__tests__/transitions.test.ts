@@ -84,7 +84,7 @@ test("el esqueleto aparece al instante (sin animación propia ni brillo), con la
   const skeleton = code("components/ui/page-skeleton.tsx");
   assert.match(skeleton, /data-tf-skeleton/);
   assert.doesNotMatch(skeleton, /animate-|infinite|transition/);
-  assert.match(skeleton, /PAGE_WIDTH\[WIDTH\[variant\]\]/, "mismo contenedor que la pantalla final");
+  assert.match(skeleton, /PAGE_WIDTH\[width \?\? WIDTH\[variant\]\]/, "mismo contenedor que la pantalla final");
   for (const variant of ["list", "calendar", "finance", "profile", "form", "settings", "detail"]) assert.ok(skeleton.includes(`"${variant}"`), variant);
   const found = loadings("app/(app)");
   for (const route of ["alumnos", "alumnos/[id]", "alumnos/nuevo", "alumnos/[id]/editar", "calendario", "calendario/nueva", "calendario/series", "calendario/disponibilidad", "cobros", "resumen-financiero", "recordatorios", "registro", "registro/nuevo", "registro/[calendarLessonId]", "configuracion"]) assert.ok(found.includes(`app/(app)/${route}/loading.tsx`), route);

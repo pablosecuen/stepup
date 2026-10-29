@@ -5,9 +5,9 @@ Una sola curva, tres duraciones y ningún efecto permanente. Todo vive en `app/g
 
 | Qué | Cómo | Duración |
 |---|---|---|
-| Pantalla nueva | `.tf-page-main > *` (hijo directo de `<main>`): opacidad + 10 px, curva de salida suave (`cubic-bezier(.16,1,.3,1)`), sin rebote | 220 ms |
+| Pantalla nueva | Todo contenedor `PAGE_WIDTH` lleva `.tf-screen`: sus hijos directos entran como Inicio (opacidad + 10 px, `cubic-bezier(.16,1,.3,1)`, sin rebote) en tres grupos —1.º encabezado, 2.º cuerpo, 3.º en adelante paneles— a 0 / 40 / 80 ms. `ScreenReveal` (layout privado) pone `data-tf-revealed` al terminar y desde ahí nada dentro de la pantalla vuelve a animar al insertarse (escribir, filtrar, guardar). Lo que no usa `PAGE_WIDTH` (errores, avisos) conserva la entrada de raíz: `.tf-page-main > *` | 220 ms |
 | Grupos de una pantalla (Inicio) | `.tf-enter` + `data-enter="1\|2\|3"` (encabezado → principal → paneles) y `data-tf-groups` en la raíz | 0 / 40 / 80 ms de retraso (total ≤ 300 ms) |
-| Contenido que cambia sin cambiar de pantalla (pestañas del perfil, semana/día del Calendario, resultados de Alumnos) | `<EnterOnChange changeKey>`: Web Animations sobre el mismo bloque, sin remontar (se conservan foco, scroll y estado) | 220 ms |
+| Contenido que cambia sin cambiar de pantalla (pestañas del perfil, semana/día del Calendario, **página** de resultados de Alumnos: escribir, filtrar y ordenar NO animan) | `<EnterOnChange changeKey>`: Web Animations sobre el mismo bloque, sin remontar (se conservan foco, scroll y estado) | 220 ms |
 | Diálogo (escritorio) | `.tf-dialog`: opacidad + escala 0,98 → 1; fondo `bg-ink/40`; cierra más rápido | 180 ms / 110 ms |
 | Hoja móvil | `.tf-dialog` por debajo de 820 px: sube 28 px con opacidad; cierra más rápido | 220 ms / 130 ms |
 | Menús y selectores propios | `.tf-menu`: opacidad + escala desde el borde superior (cierra al instante) | 160 ms |
@@ -23,7 +23,7 @@ reserva el ancho de la barra de desplazamiento para que el contenido de atrás n
 
 ## Esqueletos
 `PageSkeleton` tiene siete variantes (`list`, `calendar`, `finance`, `profile`, `form`, `settings`, `detail`) con el mismo contenedor (`PAGE_WIDTH`) y las
-mismas alturas que la pantalla final. Hay un `loading.tsx` por ruta con página (incluidas las anidadas: perfil, edición, formularios, series, disponibilidad).
+mismas alturas que la pantalla final. Hay un `loading.tsx` por ruta con página (incluidas las anidadas: perfil, edición, formularios, series, disponibilidad, información, consistencia, tutorial, condiciones, planes, resultado del pago y comportamiento de pago); una prueba obliga a que toda página nueva traiga el suyo (con `width` cuando su ancho no es el de la variante).
 **Inicio no tiene `loading.tsx`** (su redirect de recuperación de sesión, B0, debe seguir siendo un redirect HTTP real del servidor).
 
 ## Precarga por intención (sigue apagada la precarga automática)

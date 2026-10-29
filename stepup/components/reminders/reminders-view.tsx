@@ -2,7 +2,7 @@ import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Badge } from "@/components/ui/badge";
 import { linkClass } from "@/components/ui/button";
-import { BackLink, PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { BackLink, PageHeader, PAGE_WIDTH, READING_WIDTH } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { REMINDER_ICONS } from "@/components/reminders/reminder-icons";
 import type { RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
@@ -31,25 +31,29 @@ export function RemindersView({ summary }: { summary: RemindersCenterSummary }) 
           <EmptyState icon={CheckCircleIcon} message="Todo al día. No hay recordatorios pendientes." />
         </div>
       ) : (
-        <div className="mt-6 flex flex-col gap-7">
+        <div className="mt-6 grid grid-cols-1 items-start gap-x-6 gap-y-6 min-[1040px]:grid-cols-2">
           {summary.categories.map((category) => {
             const { icon: Icon, tone } = REMINDER_ICONS[category.kind];
             return (
-              <section key={category.kind} aria-labelledby={`reminders-${category.kind}`}>
+              <section key={category.kind} aria-labelledby={`reminders-${category.kind}`} className={`min-w-0 ${READING_WIDTH}`}>
                 <div className="flex items-center gap-3">
-                  <span aria-hidden className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-pill ${tone === "bad" ? "bg-badSoft text-bad" : "bg-warnSoft text-warn"}`}>
+                  <span aria-hidden className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-pill ${tone === "bad" ? "bg-badSoft text-bad" : "bg-warnSoft text-warn"}`}>
                     <Icon className="h-5 w-5" />
                   </span>
                   <h2 id={`reminders-${category.kind}`} className="min-w-0 font-display text-section font-semibold [overflow-wrap:anywhere]">
                     {category.label}
                   </h2>
-                  <Badge tone="bad">{category.items.length}</Badge>
+                  {/* El número va siempre escrito (y con su explicación para lectores de pantalla): el rojo sólo acompaña. */}
+                  <Badge tone="bad">
+                    {category.items.length}
+                    <span className="sr-only"> {category.items.length === 1 ? "pendiente" : "pendientes"}</span>
+                  </Badge>
                 </div>
-                <ul className="mt-3 overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card">
+                <ul className="mt-2.5 overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card">
                   {category.items.map((item) => (
-                    <li key={item.id} className="min-h-14 border-b border-border px-4 py-3 last:border-b-0 nav:px-5">
-                      <p className="text-[15px] font-[650] text-textPrimary [overflow-wrap:anywhere]">{item.title}</p>
-                      <p className="mt-0.5 text-[13.5px] text-textMuted tf-num [overflow-wrap:anywhere]">{item.subtitle}</p>
+                    <li key={item.id} className="border-b border-border px-4 py-2.5 last:border-b-0">
+                      <p className="text-[15px] font-[650] leading-snug text-textPrimary [overflow-wrap:anywhere]">{item.title}</p>
+                      <p className="mt-0.5 text-[13.5px] leading-snug text-textMuted tf-num [overflow-wrap:anywhere]">{item.subtitle}</p>
                     </li>
                   ))}
                 </ul>

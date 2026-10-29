@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
-import { PAGE_WIDTH, PageHeader } from "@/components/ui/page-header";
+import { PAGE_WIDTH, PageHeader, READING_WIDTH } from "@/components/ui/page-header";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
@@ -35,7 +35,7 @@ export function PendingListView({ pending }: { pending: PendingLessonItem[] }) {
           <EmptyState icon={ClipboardDocumentCheckIcon} message="No hay clases ni entrenamientos pendientes de registrar." />
         </div>
       ) : (
-        <ul className="mt-6 flex flex-col gap-3">
+        <ul className={`mt-6 flex flex-col gap-3 ${READING_WIDTH}`}>
           {pending.map(({ item, registrationState, completedParticipants, totalParticipants }) => {
             const dateLabel = formatInstantDayShort(item.start);
             const timeLabel = formatInstantTime(item.start);

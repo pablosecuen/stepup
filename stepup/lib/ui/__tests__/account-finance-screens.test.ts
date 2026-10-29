@@ -181,7 +181,7 @@ test("inventario de anchos: cada pantalla privada usa la primitiva compartida PA
   const offenders = [...sources("app/(app)"), ...sources("components")].filter((file) => file !== "components/ui/page-header.tsx" && /mx-auto w-full max-w-\[(1180|960|760)px\] px-4/.test(read(file)));
   assert.deepEqual(offenders, [], "ninguna pantalla repite las clases de ancho de página");
   const header = code("components/ui/page-header.tsx");
-  assert.match(header, /wide: "mx-auto w-full max-w-\[1180px\] px-4 py-5 nav:px-10 nav:pb-\[30px\] nav:pt-2"/);
+  assert.match(header, /wide: "tf-screen mx-auto w-full max-w-\[1180px\] px-4 py-5 nav:px-10 nav:pb-\[30px\] nav:pt-2"/);
   // Lo que NO se ensancha: autenticación y diálogos conservan su lectura angosta
   for (const file of ["components/auth/auth-shell.tsx", "app/iniciando-sesion/page.tsx"]) assert.match(code(file), /max-w-\[440px\]/, file);
   assert.doesNotMatch(code("components/ui/dialog.tsx"), /PAGE_WIDTH/);

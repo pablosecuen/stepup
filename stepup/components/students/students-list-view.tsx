@@ -69,7 +69,8 @@ export function StudentsListView({
         <ManageLevelsSection customLevels={customLevels} />
       </div>
 
-      <EnterOnChange changeKey={`${search}|${status}|${level}|${modality}|${paymentStatus}|${sortBy}|${page}`}>
+      {/* Sólo entra al cambiar de página de resultados: escribir, filtrar u ordenar actualizan la lista en su lugar, sin animar de nuevo. */}
+      <EnterOnChange changeKey={`pagina-${page}`}>
       {rows.length > 0 ? (
         <>
           <ul className="mt-5 flex flex-col gap-3 nav:hidden">

@@ -44,7 +44,7 @@ test("el contenedor aprovecha el ancho del shell (el de las listas), también en
   const page = code(`${DIR}/page.tsx`);
   assert.equal((page.match(/className=\{PAGE_WIDTH\.wide\}/g) ?? []).length, 2);
   const widths = read("components/ui/page-header.tsx");
-  assert.match(widths, /wide: "mx-auto w-full max-w-\[1180px\] px-4 py-5 nav:px-10/, "márgenes laterales razonables");
+  assert.match(widths, /wide: "tf-screen mx-auto w-full max-w-\[1180px\] px-4 py-5 nav:px-10/, "márgenes laterales razonables");
   assert.match(page, /<AvailabilityEditor initial=\{availability\} \/>/);
 });
 

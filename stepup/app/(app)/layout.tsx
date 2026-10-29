@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { PrimaryNav } from "@/components/nav/primary-nav";
 import { NavigationProgress } from "@/components/nav/navigation-progress";
+import { ScreenReveal } from "@/components/nav/screen-reveal";
 import { SoftKeyboardSync } from "@/components/nav/soft-keyboard-sync";
 import { SignOutButton } from "@/components/nav/sign-out-button";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -68,6 +69,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div data-tf-navigation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} className="min-h-screen nav:pl-[236px]">
       <DeviceSessionWatcher />
       <NavigationProgress />
+      <ScreenReveal />
       <SoftKeyboardSync />
       {configured && user && <StudentFileCleanup />}
       <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />

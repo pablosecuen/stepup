@@ -465,9 +465,21 @@ html:has(.tf-landing) {
   /* Pantalla nueva: entra el contenido (hijo directo de <main>); el esqueleto de carga no se anima (aparece al instante) y las pantallas con
      grupos propios (`data-tf-groups`) escalonan sus bloques con `.tf-enter` + `data-enter`. La barra lateral y la navegación viven fuera
      de <main>: nunca se vuelven a animar. */
-  .tf-page-main > :not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-overlay]),
+  .tf-page-main > :not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-overlay]):not(.tf-screen),
   .tf-enter {
     animation: tf-page-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  /* Toda pantalla con contenedor `PAGE_WIDTH` (`.tf-screen`) entra como Inicio —encabezado → principal → paneles, 0 / 40 / 80 ms— SIN marcar
+     cada bloque a mano: el hijo 1 es el encabezado, el 2 el cuerpo y del 3 en adelante los paneles. Corre UNA sola vez por pantalla:
+     `ScreenReveal` pone `data-tf-revealed` al terminar y, desde ahí, escribir, filtrar, guardar o un aviso que aparece no vuelven a animar nada. */
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > * {
+    animation: tf-page-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(n + 3) {
+    animation-delay: 80ms;
   }
   .tf-enter[data-enter="2"] {
     animation-delay: 40ms;

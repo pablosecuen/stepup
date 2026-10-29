@@ -145,9 +145,10 @@ function Body({ variant }: { variant: SkeletonVariant }) {
   }
 }
 
-export function PageSkeleton({ label, variant = "list" }: { label: string; variant?: SkeletonVariant }) {
+/** `width`: sólo cuando la pantalla final no usa el ancho habitual de su variante (p. ej. una subpágina angosta dentro de una sección ancha). */
+export function PageSkeleton({ label, variant = "list", width }: { label: string; variant?: SkeletonVariant; width?: keyof typeof PAGE_WIDTH }) {
   return (
-    <div data-tf-skeleton="" role="status" aria-busy="true" aria-live="polite" aria-labelledby="carga-titulo" className={PAGE_WIDTH[WIDTH[variant]]}>
+    <div data-tf-skeleton="" role="status" aria-busy="true" aria-live="polite" aria-labelledby="carga-titulo" className={PAGE_WIDTH[width ?? WIDTH[variant]]}>
       <span id="carga-titulo" className="sr-only">
         {label}
       </span>
