@@ -30,12 +30,16 @@ function ProgressInner() {
   const timersRef = useRef<number[]>([]);
   const keyRef = useRef(routeKey);
   const pathRef = useRef(pathname);
+  // Destinos («/ruta») pulsados en una ráfaga de clics que aún no terminó: si llegan respuestas de uno anterior (otra pantalla del recorrido) el esqueleto del último
+  // destino se mantiene, en lugar de mostrar un instante cada pantalla intermedia.
+  const burstRef = useRef(new Set<string>());
 
   function clearPending(keepSkeleton = false) {
     for (const id of timersRef.current) window.clearTimeout(id);
     timersRef.current = [];
     pendingRef.current?.anchor.removeAttribute("data-nav-pending");
     pendingRef.current = null;
+    if (!keepSkeleton) burstRef.current.clear();
     // Al rendirse la barra (20 s) el esqueleto SIGUE (con su aviso y Reintentar): sólo se retira al cambiar la ruta o al hacer otro clic.
     if (!keepSkeleton) clearPendingNavigation();
     setPhase(null);
@@ -45,8 +49,12 @@ function ProgressInner() {
   useEffect(() => {
     keyRef.current = routeKey;
     pathRef.current = pathname;
-    if (pendingRef.current && pendingRef.current.startKey !== routeKey) clearPending();
-    else if (!pendingRef.current) clearPendingNavigation(); // la navegación (clic o historial) completó: el esqueleto optimista ya no aplica
+    const pending = pendingRef.current;
+    if (pending && pending.startKey !== routeKey) {
+      // Llegó una pantalla intermedia de la ráfaga (no la última pulsada): el destino final sigue en camino y su esqueleto debe seguir a la vista.
+      if (pathname !== pathnameOf(pending.destination) && burstRef.current.has(pathname)) return;
+      clearPending();
+    } else if (!pending) clearPendingNavigation(); // la navegación (clic o historial) completó: el esqueleto optimista ya no aplica
   }, [routeKey, pathname]);
 
   useEffect(() => {
@@ -73,7 +81,8 @@ function ProgressInner() {
         event.stopPropagation();
         return;
       }
-      if (decision === "replace") clearPending();
+      if (decision === "replace") clearPending(true); // otro destino mientras hay uno pendiente: el esqueleto no se retira (lo reemplaza el del nuevo destino)
+      burstRef.current.add(pathnameOf(intent.destination));
       anchor.setAttribute("data-nav-pending", "true");
       pendingRef.current = { destination: intent.destination, startKey: keyRef.current, anchor };
       setPhase("pending");

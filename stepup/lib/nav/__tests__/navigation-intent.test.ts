@@ -78,7 +78,8 @@ test("cableado: un solo escucha en el documento (captura), se restablece al camb
   const component = code("components/nav/navigation-progress.tsx");
   assert.match(component, /document\.addEventListener\("click", onClick, \{ capture: true \}\)/);
   assert.match(component, /window\.addEventListener\("popstate", onHistory\)/);
-  assert.match(component, /pendingRef\.current\.startKey !== routeKey/, "la ruta cambió: completó");
+  assert.match(component, /pending\.startKey !== routeKey/, "la ruta cambió: completó");
+  assert.match(component, /pathname !== pathnameOf\(pending\.destination\) && burstRef\.current\.has\(pathname\)\) return;/, "una pantalla intermedia de una ráfaga de clics no retira el esqueleto del último destino");
   assert.match(component, /window\.setTimeout\(\(\) => clearPending\(true\), GIVE_UP_AFTER_MS\)/, "falla o cuelgue: la barra se apaga sola (el esqueleto sigue, con su aviso y Reintentar)");
   assert.match(component, /removeAttribute\("data-nav-pending"\)/);
   assert.match(component, /decision === "block_repeat"[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);

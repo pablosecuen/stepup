@@ -559,7 +559,7 @@ function DisponibilidadBody({ title }: { title: string }) {
         <Card>
           <h2 className="font-display text-card font-semibold">Bloqueos semanales</h2>
           <ul className="mt-3 flex flex-col gap-2">
-            {[0, 1].map((row) => (
+            {[0].map((row) => (
               <li key={row} className={AVAILABILITY_ROW_CLASS}>
                 <span className="min-w-0 py-1.5">
                   <Ph text="Lunes 00:00–00:00 · Trabajo" />

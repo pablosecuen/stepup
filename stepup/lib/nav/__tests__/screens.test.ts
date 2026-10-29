@@ -89,8 +89,9 @@ test("destino pendiente: se publica, avisa a quien lo mira y deja de aplicar al 
   setPendingNavigation({ destination: "/cobros", fromPath: "/alumnos" });
   assert.equal(notified, 1, "el mismo valor no vuelve a avisar");
   assert.equal(activePendingNavigation(getPendingNavigation(), "/alumnos")?.destination, "/cobros", "mientras la ruta sea la de origen, aplica");
-  assert.equal(activePendingNavigation(getPendingNavigation(), "/cobros"), null, "ya cambió la ruta: el esqueleto optimista no se ve junto a la pantalla real");
-  assert.equal(activePendingNavigation(getPendingNavigation(), "/calendario"), null);
+  assert.equal(activePendingNavigation(getPendingNavigation(), "/cobros"), null, "llegó al destino: el esqueleto optimista no se ve junto a la pantalla real");
+  // Ráfaga de clics: llega la pantalla de un destino ANTERIOR (otra ruta que no es la última pulsada): el esqueleto del último destino sigue a la vista
+  assert.equal(activePendingNavigation(getPendingNavigation(), "/calendario")?.destination, "/cobros", "pantalla intermedia: no reemplaza al esqueleto del último destino");
   assert.equal(activePendingNavigation(null, "/alumnos"), null);
   clearPendingNavigation();
   assert.equal(getPendingNavigation(), null);

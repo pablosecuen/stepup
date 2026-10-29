@@ -1,3 +1,5 @@
+import { pathnameOf } from "./screens.ts";
+
 /**
  * Destino pendiente de la navegación en curso (29/10/2026): UN valor compartido entre quien detecta el clic (`NavigationProgress`) y quienes
  * lo muestran (el esqueleto optimista de `ScreenSlot` y la pestaña activa de la navegación). Guarda además la ruta DESDE la que se salió:
@@ -44,7 +46,11 @@ export function clearPendingNavigation(): void {
   emit();
 }
 
-/** La navegación pendiente SÓLO aplica mientras la ruta siga siendo aquella desde la que se hizo clic. */
+/**
+ * La navegación pendiente aplica mientras la ruta actual NO sea todavía la del destino: así, en una ráfaga de clics, las pantallas intermedias que lleguen
+ * antes (sin ser el último destino) no reemplazan al esqueleto del último destino; y al llegar al destino deja de aplicar en ese mismo render. Quien la
+ * retira del almacén (`NavigationProgress`) lo hace al llegar al destino o al ir a una ruta ajena a la ráfaga (una redirección).
+ */
 export function activePendingNavigation(pending: PendingNavigation | null, pathname: string): PendingNavigation | null {
-  return pending && pending.fromPath === pathname ? pending : null;
+  return pending && pathnameOf(pending.destination) !== pathname ? pending : null;
 }
