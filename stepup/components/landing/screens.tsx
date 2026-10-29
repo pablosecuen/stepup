@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowRightIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { MockApp, MockHeader } from "@/components/landing/frame";
+import { MockApp, MockHeader, NotificationBadge } from "@/components/landing/frame";
 import { CANCELLED_COLORS, CARD_TEXT_COLORS, CURRENT_TIME_COLOR, ELAPSED_COLORS, MODALITY_COLORS, MODALITY_LABELS, REPLACEMENT_COLORS, type LessonModality } from "@/lib/calendar-theme";
 import { formatMoney } from "@/lib/format/number-format";
 import {
@@ -33,9 +33,9 @@ const CHARGE_TONE: Record<DemoChargeState, BadgeTone> = { "Vence hoy": "warn", V
 
 function Figure({ value, label, tone }: { value: string; label: string; tone?: string }) {
   return (
-    <div className="min-w-0 px-3.5 first:pl-0">
+    <div className="min-w-0 px-2.5 first:pl-0 min-[820px]:px-3.5">
       <p className={`font-display text-[26px] font-medium leading-none tracking-tight tf-num ${tone ?? ""}`}>{value}</p>
-      <p className="mt-1 text-[12px] font-medium leading-tight text-textMuted">{label}</p>
+      <p className="tf-fig-label mt-1 text-[11.5px] font-medium leading-tight tracking-[-0.01em] text-textMuted min-[820px]:text-[12px] min-[820px]:tracking-normal">{label}</p>
     </div>
   );
 }
@@ -109,14 +109,14 @@ export function ScreenInicio() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <div className={PANEL}>
-            <PanelTitle right={<Badge>2</Badge>}>Clases por registrar</PanelTitle>
+            <PanelTitle right={<NotificationBadge count={2} />}>Clases por registrar</PanelTitle>
             {[
               ["Sofía Ibarra", "lun 12 oct · 10:00"],
               ["Mateo Sosa", "lun 12 oct · 15:00"],
             ].map(([name, when]) => (
               <div key={name} className="flex items-center justify-between gap-2 border-t border-border px-3.5 py-2">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-bold leading-tight">{name}</p>
+                  <p className="tf-name text-[13px] font-bold leading-tight">{name}</p>
                   <p className="text-[12px] text-textMuted tf-num">{when}</p>
                 </div>
                 <ChevronRightIcon className="h-4 w-4 shrink-0 text-textMuted" />
@@ -153,7 +153,7 @@ function DayRow({ lesson }: { lesson: DemoDayLesson }) {
       <span className={`font-display text-[15px] font-semibold tf-num ${cancelled || lesson.state === "Pasada" ? "text-textSecondary" : ""}`}>{lesson.time}</span>
       <span className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <span className="min-w-0">
-          <span className={`block text-[13.5px] font-bold leading-tight ${cancelled ? "text-textSecondary line-through" : ""}`}>{lesson.title}</span>
+          <span className={`tf-name text-[13.5px] font-bold leading-tight ${cancelled ? "text-textSecondary line-through" : ""}`}>{lesson.title}</span>
           <span className="block text-[12px] text-textMuted">{MODALITY_LABELS[lesson.modality]}</span>
         </span>
         {lesson.state && <Badge tone={stateTone(lesson.state)}>{lesson.state}</Badge>}
@@ -337,7 +337,7 @@ export function ScreenAlumnos() {
             <li key={student.name} className="flex items-center gap-3 border-b border-border px-3.5 py-2.5 last:border-b-0">
               <Avatar initial={student.name[0]} tone={student.tone} size="m" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-bold leading-tight">{student.name}</span>
+                <span className="tf-name text-[13.5px] font-bold leading-tight">{student.name}</span>
                 <span className="block text-[12px] text-textMuted">
                   Nivel {student.level} · {MODALITY_LABELS[student.modality]}
                 </span>
@@ -444,7 +444,7 @@ export function ScreenPerfil({ tab = "Resumen", framed = true }: { tab?: Profile
       <div className="flex flex-wrap items-center gap-3">
         <Avatar initial="L" tone={student.tone} size="l" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[22px] font-medium leading-tight tracking-[-0.02em]">{student.name}</p>
+          <p className="tf-name font-display text-[22px] font-medium leading-tight tracking-[-0.02em]">{student.name}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[12.5px] text-textSecondary">
             Nivel {student.level} · Presencial <Badge tone="ok">Activo</Badge>
           </p>
@@ -472,7 +472,7 @@ export function ChargeRows({ limit = 5 }: { limit?: number }) {
         <li key={charge.student} className="flex items-center gap-3 border-b border-border px-3.5 py-2.5 last:border-b-0">
           <Avatar initial={charge.student[0]} tone={charge.tone} size="m" />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-bold leading-tight">{charge.student}</span>
+            <span className="tf-name text-[13.5px] font-bold leading-tight">{charge.student}</span>
             <span className="block text-[12px] text-textMuted">
               {charge.concept} · vence <span className="tf-num">{charge.due}</span>
             </span>
@@ -503,7 +503,7 @@ export function ScreenCobros() {
         <li className="px-3.5 pb-1 pt-3 font-display text-[16px] font-semibold tracking-tight">Pagos registrados</li>
         {DEMO_PAYMENTS.slice(0, 2).map((payment) => (
           <li key={payment.student} className="flex items-center justify-between gap-3 border-t border-border px-3.5 py-2 text-[13px]">
-            <span className="min-w-0">
+            <span className="tf-name">
               <b className="font-bold">{payment.student}</b> <span className="text-textMuted tf-num">· {payment.date}</span>
             </span>
             <span className="font-bold text-ok tf-num">{formatMoney(payment.amount)}</span>
@@ -519,17 +519,23 @@ export function BudgetDonut({ total, size = 132 }: { total: number; size?: numbe
   const strokes = ["stroke-dataNeeds", "stroke-pastelLavenderText", "stroke-pastelSageText"];
   const offsets = DEMO_BUDGET.map((_, index) => 25 - DEMO_BUDGET.slice(0, index).reduce((sum, item) => sum + item.percent, 0));
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 36 36" className="h-full w-full">
-        <circle cx="18" cy="18" r="15.9155" fill="none" strokeWidth="4.2" className="stroke-paperDeep" />
-        {DEMO_BUDGET.map((item, index) => (
-          <circle key={item.key} cx="18" cy="18" r="15.9155" fill="none" strokeWidth="4.2" strokeDasharray={`${item.percent - 0.6} ${100 - item.percent + 0.6}`} strokeDashoffset={offsets[index]} className={strokes[index]} />
-        ))}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[11px] font-[650] text-textMuted">Cobrado</span>
-        <span className="font-display text-[15px] font-semibold leading-tight tf-num">{formatMoney(total)}</span>
+    <div className="shrink-0">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg viewBox="0 0 36 36" className="h-full w-full">
+          <circle cx="18" cy="18" r="15.9155" fill="none" strokeWidth="4.2" className="stroke-paperDeep" />
+          {DEMO_BUDGET.map((item, index) => (
+            <circle key={item.key} cx="18" cy="18" r="15.9155" fill="none" strokeWidth="4.2" strokeDasharray={`${item.percent - 0.6} ${100 - item.percent + 0.6}`} strokeDashoffset={offsets[index]} className={strokes[index]} />
+          ))}
+        </svg>
+        {/* Escritorio: el importe va en el centro. En móvil el aro es chico: el importe pasa debajo (ver .tf-donut-caption). */}
+        <div className="tf-donut-center absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-[11px] font-[650] text-textMuted">Cobrado</span>
+          <span className="font-display text-[15px] font-semibold leading-tight tf-num">{formatMoney(total)}</span>
+        </div>
       </div>
+      <p className="tf-donut-caption mt-1.5 text-center text-[12px] font-[650] text-textMuted" style={{ width: size }}>
+        Cobrado <span className="font-display text-[14px] font-semibold text-textPrimary tf-num">{formatMoney(total)}</span>
+      </p>
     </div>
   );
 }

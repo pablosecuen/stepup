@@ -32,13 +32,13 @@ const EYEBROW = "text-label font-bold uppercase text-accentDark";
 const par = (k: number): CSSProperties => ({ "--k": `${k}px` }) as CSSProperties;
 
 function Eyebrow({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
-  return <p className={`text-label font-bold uppercase ${dark ? "text-sideAccent" : "text-accentDark"}`}>{children}</p>;
+  return <p className={`tf-eyebrow text-label font-bold uppercase ${dark ? "tf-eyebrow-dark text-sideAccent" : "text-accentDark"}`}>{children}</p>;
 }
 
 function Check({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
   return (
     <li className="flex items-start gap-3">
-      <CheckCircleIcon className={`mt-0.5 h-5 w-5 shrink-0 ${dark ? "text-sideAccent" : "text-ok"}`} aria-hidden />
+      <CheckCircleIcon className={`mt-0.5 h-5 w-5 shrink-0 ${dark ? "text-sideAccent" : "tf-check"}`} aria-hidden />
       <span>{children}</span>
     </li>
   );
@@ -48,7 +48,7 @@ function Check({ children, dark = false }: { children: ReactNode; dark?: boolean
 
 export function Hero() {
   return (
-    <section id="top" aria-labelledby="hero-title" className="relative overflow-hidden pb-14 pt-10 nav:pb-24 nav:pt-16">
+    <section id="top" aria-labelledby="hero-title" className="tf-s-hero relative overflow-hidden pb-14 pt-10 nav:pb-24 nav:pt-16">
       <div className={WRAP}>
         <div className="mx-auto max-w-[900px] nav:text-center">
           <p style={{ animationDelay: "0ms" }} className="motion-safe:animate-tf-rise">
@@ -64,12 +64,12 @@ export function Hero() {
           <p style={{ animationDelay: "120ms" }} className="mt-5 text-[17px] leading-relaxed text-textSecondary motion-safe:animate-tf-rise nav:mx-auto nav:max-w-[700px] nav:text-[20px]">
             TeacherFlow es la plataforma web para profesoras y profesores independientes. Organizá tus clases y series, llevá el seguimiento de cada alumno y controlá qué cobraste y qué vence, sin planillas ni cuadernos.
           </p>
-          <div style={{ animationDelay: "180ms" }} className="mt-7 flex flex-col gap-3 motion-safe:animate-tf-rise min-[480px]:flex-row nav:justify-center">
-            <ButtonLink href="/crear-cuenta" variant="accent" size="lg">
+          <div style={{ animationDelay: "180ms" }} className="mt-7 flex flex-col items-start gap-3 motion-safe:animate-tf-rise min-[480px]:flex-row min-[480px]:items-center nav:justify-center">
+            <ButtonLink href="/crear-cuenta" variant="accent" size="lg" className="tf-ctl">
               Crear cuenta
               <ArrowRightIcon className="h-5 w-5" aria-hidden />
             </ButtonLink>
-            <ButtonLink href="/login" variant="secondary" size="lg">
+            <ButtonLink href="/login" variant="secondary" size="lg" className="tf-ctl">
               Iniciar sesión
             </ButtonLink>
           </div>
@@ -147,7 +147,7 @@ const PRODUCT_INDEX = [
 
 export function ProductIndex() {
   return (
-    <section id="producto" aria-labelledby="producto-title" className="tf-cv scroll-mt-20 border-y border-border bg-surface py-14 nav:py-24">
+    <section id="producto" aria-labelledby="producto-title" className="tf-cv tf-s-surface scroll-mt-20 border-y border-border py-14 nav:py-24">
       <div className={`${WRAP} grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16`}>
         <Reveal>
           <Eyebrow>Todo en un solo lugar</Eyebrow>
@@ -162,7 +162,7 @@ export function ProductIndex() {
           {PRODUCT_INDEX.map((item, index) => (
             <Reveal as="li" key={item.n} delay={index * 40}>
               <a href={item.href} className="group grid min-h-[64px] grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-3.5 transition-colors duration-200 hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink motion-reduce:transition-none nav:grid-cols-[3rem_minmax(0,1fr)_auto] nav:px-2">
-                <span className="font-display text-[15px] font-medium text-accentDark tf-num">{item.n}</span>
+                <span className="tf-index-n font-display text-[15px] font-medium tf-num">{item.n}</span>
                 <span className="min-w-0">
                   <span className="block font-display text-[21px] font-semibold leading-tight tracking-tight nav:text-[24px]">{item.title}</span>
                   <span className="mt-0.5 block text-[14.5px] text-textSecondary">{item.text}</span>
@@ -180,7 +180,7 @@ export function ProductIndex() {
 /** Escena A — Agenda, series y disponibilidad: texto angosto a la izquierda; la ventana se extiende hasta el borde derecho. */
 export function SceneAgenda() {
   return (
-    <section id="agenda" aria-labelledby="agenda-title" className="tf-cv relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
+    <section id="agenda" aria-labelledby="agenda-title" className="tf-cv tf-s-cream relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
       <div className={`${WRAP} grid items-center gap-10 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-14`}>
         <Reveal>
           <Eyebrow>Agenda, series y disponibilidad</Eyebrow>
@@ -195,7 +195,7 @@ export function SceneAgenda() {
             <Check>Bloqueos de disponibilidad: almuerzos, vacaciones y feriados.</Check>
             <Check>Aviso de conflicto al crear o reprogramar una clase.</Check>
           </ul>
-          <a href="#calendario" className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-[650] text-accentDark underline-offset-[3px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ink">
+          <a href="#calendario" className="tf-ctl mt-5 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-[650] text-accentDark underline-offset-[3px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ink">
             Ver el Calendario en detalle <ArrowDownIcon className="h-4 w-4" aria-hidden />
           </a>
         </Reveal>
@@ -227,7 +227,7 @@ export function SceneAgenda() {
 /** Escena B — Alumnos: fondo oscuro, composición invertida (ventana a la izquierda). */
 export function SceneStudents() {
   return (
-    <section id="alumnos-resumen" aria-labelledby="alumnos-resumen-title" className="tf-cv relative scroll-mt-20 overflow-hidden bg-side py-16 text-white nav:py-28">
+    <section id="alumnos-resumen" aria-labelledby="alumnos-resumen-title" className="tf-cv tf-s-brown relative scroll-mt-20 overflow-hidden py-16 text-white nav:py-28">
       <div className={`${WRAP} grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-16`}>
         <MockScene label="Lista de alumnos de TeacherFlow con nivel, modalidad, próxima clase y estado de pago de cada uno. Sobre la ventana, el detalle de una alumna y un reporte en PDF. Información ilustrativa." className="relative order-2 min-w-0 lg:order-1 lg:-ml-[max(0px,calc((100vw-1240px)/2+40px))]">
           <Reveal>
@@ -262,7 +262,7 @@ export function SceneStudents() {
             <Check dark>Historial de clases y progreso.</Check>
             <Check dark>Reportes en PDF para compartir.</Check>
           </ul>
-          <a href="#alumnos" className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-[650] text-sideAccent underline-offset-[3px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent">
+          <a href="#alumnos" className="tf-ctl mt-5 inline-flex min-h-11 items-center gap-1.5 text-[15px] font-[650] text-sideAccent underline-offset-[3px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent">
             Ver el perfil en detalle <ArrowDownIcon className="h-4 w-4" aria-hidden />
           </a>
         </Reveal>
@@ -274,7 +274,7 @@ export function SceneStudents() {
 /** Escena C — Cobros: título centrado y una computadora ancha con paneles a los lados. */
 export function SceneCollections() {
   return (
-    <section id="cobros-resumen" aria-labelledby="cobros-resumen-title" className="tf-cv relative scroll-mt-20 overflow-hidden bg-paperDeep py-16 nav:py-28">
+    <section id="cobros-resumen" aria-labelledby="cobros-resumen-title" className="tf-cv tf-s-lav relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
       <div className={WRAP}>
         <Reveal className="mx-auto max-w-[760px] text-center">
           <Eyebrow>Cobros, vencimientos y resumen financiero</Eyebrow>
@@ -323,7 +323,7 @@ const TOUR_ITEMS: readonly TourItem[] = [
 
 export function TourSection() {
   return (
-    <section id="recorrido" aria-labelledby="recorrido-title" className="tf-cv scroll-mt-20 py-16 nav:py-28">
+    <section id="recorrido" aria-labelledby="recorrido-title" className="tf-cv tf-s-surface scroll-mt-20 py-16 nav:py-28">
       <div className={WRAP}>
         <Reveal className="mx-auto max-w-[720px] text-center">
           <Eyebrow>Recorrido</Eyebrow>
@@ -332,7 +332,7 @@ export function TourSection() {
           </h2>
           <p className="mt-4 text-[17px] leading-relaxed text-textSecondary">Cinco pantallas de TeacherFlow, con información ilustrativa. Vos decidís cuál mirar.</p>
         </Reveal>
-        <Reveal delay={80} className="mt-10 rounded-[28px] bg-side p-4 nav:mt-14 nav:p-10">
+        <Reveal delay={80} className="tf-tour-box mt-10 rounded-[28px] p-4 nav:mt-14 nav:p-10">
           <Tour items={TOUR_ITEMS} />
         </Reveal>
       </div>
@@ -353,7 +353,7 @@ const CAL_FEATURES = [
 
 export function CalendarDetail() {
   return (
-    <section id="calendario" aria-labelledby="calendario-title" className="tf-cv relative scroll-mt-20 overflow-hidden border-t border-border bg-surface py-16 nav:py-28">
+    <section id="calendario" aria-labelledby="calendario-title" className="tf-cv tf-s-lav relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
       <div className={WRAP}>
         <Reveal className="max-w-[720px]">
           <Eyebrow>Calendario</Eyebrow>
@@ -416,7 +416,7 @@ export function StudentsDetail() {
     { tab: "Reportes", caption: "Reportes y seguimiento", offset: "lg:mt-14" },
   ];
   return (
-    <section id="alumnos" aria-labelledby="alumnos-title" className="tf-cv relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
+    <section id="alumnos" aria-labelledby="alumnos-title" className="tf-cv tf-s-cream relative scroll-mt-20 overflow-hidden py-16 nav:py-28">
       <div className={`${WRAP} grid gap-12 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-16`}>
         <Reveal className="lg:sticky lg:top-28 lg:self-start">
           <Eyebrow>Alumnos</Eyebrow>
@@ -459,7 +459,7 @@ export function StudentsDetail() {
 
 export function FinanceDetail() {
   return (
-    <section id="cobros" aria-labelledby="cobros-title" className="tf-cv relative scroll-mt-20 overflow-hidden border-y border-border bg-surface py-16 nav:py-28">
+    <section id="cobros" aria-labelledby="cobros-title" className="tf-cv tf-s-surface relative scroll-mt-20 overflow-hidden border-y border-border py-16 nav:py-28">
       <div className={WRAP}>
         <div className="grid items-end gap-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:gap-16">
           <Reveal>
@@ -514,7 +514,7 @@ export function FinanceDetail() {
                       <li key={payment.student} className="flex items-center gap-3 border-b border-border px-3.5 py-3 last:border-b-0">
                         <Avatar initial={payment.student[0]} tone={payment.tone} size="m" />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[13.5px] font-bold leading-tight">{payment.student}</span>
+                          <span className="tf-name text-[13.5px] font-bold leading-tight">{payment.student}</span>
                           <span className="block text-[12px] text-textMuted">
                             {payment.concept} · <span className="tf-num">{payment.date}</span>
                           </span>
@@ -605,7 +605,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section id="como-funciona" aria-labelledby="como-title" className="tf-cv scroll-mt-20 py-16 nav:py-28">
+    <section id="como-funciona" aria-labelledby="como-title" className="tf-cv tf-s-lav scroll-mt-20 py-16 nav:py-28">
       <div className={WRAP}>
         <Reveal className="max-w-[640px]">
           <Eyebrow>Cómo funciona</Eyebrow>
@@ -644,7 +644,7 @@ const SECURITY = [
 
 export function Security() {
   return (
-    <section id="seguridad" aria-labelledby="seguridad-title" className="tf-cv scroll-mt-20 overflow-hidden border-t border-border bg-paperDeep py-16 nav:py-28">
+    <section id="seguridad" aria-labelledby="seguridad-title" className="tf-cv tf-s-beige scroll-mt-20 overflow-hidden border-t border-border py-16 nav:py-28">
       <div className={`${WRAP} grid items-center gap-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:gap-16`}>
         <div>
           <Reveal>
@@ -707,7 +707,7 @@ const FAQ = [
 
 export function Closing() {
   return (
-    <section id="empezar" aria-labelledby="cierre-title" className="tf-cv scroll-mt-20 bg-side py-16 text-white nav:py-28">
+    <section id="empezar" aria-labelledby="cierre-title" className="tf-cv tf-s-brown scroll-mt-20 py-16 text-white nav:py-28">
       <div className={`${WRAP} grid gap-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)] lg:gap-20`}>
         <Reveal>
           <h2 id="cierre-title" className="font-display text-[38px] font-normal leading-[1.05] tracking-[-0.035em] text-balance min-[420px]:text-[46px] nav:text-[58px]">
@@ -715,11 +715,11 @@ export function Closing() {
           </h2>
           <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-sideText">Creá tu cuenta y empezá por cargar a tus alumnos. El resto se arma solo, clase a clase.</p>
           <div className="mt-7 flex flex-col items-start gap-3 min-[480px]:flex-row min-[480px]:items-center">
-            <ButtonLink href="/crear-cuenta" variant="accent" size="lg">
+            <ButtonLink href="/crear-cuenta" variant="accent" size="lg" className="tf-ctl">
               Crear cuenta
               <ArrowRightIcon className="h-5 w-5" aria-hidden />
             </ButtonLink>
-            <a href="/login" className="inline-flex min-h-11 items-center px-2 text-[15px] font-[650] text-white underline underline-offset-[4px] hover:text-sideAccent focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent">
+            <a href="/login" className="tf-ctl inline-flex min-h-11 items-center px-2 text-[15px] font-[650] text-white underline underline-offset-[4px] hover:text-sideAccent focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent">
               Iniciar sesión
             </a>
           </div>

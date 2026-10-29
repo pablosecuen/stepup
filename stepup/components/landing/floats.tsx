@@ -30,7 +30,7 @@ export function FloatPaymentReceived({ className }: P) {
       <p className="flex items-center gap-2.5">
         <Avatar initial="V" tone={4} size="m" />
         <span className="min-w-0">
-          <span className="block text-[13.5px] font-bold leading-tight">Valentina Rey</span>
+          <span className="tf-name text-[13.5px] font-bold leading-tight">Valentina Rey</span>
           <span className="block text-[12px] text-textMuted">Mensualidad octubre</span>
         </span>
       </p>
@@ -45,7 +45,7 @@ export function FloatPaymentReceived({ className }: P) {
 export function FloatToRegister({ className }: P) {
   return (
     <FloatCard eyebrow="Clase por registrar" icon={<ClipboardDocumentCheckIcon className="h-3.5 w-3.5" />} className={className}>
-      <p className="text-[13.5px] font-bold leading-tight">Sofía Ibarra</p>
+      <p className="tf-name text-[13.5px] font-bold leading-tight">Sofía Ibarra</p>
       <p className="text-[12px] text-textMuted tf-num">lun 12/10 · 10:00 · Mixta</p>
       <p className="mt-2.5 inline-flex h-9 items-center rounded-md bg-accent px-3.5 text-[12.5px] font-bold text-white">Registrar clase</p>
     </FloatCard>
@@ -54,7 +54,18 @@ export function FloatToRegister({ className }: P) {
 
 export function FloatReminder({ className }: P) {
   return (
-    <FloatCard eyebrow="Recordatorio" icon={<BellIcon className="h-3.5 w-3.5" />} className={className}>
+    <FloatCard
+      eyebrow="Recordatorio"
+      icon={
+        <span className="relative mr-2 inline-flex">
+          <BellIcon className="h-3.5 w-3.5" />
+          <span aria-hidden className="absolute -right-2 -top-2 inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-pill bg-bad px-[3px] text-[10px] font-bold leading-none text-white">
+            2
+          </span>
+        </span>
+      }
+      className={className}
+    >
       <p className="text-[13.5px] font-bold leading-snug">2 pagos próximos a vencer</p>
       <p className="mt-0.5 text-[12px] text-textMuted">Mateo S. vence hoy · Sofía I. vence el jueves</p>
       <p className="mt-2 flex items-center gap-1 text-[12.5px] font-[650] text-accentDark">
@@ -70,7 +81,7 @@ export function FloatStudent({ className }: P) {
       <p className="flex items-center gap-2.5">
         <Avatar initial="L" tone={0} size="l" />
         <span className="min-w-0">
-          <span className="block text-[14px] font-bold leading-tight">Lucía Ferrer</span>
+          <span className="tf-name text-[14px] font-bold leading-tight">Lucía Ferrer</span>
           <span className="block text-[12px] text-textMuted">Nivel B1 · Presencial</span>
         </span>
       </p>
@@ -86,7 +97,7 @@ export function FloatStudent({ className }: P) {
 export function FloatReschedule({ className }: P) {
   return (
     <FloatCard eyebrow="Reprogramar clase" icon={<CalendarDaysIcon className="h-3.5 w-3.5" />} className={className}>
-      <p className="text-[13.5px] font-bold leading-tight">Lucía Ferrer</p>
+      <p className="tf-name text-[13.5px] font-bold leading-tight">Lucía Ferrer</p>
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-[12.5px]">
         <span className="rounded-md bg-paperDeep px-2.5 py-1.5 text-textSecondary tf-num">
           <span className="block text-[11px] text-textMuted">Antes</span>mié 14/10 · 09:00
@@ -109,7 +120,7 @@ export function FloatSeries({ className }: P) {
   const on = new Set(["L", "J"]);
   return (
     <FloatCard eyebrow="Serie de clases" icon={<CalendarDaysIcon className="h-3.5 w-3.5" />} className={className}>
-      <p className="text-[13.5px] font-bold leading-tight">Lucía Ferrer · semanal</p>
+      <p className="tf-name text-[13.5px] font-bold leading-tight">Lucía Ferrer · semanal</p>
       <p className="mt-2 flex gap-1.5" aria-hidden>
         {days.map((day) => (
           <span key={day} className={`flex h-8 w-8 items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${on.has(day) ? "border-accent bg-accent text-white" : "border-borderMid text-textSecondary"}`}>
@@ -151,7 +162,7 @@ export function FloatOpenLesson({ className }: P) {
   return (
     <FloatCard eyebrow="Clase abierta" className={className}>
       <div className="rounded-md px-3 py-2" style={{ background: colors.bg, borderLeft: `4px solid ${colors.border}` }}>
-        <p className="text-[14px] font-bold leading-tight">Lucía Ferrer</p>
+        <p className="tf-name text-[14px] font-bold leading-tight">Lucía Ferrer</p>
         <p className="text-[12px] text-textSecondary tf-num">Mié 14/10 · 09:00 a 10:00 · Presencial</p>
       </div>
       <div className="mt-2.5 flex flex-col gap-1.5 text-[12.5px] font-[650]">
@@ -166,7 +177,7 @@ export function FloatOpenLesson({ className }: P) {
 export function FloatRegisterPayment({ className }: P) {
   return (
     <FloatCard eyebrow="Registrar pago" icon={<CheckCircleIcon className="h-3.5 w-3.5" />} className={className}>
-      <p className="text-[13.5px] font-bold leading-tight">Mateo Sosa · Mensualidad octubre</p>
+      <p className="tf-name text-[13.5px] font-bold leading-tight">Mateo Sosa · Mensualidad octubre</p>
       <div className="mt-2 grid grid-cols-2 gap-2 text-[12.5px]">
         <span className="rounded-md border-[1.5px] border-borderStrong bg-surface px-2.5 py-1.5">
           <span className="block text-[11px] text-textMuted">Importe</span>
@@ -185,7 +196,7 @@ export function FloatRegisterPayment({ className }: P) {
 export function FloatReport({ className }: P) {
   return (
     <FloatCard eyebrow="Reporte del alumno" icon={<DocumentTextIcon className="h-3.5 w-3.5" />} className={className}>
-      <p className="text-[13.5px] font-bold leading-tight">Lucía Ferrer · septiembre</p>
+      <p className="tf-name text-[13.5px] font-bold leading-tight">Lucía Ferrer · septiembre</p>
       <p className="mt-0.5 text-[12px] text-textMuted">Clases, progreso y tareas del período</p>
       <p className="mt-2 flex items-center gap-1 text-[12.5px] font-[650] text-accentDark">
         Ver / Descargar PDF <ArrowRightIcon className="h-3.5 w-3.5" />

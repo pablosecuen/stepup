@@ -67,7 +67,7 @@ export function MockApp({ active, children }: { active: MockNavKey; children: Re
 export function Monitor({ path, children, className = "" }: { path: string; children: ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <div className="rounded-[12px] bg-[#16120d] p-[5px] shadow-panel min-[820px]:rounded-[20px] min-[820px]:p-[9px]">
+      <div className="tf-bezel rounded-[12px] p-[5px] shadow-panel min-[820px]:rounded-[20px] min-[820px]:p-[9px]">
         <div className="overflow-hidden rounded-[8px] bg-background min-[820px]:rounded-[12px]">
           <div className="flex h-8 items-center gap-2 border-b border-border bg-paperDeep px-3">
             <span className="flex gap-1.5">
@@ -81,8 +81,8 @@ export function Monitor({ path, children, className = "" }: { path: string; chil
           {children}
         </div>
       </div>
-      <div className="mx-auto hidden h-5 w-24 bg-gradient-to-b from-[#3a3126] to-[#241d15] min-[820px]:block" />
-      <div className="mx-auto hidden h-1.5 w-44 rounded-full bg-[#241d15] min-[820px]:block" />
+      <div className="tf-bezel-foot mx-auto hidden h-5 w-24 min-[820px]:block" />
+      <div className="tf-bezel-base mx-auto hidden h-1.5 w-44 rounded-full min-[820px]:block" />
     </div>
   );
 }
@@ -108,13 +108,22 @@ export function MiniWindow({ path, children, className = "" }: { path: string; c
 export function FloatCard({ eyebrow, icon, tone = "light", className = "", children }: { eyebrow: string; icon?: ReactNode; tone?: "light" | "dark"; className?: string; children: ReactNode }) {
   const dark = tone === "dark";
   return (
-    <div className={`rounded-[14px] border-[1.5px] p-3.5 shadow-panel ${dark ? "border-sideLine bg-side text-white" : "border-border bg-surface text-textPrimary"} ${className}`}>
+    <div className={`rounded-[14px] border-[1.5px] p-3.5 shadow-panel ${dark ? "tf-float-dark bg-side text-white" : "tf-float bg-surface text-textPrimary"} ${className}`}>
       <p className={`flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.09em] ${dark ? "text-sideText" : "text-textMuted"}`}>
         {icon}
         {eyebrow}
       </p>
       <div className="mt-2">{children}</div>
     </div>
+  );
+}
+
+/** Insignia roja de notificación de las maquetas (el dato real va siempre en texto al lado; ésta sólo lo resalta). */
+export function NotificationBadge({ count, className = "" }: { count: number; className?: string }) {
+  return (
+    <span aria-hidden className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-bad px-1 text-[11px] font-bold leading-none text-white tf-num ${className}`}>
+      {count}
+    </span>
   );
 }
 

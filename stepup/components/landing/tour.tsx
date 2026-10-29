@@ -95,7 +95,7 @@ export function Tour({ items }: { items: readonly TourItem[] }) {
             tabIndex={index === active ? 0 : -1}
             onClick={() => select(index)}
             onKeyDown={(event) => onKeyDown(event, index)}
-            className={`min-h-11 shrink-0 rounded-pill border-[1.5px] px-4 text-[14.5px] font-[650] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent focus-visible:ring-offset-2 focus-visible:ring-offset-side motion-reduce:transition-none ${
+            className={`tf-tour-tab tf-ctl min-h-11 shrink-0 rounded-pill border-[1.5px] px-4 text-[14.5px] font-[650] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent focus-visible:ring-offset-2 focus-visible:ring-offset-side motion-reduce:transition-none ${
               index === active ? "border-white bg-white text-ink" : "border-sideLine text-sideText hover:border-sideMuted hover:bg-sideActive hover:text-white"
             }`}
           >

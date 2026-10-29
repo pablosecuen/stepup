@@ -1,0 +1,347 @@
+/*
+ * Estética natural de la landing pública (crema, lavanda, oliva y marrón). Todos los selectores viven dentro de `.tf-landing`:
+ * nada de esto toca la aplicación privada. Los tokens globales (tailwind.config.ts, globals.css, layout.tsx) los integra otra
+ * rama; acá sólo se reasignan, DENTRO de la landing, los mismos valores para que se vea igual con o sin esa integración.
+ *
+ * Contrastes medidos (WCAG): marrón #583B1F sobre crema 8,2:1, sobre superficie 9,8:1, sobre lavanda suave 8,1:1, sobre lavanda
+ * #C2BFCB 5,6:1. El texto secundario (#675039) y el apagado (#6F604F) NO se usan sobre #C2BFCB (4,2:1 y 3,4:1): ese tono es sólo
+ * relleno, borde o fondo de texto marrón pleno. El oliva #7E7B46 es sólo gráfico (≥3:1); el texto oliva usa #5F5C2E (5,5:1).
+ */
+
+.tf-landing {
+  --n-cream: #eae6e1;
+  --n-surface: #fcfaf6;
+  --n-surface2: #f1eee8;
+  --n-beige: #e5e0da;
+  --n-lav: #c2bfcb;
+  --n-lav-soft: #e8e4ef;
+  --n-olive: #7e7b46;
+  --n-olive-ink: #5f5c2e;
+  --n-brown: #583b1f;
+  --n-brown-deep: #412a16;
+  --n-brown-2: #604329;
+  --n-brown-3: #694c2f;
+  --n-line: #d8cfc3;
+  --n-line-mid: #ad9980;
+  --n-line-strong: #8a7965;
+  --n-text-2: #675039;
+  --n-text-3: #6f604f;
+  --n-on-brown: #f6f1e8;
+  --n-on-brown-2: #dfd4c4;
+  --n-lav-text: #625571;
+  --n-alert: #962a20;
+  --font-sans: var(--tf-landing-sans, "DM Sans"), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--tf-landing-display, "DM Serif Display"), Georgia, serif;
+  background-color: var(--n-cream);
+  color: var(--n-brown);
+  font-family: var(--font-sans);
+}
+
+/* ── Tipografía: serifa de una sola cifra de peso (sin negrita sintética) ─────────────────────────────────────────────── */
+.tf-landing .font-display,
+.tf-landing h1,
+.tf-landing h2,
+.tf-landing h3 {
+  font-weight: 400;
+  font-synthesis: none;
+}
+.tf-landing em {
+  font-style: italic;
+}
+
+/* ── Colores: se reasignan las clases de token usadas por la landing y por sus maquetas ───────────────────────────────── */
+.tf-landing .bg-background { background-color: var(--n-cream); }
+.tf-landing .bg-surface { background-color: var(--n-surface); }
+.tf-landing .bg-surface2 { background-color: var(--n-surface2); }
+.tf-landing .bg-paperDeep { background-color: var(--n-beige); }
+.tf-landing .bg-side { background-color: var(--n-brown); }
+.tf-landing .bg-side2 { background-color: var(--n-brown-2); }
+.tf-landing .bg-sideActive { background-color: var(--n-brown-3); }
+.tf-landing .bg-accent { background-color: var(--n-brown); }
+.tf-landing .bg-accentDark { background-color: var(--n-brown-deep); }
+.tf-landing .bg-accentSoft { background-color: #dfdbe8; }
+.tf-landing .bg-ink { background-color: var(--n-brown); }
+.tf-landing .bg-borderMid { background-color: var(--n-line-mid); }
+
+.tf-landing .text-textPrimary,
+.tf-landing .text-ink { color: var(--n-brown); }
+.tf-landing .text-textSecondary { color: var(--n-text-2); }
+.tf-landing .text-textMuted { color: var(--n-text-3); }
+.tf-landing .text-accent,
+.tf-landing .text-accentText { color: var(--n-brown); }
+.tf-landing .text-accentDark { color: var(--n-brown-deep); }
+.tf-landing .text-background { color: var(--n-cream); }
+.tf-landing .text-sideText { color: var(--n-on-brown); }
+.tf-landing .text-sideMuted { color: var(--n-on-brown-2); }
+.tf-landing .text-sideAccent { color: #dfdbe8; }
+
+.tf-landing .border-border { border-color: var(--n-line); }
+.tf-landing .border-borderMid { border-color: var(--n-line-mid); }
+.tf-landing .border-borderStrong { border-color: var(--n-line-strong); }
+.tf-landing .border-sideLine { border-color: #846d53; }
+.tf-landing .border-accent,
+.tf-landing .border-ink { border-color: var(--n-brown); }
+.tf-landing .border-accentLine { border-color: #b5acc3; }
+.tf-landing .divide-border > :not([hidden]) ~ :not([hidden]) { border-color: var(--n-line); }
+.tf-landing .divide-sideLine > :not([hidden]) ~ :not([hidden]) { border-color: #846d53; }
+.tf-landing .stroke-paperDeep { stroke: var(--n-line); }
+
+.tf-landing .focus-visible\:ring-ink:focus-visible { --tw-ring-color: var(--n-brown); }
+.tf-landing .focus-visible\:ring-sideAccent:focus-visible { --tw-ring-color: #dfdbe8; }
+.tf-landing .focus-visible\:ring-offset-side:focus-visible { --tw-ring-offset-color: var(--n-brown); }
+
+/* Estados con puntero (misma especificidad que las utilidades: por eso llevan un segundo `.tf-landing`) */
+.tf-landing.tf-landing .hover\:bg-paperDeep:hover { background-color: var(--n-lav-soft); }
+.tf-landing.tf-landing .hover\:bg-background:hover { background-color: var(--n-lav-soft); }
+.tf-landing.tf-landing .hover\:bg-sideActive:hover { background-color: var(--n-brown-3); }
+.tf-landing.tf-landing .hover\:bg-white:hover { background-color: var(--n-lav-soft); }
+.tf-landing.tf-landing .hover\:bg-accentDark:hover { background-color: var(--n-brown-deep); }
+.tf-landing.tf-landing .hover\:bg-sideLine:hover { background-color: #846d53; }
+.tf-landing.tf-landing .hover\:border-accentDark:hover { border-color: var(--n-brown-deep); }
+.tf-landing.tf-landing .hover\:border-ink:hover { border-color: var(--n-brown); }
+.tf-landing.tf-landing .hover\:border-sideMuted:hover { border-color: var(--n-on-brown-2); }
+.tf-landing.tf-landing .hover\:border-sideLine:hover { border-color: #846d53; }
+.tf-landing.tf-landing .hover\:text-ink:hover { color: var(--n-brown); }
+.tf-landing.tf-landing .hover\:text-sideAccent:hover { color: var(--n-lav); }
+
+/* Avatares de las maquetas: tonos de la paleta natural (texto marrón o lavanda oscura, ≥ 4,5:1) */
+.tf-landing .tf-av-0 { background-color: var(--n-lav-soft); color: var(--n-brown); }
+.tf-landing .tf-av-1 { background-color: var(--n-beige); color: var(--n-brown-deep); }
+.tf-landing .tf-av-2 { background-color: #e1e0c8; color: #4a4723; }
+.tf-landing .tf-av-3 { background-color: var(--n-lav); color: var(--n-brown-deep); }
+.tf-landing .tf-av-4 { background-color: #efe9f4; color: var(--n-lav-text); }
+.tf-landing .tf-av-5 { background-color: #ece5d9; color: var(--n-brown); }
+
+/* ── Controles: cuerpo de 16 px en móvil (evita el zoom automático de iOS) y objetivos de 44 px ───────────────────────── */
+@media (max-width: 819px) {
+  .tf-landing .tf-ctl {
+    font-size: 16px;
+  }
+}
+.tf-landing .tf-ctl {
+  min-height: 44px;
+}
+
+/* ── Encabezado ──────────────────────────────────────────────────────────────────────────────────────────────────────── */
+.tf-landing .tf-header {
+  background-color: rgb(234 230 225 / 0.92);
+  border-bottom: 1px solid var(--n-line);
+}
+@supports (backdrop-filter: blur(8px)) {
+  .tf-landing .tf-header {
+    background-color: rgb(234 230 225 / 0.82);
+  }
+}
+
+/* ── Franja de anuncio: borde a borde, 34 px (30 px en móvil), se desplaza hacia la izquierda sin saltos ──────────────── */
+.tf-landing .tf-announce {
+  position: relative;
+  z-index: 41;
+  width: 100%;
+  max-width: none;
+  height: 34px;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background-color: #efb83f;
+  color: #39250e;
+  font-size: 13px;
+  line-height: 1;
+}
+.tf-landing .tf-announce-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: tf-announce-left 96s linear infinite;
+  will-change: transform;
+}
+.tf-landing .tf-announce-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 100%;
+}
+/* El enlace usa el componente público estándar (TextLink); acá se fija el alto de la franja (34/30 px, por encargo) y se neutralizan sus estilos de enlace de texto */
+.tf-landing .tf-announce-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 0 34px;
+  font-size: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+.tf-landing .tf-announce-item:hover {
+  text-decoration: none;
+}
+.tf-landing .tf-announce-item strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.tf-landing .tf-announce-item b {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.tf-landing .tf-announce-item:focus-visible {
+  outline: 2px solid #39250e;
+  outline-offset: -3px;
+}
+.tf-landing .tf-announce:hover .tf-announce-track,
+.tf-landing .tf-announce:focus-within .tf-announce-track {
+  animation-play-state: paused;
+}
+@keyframes tf-announce-left {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+@media (max-width: 819px) {
+  .tf-landing .tf-announce {
+    height: 30px;
+    font-size: 12px;
+  }
+  .tf-landing .tf-announce-item {
+    gap: 12px;
+    padding: 0 24px;
+  }
+  .tf-landing .tf-announce-item strong {
+    font-size: 12.5px;
+  }
+}
+/* «Reducir movimiento»: queda un solo mensaje quieto, centrado */
+@media (prefers-reduced-motion: reduce) {
+  .tf-landing .tf-announce-track {
+    width: 100%;
+    justify-content: center;
+    animation: none;
+  }
+  .tf-landing .tf-announce-group + .tf-announce-group,
+  .tf-landing .tf-announce-item:not(:first-child) {
+    display: none;
+  }
+}
+
+/* ── Fondos de las secciones: claros, lavanda y marrón, alternados ────────────────────────────────────────────────────── */
+.tf-landing .tf-s-cream { background-color: var(--n-cream); }
+.tf-landing .tf-s-surface { background-color: var(--n-surface); }
+.tf-landing .tf-s-beige { background-color: var(--n-beige); }
+.tf-landing .tf-s-lav {
+  background-color: var(--n-lav-soft);
+  border-top: 1px solid var(--n-lav);
+  border-bottom: 1px solid var(--n-lav);
+}
+.tf-landing .tf-s-brown {
+  background-color: var(--n-brown);
+  color: var(--n-on-brown);
+}
+.tf-landing .tf-s-hero {
+  background-color: var(--n-cream);
+  background-image: radial-gradient(900px 380px at 82% -6%, var(--n-lav-soft) 0%, rgb(232 228 239 / 0) 72%);
+}
+.tf-landing .tf-tour-box {
+  background-color: var(--n-brown);
+  box-shadow: 0 28px 60px -34px rgb(65 42 22 / 0.55);
+}
+.tf-landing .tf-footer {
+  background-color: var(--n-surface);
+  border-top: 1px solid var(--n-lav);
+}
+
+/* Detalles de marca: oliva sólo como gráfico, lavanda en acentos */
+.tf-landing .tf-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--n-olive-ink);
+}
+.tf-landing .tf-eyebrow::before {
+  content: "";
+  flex: none;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background-color: var(--n-olive);
+}
+.tf-landing .tf-s-brown .tf-eyebrow,
+.tf-landing .tf-eyebrow-dark {
+  color: #dfdbe8;
+}
+.tf-landing .tf-s-brown .tf-eyebrow::before,
+.tf-landing .tf-eyebrow-dark::before {
+  background-color: var(--n-lav);
+}
+.tf-landing .text-center > .tf-eyebrow {
+  justify-content: center;
+}
+/* Botón principal sobre fondo marrón: se invierte a lavanda suave con texto marrón (8,1:1) */
+.tf-landing .tf-s-brown a.bg-accent {
+  border-color: var(--n-lav-soft);
+  background-color: var(--n-lav-soft);
+  color: var(--n-brown);
+}
+.tf-landing.tf-landing .tf-s-brown a.bg-accent:hover {
+  border-color: var(--n-surface);
+  background-color: var(--n-surface);
+}
+.tf-landing .tf-check { color: var(--n-olive); }
+.tf-landing .tf-index-n { color: var(--n-olive-ink); }
+.tf-landing .tf-float { border-color: var(--n-lav); }
+.tf-landing .tf-float-dark { border-color: #846d53; }
+.tf-landing .tf-bezel { background-color: #2b1d10; }
+.tf-landing .tf-bezel-foot { background-image: linear-gradient(to bottom, #4a3724, #2b1d10); }
+.tf-landing .tf-bezel-base { background-color: #2b1d10; }
+
+/* Pestaña elegida del recorrido: píldora lavanda con texto marrón (8,1:1) */
+.tf-landing .tf-tour-tab[aria-selected="true"] {
+  border-color: var(--n-lav-soft);
+  background-color: var(--n-lav-soft);
+  color: var(--n-brown);
+}
+
+/* ── Nombres largos: una sola línea con puntos suspensivos, sin agrandar la fila ──────────────────────────────────────── */
+.tf-landing .tf-name {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Las celdas de una grilla pueden encogerse por debajo del ancho de su contenido: así un nombre largo se recorta con puntos suspensivos en vez de ensanchar la tarjeta */
+.tf-landing .grid > *,
+.tf-landing [data-reveal],
+.tf-landing .tf-float,
+.tf-landing .tf-float-dark {
+  min-width: 0;
+}
+
+/* Las cifras de las maquetas nunca parten una palabra a la mitad: si no entra, baja entera a la línea siguiente */
+.tf-landing .tf-fig-label {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+}
+
+/* ── Dona del plan 50/30/20: el importe va fuera del centro en móvil ──────────────────────────────────────────────────── */
+.tf-landing .tf-donut-caption {
+  display: none;
+}
+@media (max-width: 819px) {
+  .tf-landing .tf-donut-center {
+    display: none;
+  }
+  .tf-landing .tf-donut-caption {
+    display: block;
+  }
+}
