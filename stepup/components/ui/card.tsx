@@ -14,7 +14,7 @@ const TONES: Record<CardTone, string> = {
 
 export function Card({ tone = "default", flat = false, padded = true, className, children, ...props }: { tone?: CardTone; flat?: boolean; padded?: boolean } & ComponentProps<"div">) {
   return (
-    <div className={`rounded-lg border-[1.5px] ${TONES[tone]} ${flat ? "" : "shadow-card"} ${padded ? "p-4 nav:p-5" : ""}${className ? ` ${className}` : ""}`} {...props}>
+    <div className={`rounded-xl border-[1.5px] ${TONES[tone]} ${flat ? "" : "shadow-card"} ${padded ? "p-4 nav:p-5" : ""}${className ? ` ${className}` : ""}`} {...props}>
       {children}
     </div>
   );
@@ -23,7 +23,7 @@ export function Card({ tone = "default", flat = false, padded = true, className,
 /** Cabecera de una tarjeta: título en serifa a la izquierda y, opcionalmente, un dato o acción a la derecha. */
 export function CardHeader({ title, meta, as: Heading = "h2" }: { title: ReactNode; meta?: ReactNode; as?: "h2" | "h3" }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 nav:px-5">
+    <div className="flex items-center justify-between gap-3 rounded-t-xl bg-lavenderSoft/60 px-4 pb-3 pt-4 nav:px-5">
       <Heading className="font-display text-card font-semibold">{title}</Heading>
       {meta && <div className="text-[13px] font-medium text-textMuted">{meta}</div>}
     </div>

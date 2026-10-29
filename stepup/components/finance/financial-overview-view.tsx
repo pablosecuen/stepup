@@ -40,7 +40,7 @@ function Kpi({ label, value, valueClass = "text-textPrimary", foot }: { label: s
     <div className={`${CARD} [container-type:inline-size]`}>
       <p className="text-[13px] font-[650] text-textMuted">{label}</p>
       {/* El importe se ajusta al ancho de SU tarjeta (nunca se parte un número en dos renglones): 36 px cuando hay lugar, menos cuando la tarjeta es angosta. */}
-      <p className={`mt-1.5 font-display text-[clamp(18px,13cqw,36px)] font-medium leading-none tracking-tight tf-num [overflow-wrap:anywhere] ${valueClass}`}>{value}</p>
+      <p className={`mt-1.5 whitespace-nowrap font-display text-[clamp(16px,11cqw,34px)] font-medium leading-none tracking-tight tf-num ${valueClass}`}>{value}</p>
       {foot && <p className="mt-2 text-[13px] text-textMuted">{foot}</p>}
     </div>
   );
@@ -48,7 +48,7 @@ function Kpi({ label, value, valueClass = "text-textPrimary", foot }: { label: s
 
 function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-3">
+    <div className="rounded-md border border-border bg-lavenderSoft/40 px-3.5 py-3">
       <p className="text-[13px] font-[650] text-textMuted">{label}</p>
       <p className="mt-1 font-display text-[30px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{value}</p>
     </div>
@@ -64,7 +64,7 @@ function ShareRow({ label, value, percent }: { label: string; value: string; per
         <span className="text-textSecondary">{label}</span>
         <span className="font-bold tf-num text-textPrimary">{value}</span>
       </div>
-      <div aria-hidden className="mt-1.5 h-2 overflow-hidden rounded-pill bg-paperDeep">
+      <div aria-hidden className="mt-1.5 h-1.5 max-w-[360px] overflow-hidden rounded-pill bg-paperDeep">
         <div className="h-full rounded-pill bg-accent" style={{ width: `${width}%` }} />
       </div>
     </div>
@@ -243,7 +243,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         <h2 id="anual-titulo" className="font-display text-card font-semibold">
           Resumen anual {data.year}
         </h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+        <div className="mt-4 grid max-w-[650px] grid-cols-3 gap-2 nav:gap-3">
           <Stat label="Horas dictadas" value={formatWholeHours(data.annualActivity.heldHours)} />
           <Stat label="Horas reprogramadas" value={formatWholeHours(data.annualActivity.rescheduledHours)} />
           <Stat label="Horas canceladas" value={formatWholeHours(data.annualActivity.cancelledHours)} />
@@ -269,7 +269,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         <h2 id="alumnos-titulo" className="font-display text-card font-semibold">
           Alumnos del año — {data.studentYear.year}
         </h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
+        <div className="mt-4 grid max-w-[650px] grid-cols-3 gap-2 nav:gap-3">
           <Stat label="Alumnos únicos atendidos" value={data.studentYear.uniqueStudentsAttended} />
           <Stat label="Activos actualmente" value={data.studentYear.activeStudentsNow} />
           <Stat label="Nuevos este año" value={data.studentYear.newStudentsThisYear} />

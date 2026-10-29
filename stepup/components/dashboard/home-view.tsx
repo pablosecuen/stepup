@@ -54,7 +54,7 @@ function PanelHeader({ id, title, count, href, linkLabel }: { id: string; title:
         <h2 id={id} className="font-display text-[20px] font-semibold leading-tight tracking-tight">
           {title}
         </h2>
-        {count !== undefined && <Badge>{count}</Badge>}
+        {count !== undefined && <Badge tone={id === "recordatorios-resumen" ? "bad" : "neutral"}>{count}</Badge>}
       </div>
       {href && (
         <Link href={href} className={`${linkClass()} shrink-0`}>
@@ -114,7 +114,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           >
             <BellIcon className="h-5 w-5" aria-hidden />
             {remindersCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-pill border-2 border-background bg-accent px-1 text-[11px] font-bold text-white">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-pill border-2 border-background bg-bad px-1 text-[11px] font-bold text-white">
                 {remindersCount > 99 ? "99+" : remindersCount}
               </span>
             )}
@@ -194,13 +194,13 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
               ) : (
                 <ul>
                   {data.remindersSummary.categories.map((category) => {
-                    const { icon: Icon, tone } = REMINDER_ICONS[category.kind];
+                    const { icon: Icon } = REMINDER_ICONS[category.kind];
                     return (
                       <li key={category.kind}>
                         <Link href="/recordatorios" className={`min-h-14 ${ROW}`}>
                           <Icon className="h-5 w-5 shrink-0 text-textSecondary" aria-hidden />
                           <span className="min-w-0 flex-1 text-[14.5px] font-[650]">{category.label}</span>
-                          <Badge tone={tone}>{category.items.length}</Badge>
+                          <Badge tone="bad">{category.items.length}</Badge>
                         </Link>
                       </li>
                     );

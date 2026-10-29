@@ -178,9 +178,9 @@ export function DayPlanner({
                               {badges.length > 0 && (
                                 <span className="flex flex-wrap items-center gap-1.5">
                                   {badges.map((badge) => (
-                                    <Badge key={badge.label} tone={badge.tone} dot={badge.dot}>
+                                    <span key={badge.label} className={badge.label === "En curso" ? "tf-current-class" : undefined}><Badge tone={badge.tone} dot={badge.dot}>
                                       {badge.label}
-                                    </Badge>
+                                    </Badge></span>
                                   ))}
                                 </span>
                               )}

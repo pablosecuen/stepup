@@ -95,9 +95,9 @@ test("contraste de controles: texto blanco sobre el azul de marca y el rojo (bot
 
 test("el anillo de foco global es de tinta (3:1 sobre cualquier superficie; marfil sobre las oscuras) y el texto de las tarjetas del calendario llega a 4.5:1 sobre todos sus fondos", () => {
   const css = read("app/globals.css");
-  assert.match(css, /:focus-visible\s*\{\s*outline: 2\.5px solid #1C1812;\s*outline-offset: 2px;\s*\}/i);
+  assert.match(css, /:focus-visible\s*\{\s*outline: 2\.5px solid #583B1F;\s*outline-offset: 2px;\s*\}/i);
   assert.match(css, /\[data-surface="dark"\] :focus-visible[\s\S]{0,80}outline-color: #F6F0E5/);
-  assert.equal(colors.ink.toLowerCase(), "#1c1812");
+  assert.equal(colors.ink.toLowerCase(), "#583b1f");
   for (const surface of Object.values(SURFACES)) assert.ok(contrastRatio(colors.ink, surface) >= 3, "anillo de tinta sobre " + surface);
   assert.ok(contrastRatio("#F6F0E5", colors.side) >= 3, "anillo marfil sobre la barra lateral oscura");
   const theme = read("lib/calendar-theme.ts");

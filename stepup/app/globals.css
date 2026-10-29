@@ -6,28 +6,28 @@
    (lib/ui/__tests__/design-tokens.test.ts verifica la coincidencia). Sirven para el CSS que no pasa por Tailwind (avatares,
    resplandores, estilos de impresión futuros) y como referencia única de los valores. */
 :root {
-  --tf-paper: #F6F0E5;
-  --tf-paper-deep: #EFE6D4;
-  --tf-surface: #FFFDF8;
-  --tf-surface-2: #FAF4E8;
-  --tf-line: #E6DAC4;
-  --tf-line-mid: #CDBE9F;
-  --tf-line-strong: #8E8369;
-  --tf-ink: #1C1812;
-  --tf-text-2: #4B4337;
-  --tf-muted: #655B4D;
-  --tf-side: #1F1A14;
-  --tf-side-2: #2C251C;
-  --tf-side-active: #34291D;
-  --tf-side-line: #3A3126;
-  --tf-side-text: #D2C8B5;
-  --tf-side-muted: #A89E8B;
-  --tf-side-accent: #E58A5F;
-  --tf-accent: #B4461E;
-  --tf-accent-dark: #953815;
-  --tf-accent-soft: #F6DCCB;
-  --tf-accent-text: #7A2C0E;
-  --tf-accent-line: #E9B79D;
+  --tf-paper: #EAE6E1;
+  --tf-paper-deep: #E5E0DA;
+  --tf-surface: #FCFAF6;
+  --tf-surface-2: #F1EEE8;
+  --tf-line: #D8CFC3;
+  --tf-line-mid: #AD9980;
+  --tf-line-strong: #8A7965;
+  --tf-ink: #583B1F;
+  --tf-text-2: #675039;
+  --tf-muted: #6F604F;
+  --tf-side: #583B1F;
+  --tf-side-2: #604329;
+  --tf-side-active: #694C2F;
+  --tf-side-line: #846D53;
+  --tf-side-text: #F6F1E8;
+  --tf-side-muted: #DFD4C4;
+  --tf-side-accent: #DFDBE8;
+  --tf-accent: #583B1F;
+  --tf-accent-dark: #412A16;
+  --tf-accent-soft: #DFDBE8;
+  --tf-accent-text: #583B1F;
+  --tf-accent-line: #B5ACC3;
   --tf-ok: #2F5736;
   --tf-ok-soft: #DCEADB;
   --tf-ok-line: #B9D3B8;
@@ -40,9 +40,9 @@
   --tf-info: #1F4D63;
   --tf-info-soft: #D8E8F0;
   --tf-info-line: #B0CDDB;
-  --tf-data-needs: #0A64D2;
+  --tf-data-needs: #583B1F;
   --tf-placeholder: #7D7260;
-  --tf-focus-ring: #1C1812;
+  --tf-focus-ring: #583B1F;
   /* Alto de la fila superior del área principal (escritorio) donde vive «Cerrar sesión»: las pantallas que miden 100dvh lo restan. */
   --tf-shell-top: 3.25rem;
   /* Shell móvil: safe areas del iPhone (0 sin `viewport-fit=cover`) y alturas EXACTAS del encabezado y de la barra inferior. Las pantallas que ocupan todo el espacio
@@ -89,7 +89,7 @@
      como mínimo sobre cualquier superficie). Sobre las superficies oscuras (barra lateral, panel de marca) el anillo es
      marfil. Los controles con su propio `focus-visible:ring-*` o borde lo reemplazan. */
   :focus-visible {
-    outline: 2.5px solid #1C1812;
+    outline: 2.5px solid #583B1F;
     outline-offset: 2px;
   }
   [data-surface="dark"] :focus-visible,

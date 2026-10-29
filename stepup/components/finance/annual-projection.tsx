@@ -20,12 +20,12 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   const HEIGHT = 190;
   const PAD = { top: 8, bottom: 22, left: 4, right: 4 };
   const slot = (WIDTH - PAD.left - PAD.right) / 12;
-  const barWidth = slot * 0.62;
+  const barWidth = slot * 0.4;
   const max = Math.max(1, ...plan.months.map((month) => month.totalForDistribution));
   const scale = (HEIGHT - PAD.top - PAD.bottom) / max;
   const summary = plan.months.map((month) => `${MONTH_LONG[Number(month.billingPeriod.slice(5, 7)) - 1]}: ${STATUS_LABEL[month.status].toLowerCase()}, ${formatMoney(month.totalForDistribution)}`).join("; ");
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="h-auto w-full">
+    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="tf-chart-enter h-auto w-full max-w-[760px]">
       <line x1={PAD.left} x2={WIDTH - PAD.right} y1={HEIGHT - PAD.bottom} y2={HEIGHT - PAD.bottom} className="stroke-borderMid" strokeWidth={1} />
       {plan.months.map((month, index) => {
         const x = PAD.left + index * slot + (slot - barWidth) / 2;

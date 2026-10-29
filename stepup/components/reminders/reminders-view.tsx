@@ -43,7 +43,7 @@ export function RemindersView({ summary }: { summary: RemindersCenterSummary }) 
                   <h2 id={`reminders-${category.kind}`} className="min-w-0 font-display text-section font-semibold [overflow-wrap:anywhere]">
                     {category.label}
                   </h2>
-                  <Badge tone={tone}>{category.items.length}</Badge>
+                  <Badge tone="bad">{category.items.length}</Badge>
                 </div>
                 <ul className="mt-3 overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card">
                   {category.items.map((item) => (

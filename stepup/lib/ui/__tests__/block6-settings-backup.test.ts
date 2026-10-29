@@ -39,7 +39,7 @@ test("Configuración y Respaldo ya no usan el azul heredado ni el semáforo de c
 test("el azul heredado de interfaz se retiró: el token no existe y ninguna pantalla lo usa", () => {
   const tailwind = read("tailwind.config.ts");
   assert.doesNotMatch(tailwind, /brandBlue/);
-  assert.match(tailwind, /dataNeeds: "#0A64D2"/, "el azul con significado de dato (Necesidades) se conserva");
+  assert.match(tailwind, /dataNeeds: "#583B1F"/, "Necesidades conserva un token propio con el marrón aprobado");
   for (const file of [...sources("app"), ...sources("components")]) assert.doesNotMatch(code(file), /brandBlue/, file);
 });
 
@@ -113,4 +113,3 @@ test("Nada de lo que no existe: sin «Crear respaldo» en la web ni un historial
     assert.doesNotMatch(source, /Crear respaldo|Descargar respaldo|Exportar datos/i, file);
   }
 });
-

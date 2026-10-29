@@ -14,7 +14,7 @@ export type SkeletonVariant = "list" | "calendar" | "finance" | "profile" | "for
 
 const WIDTH: Record<SkeletonVariant, keyof typeof PAGE_WIDTH> = { list: "wide", calendar: "wide", finance: "wide", profile: "medium", form: "narrow", settings: "wide", detail: "medium" };
 
-const BLOCK = "rounded-md bg-paperDeep";
+const BLOCK = "rounded-md bg-lavenderSoft";
 const PANEL = "rounded-xl border-[1.5px] border-border bg-surface shadow-card";
 
 /** Encabezado: título de 34 px (44 en escritorio) con su interlínea, apoyo y la acción principal a la derecha. */

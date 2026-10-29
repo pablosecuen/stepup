@@ -1,0 +1,20 @@
+DISEÑO NATURAL — PARTE DE CODEX — 28/10/2026
+
+Rama: design-natural-app-20261028. Base: c72768c. Copia separada TeacherFlow_design_natural_20261028/stepup.
+Alcance: tokens de toda la interfaz, fuentes autoalojadas DM Sans y DM Serif Display, mayor presencia de lavanda, crema y marrón; componentes compartidos; notificaciones rojas en Inicio; indicador inclinado de clase en curso; nombres de alumnos compactos con nombre completo conservado; controles proporcionados y accesibles; presentación financiera y torta mensual opcional.
+
+La torta y las barras usan exactamente la misma serie ya cargada de dinero COBRADO por fecha real de pago, no facturación ni deuda. Porcentajes calculados desde centavos; meses máximos (incluidos empates) identificados; meses sin cobros sin sectores ficticios. Tabla alternativa y teclado conservados. Importes fuera de las donas.
+No cambia acciones, repositorios, cálculos de cobro, registros, autenticación, sesiones, migraciones ni datos. Los colores semánticos de las clases y los estados de pago conservan su significado. La grilla del calendario no cambia.
+
+Reels: se aplicó la dirección verificable —consistencia visual, esqueletos de carga que conservan estructura, transiciones breves y gráficos con entrada discreta— reutilizando el sistema existente. No se añadió una librería de animación ni se escondieron demoras. Inicio conserva su excepción sin loading.tsx para no romper la redirección HTTP de recuperación de sesión. Las cargas restantes conservan sus esqueletos, ahora lavanda. Movimiento reducido, foco y objetivos de 44 px se mantienen. No se afirma haber transcrito el audio de los tres reels. No se restauró el tema oscuro que el usuario rechazó.
+
+Verificación:
+- Suite completa: 5113/5113.
+- Tipos y ESLint: sin errores.
+- Compilación de producción local y componentes reales con datos sintéticos: probados el cambio Barras/Torta, el mayor mes, centavos, teclado (Fin), apertura del diálogo de porcentajes y Escape sin guardar.
+- Sin desborde horizontal observado a 390, 430 y 1366 px. El tamaño solicitado como 375 fue informado por el navegador como 376 px: se documenta la medida real.
+- Nombre largo: dos líneas de 22 px; nombre completo en title y en el enlace accesible. Donas sin texto central.
+- La página temporal diseno-lab fue eliminada antes de la compilación final.
+- No equivale a una prueba física de iPhone ni a verificar datos reales autenticados.
+
+Integración pendiente del bloque de Claude: app/page.tsx y components/landing/*, conservando toda la landing actual y agregando el anuncio amarillo de borde a borde hacia la izquierda. Encargo externo: design_handoff/PROMPT_CLAUDE_LANDING_NATURAL_20261028.txt. No se despliega una mitad ni se mezclan los cambios funcionales ajenos que siguen en parity-codex.

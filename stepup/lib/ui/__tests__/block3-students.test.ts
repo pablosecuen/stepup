@@ -59,9 +59,10 @@ test("Lista: filtros por GET sin lógica en el cliente, hoja de filtros móvil c
   assert.match(code("components/students/students-filters-form.tsx"), /variant="secondary" className="hidden nav:inline-flex"/, "«Aplicar filtros» pesa menos que «Nuevo alumno»");
 });
 
-test("Lista: los textos largos se parten (nunca «…»), el estado va con texto y el nivel/modalidad se leen sin color", () => {
+test("Lista: los nombres largos ocupan dos líneas con nombre completo en title; niveles y estados conservan su texto", () => {
   const card = code("components/students/student-card.tsx");
-  assert.doesNotMatch(card, /\btruncate\b|text-ellipsis|line-clamp/);
+  assert.match(card, /title=\{student\.name\} className="line-clamp-2/);
+  assert.doesNotMatch(card.slice(card.indexOf("export function LevelChip"), card.indexOf("export function StudentCard")), /line-clamp|truncate/);
   assert.match(card, /\[overflow-wrap:anywhere\]/);
   assert.match(code("components/students/student-status-badge.tsx"), /<Badge tone=\{STATUS_TONE\[status\]\} dot>\s*\{STUDENT_STATUS_LABEL\[status\]\}/);
   assert.match(card, /Nivel \$\{student\.levels\.join\(", "\)\}/);

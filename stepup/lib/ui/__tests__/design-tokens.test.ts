@@ -99,11 +99,11 @@ test("los tokens reservados siguen siendo suyos: el semáforo de cobro y el plan
   assert.equal(colors.statusRojo, "#BF2A20");
   assert.equal(colors.statusPendiente, "#4361B8");
   assert.equal(colors.pastelLavender, "#E9E2FF");
-  assert.equal(colors.pastelSageText, "#35613B");
+  assert.equal(colors.pastelSageText, "#59602F");
   assert.equal((colors as Record<string, string>).brandBlue, undefined, "el azul heredado de interfaz se retiró en el Bloque 6");
   assert.equal((colors as Record<string, string>).brandBlueDark, undefined);
   // Azul con significado de dato (Necesidades del 50/30/20): token propio, no arrastrado por el retiro del azul de interfaz.
-  assert.equal(colors.dataNeeds, "#0A64D2");
+  assert.equal(colors.dataNeeds, "#583B1F");
   // La distribución sugerida vive en Resumen financiero: la leyenda y la dona usan sus colores; los controles del diálogo son terracota.
   const budget = code("components/finance/budget-suggestion.tsx");
   const adjust = code("components/finance/budget-adjust-dialog.tsx");
@@ -127,11 +127,11 @@ test("la escala congelada del calendario no se toca", () => {
   assert.match(theme, /REPLACEMENT_COLORS = \{ bg: "#FCE8E6", border: "#D96C68" \}/);
 });
 
-test("tipografías: Hanken Grotesk (interfaz) y Fraunces (títulos) con next/font, expuestas como variables y usadas por Tailwind", () => {
+test("tipografías: DM Sans (interfaz) y DM Serif Display (títulos) con next/font, expuestas como variables y usadas por Tailwind", () => {
   const layout = code("app/layout.tsx");
-  assert.match(layout, /import \{ Fraunces, Hanken_Grotesk \} from "next\/font\/google"/);
-  assert.match(layout, /Hanken_Grotesk\(\{ subsets: \["latin"\], variable: "--font-sans"/);
-  assert.match(layout, /Fraunces\(\{ subsets: \["latin"\], variable: "--font-display"/);
+  assert.match(layout, /import \{ DM_Sans, DM_Serif_Display \} from "next\/font\/google"/);
+  assert.match(layout, /DM_Sans\(\{ subsets: \["latin"\], variable: "--font-sans"/);
+  assert.match(layout, /DM_Serif_Display\(\{ subsets: \["latin"\], variable: "--font-display"/);
   assert.match(layout, /className=\{`\$\{sans\.variable\} \$\{display\.variable\}`\}/, "las variables cuelgan de <html>");
   assert.match(layout, /<body className="[^"]*\bfont-sans\b/, "la interfaz entera usa la sans");
   const families = (config.theme!.extend as { fontFamily: Record<string, string[]> }).fontFamily;
@@ -148,7 +148,7 @@ test("breakpoint de navegación: `nav` (820 px) entre md y lg, para que lg: siem
 });
 
 test("globals.css: foco visible, objetivos táctiles de 44 px y movimiento reducido siguen vigentes", () => {
-  assert.match(css, /:focus-visible \{\s*outline: 2\.5px solid #1C1812;/);
+  assert.match(css, /:focus-visible \{\s*outline: 2\.5px solid #583B1F;/);
   assert.match(css, /button:not\(\[data-grid-event\]\),\s*summary \{\s*min-height: 2\.75rem;/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
@@ -157,7 +157,7 @@ test("buttonClass y linkClass: TODA variante y tamaño trae min-h-11 (objetivo t
   const button = code("components/ui/button.tsx");
   // La base común lleva min-h-11 y ninguna variante ni tamaño la reemplaza por algo menor.
   assert.match(button, /const BASE =\s*"[^"]*\bmin-h-11\b/);
-  assert.match(button, /return \[BASE, VARIANTS\[variant\], SIZES\[size\], block \? "w-full" : ""\]/);
+  assert.match(button, /return \[BASE, VARIANTS\[variant\], SIZES\[size\], block \? "w-full max-w-\[320px\]" : ""\]/);
   const variants = button.slice(button.indexOf("const VARIANTS"), button.indexOf("const SIZES"));
   assert.doesNotMatch(variants, /\bmin-h-|\bh-\d/, "las variantes sólo cambian color");
   assert.match(button, /lg: "min-h-\[52px\] px-6 text-base"/);

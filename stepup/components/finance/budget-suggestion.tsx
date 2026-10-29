@@ -16,12 +16,12 @@ const CATEGORY_UI: Record<BudgetCategory, { label: string; text: string; swatch:
 };
 
 /** Dona de tres tramos (viewBox 36, circunferencia 100): cada tramo mide exactamente su porcentaje. */
-function Donut({ shares, centerLabel }: { shares: ReturnType<typeof splitCollectedByPercent>; centerLabel: string }) {
+function Donut({ shares }: { shares: ReturnType<typeof splitCollectedByPercent> }) {
   // Cada tramo empieza donde terminó el anterior; el primero arranca arriba (las 12 = desplazamiento 25).
   const offsets = shares.map((_, index) => 25 - shares.slice(0, index).reduce((sum, share) => sum + share.percent, 0));
   const summary = shares.map((share) => `${CATEGORY_UI[share.category].label} ${share.percent} %`).join(", ");
   return (
-    <div className="relative mx-auto h-40 w-40 shrink-0">
+    <div className="tf-chart-enter relative h-36 w-36 shrink-0">
       <svg viewBox="0 0 36 36" role="img" aria-label={`Distribución sugerida: ${summary}`} className="h-full w-full -rotate-0">
         <circle cx="18" cy="18" r="15.9155" fill="none" strokeWidth="4.2" className="stroke-paperDeep" />
         {shares.map((share, index) => {
@@ -42,10 +42,6 @@ function Donut({ shares, centerLabel }: { shares: ReturnType<typeof splitCollect
           );
         })}
       </svg>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-5 text-center">
-        <span className="text-[12px] font-[650] text-textMuted">Cobrado</span>
-        <span className="font-display text-[19px] font-semibold leading-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{centerLabel}</span>
-      </div>
     </div>
   );
 }
@@ -77,10 +73,11 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
         </p>
       )}
 
-      <div className="mt-4 flex flex-col items-center gap-5 min-[480px]:flex-row min-[480px]:items-center">
-        <Donut shares={shares} centerLabel={formatMoney(hasCollected ? collected : 0)} />
+      <p className="mt-4 text-[13px] text-textMuted">Cobrado en el período<span className="mt-1 block whitespace-nowrap font-display text-[26px] text-textPrimary tf-num">{formatMoney(hasCollected ? collected : 0)}</span></p>
+      <div className="mt-3 flex max-w-[620px] flex-col items-start gap-5 min-[480px]:flex-row min-[480px]:items-center">
+        <Donut shares={shares} />
         <div className="w-full min-w-0 flex-1">
-          <div aria-hidden className="flex h-4 w-full gap-0.5 overflow-hidden rounded-pill bg-paperDeep">
+          <div aria-hidden className="flex h-1.5 max-w-[360px] gap-0.5 overflow-hidden rounded-pill bg-paperDeep">
             {shares.map((share) => (
               <div key={share.category} className={`h-full ${CATEGORY_UI[share.category].swatch} ${share.percent > 0 ? "min-w-[3px]" : "hidden"}`} style={{ flexGrow: share.percent }} />
             ))}

@@ -1,0 +1,13 @@
+/* Estética natural compartida. La geometría, los colores de las clases y las reglas de negocio siguen en sus componentes. */
+.tf-page-main{background-image:linear-gradient(180deg,#E8E4EF70 0,transparent 340px)}
+.font-display{font-synthesis:none;font-weight:400}
+.tf-current-class{display:inline-flex;transform:rotate(-2deg)}
+.tf-current-class>span{background:#583B1F;border-color:#583B1F;color:#FCFAF6}
+.tf-current-class>span>span{background:#C2BFCB}
+.tf-chart-enter{transform-origin:center bottom}
+@keyframes tf-chart-enter{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){.tf-chart-enter{animation:tf-chart-enter 320ms cubic-bezier(.16,1,.3,1) both}}
+@media(prefers-reduced-motion:reduce){.tf-current-class{transform:none}}
+/* Las listas conservan su información completa en la ficha; los nombres extensos no agrandan indefinidamente la fila. */
+.tf-page-main [data-tf-student-name]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.tf-page-main section[aria-labelledby]{background-image:linear-gradient(120deg,#E8E4EF45,transparent 55%)}
