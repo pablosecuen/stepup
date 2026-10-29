@@ -14,7 +14,9 @@ test("la escala NO cambió: 1 a 10 en pasos de 1; 0, vacío o fuera de rango = �
 test("control de calificación: compacto, zona táctil de 48 px, botones «−» y «+» de 48×48, valor junto al nombre y misma escala", () => {
   const parts = read("components/registro/registration-form-parts.tsx");
   const field = parts.slice(parts.indexOf("function SkillGradeField"), parts.indexOf("/** Cambio de un formulario de participante"));
-  assert.match(field, /max-w-\[420px\]/, "no se extiende por todo el ancho");
+  assert.match(field, /w-full max-w-\[320px\]/, "opción C: barra corta también en escritorio");
+  assert.match(field, /onClick=\{\(\) => onChange\(null\)\}/, "se puede volver a sin calificar directamente");
+  assert.match(field, /aria-label=\{`Dejar \$\{label\} sin calificar`\}/, "el botón identifica el criterio que limpia");
   assert.match(field, /min=\{GRADE_MIN\}[\s\S]*max=\{GRADE_MAX\}[\s\S]*step="1"/);
   assert.match(parts, /const GRADE_MIN = 0;\nconst GRADE_MAX = 10;/);
   assert.match(parts, /const STEP_BUTTON =\s*"inline-flex h-12 w-12 /, "botones de 48×48");

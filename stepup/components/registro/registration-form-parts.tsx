@@ -133,10 +133,10 @@ function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: numb
   const set = (next: number) => onChange(normalizeSkillGradeValue(Math.min(GRADE_MAX, Math.max(GRADE_MIN, next))));
   const spoken = value != null ? `${value} de 10` : "sin calificar";
   return (
-    <div role="group" aria-label={label} className="max-w-[420px]">
+    <div role="group" aria-label={label} className="w-full max-w-[320px]">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[15px] font-[650] text-textSecondary">{label}</span>
-        <span className="text-[15px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
+        <span className="whitespace-nowrap text-[15px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
       </div>
       <div className="mt-1 flex items-center gap-2">
         <button type="button" className={STEP_BUTTON} onClick={() => set(current - 1)} disabled={current <= GRADE_MIN} aria-label={`Bajar la nota de ${label}`}>
@@ -158,6 +158,15 @@ function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: numb
           +
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        aria-label={`Dejar ${label} sin calificar`}
+        aria-pressed={value == null}
+        className="mt-2 inline-flex min-h-11 items-center rounded-pill border-[1.5px] border-borderMid bg-surface px-3 text-[14px] text-textSecondary transition-colors hover:border-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+      >
+        Sin calificar
+      </button>
     </div>
   );
 }
