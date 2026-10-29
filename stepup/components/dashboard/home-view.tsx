@@ -7,6 +7,7 @@ import { REMINDER_ICONS } from "@/components/reminders/reminder-icons";
 import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink, linkClass } from "@/components/ui/button";
 import { PAGE_WIDTH } from "@/components/ui/page-header";
+import { PANEL_CLASS } from "@/components/ui/surfaces";
 import { agendaLessonLabel } from "@/lib/dashboard/lesson-label";
 import { buildFirstSteps, buildGreeting, homeDateLabel, resolveHomeStage, type HomeWelcome } from "@/lib/dashboard/home-welcome";
 import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
@@ -14,7 +15,7 @@ import { formatGrade, formatHours } from "@/lib/format/number-format";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 
 const MAX_VISIBLE_PENDING = 4;
-const PANEL = "rounded-xl border-[1.5px] border-border bg-surface shadow-card";
+const PANEL = PANEL_CLASS;
 const ROW = "flex min-h-14 items-center gap-3 border-t border-border px-4 py-2.5 transition-colors duration-200 hover:bg-surface2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink motion-reduce:transition-none nav:px-5";
 
 /** Indicador editorial del resumen del día: cifra en serifa y una palabra, sin tarjeta. Los enlazados suben de tono al pasar el puntero. */

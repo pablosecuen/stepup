@@ -323,7 +323,7 @@ test("mensajes anunciables: errores con role=alert, carga y avisos con role=stat
   assert.match(code("components/ui/notice.tsx"), /<div role=\{role \?\? \(tone === "bad" \? "alert" : "status"\)\}/);
   assert.match(code("components/ui/states.tsx"), /role="alert"/);
   assert.match(code("components/ui/states.tsx"), /role="status" aria-live="polite"/);
-  assert.match(code("components/ui/page-skeleton.tsx"), /role="status" aria-busy="true" aria-live="polite"/);
+  assert.match(code("components/ui/skeleton-kit.tsx"), /role="status" aria-busy="true" aria-live="polite"/);
   // Ningún icono decorativo queda sin ocultar en los controles nuevos o tocados.
   assert.match(code("components/calendar/real-calendar-toolbar.tsx"), /<ChevronLeftIcon className="h-5 w-5" aria-hidden \/>/);
 });

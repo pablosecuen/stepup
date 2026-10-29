@@ -17,7 +17,9 @@ test("las cuatro tarjetas inferiores van en dos columnas independientes (apilada
   assert.ok(order.every((index) => index > 0) && order.join() === [...order].sort((a, b) => a - b).join(), "mismo orden de lectura en móvil (una columna) y en escritorio (columna izquierda y luego derecha)");
   const secondColumn = view.indexOf('<div className="flex min-w-0 flex-col gap-5">', view.indexOf('<div className="flex min-w-0 flex-col gap-5">') + 1);
   assert.ok(view.indexOf('aria-labelledby="demanda-titulo"') > secondColumn && view.indexOf('aria-labelledby="alumnos-titulo"') > view.indexOf('aria-labelledby="demanda-titulo"'), "«Alumnos del año» empieza justo debajo de la demanda");
-  const card = /const CARD = "([^"]*)"/.exec(view)![1];
+  // La tarjeta es la superficie compartida con el esqueleto de carga (`components/ui/surfaces.ts`).
+  assert.match(view, /const CARD = CARD_CLASS;/);
+  const card = /export const CARD_CLASS = "([^"]*)"/.exec(readFileSync(join(ROOT, "components/ui/surfaces.ts"), "utf8"))![1];
   assert.doesNotMatch(card, /\bh-|min-h|max-h/, "la tarjeta no fija su altura");
   const rows = view.slice(view.indexOf("Dos columnas independientes"), view.indexOf('<section aria-labelledby="hora-titulo"'));
   assert.doesNotMatch(rows, /\bh-|min-h|row-span|grid-rows|auto-rows|items-stretch/, "ni la grilla ni las columnas fijan alturas o filas compartidas");

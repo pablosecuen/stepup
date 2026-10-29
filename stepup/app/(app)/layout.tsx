@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { PrimaryNav } from "@/components/nav/primary-nav";
 import { NavigationProgress } from "@/components/nav/navigation-progress";
 import { ScreenReveal } from "@/components/nav/screen-reveal";
+import { ScreenSlot } from "@/components/nav/screen-slot";
 import { SoftKeyboardSync } from "@/components/nav/soft-keyboard-sync";
 import { SignOutButton } from "@/components/nav/sign-out-button";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
@@ -78,7 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">
         <SignOutButton />
       </div>
-      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0">{children}</main>
+      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0"><ScreenSlot />{children}</main>
     </div>
   );
 }

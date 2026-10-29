@@ -85,7 +85,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
         </div>
       )}
 
-      <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
+      <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="tf-block mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
         <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} dayHrefs={dayHrefs} />
       </EnterOnChange>
     </div>

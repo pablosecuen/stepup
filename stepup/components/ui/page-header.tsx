@@ -40,17 +40,20 @@ export function PageTitle({ children, compact = false }: { children: ReactNode; 
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <PrivateLink href={href} className={linkClass()}>
+    <PrivateLink href={href} className={linkClass()} data-tf-static="">
       <ArrowLeftIcon className="h-4 w-4 shrink-0" aria-hidden />
       {children}
     </PrivateLink>
   );
 }
 
-/** Título + texto de apoyo + acción principal. En móvil la acción baja debajo del título si no entra. */
+/**
+ * Título + texto de apoyo + acción principal. En móvil la acción baja debajo del título si no entra. `data-tf-header`: el esqueleto de carga
+ * dibuja el mismo título y la misma acción REALES (`SkHeader`), así que el encabezado no se anima al llegar el contenido (no parpadea).
+ */
 export function PageHeader({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+    <div data-tf-header="" className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
         <PageTitle>{title}</PageTitle>
         {subtitle && <p className="mt-1.5 text-[15px] text-textMuted">{subtitle}</p>}

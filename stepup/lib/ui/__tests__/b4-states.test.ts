@@ -51,7 +51,7 @@ test("cada sección privada (salvo Inicio) tiene su loading.tsx con el esqueleto
     assert.ok(existsSync(join(ROOT, file)), `${file} existe`);
     const source = code(file);
     assert.match(source, /export default function Loading\(\)/);
-    assert.match(source, /<PageSkeleton label="Cargando [^"]+…" variant="[a-z]+" \/>/, "con texto para lectores de pantalla");
+    assert.match(source, /<RouteSkeleton path="\/[^"]*" \/>/, "esqueleto de su pantalla, con nombre accesible «Cargando …» del registro de pantallas");
     assert.doesNotMatch(source, /"use client"/);
   }
 });
@@ -63,7 +63,7 @@ test("Inicio NO tiene loading.tsx: su redirect de recuperación de sesión (B0) 
 });
 
 test("el esqueleto es accesible: role=status, aria-busy, texto sólo para lectores y sin animación si se reduce el movimiento", () => {
-  const skeleton = code("components/ui/page-skeleton.tsx");
+  const skeleton = code("components/ui/skeleton-kit.tsx");
   assert.match(skeleton, /role="status" aria-busy="true" aria-live="polite"/);
   assert.match(skeleton, /aria-labelledby="carga-titulo"/, "la región se nombra con la sección que carga");
   assert.match(skeleton, /<span id="carga-titulo" className="sr-only">\s*\{label\}\s*<\/span>/);
@@ -198,7 +198,7 @@ test("los vacíos que son un buen estado (nada pendiente) no inventan acciones",
 });
 
 test("alcance: B4 no cambia datos ni autenticación (sólo pantallas de estado)", () => {
-  for (const file of ["components/ui/page-skeleton.tsx", "components/ui/not-found-view.tsx", "components/ui/route-error.tsx", "components/ui/states.tsx"]) {
+  for (const file of ["components/ui/skeleton-kit.tsx", "components/ui/not-found-view.tsx", "components/ui/route-error.tsx", "components/ui/states.tsx"]) {
     assert.doesNotMatch(code(file), /supabase|\.rpc\(|\.from\(|fetch\(|signOut|redirect\(/i, `${file} no toca datos ni auth`);
   }
 });

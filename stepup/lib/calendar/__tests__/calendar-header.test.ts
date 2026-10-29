@@ -11,6 +11,12 @@ const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
 const code = (path: string) => read(path).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
+/** `CalendarView` usa el contenedor compartido `CALENDAR_PAGE_CLASS` (también lo usa su esqueleto de carga): estas pruebas leen la vista con esa constante expandida. */
+function calendarView(reader: (path: string) => string): string {
+  const pageClass = /"([^"]+)"/.exec(read("components/calendar/calendar-page-class.ts").replace(/\/\*[\s\S]*?\*\//g, ""))![1];
+  return reader("components/calendar/calendar-view.tsx").replace("className={CALENDAR_PAGE_CLASS}", `className="${pageClass}"`);
+}
+
 test("formatCivilMonthYear: mes y año en español y minúscula; clave inválida → texto de reemplazo", () => {
   assert.equal(formatCivilMonthYear("2026-10-14"), "octubre 2026");
   assert.equal(formatCivilMonthYear("2026-01-01"), "enero 2026");
@@ -130,7 +136,7 @@ test("barra de navegación: sólo flecha · mes y año · flecha; sin «Hoy» ni
 });
 
 test("encabezado: título reducido y, debajo, Series, Disponibilidad y Clases por registrar; la navegación del mes arriba a la derecha", () => {
-  const view = code("components/calendar/calendar-view.tsx");
+  const view = calendarView(code);
   assert.match(view, /<PageTitle compact>Calendario<\/PageTitle>/);
   const links = ["/calendario/series", "/calendario/disponibilidad", "/registro"].map((href) => view.indexOf(`href="${href}"`));
   assert.ok(links.every((index) => index > 0) && links[0] < links[1] && links[1] < links[2], "los tres accesos, en orden");
@@ -204,7 +210,7 @@ test("móvil: controles de vista y creación comparten fila y la grilla reserva 
   const toolbar = code("components/calendar/real-calendar-toolbar.tsx");
   assert.match(toolbar, /justify-between[\s\S]*nav:justify-end/, "en móvil la fila del mes ocupa el ancho; en escritorio va a la derecha");
   // El calendario también mide el área útil en el acceso anclado del teléfono.
-  const view = code("components/calendar/calendar-view.tsx");
+  const view = calendarView(code);
   // En el teléfono el calendario se ancla EXACTAMENTE entre el encabezado y la barra inferior (variables del shell con sus safe areas): sin página que se desplace, sin superposición y sin hueco.
   assert.match(view, /fixed inset-x-0 top-\[calc\(var\(--tf-m-header\)\+var\(--tf-safe-top\)\)\] bottom-\[calc\(var\(--tf-m-nav\)\+var\(--tf-safe-bottom\)\)\]/);
   assert.match(view, /nav:static/, "en escritorio vuelve al flujo normal");
@@ -216,7 +222,7 @@ test("móvil: controles de vista y creación comparten fila y la grilla reserva 
 });
 
 test("el contenedor fijo del calendario móvil queda por encima del encabezado (z-30) y la barra (z-20) para que el detalle de clase (z-50 dentro) no quede tapado", () => {
-  const view = read("components/calendar/calendar-view.tsx");
+  const view = calendarView(read);
   assert.match(view, /data-calendar-page className="fixed [^"]*\bz-40\b/);
   assert.match(read("components/nav/primary-nav.tsx"), /sticky top-0 z-30/);
   assert.match(read("components/nav/primary-nav.tsx"), /fixed inset-x-0 bottom-0 z-20/);

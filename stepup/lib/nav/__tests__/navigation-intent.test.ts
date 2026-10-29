@@ -77,9 +77,9 @@ test("el indicador reconoce el clic al instante, avisa si tarda y se apaga solo:
 test("cableado: un solo escucha en el documento (captura), se restablece al cambiar la ruta, al volver atrás y por tiempo, y está en el layout privado", () => {
   const component = code("components/nav/navigation-progress.tsx");
   assert.match(component, /document\.addEventListener\("click", onClick, \{ capture: true \}\)/);
-  assert.match(component, /window\.addEventListener\("popstate", clearPending\)/);
+  assert.match(component, /window\.addEventListener\("popstate", onHistory\)/);
   assert.match(component, /pendingRef\.current\.startKey !== routeKey/, "la ruta cambió: completó");
-  assert.match(component, /window\.setTimeout\(clearPending, GIVE_UP_AFTER_MS\)/, "falla o cuelgue: se apaga solo");
+  assert.match(component, /window\.setTimeout\(\(\) => clearPending\(true\), GIVE_UP_AFTER_MS\)/, "falla o cuelgue: la barra se apaga sola (el esqueleto sigue, con su aviso y Reintentar)");
   assert.match(component, /removeAttribute\("data-nav-pending"\)/);
   assert.match(component, /decision === "block_repeat"[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
   assert.match(component, /role="status" aria-live="polite" className="sr-only"/);

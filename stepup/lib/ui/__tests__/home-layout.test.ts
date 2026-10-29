@@ -99,8 +99,8 @@ test("movimiento: Inicio usa el sistema común de transiciones (grupos escalonad
   assert.doesNotMatch(VIEW + PLANNER, /animationDelay|animate-tf-rise|const ENTER/, "sin estilos de entrada propios: todo sale del sistema común");
   assert.ok((VIEW.match(/data-enter="[123]"/g) ?? []).length >= 6 && (PLANNER.match(/data-enter="2"/g) ?? []).length >= 2);
   const css = read("app/globals.css");
-  assert.match(css, /\.tf-enter\[data-enter="2"\] \{\s*animation-delay: 40ms;/);
-  assert.match(css, /\.tf-enter\[data-enter="3"\] \{\s*animation-delay: 80ms;/);
+  assert.match(css, /\.tf-enter\[data-enter="2"\] \{\s*animation-delay: var\(--tf-reveal-step\);/);
+  assert.match(css, /\.tf-enter\[data-enter="3"\] \{\s*animation-delay: calc\(var\(--tf-reveal-step\) \* 2\);/);
   const reduced = css.slice(css.indexOf("prefers-reduced-motion: reduce"));
   assert.match(reduced, /animation-delay: 0s !important/);
   assert.doesNotMatch(VIEW + PLANNER, /animate-(pulse|spin|bounce|ping)|infinite/, "ninguna animación constante");

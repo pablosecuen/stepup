@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {ReplacementNotices} from "@/components/registro/replacement-notices";
 import { PAGE_WIDTH } from "@/components/ui/page-header";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
@@ -12,7 +13,6 @@ import type { ProfileClassStats, StudentNextClass } from "@/lib/students/profile
 import { ChangeStatusForm } from "@/components/students/change-status-form";
 import { DeleteStudentButton } from "@/components/students/delete-student-button";
 import { StudentProfileHeader } from "@/components/students/profile/profile-header";
-import { EnterOnChange } from "@/components/ui/enter-on-change";
 import { ProfileTabsNav, type ProfileTabKey } from "@/components/students/profile/profile-tabs-nav";
 import { ResumenTabContent } from "@/components/students/profile/resumen-tab";
 import { InformacionTabContent } from "@/components/students/profile/informacion-tab";
@@ -51,11 +51,12 @@ export interface StudentProfileData {
 }
 
 /**
- * Perfil del alumno (presentación): encabezado, pestañas y el contenido de la pestaña activa. La página carga SÓLO los datos de
- * la pestaña que se muestra (ver `app/(app)/alumnos/[id]/page.tsx`); esta vista únicamente los dibuja. Las tareas de fondo
- * (generar mensualidades, limpiar PDFs) las dispara la página, no la vista.
+ * Perfil del alumno (presentación): encabezado y pestañas, y debajo el contenido de la pestaña activa (`children`). La página resuelve SÓLO al
+ * alumno y pone el contenido de la pestaña en su propio límite de carga (`<Suspense key={tab}>` + `ProfileTabBody`): el encabezado y las pestañas
+ * quedan fijos y el cuerpo entra cuando llega, también al cambiar de pestaña. Las tareas de fondo (generar mensualidades, limpiar PDFs) las
+ * dispara la página, no la vista.
  */
-export function StudentProfileView({ student, tab, data }: { student: StudentRecord; tab: ProfileTabKey; data: StudentProfileData }) {
+export function StudentProfileView({ student, tab, children }: { student: StudentRecord; tab: ProfileTabKey; children: ReactNode }) {
   return (
     <div className={PAGE_WIDTH.medium}>
       <StudentProfileHeader student={student} />
@@ -65,41 +66,48 @@ export function StudentProfileView({ student, tab, data }: { student: StudentRec
       </div>
 
       <ReplacementNotices studentId={student.id} />
-      <EnterOnChange changeKey={tab} className="mt-5">
-        {tab === "resumen" && (
-          <div className="flex flex-col gap-6">
-            <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} totalCollected={data.totalCollected} />
-            <div id="cambiar-estado" className="scroll-mt-24">
+      <div className="mt-5">{children}</div>
+    </div>
+  );
+}
+
+/** Contenido de una pestaña (presentación pura): lo dibuja `ProfileTabBody` cuando ya cargó los datos de ESA pestaña. */
+export function StudentProfileTabContent({ student, tab, data }: { student: StudentRecord; tab: ProfileTabKey; data: StudentProfileData }) {
+  return (
+    <>
+      {tab === "resumen" && (
+        <div className="flex flex-col gap-6">
+          <ResumenTabContent student={student} stats={data.stats} nextClass={data.nextClass} pendingTasks={data.pendingTasks} totalCollected={data.totalCollected} />
+          <div id="cambiar-estado" className="scroll-mt-24">
             <ChangeStatusForm studentId={student.id} currentStatus={student.status} monthlyPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price }).type === "monthly"} />
             <DeleteStudentButton studentId={student.id} />
-            </div>
           </div>
-        )}
-        {tab === "clases" && (
-          <div className="flex flex-col gap-4">
-            <PunctualitySection summary={buildStudentPunctuality(data.registrations, todayInArgentina())} />
-            <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />
-          </div>
-        )}
-        {tab === "progreso" && <div className="flex flex-col gap-4"><LevelAchievementCard studentId={student.id} levels={student.levels} history={data.levelHistory} dateJoined={student.dateJoined} today={data.todayDateKey} /><ProgresoTabContent entries={data.evaluationEntries} /></div>}
-        {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
-        {tab === "cobros" && (
-          <CobrosTabContent studentId={student.id} studentName={student.name} billingPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price })} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />
-        )}
-        {tab === "reportes" && (
-          <ReportesTabContent studentId={student.id} studentName={student.name} monthsWithClasses={data.monthsWithClasses} initialHistory={data.reportHistory} />
-        )}
-        {tab === "informacion" && (
-          <InformacionTabContent
-            student={student}
-            statusHistory={data.statusHistory}
-            levelHistory={data.levelHistory}
-            priceHistory={data.priceHistory}
-            stats={data.stats}
-            totalCollected={data.totalCollected}
-          />
-        )}
-      </EnterOnChange>
-    </div>
+        </div>
+      )}
+      {tab === "clases" && (
+        <div className="flex flex-col gap-4">
+          <PunctualitySection summary={buildStudentPunctuality(data.registrations, todayInArgentina())} />
+          <ClasesTabContent registrations={data.registrations} attendanceByRegistrationId={data.attendanceByRegistrationId} incidentsByRegistrationId={data.registrationIncidents} />
+        </div>
+      )}
+      {tab === "progreso" && <div className="flex flex-col gap-4"><LevelAchievementCard studentId={student.id} levels={student.levels} history={data.levelHistory} dateJoined={student.dateJoined} today={data.todayDateKey} /><ProgresoTabContent entries={data.evaluationEntries} /></div>}
+      {tab === "tareas" && <TareasTabContent tasks={data.pendingTasks} />}
+      {tab === "cobros" && (
+        <CobrosTabContent studentId={student.id} studentName={student.name} billingPlan={resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price })} charges={data.charges} payments={data.payments} allocations={data.allocations} chargeIncidents={data.chargeIncidents} todayDateKey={data.todayDateKey} />
+      )}
+      {tab === "reportes" && (
+        <ReportesTabContent studentId={student.id} studentName={student.name} monthsWithClasses={data.monthsWithClasses} initialHistory={data.reportHistory} />
+      )}
+      {tab === "informacion" && (
+        <InformacionTabContent
+          student={student}
+          statusHistory={data.statusHistory}
+          levelHistory={data.levelHistory}
+          priceHistory={data.priceHistory}
+          stats={data.stats}
+          totalCollected={data.totalCollected}
+        />
+      )}
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   ClipboardDocumentCheckIcon as ClipboardDocumentCheckIconSolid,
 } from "@heroicons/react/24/solid";
 import PrivateLink from "@/components/nav/private-link";
+import { useEffectivePathname } from "@/components/nav/use-effective-pathname";
 import { SignOutButton } from "@/components/nav/sign-out-button";
 import { BrandMark } from "@/components/ui/brand";
 import { PRIMARY_NAV_ITEMS, isPrimaryNavActive, isPrimarySectionActive, type PrimaryNavIconKey } from "@/lib/nav/primary-nav-items";
@@ -55,7 +56,8 @@ function Logo({ className = "" }: { className?: string }) {
  * Activo por segmento completo (destino o subruta). Ningún enlace precarga (`PrivateLink`).
  */
 export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra" }: { billingEnabled?: boolean; navigationLocation?: "barra" | "menu" }) {
-  const pathname = usePathname();
+  // La pestaña pulsada figura seleccionada desde el clic (junto al esqueleto de su pantalla), no recién cuando llega la respuesta.
+  const pathname = useEffectivePathname(usePathname());
   const [menuOpen, setMenuOpen] = useState(false);
   const settingsActive = isPrimaryNavActive(pathname, "/configuracion");
   const billingActive = isPrimaryNavActive(pathname, "/facturacion");

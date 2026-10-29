@@ -3,6 +3,7 @@ import { CheckIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { CARD_CLASS } from "@/components/ui/surfaces";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { CollectedEvolutionChart } from "@/components/finance/collected-evolution-chart";
 import { BudgetSuggestion } from "@/components/finance/budget-suggestion";
@@ -33,7 +34,7 @@ function formatWholeHours(hours: number): string {
   return `${formatCount(Math.round(hours))} h`;
 }
 
-const CARD = "rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5";
+const CARD = CARD_CLASS;
 
 function Kpi({ label, value, valueClass = "text-textPrimary", foot }: { label: string; value: string; valueClass?: string; foot?: ReactNode }) {
   return (

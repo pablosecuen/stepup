@@ -4,6 +4,7 @@ import "./globals.css";
 import "./natural-theme.css";
 import { SkipLink } from "@/components/ui/skip-link";
 import { NumberWheelGuard } from "@/components/ui/number-wheel-guard";
+import { STREAMING_REVEAL_SCRIPT } from "@/lib/ui/streaming-reveal-script";
 
 // Rediseño visual v1 (docs/design/web-v1/01-fundamentos.md): DM Sans para la interfaz y DM Serif Display para títulos, cifras
 // grandes y nombres. `next/font` las autoaloja (sin pedidos a Google al navegar; CSP `font-src 'self'`) y reserva el espacio
@@ -35,6 +36,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${sans.variable} ${display.variable}`}>
+      <head>
+        {/* El contenido que llega por streaming reemplaza a su esqueleto aunque la pestaña esté en segundo plano (ver el comentario del módulo). */}
+        <script dangerouslySetInnerHTML={{ __html: STREAMING_REVEAL_SCRIPT }} />
+      </head>
       <body className="min-h-screen max-w-screen overflow-x-hidden bg-background font-sans text-textPrimary antialiased">
         <SkipLink />
         {children}

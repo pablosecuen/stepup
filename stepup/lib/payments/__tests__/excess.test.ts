@@ -72,7 +72,8 @@ test("el historial de clases y los registros muestran las incidencias heredadas,
     assert.match(text, /<OriginIncidentsCard incidents=\{incidents\} \/>/);
     assert.match(text, /loadRegistrationIncidents\(ctx, \[detail\.registration\.id\]\)\.catch\(/);
   }
-  const student = readFileSync(join(ROOT, "app", "(app)", "alumnos", "[id]", "page.tsx"), "utf8");
+  // Las incidencias de la ficha se leen en el cuerpo de cada pestaña (su propio límite de carga), no en la página.
+  const student = readFileSync(join(ROOT, "components", "students", "profile", "profile-tab-body.tsx"), "utf8");
   assert.match(student, /loadChargeIncidents\(ctx, charges\.map\(\(c\) => c\.id\)\)\.catch\(/);
   assert.match(student, /loadRegistrationIncidents\(ctx, all\.map\(\(r\) => r\.id\)\)\.catch\(/);
 });

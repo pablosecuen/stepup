@@ -3,6 +3,11 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { GIVE_UP_AFTER_MS, SLOW_AFTER_MS, decideClick, resolveNavigationIntent } from "@/lib/nav/navigation-intent";
+import { clearPendingNavigation, setPendingNavigation } from "@/lib/nav/pending-destination";
+import { isScreenChange, pathnameOf } from "@/lib/nav/screens";
+
+/** Atrás/Adelante: el navegador ya cambió la dirección; si la pantalla no cambió en este tiempo (no estaba guardada) se muestra su esqueleto. Evita un parpadeo cuando se restaura al instante. */
+const HISTORY_SKELETON_AFTER_MS = 120;
 
 /**
  * Respuesta inmediata al clic en cualquier enlace interno del área privada (≤ 1 fotograma, no espera al servidor):
@@ -24,20 +29,25 @@ function ProgressInner() {
   const pendingRef = useRef<{ destination: string; startKey: string; anchor: HTMLAnchorElement } | null>(null);
   const timersRef = useRef<number[]>([]);
   const keyRef = useRef(routeKey);
+  const pathRef = useRef(pathname);
 
-  function clearPending() {
+  function clearPending(keepSkeleton = false) {
     for (const id of timersRef.current) window.clearTimeout(id);
     timersRef.current = [];
     pendingRef.current?.anchor.removeAttribute("data-nav-pending");
     pendingRef.current = null;
+    // Al rendirse la barra (20 s) el esqueleto SIGUE (con su aviso y Reintentar): sólo se retira al cambiar la ruta o al hacer otro clic.
+    if (!keepSkeleton) clearPendingNavigation();
     setPhase(null);
   }
 
   // La ruta cambió: la navegación pendiente completó (o el usuario fue a otro lado). Se restablece sin esperar nada más.
   useEffect(() => {
     keyRef.current = routeKey;
+    pathRef.current = pathname;
     if (pendingRef.current && pendingRef.current.startKey !== routeKey) clearPending();
-  }, [routeKey]);
+    else if (!pendingRef.current) clearPendingNavigation(); // la navegación (clic o historial) completó: el esqueleto optimista ya no aplica
+  }, [routeKey, pathname]);
 
   useEffect(() => {
     function onClick(event: MouseEvent) {
@@ -67,13 +77,32 @@ function ProgressInner() {
       anchor.setAttribute("data-nav-pending", "true");
       pendingRef.current = { destination: intent.destination, startKey: keyRef.current, anchor };
       setPhase("pending");
-      timersRef.current = [window.setTimeout(() => setPhase("slow"), SLOW_AFTER_MS), window.setTimeout(clearPending, GIVE_UP_AFTER_MS)];
+      // El esqueleto del destino se dibuja YA, sin esperar al servidor (sólo si es otra pantalla, no otra pestaña o filtro de la misma). Se publica en la
+      // tarea siguiente al clic, NO dentro de este escucha de captura: publicarlo acá re-renderiza al instante la navegación (la pestaña pulsada pasa a su ícono
+      // «activo», otro nodo SVG), el nodo clicado se desmonta en pleno evento, React deja de entregarle el clic al enlace y el navegador haría una carga completa.
+      if (isScreenChange(pathRef.current, intent.destination)) {
+        const destination = intent.destination;
+        const fromPath = pathRef.current;
+        window.setTimeout(() => {
+          if (pendingRef.current?.destination === destination) setPendingNavigation({ destination, fromPath });
+        }, 0);
+      }
+      timersRef.current = [window.setTimeout(() => setPhase("slow"), SLOW_AFTER_MS), window.setTimeout(() => clearPending(true), GIVE_UP_AFTER_MS)];
+    }
+    function onHistory() {
+      clearPending();
+      const destination = `${window.location.pathname}${window.location.search}`;
+      if (!isScreenChange(pathRef.current, destination)) return;
+      const id = window.setTimeout(() => {
+        if (pathRef.current !== pathnameOf(destination)) setPendingNavigation({ destination, fromPath: pathRef.current });
+      }, HISTORY_SKELETON_AFTER_MS);
+      timersRef.current = [id];
     }
     document.addEventListener("click", onClick, { capture: true });
-    window.addEventListener("popstate", clearPending);
+    window.addEventListener("popstate", onHistory);
     return () => {
       document.removeEventListener("click", onClick, { capture: true });
-      window.removeEventListener("popstate", clearPending);
+      window.removeEventListener("popstate", onHistory);
       clearPending();
     };
   }, []);

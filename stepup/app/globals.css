@@ -277,6 +277,10 @@
   transform-origin: left;
   animation: tf-nav-progress 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
 }
+/* Esqueleto optimista del clic (components/nav/screen-slot.tsx): mientras existe, la pantalla anterior se oculta; el relevo ocurre en el mismo render. */
+.tf-page-main:has(> [data-tf-pending-skeleton]) > :not([data-tf-pending-skeleton]) {
+  display: none !important;
+}
 a[data-nav-pending] {
   opacity: 0.7;
   cursor: progress;
@@ -395,10 +399,17 @@ html:has(.tf-landing) {
    diseño), sin temporizadores, sin efectos permanentes y sin nada que oculte contenido más de un fotograma: la animación acompaña la
    carga, nunca la retrasa. Todo vive dentro de `prefers-reduced-motion: no-preference`: con «reducir movimiento» el contenido aparece
    ya en su lugar. */
+/* Parámetros ÚNICOS de la aparición de contenido (lib/ui/reveal.ts los repite para el JS y una prueba los compara): desplazamiento de 8 px, 260 ms,
+   40 ms entre bloques y una secuencia que se corta en el sexto bloque (≤ 200 ms de retraso) para no demorar una pantalla larga. */
+:root {
+  --tf-reveal-distance: 8px;
+  --tf-reveal-duration: 260ms;
+  --tf-reveal-step: 40ms;
+}
 @keyframes tf-page-in {
   from {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    transform: translate3d(0, var(--tf-reveal-distance), 0);
   }
   to {
     opacity: 1;
@@ -462,30 +473,45 @@ html:has(.tf-landing) {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  /* Pantalla nueva: entra el contenido (hijo directo de <main>); el esqueleto de carga no se anima (aparece al instante) y las pantallas con
-     grupos propios (`data-tf-groups`) escalonan sus bloques con `.tf-enter` + `data-enter`. La barra lateral y la navegación viven fuera
-     de <main>: nunca se vuelven a animar. */
-  .tf-page-main > :not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-overlay]):not(.tf-screen),
+  /* Pantalla nueva: entra el contenido (hijo directo de <main>); el esqueleto de carga no se anima (aparece al instante), las pantallas con
+     grupos propios (`data-tf-groups`) escalonan sus bloques con `.tf-enter` + `data-enter`, y el Calendario (`data-calendar-page`, que llena
+     el alto disponible) no se anima entero: sólo entra su grilla (`.tf-block`). La barra lateral y la navegación viven fuera de <main>. */
+  .tf-page-main > :not([data-tf-skeleton]):not([data-tf-pending-skeleton]):not([data-tf-groups]):not([data-tf-overlay]):not([data-calendar-page]):not(.tf-screen),
   .tf-enter {
-    animation: tf-page-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: tf-page-in var(--tf-reveal-duration) cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
-  /* Toda pantalla con contenedor `PAGE_WIDTH` (`.tf-screen`) entra como Inicio —encabezado → principal → paneles, 0 / 40 / 80 ms— SIN marcar
-     cada bloque a mano: el hijo 1 es el encabezado, el 2 el cuerpo y del 3 en adelante los paneles. Corre UNA sola vez por pantalla:
-     `ScreenReveal` pone `data-tf-revealed` al terminar y, desde ahí, escribir, filtrar, guardar o un aviso que aparece no vuelven a animar nada. */
-  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > * {
-    animation: tf-page-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  /* Toda pantalla con contenedor `PAGE_WIDTH` (`.tf-screen`) entra POR BLOQUES: cada hijo directo (tarjeta, tabla, panel) aparece en su lugar con
+     un retraso creciente de 40 ms (tope: el sexto, 200 ms). El encabezado y lo que no depende de datos (`data-tf-header`, `data-tf-static`) ya
+     estaban dibujados idénticos en el esqueleto: no se animan, así no parpadean. Corre UNA sola vez por pantalla: `ScreenReveal` pone
+     `data-tf-revealed` al terminar y, desde ahí, escribir, filtrar, guardar o un aviso que aparece no vuelven a animar nada. */
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :not([data-tf-header]):not([data-tf-static]):not(:has(> [data-tf-header])) {
+    animation: tf-page-in var(--tf-reveal-duration) cubic-bezier(0.16, 1, 0.3, 1) var(--tf-reveal-delay, 0ms) backwards;
   }
-  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(2) {
-    animation-delay: 40ms;
+  /* El retraso va en una variable (no en animation-delay): el selector de arriba tiene más especificidad y pisaría a un retraso declarado aparte. */
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(3) {
+    --tf-reveal-delay: var(--tf-reveal-step);
   }
-  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(n + 3) {
-    animation-delay: 80ms;
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(4) {
+    --tf-reveal-delay: calc(var(--tf-reveal-step) * 2);
+  }
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(5) {
+    --tf-reveal-delay: calc(var(--tf-reveal-step) * 3);
+  }
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(6) {
+    --tf-reveal-delay: calc(var(--tf-reveal-step) * 4);
+  }
+  .tf-page-main > .tf-screen:not([data-tf-skeleton]):not([data-tf-groups]):not([data-tf-revealed]) > :nth-child(n + 7) {
+    --tf-reveal-delay: calc(var(--tf-reveal-step) * 5);
+  }
+  /* Bloque que llega DESPUÉS de la pantalla (su propia consulta, ver `StreamBlock`): entra solo cuando llega, aunque la pantalla ya esté sellada. */
+  .tf-block {
+    animation: tf-page-in var(--tf-reveal-duration) cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
   .tf-enter[data-enter="2"] {
-    animation-delay: 40ms;
+    animation-delay: var(--tf-reveal-step);
   }
   .tf-enter[data-enter="3"] {
-    animation-delay: 80ms;
+    animation-delay: calc(var(--tf-reveal-step) * 2);
   }
   .tf-backdrop {
     animation: tf-fade-in 160ms ease-out backwards;

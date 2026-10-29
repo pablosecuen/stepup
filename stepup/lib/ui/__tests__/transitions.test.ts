@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, relative, sep } from "node:path";
+import { allScreenLabels } from "../../nav/screens.ts";
 
 /** Sistema único de transiciones del área privada: cableado, límites de movimiento y accesibilidad (la medición se hace en el navegador). */
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -30,14 +31,14 @@ test("el contenido de <main> entra con la misma animación; la barra lateral y l
   // todo lo persistente (barra lateral, navegación móvil, fila de sesión, progreso) es hermano de <main>, no hijo
   const main = layout.slice(layout.indexOf("<main"));
   assert.doesNotMatch(main.slice(0, main.indexOf("</main>")), /PrimaryNav|SignOutButton|NavigationProgress/);
-  assert.match(SYSTEM, /\.tf-page-main > :not\(\[data-tf-skeleton\]\):not\(\[data-tf-groups\]\):not\(\[data-tf-overlay\]\)/);
-  assert.match(SYSTEM, /animation: tf-page-in 220ms cubic-bezier\(0\.16, 1, 0\.3, 1\) backwards/, "220 ms, sin rebote (curva de salida suave)");
+  assert.match(SYSTEM, /\.tf-page-main > :not\(\[data-tf-skeleton\]\):not\(\[data-tf-pending-skeleton\]\):not\(\[data-tf-groups\]\):not\(\[data-tf-overlay\]\)/);
+  assert.match(SYSTEM, /animation: tf-page-in var\(--tf-reveal-duration\) cubic-bezier\(0\.16, 1, 0\.3, 1\) backwards/, "duración común, sin rebote (curva de salida suave)");
   assert.doesNotMatch(code("components/nav/primary-nav.tsx"), /tf-enter|tf-page-in|animate-/, "la navegación no se anima");
 });
 
-test("límites de movimiento: sólo opacity y transform, 10 px, duraciones 110–220 ms, grupos de 0/40/80 ms (total ≤ 300 ms), sin infinitos", () => {
+test("límites de movimiento: sólo opacity y transform, 8 px, 260 ms por bloque, 40 ms entre bloques (secuencia acotada), diálogos 110–220 ms, sin infinitos", () => {
   const keyframes = (name: string) => SYSTEM.match(new RegExp(`@keyframes ${name} \\{([\\s\\S]*?)\\n\\}\\n`))?.[1] ?? "";
-  assert.match(keyframes("tf-page-in"), /translate3d\(0, 10px, 0\)/);
+  assert.match(keyframes("tf-page-in"), /translate3d\(0, var\(--tf-reveal-distance\), 0\)/);
   for (const name of ["tf-page-in", "tf-fade-in", "tf-fade-out", "tf-dialog-in", "tf-dialog-out", "tf-sheet-in", "tf-sheet-out"]) {
     const body = keyframes(name);
     assert.ok(body.length > 0, name);
@@ -48,8 +49,8 @@ test("límites de movimiento: sólo opacity y transform, 10 px, duraciones 110�
   assert.match(keyframes("tf-dialog-out"), /scale\(0\.98\)/);
   const durations = [...SYSTEM.matchAll(/animation: [a-z-]+ (\d+)ms/g)].map((match) => Number(match[1]));
   assert.ok(durations.length >= 8 && durations.every((ms) => ms >= 110 && ms <= 220), String(durations));
-  assert.match(SYSTEM, /\.tf-enter\[data-enter="2"\] \{\s*animation-delay: 40ms;/);
-  assert.match(SYSTEM, /\.tf-enter\[data-enter="3"\] \{\s*animation-delay: 80ms;/);
+  assert.match(SYSTEM, /\.tf-enter\[data-enter="2"\] \{\s*animation-delay: var\(--tf-reveal-step\);/);
+  assert.match(SYSTEM, /\.tf-enter\[data-enter="3"\] \{\s*animation-delay: calc\(var\(--tf-reveal-step\) \* 2\);/);
   assert.doesNotMatch(SYSTEM.slice(SYSTEM.indexOf("@media (prefers-reduced-motion: no-preference)")), /infinite|animation-iteration-count|(?<![-a-z])(height|width|top|left):/, "ni efectos permanentes ni propiedades que recalculan el diseño");
 });
 
@@ -81,25 +82,27 @@ test("diálogos: opacidad + escala 0,98 → 1 al abrir (180 ms), hoja desde abaj
 });
 
 test("el esqueleto aparece al instante (sin animación propia ni brillo), con la geometría de cada pantalla y un loading.tsx por ruta con página", () => {
-  const skeleton = code("components/ui/page-skeleton.tsx");
-  assert.match(skeleton, /data-tf-skeleton/);
-  assert.doesNotMatch(skeleton, /animate-|infinite|transition/);
-  assert.match(skeleton, /PAGE_WIDTH\[width \?\? WIDTH\[variant\]\]/, "mismo contenedor que la pantalla final");
-  for (const variant of ["list", "calendar", "finance", "profile", "form", "settings", "detail"]) assert.ok(skeleton.includes(`"${variant}"`), variant);
+  const kit = code("components/ui/skeleton-kit.tsx");
+  assert.match(kit, /data-tf-skeleton/);
+  assert.doesNotMatch(kit + code("components/nav/screen-skeleton.tsx") + code("components/nav/calendar-skeleton.tsx"), /animate-|infinite|transition/);
+  assert.match(kit, /className \?\? PAGE_WIDTH\[width\]/, "mismo contenedor que la pantalla final");
   const found = loadings("app/(app)");
   for (const route of ["alumnos", "alumnos/[id]", "alumnos/nuevo", "alumnos/[id]/editar", "calendario", "calendario/nueva", "calendario/series", "calendario/disponibilidad", "cobros", "resumen-financiero", "recordatorios", "registro", "registro/nuevo", "registro/[calendarLessonId]", "configuracion"]) assert.ok(found.includes(`app/(app)/${route}/loading.tsx`), route);
   // Inicio sigue sin loading.tsx: su redirect de recuperación de sesión (B0) debe ser HTTP real
   assert.equal(existsSync(join(ROOT, "app/(app)/inicio/loading.tsx")), false);
-  const labels = found.map((file) => read(file).match(/label="([^"]+)"/)?.[1]);
-  assert.equal(new Set(labels).size, labels.length, "etiqueta accesible única por loading");
+  for (const file of found) assert.match(code(file), /<RouteSkeleton path="\/[^"]*" \/>/, `${file}: sale del registro único de pantallas`);
+  const labels = allScreenLabels();
+  assert.equal(new Set(labels).size, labels.length, "etiqueta accesible única por pantalla");
 });
 
 test("contenido que cambia sin cambiar de pantalla usa el mismo patrón (EnterOnChange): pestañas del perfil, Calendario y resultados de Alumnos", () => {
   const enter = code("components/ui/enter-on-change.tsx");
   assert.match(enter, /useLayoutEffect/, "antes de pintar: sin parpadeo");
-  assert.match(enter, /element\.animate\(\[\{ opacity: 0, transform: "translate3d\(0, 10px, 0\)" \}, \{ opacity: 1, transform: "none" \}\], \{ duration: 220/);
+  assert.match(enter, /element\.animate\(\[\{ opacity: 0, transform: `translate3d\(0, \$\{REVEAL\.distancePx\}px, 0\)` \}, \{ opacity: 1, transform: "none" \}\], \{ duration: REVEAL\.durationMs/);
   assert.doesNotMatch(enter, /key=|setState|useState/, "no remonta ni guarda estado: se conservan el foco y el scroll");
-  assert.match(code("components/students/profile/student-profile-view.tsx"), /<EnterOnChange changeKey=\{tab\}/);
+  // Las pestañas del perfil ya no repintan toda la ficha: su cuerpo vive en un límite de carga con `key` por pestaña y entra como bloque.
+  assert.match(code("app/(app)/alumnos/[id]/page.tsx"), /<Suspense key=\{tab\} fallback=\{<ProfileTabSkeleton \/>\}>/);
+  assert.match(code("components/students/profile/profile-tab-body.tsx"), /<div className="tf-block">/);
   assert.match(code("components/calendar/calendar-workspace.tsx"), /<EnterOnChange changeKey=\{`\$\{view\}\|\$\{dayKeys\[0\]\}`\}/);
   assert.match(code("components/students/students-list-view.tsx"), /<EnterOnChange changeKey=/);
 });

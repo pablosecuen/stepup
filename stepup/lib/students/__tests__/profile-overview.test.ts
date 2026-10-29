@@ -209,11 +209,14 @@ test("promedio por habilidad: sólo habilidades con nota real; sin notas, lista 
 
 test("cableado: cada pestaña carga sólo lo suyo y el Resumen/Información NUNCA escriben", () => {
   const page = code("app/(app)/alumnos/[id]/page.tsx");
-  assert.match(page, /tab === "resumen"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentNextClass\(ctx, student\),\s*listPendingHomeworkTasksForStudent\(ctx, id\)/);
-  assert.match(page, /tab === "informacion"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentTotalCollected\(ctx, id\)/);
-  assert.match(page, /tab === "clases"\) \{[\s\S]*?listCompletedRegistrationsForStudentReport\(ctx, id\)/);
+  // Cada pestaña lee SÓLO lo suyo en `ProfileTabBody` (su propio límite de carga); la página sólo resuelve al alumno y dispara las tareas de fondo.
+  const body = code("components/students/profile/profile-tab-body.tsx");
+  assert.match(body, /tab === "resumen"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentNextClass\(ctx, student\),\s*listPendingHomeworkTasksForStudent\(ctx, id\)/);
+  assert.match(body, /tab === "informacion"\) \{[\s\S]*?loadProfileClassStats\(ctx, id\),\s*loadStudentTotalCollected\(ctx, id\)/);
+  assert.match(body, /tab === "clases"\) \{[\s\S]*?listCompletedRegistrationsForStudentReport\(ctx, id\)/);
+  assert.doesNotMatch(page, /loadProfileClassStats|listPendingHomeworkTasksForStudent|loadStudentTotalCollected/, "la página no carga datos de pestañas");
   assert.match(code("components/students/profile/student-profile-view.tsx"), /<ResumenTabContent student=\{student\} stats=\{data\.stats\} nextClass=\{data\.nextClass\} pendingTasks=\{data\.pendingTasks\} totalCollected=\{data\.totalCollected\} \/>/);
-  assert.match(page, /tab === "resumen"\) \{[\s\S]*?loadStudentTotalCollected\(ctx, id\)/, "la inversión histórica usa la lectura de pagos vigentes");
+  assert.match(body, /tab === "resumen"\) \{[\s\S]*?loadStudentTotalCollected\(ctx, id\)/, "la inversión histórica usa la lectura de pagos vigentes");
   assert.match(page, /<StudentProfileView\s+student=\{student\}\s+tab=\{tab\}/);
   // R2: la página NUNCA escribe durante el GET (ni genera cobros ni barre PDFs). La generación idempotente de cobros la dispara
   // un Server Action (POST) desde `ChargeGenerationTrigger`, sólo en la pestaña Cobros; el barrido de PDFs, desde `ReportCleanupTrigger`.

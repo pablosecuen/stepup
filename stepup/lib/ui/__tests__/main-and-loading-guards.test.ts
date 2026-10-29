@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, relative, sep } from "node:path";
+import { allScreenLabels } from "../../nav/screens.ts";
 
 /**
  * Guardas estructurales: UN solo `<main id="contenido">` por pantalla (también sin Supabase configurado), esqueletos de carga
@@ -92,14 +93,12 @@ test("«cuenta no disponible» (Supabase sin configurar): dentro del shell priva
 test("cada loading.tsx identifica su sección (nombre accesible único, sin encabezado nuevo) y el esqueleto no agrega ningún título", () => {
   const sections = readdirSync(join(ROOT, "app/(app)")).filter((entry) => statSync(join(ROOT, "app/(app)", entry)).isDirectory() && existsSync(join(ROOT, "app/(app)", entry, "loading.tsx")));
   assert.ok(sections.length >= 8, sections.join(", "));
-  const labels = new Set<string>();
-  for (const section of sections) {
-    const match = code(`app/(app)/${section}/loading.tsx`).match(/<PageSkeleton label="(Cargando [^"]+…)" variant="[a-z]+" \/>/);
-    assert.ok(match, `${section}: loading sin etiqueta «Cargando …»`);
-    assert.ok(!labels.has(match![1]), `${section}: etiqueta repetida`);
-    labels.add(match![1]);
-  }
-  const skeleton = code("components/ui/page-skeleton.tsx");
+  // El nombre accesible sale del registro único de pantallas (`lib/nav/screens.ts`): único por pantalla y siempre «Cargando …».
+  for (const section of sections) assert.match(code(`app/(app)/${section}/loading.tsx`), /<RouteSkeleton path="\/[^"]*" \/>/, `${section}: loading sin esqueleto de pantalla`);
+  const labels = allScreenLabels();
+  assert.equal(new Set(labels).size, labels.length, "etiqueta repetida");
+  assert.ok(labels.every((label) => /^Cargando [^"]+…$/.test(label)), "toda etiqueta es «Cargando …»");
+  const skeleton = code("components/ui/skeleton-kit.tsx");
   assert.match(skeleton, /aria-labelledby="carga-titulo"/);
   assert.match(skeleton, /<span id="carga-titulo" className="sr-only">\s*\{label\}\s*<\/span>/);
   assert.equal((skeleton.match(/id="carga-titulo"/g) ?? []).length, 1);
@@ -119,7 +118,7 @@ test("Inicio sigue sin loading.tsx y su redirect de recuperación (B0) sigue sie
   assert.match(layout, /redirect\(decision\.to\)/);
   assert.doesNotMatch(layout, /^["']use client["']/m);
   // Ningún redirect del servidor se convirtió en uno del cliente en las piezas tocadas.
-  for (const file of ["components/auth/auth-shell.tsx", "components/auth/auth-not-configured.tsx", "components/ui/page-skeleton.tsx"]) {
+  for (const file of ["components/auth/auth-shell.tsx", "components/auth/auth-not-configured.tsx", "components/ui/skeleton-kit.tsx", "components/nav/screen-skeleton.tsx", "components/nav/screen-slot.tsx"]) {
     assert.doesNotMatch(code(file), /router\.(push|replace)|window\.location|meta http-equiv|useRouter/, file);
   }
 });

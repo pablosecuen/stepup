@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/ui/page-header";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
+import { CALENDAR_PAGE_CLASS } from "@/components/calendar/calendar-page-class";
 
 /**
  * Calendario (presentación). Arriba a la izquierda el título reducido y, debajo, Series, Disponibilidad y Clases por registrar;
@@ -37,7 +38,7 @@ export function CalendarView({
     // z-40 (por encima del encabezado z-30 y de la barra z-20): al ser `fixed` forma su propio contexto de apilamiento y el detalle de clase (z-50 dentro) quedaría tapado por ellos con un z menor.
     // Teléfono: el calendario se ancla EXACTAMENTE entre el encabezado y la barra inferior (alturas y safe areas del shell, `globals.css`): no se desplaza la página, no se
     // superpone con el encabezado y no deja un hueco debajo; la grilla es lo único que se desplaza. Escritorio: 100dvh menos la fila de «Cerrar sesión», como siempre.
-    <div data-calendar-page className="fixed inset-x-0 top-[calc(var(--tf-m-header)+var(--tf-safe-top))] bottom-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] z-40 flex flex-col bg-background pt-1 nav:static nav:z-auto nav:mx-auto nav:h-[calc(100dvh-var(--tf-shell-top))] nav:w-full nav:max-w-[1360px] nav:bg-transparent nav:px-6 nav:pb-4 nav:pt-1">
+    <div data-calendar-page className={CALENDAR_PAGE_CLASS}>
       <div className="flex flex-col gap-1 px-3 nav:flex-row nav:flex-wrap nav:items-start nav:justify-between nav:gap-x-4 nav:px-0">
         <div className="min-w-0">
           {/* En el teléfono el título es sólo para lector de pantalla: la barra inferior ya marca «Calendario» y cada renglón de alto cuenta. */}

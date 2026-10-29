@@ -10,7 +10,7 @@ import { PageTitle } from "@/components/ui/page-header";
  */
 export function AvailabilityHeader({ subtitle }: { subtitle?: string }) {
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div data-tf-header="" className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <PageTitle>Disponibilidad</PageTitle>
         {subtitle && <p className="mt-1.5 max-w-[68ch] text-[15px] text-textMuted">{subtitle}</p>}

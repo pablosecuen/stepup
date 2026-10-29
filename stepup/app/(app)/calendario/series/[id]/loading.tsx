@@ -1,6 +1,7 @@
-import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { RouteSkeleton } from "@/components/nav/screen-skeleton";
 
-// Esqueleto propio de esta pantalla (su ancho y su estructura): sin él heredaría el de la sección y el contenido real "saltaría" al llegar.
+// Esqueleto de la pantalla mientras el servidor la prepara. Sale del registro único de pantallas (lib/nav/screens.ts): el mismo que se dibuja al
+// hacer clic, con el contenedor y la geometría de la pantalla final.
 export default function Loading() {
-  return <PageSkeleton label="Cargando la serie…" variant="detail" width="wide" />;
+  return <RouteSkeleton path="/calendario/series/_" />;
 }
