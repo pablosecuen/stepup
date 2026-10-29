@@ -571,7 +571,7 @@ function DisponibilidadBody({ title }: { title: string }) {
           <div className={AVAILABILITY_FORM_GRID}>
             {["Día", "Desde", "Hasta", "Motivo"].map((label) => (
               <Field key={label} label={label} htmlFor={`sk-${label}`}>
-                <SkBar className="h-[46px]" />
+                <SkBar className={label === "Desde" || label === "Hasta" ? "h-11" : "h-[46px]"} />
               </Field>
             ))}
             <SkAction label="Agregar bloqueo" variant="secondary" className="w-full" />
@@ -585,7 +585,7 @@ function DisponibilidadBody({ title }: { title: string }) {
           <div className={AVAILABILITY_FORM_GRID}>
             {["Desde", "Hasta (opcional)", "Motivo"].map((label) => (
               <Field key={label} label={label} htmlFor={`sk-ex-${label}`}>
-                <SkBar className="h-[46px]" />
+                <SkBar className={label === "Motivo" ? "h-[46px]" : "h-11"} />
               </Field>
             ))}
             <SkAction label="Agregar excepción" variant="secondary" className="w-full" />
