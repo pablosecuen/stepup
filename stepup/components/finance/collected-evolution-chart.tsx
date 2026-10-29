@@ -7,7 +7,13 @@ import type { MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
 
 import { monthlyChartModel } from "@/lib/ui/monthly-chart";
 
-const MONTH_STROKES = ["#7E7B46", "#625571", "#A69BB7", "#583B1F", "#8C8766", "#C2BFCB", "#75618A", "#9C8C76", "#59602F", "#B5A9C7", "#806549", "#A4A583"];
+// Categorical chart colors: keep each month stable when the displayed period changes.
+// Full opacity keeps the slice identical to its legend; selection uses thickness instead of fading other data.
+const MONTH_COLORS = ["#2563EB", "#B77900", "#0F8A7D", "#7C3AED", "#007C9E", "#CE6500", "#1D4ED8", "#A21CAF", "#A16A00", "#007F69", "#6236B5", "#334155"];
+function monthColor(month: string): string {
+  const index = Number(month.slice(5, 7)) - 1;
+  return MONTH_COLORS[Number.isInteger(index) && index >= 0 && index < 12 ? index : 0];
+}
 
 interface Tip {
   text: string;
@@ -134,13 +140,13 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
       {presentation === "pie" && <div className="tf-chart-enter mt-5 grid max-w-[620px] grid-cols-1 items-start gap-5 min-[480px]:grid-cols-[160px_minmax(0,1fr)]">
         <div className="w-40 shrink-0">
           <svg viewBox="0 0 36 36" role="img" aria-label={`Cobrado por mes: ${series.map(label).join("; ")}`} className="h-40 w-40">
-            {model.segments.map((point,index) => point.percent > 0 ? <circle key={point.month} cx="18" cy="18" r="15.9155" fill="none" stroke={MONTH_STROKES[index % MONTH_STROKES.length]} opacity={activeIndex === index ? 1 : 0.62} strokeWidth={point.isPeak ? 5.2 : 4.2} strokeDasharray={`${Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))} ${100-Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))}`} strokeDashoffset={point.offset} /> : null)}
+            {model.segments.map((point,index) => point.percent > 0 ? <circle key={point.month} cx="18" cy="18" r="15.9155" fill="none" stroke={monthColor(point.month)} strokeWidth={activeIndex === index || point.isPeak ? 5.2 : 4.2} strokeDasharray={`${Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))} ${100-Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))}`} strokeDashoffset={point.offset} /> : null)}
           </svg>
           <p className="mt-2 text-[12px] text-textMuted">Total del período<span className="mt-1 block whitespace-nowrap font-semibold tf-num text-textPrimary">{formatMoney(model.total)}</span></p>
         </div>
         <ul className="grid min-w-0 gap-1" aria-label="Meses e importes cobrados">
           {model.segments.map((point,index) => <li key={point.month}><button type="button" aria-pressed={activeIndex === index} onClick={() => setActiveIndex(index)} className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] ${activeIndex === index ? "bg-lavenderSoft" : "hover:bg-surface2"}`}>
-            <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{backgroundColor:MONTH_STROKES[index % MONTH_STROKES.length]}} />
+            <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{backgroundColor:monthColor(point.month)}} />
             <span className="min-w-0 flex-1 capitalize">{formatCivilMonthLongYear(point.month)}{point.isPeak && <span className="block text-[11px] font-bold text-lavenderText">Mayor cobro</span>}</span>
             <span className="whitespace-nowrap font-semibold tf-num">{formatMoney(point.amount)}</span>
           </button></li>)}
