@@ -11,29 +11,21 @@ test("la escala NO cambió: 1 a 10 en pasos de 1; 0, vacío o fuera de rango = �
   for (const none of [0, null, undefined, 11, -1, 2.5, Number.NaN]) assert.equal(normalizeSkillGradeValue(none as number | null | undefined), null);
 });
 
-test("control de calificación: compacto, zona táctil de 48 px, botones «−» y «+» de 48×48, valor junto al nombre y misma escala", () => {
+test("control de calificación: elección directa 1–10, área táctil de 48 px, sin barra y con limpieza independiente", () => {
   const parts = read("components/registro/registration-form-parts.tsx");
   const field = parts.slice(parts.indexOf("function SkillGradeField"), parts.indexOf("/** Cambio de un formulario de participante"));
-  assert.match(field, /w-full max-w-\[320px\]/, "opción C: barra corta también en escritorio");
+  assert.match(field, /w-full max-w-\[320px\]/, "no ocupa todo el escritorio");
   assert.match(field, /onClick=\{\(\) => onChange\(null\)\}/, "se puede volver a sin calificar directamente");
   assert.match(field, /aria-label=\{`Dejar \$\{label\} sin calificar`\}/, "el botón identifica el criterio que limpia");
-  assert.match(field, /min=\{GRADE_MIN\}[\s\S]*max=\{GRADE_MAX\}[\s\S]*step="1"/);
-  assert.match(parts, /const GRADE_MIN = 0;\nconst GRADE_MAX = 10;/);
-  assert.match(parts, /const STEP_BUTTON =\s*"inline-flex h-12 w-12 /, "botones de 48×48");
-  assert.match(field, /Bajar la nota de/);
-  assert.match(field, /Subir la nota de/);
-  assert.match(field, /disabled=\{current <= GRADE_MIN\}/);
-  assert.match(field, /disabled=\{current >= GRADE_MAX\}/);
+  assert.match(parts, /const GRADE_OPTIONS = \[1, 2, 3, 4, 5, 6, 7, 8, 9, 10\] as const/);
+  assert.doesNotMatch(field, /type="range"|tf-grade|Bajar la nota|Subir la nota/);
+  assert.match(field, /min-h-12 min-w-12/, "áreas táctiles de al menos 48×48");
+  assert.match(field, /type="radio"[\s\S]*name=\{id\}/, "flechas nativas y grupo independiente por criterio");
+  assert.match(field, /checked=\{value === grade\}/);
+  assert.match(field, /onChange=\{\(\) => onChange\(normalizeSkillGradeValue\(grade\)\)\}/);
   assert.match(field, /"Sin calificar"/, "«sin calificar» sigue visible y distinto de una nota");
-  assert.match(field, /className="tf-grade min-w-0 flex-1"/);
-  assert.match(field, /onChange=\{\(e\) => onChange\(normalizeSkillGradeValue\(Number\(e\.target\.value\)\)\)\}/, "clic en la pista y arrastre actualizan el valor");
   assert.match(parts, /<fieldset className="flex min-w-0 flex-col gap-4">\n\s+<legend[^>]*>Notas por área/, "separación entre criterios");
-  const css = read("app/globals.css");
-  const grade = css.slice(css.indexOf(".tf-grade {"), css.indexOf("/* Tabla apilable"));
-  assert.match(grade, /height: 48px;/);
-  assert.match(grade, /touch-action: pan-y pinch-zoom;/, "el scroll vertical y el zoom de la página siguen funcionando (sin bloqueos globales)");
-  assert.equal([...grade.matchAll(/width: 30px;\n\s+height: 30px;/g)].length, 2, "tirador de 30 px en WebKit y Firefox");
-  assert.doesNotMatch(grade, /overflow: hidden|user-scalable|maximum-scale/);
+  assert.match(field, /peer-focus-visible:outline/, "foco visible al recorrer las notas con teclado");
 });
 
 test("temas sin casilla «Visto» ni rótulo «Planificado»; agregar, editar y eliminar siguen igual y editar sólo cambia el texto (el estado guardado no se toca)", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type CSSProperties } from "react";
+import { useId, useState } from "react";
 import { CheckIcon, PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { EditableTextList } from "./editable-text-list";
 import { Button } from "@/components/ui/button";
@@ -120,43 +120,39 @@ export function PendingHomeworkReview({ tasks, studentId, studentName, reviews, 
 }
 
 // Control numérico por área — 0 (o vacío) significa «sin calificar» y NUNCA se persiste como nota real (`normalizeSkillGradeValue`); la escala es 1–10, paso 1.
-// Compacto (ancho máximo, no ocupa toda la pantalla), con el nombre y el valor juntos arriba del control; la barra es el `<input type="range">` nativo —clic sobre la pista, arrastre
-// con mouse, trackpad o dedo, y teclado— con una pista y un tirador grandes (`.tf-grade`); «−» y «+» de 48×48 px ajustan de a un paso sin depender de un arrastre preciso.
-const GRADE_MIN = 0;
-const GRADE_MAX = 10;
-const STEP_BUTTON =
-  "inline-flex h-12 w-12 shrink-0 select-none items-center justify-center rounded-md border-[1.5px] border-borderStrong bg-surface text-[24px] font-bold leading-none text-textPrimary transition-colors hover:border-ink active:bg-paperDeep disabled:cursor-not-allowed disabled:opacity-40";
+// Elección directa: botones numéricos con radios nativos para conservar las flechas del teclado.
+const GRADE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 function SkillGradeField({ skill, value, onChange }: { skill: Skill; value: number | null; onChange: (value: number | null) => void }) {
   const label = SKILL_LABEL[skill];
-  const current = value ?? GRADE_MIN;
-  const set = (next: number) => onChange(normalizeSkillGradeValue(Math.min(GRADE_MAX, Math.max(GRADE_MIN, next))));
-  const spoken = value != null ? `${value} de 10` : "sin calificar";
+  const id = useId();
   return (
     <div role="group" aria-label={label} className="w-full max-w-[320px]">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[15px] font-[650] text-textSecondary">{label}</span>
         <span className="whitespace-nowrap text-[15px] font-bold tf-num text-textPrimary">{value != null ? `${value}/10` : "Sin calificar"}</span>
       </div>
-      <div className="mt-1 flex items-center gap-2">
-        <button type="button" className={STEP_BUTTON} onClick={() => set(current - 1)} disabled={current <= GRADE_MIN} aria-label={`Bajar la nota de ${label}`}>
-          −
-        </button>
-        <input
-          type="range"
-          min={GRADE_MIN}
-          max={GRADE_MAX}
-          step="1"
-          value={current}
-          onChange={(e) => onChange(normalizeSkillGradeValue(Number(e.target.value)))}
-          style={{ "--tf-fill": `${(current / GRADE_MAX) * 100}%` } as CSSProperties}
-          className="tf-grade min-w-0 flex-1"
-          aria-label={`${label}: ${spoken}`}
-          aria-valuetext={spoken}
-        />
-        <button type="button" className={STEP_BUTTON} onClick={() => set(current + 1)} disabled={current >= GRADE_MAX} aria-label={`Subir la nota de ${label}`}>
-          +
-        </button>
+      <div className="mt-2 grid grid-cols-4 gap-2 min-[360px]:grid-cols-5">
+        {GRADE_OPTIONS.map((grade) => (
+          <div key={grade} className="relative min-w-0">
+            <input
+              id={`${id}-${grade}`}
+              type="radio"
+              name={id}
+              value={grade}
+              checked={value === grade}
+              onChange={() => onChange(normalizeSkillGradeValue(grade))}
+              aria-label={`${label}: ${grade} de 10`}
+              className="peer sr-only"
+            />
+            <label
+              htmlFor={`${id}-${grade}`}
+              className="flex min-h-12 min-w-12 cursor-pointer select-none items-center justify-center rounded-md border-[1.5px] border-borderStrong bg-surface text-[17px] font-semibold text-textPrimary transition-colors hover:border-ink peer-checked:border-ink peer-checked:bg-ink peer-checked:text-surface peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink"
+            >
+              {grade}
+            </label>
+          </div>
+        ))}
       </div>
       <button
         type="button"
