@@ -7,6 +7,8 @@ import { listStudents } from "@/lib/repositories/students";
 import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { NO_EXCLUDED_STUDENTS, withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { buildCalendarViewForRange, type CalendarViewItem } from "./occurrences";
+import { listCalendarReplacementLinks } from "@/lib/repositories/calendar-replacement-links";
+import { applyReplacementVisibility, type CalendarReplacementLinks } from "./replacement-visibility";
 import type { RecurrenceRuleForEngine } from "./types";
 
 /**
@@ -20,6 +22,7 @@ import type { RecurrenceRuleForEngine } from "./types";
  * financiero) lo pide UNA vez y se lo pasa a cada `loadCalendarViewForRange` en vez de repetir las tres lecturas por rango.
  */
 export interface CalendarViewBase {
+  readonly replacementLinks?: CalendarReplacementLinks;
   readonly rules: Awaited<ReturnType<typeof listRecurrenceRules>>;
   readonly exceptions: Awaited<ReturnType<typeof listRecurrenceExceptionsForRules>>;
   readonly students: Awaited<ReturnType<typeof listStudents>>;
@@ -35,17 +38,18 @@ export interface CalendarViewOptions {
 }
 
 export async function loadCalendarViewBase(ctx: AuthenticatedDbContext, options: CalendarViewOptions = {}): Promise<CalendarViewBase> {
-  const [rules, students, occurrenceMarkers, excludedStudentIds] = await Promise.all([
+  const [rules, students, occurrenceMarkers, excludedStudentIds, replacementLinks] = await Promise.all([
     listRecurrenceRules(ctx),
     listStudents(ctx),
     listRecurringLessonMarkers(ctx),
     options.includeTestData ? Promise.resolve(NO_EXCLUDED_STUDENTS) : loadExcludedStudentIds(ctx),
+    listCalendarReplacementLinks(ctx),
   ]);
   const exceptions = await listRecurrenceExceptionsForRules(
     ctx,
     rules.map((rule) => rule.id)
   );
-  return { rules, exceptions, students, occurrenceMarkers, excludedStudentIds };
+  return { rules, exceptions, students, occurrenceMarkers, excludedStudentIds, replacementLinks };
 }
 
 export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rangeStart: Date, rangeEnd: Date, base?: CalendarViewBase, options: CalendarViewOptions = {}): Promise<CalendarViewItem[]> {
@@ -55,7 +59,7 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     return composeCalendarView(base, lessons, rangeStart, rangeEnd);
   }
   const rules = await listRecurrenceRules(ctx);
-  const [lessons, exceptions, students, occurrenceMarkers, excludedStudentIds] = await Promise.all([
+  const [lessons, exceptions, students, occurrenceMarkers, excludedStudentIds, replacementLinks] = await Promise.all([
     listCalendarLessonsInRange(ctx, rangeStart.toISOString(), rangeEnd.toISOString()),
     listRecurrenceExceptionsForRules(
       ctx,
@@ -64,8 +68,9 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
     listStudents(ctx),
     listRecurringLessonMarkers(ctx),
     options.includeTestData ? Promise.resolve(NO_EXCLUDED_STUDENTS) : loadExcludedStudentIds(ctx),
+    listCalendarReplacementLinks(ctx),
   ]);
-  return composeCalendarView({ rules, exceptions, students, occurrenceMarkers, excludedStudentIds }, lessons, rangeStart, rangeEnd);
+  return composeCalendarView({ rules, exceptions, students, occurrenceMarkers, excludedStudentIds, replacementLinks }, lessons, rangeStart, rangeEnd);
 }
 
 /**
@@ -73,7 +78,7 @@ export async function loadCalendarViewForRange(ctx: AuthenticatedDbContext, rang
  * lee las clases de todos a la vez (en paralelo con la base) y compone cada vista cuando llegan.
  */
 export function composeCalendarView(
-  { rules: allRules, exceptions, students, occurrenceMarkers, excludedStudentIds }: CalendarViewBase,
+  { rules: allRules, exceptions, students, occurrenceMarkers, excludedStudentIds, replacementLinks }: CalendarViewBase,
   allLessons: Awaited<ReturnType<typeof listCalendarLessonsInRange>>,
   rangeStart: Date,
   rangeEnd: Date,
@@ -96,7 +101,7 @@ export function composeCalendarView(
     activityKind: rule.activityKind,
   }));
 
-  return buildCalendarViewForRange({
+  return applyReplacementVisibility(buildCalendarViewForRange({
     rangeStart,
     rangeEnd,
     rules: engineRules,
@@ -129,5 +134,5 @@ export function composeCalendarView(
       notes: lesson.notes,
       participantIds: lesson.participantIds,
     })),
-  });
+  }), replacementLinks);
 }

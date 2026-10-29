@@ -360,6 +360,12 @@ export function NewLessonForm({
       )}
 
       {isReplacement && <input type="hidden" name="freedByLessonId" value={presetFromReplacement?.freedByLessonId} />}
+      {isReplacement && mode === "series" && (
+        <label className="flex min-h-12 items-start gap-3 rounded-md border border-warnLine bg-warnSoft p-3 text-[14px] text-textPrimary">
+          <input type="checkbox" name="confirmSeriesReplacement" value="true" required className="mt-0.5 h-5 w-5 shrink-0" />
+          <span>Reemplazar esta clase y las siguientes de su serie desde la fecha de inicio. Se conservan las clases ya registradas, los cobros y los pagos anteriores.</span>
+        </label>
+      )}
 
       {state.error && <FormErrorBox message={state.error} />}
       {(state.error?.includes('bloqueado')||allowBlocked)&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowBlocked} onChange={e=>setAllowBlocked(e.target.checked)} className="h-5 w-5" required />Agendar igualmente sobre este bloqueo de disponibilidad</label>}

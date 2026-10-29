@@ -184,6 +184,11 @@ test("una ocurrencia REPROGRAMADA no se dibuja en su horario original aunque su 
     const items = buildCalendarViewForRange({ ...day("2026-10-20"), rules: [regla], exceptions: [{ recurrenceId: SERIE, occurrenceKey: OCCURRENCE_KEY, type, replacementLessonId: type === "rescheduled" ? "reemplazo-futuro" : null }], lessons: [] });
     assert.equal(items.length, 0, type);
   }
+  const original = baseLesson({id:"original-materializada",recurrenceId:SERIE,recurrenceOccurrenceKey:OCCURRENCE_KEY});
+  const real = buildCalendarViewForRange({...day("2026-10-20"),rules:[regla],exceptions:[{recurrenceId:SERIE,occurrenceKey:OCCURRENCE_KEY,type:"rescheduled",replacementLessonId:"fuera-de-la-semana"}],lessons:[original]});
+  assert.equal(real.length,1,"la fila histórica sigue disponible");
+  assert.equal(real[0].status,"scheduled","no se reescribe el estado guardado");
+  assert.equal(visibleCalendarItems(real).length,0,"la original materializada tampoco ocupa un segundo carril");
 });
 
 test("la clase de reemplazo de una reprogramación aparece por su cuenta en su nuevo horario", () => {

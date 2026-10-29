@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { planEndSeriesFromDate } from "@/lib/calendar/end-series";
+import { replacementSeriesFamilyIds } from "@/lib/calendar/replacement-visibility";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError, editCalendarLesson, restoreCalendarOccurrence, deleteCancelledCalendarLesson, type EditCalendarLessonInput } from "@/lib/repositories/calendar-lessons";
 import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, editRecurrenceClassTitle, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
@@ -287,6 +288,7 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
 // ---------------------------------------------------------------------------
 
 export async function createRecurrenceSeriesAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const replacementSourceId = readString(formData, "freedByLessonId").trim() || null;
   const studentIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
   const primaryStudentIdRaw = readString(formData, "primaryStudentId");
   const startDate = readString(formData, "startDate");
@@ -330,6 +332,13 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
 
   try {
     const ctx = await requireAuthenticatedDbContext();
+    let replacementFamily = new Set<string>();
+    if (replacementSourceId) {
+      if (readString(formData,"confirmSeriesReplacement") !== "true") return {error:"Confirmá el reemplazo de esta clase y las siguientes de su serie.",values};
+      const source = await getCalendarLesson(ctx,replacementSourceId);
+      if (!source || source.status !== "cancelled") return {error:"La clase a reemplazar ya no está cancelada. Volvé al calendario.",values};
+      if (source.recurrenceId) replacementFamily = replacementSeriesFamilyIds(await listRecurrenceRules(ctx),source.recurrenceId);
+    }
     const students = await listStudents(ctx);
     const selected = studentIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
     if (selected.length !== studentIds.length) return { error: "Alguno de los alumnos elegidos ya no está disponible.", values };
@@ -358,7 +367,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     for(const occurrence of planned){
       const evaluation=evaluateAvailability(occurrence.start,occurrence.end,availability);
       if(!evaluation.isAvailable&&readString(formData,'allowBlocked')!=='true')return {error:`Ese horario está bloqueado en tu disponibilidad (${evaluation.label??'no disponible'}).`,values};
-      if(otherItems.some(item=>item.status!=='cancelled'&&item.occupiesSlot!==false&&item.start<occurrence.end&&item.end>occurrence.start)&&readString(formData,'allowOverlap')!=='true')return {error:'El patrón se superpone con otra clase ya agendada.',values};
+      if(otherItems.some(item=>!replacementFamily.has(item.recurrenceId??'')&&item.status!=='cancelled'&&item.occupiesSlot!==false&&item.start<occurrence.end&&item.end>occurrence.start)&&readString(formData,'allowOverlap')!=='true')return {error:'El patrón se superpone con otra clase ya agendada.',values};
     }
 
     const created = await createRecurrenceSeries(ctx, {
@@ -374,7 +383,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
       classTitle,
       activityKind,
       participantIds: selected.map((s) => s.id),
-    });
+    }, replacementSourceId ? {sourceLessonId:replacementSourceId,effectiveDate:startDate} : undefined);
 
     // Conflicto/disponibilidad sobre las próximas ocurrencias reales — nunca
     // un horizonte infinito, mismo criterio que el móvil

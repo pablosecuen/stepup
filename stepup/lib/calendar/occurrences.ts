@@ -36,6 +36,8 @@ export interface CalendarViewItem {
   status: CalendarLessonStatus;
   /** False only for the original slot released by a reschedule. */
   occupiesSlot?: boolean;
+  /** Historical row retained in storage, superseded in the visible agenda. */
+  hiddenByReplacement?: boolean;
   /** Ver `ClosedOutcome`: sólo rotula, nunca cambia color, cobros ni asistencia. */
   closedOutcome?: ClosedOutcome | null;
   activityKind: ActivityKind;
@@ -169,6 +171,9 @@ export function buildCalendarViewForRange(input: {
   input.lessons.forEach((lesson) => {
     const startTime = new Date(lesson.startAt).getTime();
     if (startTime < input.rangeStart.getTime() || startTime > input.rangeEnd.getTime()) return;
+    const movedOriginal = input.exceptions.some((exception) => exception.type === "rescheduled" &&
+      exception.recurrenceId === lesson.recurrenceId && exception.occurrenceKey === lesson.recurrenceOccurrenceKey &&
+      exception.replacementLessonId !== null && exception.replacementLessonId !== lesson.id);
     items.push({
       id: lesson.id,
       recurrenceId: lesson.recurrenceId,
@@ -186,7 +191,7 @@ export function buildCalendarViewForRange(input: {
       end: lesson.endAt,
       modality: lesson.modality,
       status: lesson.status,
-      ...(lesson.status === "rescheduled" && lesson.recurrenceOriginalStart === null ? { occupiesSlot: false } : {}),
+      ...(movedOriginal || (lesson.status === "rescheduled" && lesson.recurrenceOriginalStart === null) ? { occupiesSlot: false } : {}),
       ...(lesson.closedOutcome ? { closedOutcome: lesson.closedOutcome } : {}),
       activityKind: lesson.activityKind,
       isRecurring: lesson.recurrenceId !== null,
@@ -219,6 +224,7 @@ function hasActiveReplacementForCancelledSlot(item: CalendarViewItem, all: Calen
 
 export function visibleCalendarItems(all: CalendarViewItem[]): CalendarViewItem[] {
   return all.filter((item) => {
+    if (item.occupiesSlot === false || item.hiddenByReplacement) return false;
     if (item.freedByLessonId && item.status === "cancelled") return false;
     if (item.status === "cancelled" && hasActiveReplacementForCancelledSlot(item, all)) return false;
     return true;

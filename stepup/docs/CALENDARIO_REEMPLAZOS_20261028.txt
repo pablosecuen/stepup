@@ -1,0 +1,22 @@
+Bloque Codex — reemplazos y vista Día
+
+Implementado, sin publicar:
+- Los horarios originales liberados por una reprogramación no se dibujan ni ocupan carriles.
+- Relaciones explícitas para reemplazos de clases, incluso cuando el destino queda fuera de la semana visible. No se deduce un reemplazo por coincidir hora o alumno.
+- Reemplazar con clase suelta conserva la serie original. Reemplazar con una serie requiere confirmación y corta el linaje original desde la fecha elegida, dentro de la misma transacción que crea la nueva serie. Se conserva el historial registrado y financiero.
+- Se bloquea un segundo reemplazo de la misma clase, también entre una clase suelta y una serie. Repetir la misma operación es idempotente.
+- Un reemplazo de serie se rechaza si afectaría otra clase futura que ya tiene registro o cobro; no se permite crear el patrón nuevo encima de esa evidencia conservada.
+- Día de escritorio queda centrado con ancho máximo de 760 px; móvil conserva su ancho disponible.
+
+Migración nueva: 20261101100000_calendar_replacement_visibility.sql. Debe aplicarse ANTES de publicar el código. No aplicada a producción en este bloque. Agrega relaciones y envuelve las funciones existentes para conservar la operación atómica.
+Backfill limitado a vínculos persistidos: freed_by_lesson_id, excepciones, operaciones de reprogramación y avisos de cancelación asociados inequívocamente al mismo instante de transacción que una operación. Nunca se reparan clases solo por solapamiento.
+Si una serie antigua se creó sin guardar el contexto de reemplazo, no hay vínculo recuperable con certeza. Ese caso exige revisar los datos reales; no se inventa ni se borra su relación.
+
+Verificado:
+- Suite completa: 5135/5135, tipos, lint y build webpack correctos.
+- PostgreSQL real aislado: migraciones, reemplazo de serie, reintento, aislamiento entre cuentas, clase ajena intacta, fallo tras el corte revierte todo, reemplazo simple exclusivo y vínculo de reprogramación con otra clase desplazada. La función anterior no se puede invocar como authenticated.
+- Componentes reales en navegador local: Día a 1366 px, grilla de 760 px; Semana con una sola tarjeta de Amparo, una de Lucy y sin originales liberados; Día móvil de 390 px sin desborde. Datos ficticios; no es una prueba de los registros reales de las capturas ni de iPhone físico.
+- Laboratorio temporal eliminado y servidor detenido. Capturas en output/calendario-*-local.png, fuera del repositorio.
+
+Integración pendiente con Claude:
+Claude tiene carga/esqueletos/animación, Preferencias y Recordatorios. No debe modificar el calendario. Integrar su commit, aplicar la migración por el mecanismo habitual, compilar y publicar ambos bloques juntos. Después comprobar los casos reales del 28, 29 y 31; no se declaran reparados por una prueba sintética.

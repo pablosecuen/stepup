@@ -98,11 +98,14 @@ export async function listRuleParticipantsWithCreatedAt(
 }
 
 /** Crea una serie + sus participantes de forma atómica (RPC `create_recurrence_series`). */
-export async function createRecurrenceSeries(ctx: AuthenticatedDbContext, input: NewRecurrenceSeriesInput): Promise<RecurrenceRuleRecord> {
+export async function createRecurrenceSeries(ctx: AuthenticatedDbContext, input: NewRecurrenceSeriesInput, replacement?: { sourceLessonId: string; effectiveDate: string }): Promise<RecurrenceRuleRecord> {
   const errors = validateNewRecurrenceSeriesInput(input);
   if (errors.length > 0) throw new Error(`Serie inválida: ${errors.map((e) => e.message).join(" ")}`);
 
-  const { data, error } = await ctx.supabase.rpc("create_recurrence_series", { p_payload: recurrenceSeriesInputToPayload(input) });
+  const payload = recurrenceSeriesInputToPayload(input);
+  const { data, error } = replacement
+    ? await ctx.supabase.rpc("create_recurrence_series_replacing", { p_payload: { ...payload, replacement_source_lesson_id: replacement.sourceLessonId, replacement_effective_date: replacement.effectiveDate } })
+    : await ctx.supabase.rpc("create_recurrence_series", { p_payload: payload });
   if (error) throw error;
   const row = data as RecurrenceRuleRow;
   return toRecurrenceRuleRecord(row, input.participantIds);

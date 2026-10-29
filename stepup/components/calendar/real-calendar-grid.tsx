@@ -92,7 +92,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
     function measure() {
       if (!wrap || !region || !scroller || !header) return;
       // Ancho útil: decide si la grilla entra con columnas legibles y cuánto mide cada columna (y por lo tanto cada carril).
-      const widthPx = wrap.clientWidth;
+      const widthPx = dayKeys.length === 1 && window.matchMedia("(min-width: 820px)").matches
+        ? Math.min(wrap.clientWidth, 760) : wrap.clientWidth;
       if (widthPx > 0) setAreaWidthPx((previous) => (previous === widthPx ? previous : widthPx));
       const mobile = window.matchMedia("(max-width: 819px)").matches;
       setIsMobile(mobile);
@@ -243,7 +244,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
           ref={scrollerRef}
           data-calendar-scroller
           data-scrolls={scrollsVertically ? "true" : "false"}
-          className={`absolute inset-x-0 top-0 max-h-full ${expandedColumns ? "overflow-x-auto" : "overflow-x-hidden"} rounded-none border-x-0 border-y-[1.5px] border-border bg-surface shadow-none nav:rounded-lg nav:border-[1.5px] nav:shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
+          className={`absolute inset-x-0 top-0 max-h-full ${!isWeek ? "nav:mx-auto nav:max-w-[760px]" : ""} ${expandedColumns ? "overflow-x-auto" : "overflow-x-hidden"} rounded-none border-x-0 border-y-[1.5px] border-border bg-surface shadow-none nav:rounded-lg nav:border-[1.5px] nav:shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
         >
           <div style={expandedColumns ? { width: expandedColumns.totalPx } : undefined}>
             <div ref={headerRef} data-calendar-days-header className="sticky top-0 z-20 grid border-b-[1.5px] border-border bg-surface" style={{ gridTemplateColumns }}>
