@@ -1,0 +1,11 @@
+Integración sobre 0e167a9: calendario bf2a5b9 y bloque Claude 64969a6 (integrado como 19c2841).
+
+Verificación conjunta: 5142/5142 pruebas, lint y next build --webpack correctos. La migración 20261101100000 fue la única pendiente y se aplicó antes de publicar el código.
+
+Consulta de solo lectura de los casos reales:
+- Amparo del 31/10 es una clase suelta sin freed_by_lesson_id. La cancelación del entrenamiento B1 quedó sin vínculo. Se agregó un vínculo explícito de reemplazo entre las dos clases identificadas por el usuario, con condiciones de estado, fecha, nombre y propietario. Afectó una fila de metadatos. No cambió ninguna clase, serie, cobro ni pago. SQL de reparación y reversión fuera del repositorio en respaldos-privados.
+- Lucy del 29/10 y Alejandro del 28/10 tienen una sola clase materializada por caso. El aspecto de doble tarjeta provenía de barra y rótulo separados. Las reprogramadas de un solo carril y al menos 15 px pasan a un solo recuadro: nombre, hora e indicador de reprogramación; las diminutas y simultáneas conservan la representación que respeta su duración.
+
+Claude: esqueletos por ruta y aparición compartida sin repetirse al filtrar; Preferencias con SettingsRow; Recordatorios y pendientes de registro con ancho acotado. Inicio sigue sin loading.tsx para conservar su redirección HTTP.
+
+No se declara prueba física en iPhone ni Safari. Las verificaciones visuales utilizan navegador de escritorio y emulación. El backfill no inventa relaciones históricas por similitud de nombres u horarios.

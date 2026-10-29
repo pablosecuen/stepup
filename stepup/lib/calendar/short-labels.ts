@@ -73,6 +73,7 @@ const textWidth = (parts: { time: string; state: string | null; word: string; nu
 export function needsLabel(p: PositionedItem, sources: ReadonlyMap<string, LabelSource>): boolean {
   if (p.height < SHORT_BAR_MAX_HEIGHT_PX) return true;
   if (p.height >= SHARED_LANE_SHORT_HEIGHT_PX) return false;
+  if (p.laneCount === 1 && p.item.status === "rescheduled") return false;
   return p.laneCount > 1 || Boolean(sources.get(p.item.id)?.stateText);
 }
 

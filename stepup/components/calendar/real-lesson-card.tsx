@@ -1,6 +1,6 @@
 "use client";
 
-import { NoSymbolIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, NoSymbolIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { PositionedItem } from "@/lib/calendar/layout";
 import { cardInsetPx, cardPresentation, cardWidthPx, microFontPx } from "@/lib/calendar/layout";
 import { narrowNotHeldIndicator, narrowStripPx, NARROW_TEXT_STRIP_PX, estimateBoldTextWidthPx, firstWord, INLINE_META_FONT_PX, inlineMetaNeedPx, LANE_MAX_WITH_META_PX, mobileNameFontPx, SINGLE_LINE_ICON_PX, mobileNameWords, narrowMeta, nameForWidth, TWO_NAME_LINES_MIN_HEIGHT_PX, wideMeta } from "@/lib/calendar/card-text";
@@ -110,6 +110,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
   // Semana en el teléfono: el ancho de cada columna se calcula para la tarjeta de dos líneas (`stack`, letra de 10,5/9,5 px); la completa (letra de 12 px) no entra en ese ancho, así que no se usa.
   const sizedPresentation = cardPresentation({ heightPx: height, widthPx: cardWidth });
   const presentation = mobile && !dayRow && sizedPresentation === "full" ? "stack" : sizedPresentation;
+  const compactRescheduled = item.status === "rescheduled" && laneCount === 1 && height >= 15 && height < 27;
   // Semana en el teléfono: palabras enteras en texto horizontal (la columna del día se ensancha para que entren, `mobileWeekColumns`); nunca iniciales, texto girado ni palabras partidas.
   const shownWords = mobileWeek ? mobileNameWords(title, height) : [];
   const narrowName = mobileWeek ? shownWords.join(" ") : nameForWidth(title, cardWidth);
@@ -184,7 +185,18 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
         className={`absolute inset-x-0 min-w-0 overflow-hidden ${borderClass} shadow-subtle transition-[box-shadow,filter] duration-150 ease-premium group-hover:shadow-cardHover group-hover:brightness-95 motion-reduce:transition-none`}
         style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border, ...(narrowIndicator === "strip" ? { paddingRight: stripPx } : narrowIndicator === "band" ? { paddingBottom: NARROW_TEXT_STRIP_PX } : {}), ...microEdge }}
       >
-        {presentation === "full" && (
+        {compactRescheduled && (
+          <span className={`flex h-full min-w-0 justify-center overflow-hidden px-1 ${height >= 22 ? "flex-col" : "items-center gap-1"}`}>
+            {height >= 22 && <span className="truncate text-[10px] font-bold leading-[10px]" style={{color:textColor}}>{title}</span>}
+            <span className="flex min-w-0 items-center gap-1 text-[10px] font-semibold leading-[10px]" style={{color:secondaryColor}}>
+              <ArrowPathIcon className="h-2.5 w-2.5 shrink-0" aria-hidden />
+              <span className="shrink-0 tf-num">{timeLabel}</span>
+              {height >= 22 && cardWidth >= 100 && <span>Reprog.</span>}
+            </span>
+            {height < 22 && <span className="min-w-0 truncate text-[10px] font-bold leading-[10px]" style={{color:textColor}}>{title}</span>}
+          </span>
+        )}
+        {!compactRescheduled && presentation === "full" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${padX}`}>
             <span className="flex min-w-0 items-center gap-1 text-[12px] font-bold leading-[14px]" style={{ color: textColor, textDecorationLine: strike }}>
               {icons}
@@ -195,7 +207,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
             </span>
           </span>
         )}
-        {presentation === "stack" && (
+        {!compactRescheduled && presentation === "stack" && (
           <span className={`flex h-full min-w-0 flex-col justify-center overflow-hidden ${mobileWeek ? "px-[3px]" : cardWidth < 44 ? "px-0.5" : "px-1"}`}>
             {narrowIndicator === "icon-row" && <NoSymbolIcon className="mx-auto mb-px h-2.5 w-2.5 shrink-0" style={{ color: textColor }} aria-hidden />}
             <span className={`flex min-w-0 gap-0.5 font-bold ${twoNameLines ? "items-start leading-[12px]" : `items-center leading-[13px]${mobileWeek ? "" : " text-[11px]"}`}`} style={{ color: textColor, textDecorationLine: strike, fontSize: nameFontPx }}>
@@ -215,7 +227,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
             </span>
           </span>
         )}
-        {presentation === "title" && (
+        {!compactRescheduled && presentation === "title" && (
           <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "px-[3px]" : "px-1.5"}`}>
             {/* Teléfono: el ícono de grupo/entrenamiento sólo si sobra lugar después del nombre entero (el nombre manda; el dato sigue en el cuadro de información y en el nombre accesible). */}
             {(!mobileWeek || cardWidth + 2 >= (showInlineMeta ? inlineNeedPx : estimateBoldTextWidthPx(narrowName, nameFontPx ?? 10.5) + 12 + SINGLE_LINE_ICON_PX)) && icons}
@@ -229,7 +241,7 @@ export function RealLessonCard({ positioned, isElapsed, isActiveReplacement, isI
             </span>
           </span>
         )}
-        {presentation === "micro" && (
+        {!compactRescheduled && presentation === "micro" && (
           // Clase de ~15 minutos: el bloque conserva su alto exacto y el nombre va en UNA línea de letra chica (del alto del bloque menos los bordes); la hora se suma si el carril es ancho.
           <span className={`flex h-full min-w-0 items-center gap-1 overflow-hidden ${mobileWeek ? "pl-1.5 pr-[3px]" : "px-1"}`} style={{ color: textColor, textDecorationLine: strike }}>
             {showInlineMeta && (

@@ -112,4 +112,6 @@ test("needsLabel: < 15 px siempre; 15–27 px sólo si comparte carril o su esta
   assert.equal(needsLabel(p("c", 25, 1), sources), true, "«Cancel.» ocuparía el lugar de la hora");
   assert.equal(needsLabel(p("n", 25, 2), sources), true, "carril compartido");
   assert.equal(needsLabel(p("c", 40, 1), sources), false);
+  assert.equal(needsLabel({item:{id:"r",status:"rescheduled"},height:25,laneCount:1} as never,sources),false,"la reprogramada tiene una sola tarjeta, sin rótulo separado");
+  assert.equal(needsLabel({item:{id:"r",status:"rescheduled"},height:12,laneCount:1} as never,sources),true,"las clases diminutas conservan su duración exacta");
 });
