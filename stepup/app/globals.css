@@ -148,7 +148,7 @@
     background-position: right 12px center;
     background-size: 18px;
   }
-  /* Control de calificación (1–10): zona táctil de 48 px de alto, pista de 12 px y tirador de ~30 px bien visible. `touch-action: pan-y pinch-zoom` deja pasar el scroll vertical y el zoom
+  /* Control de calificación (1–10): zona táctil de 48 px de alto, pista de 12 px y tirador rectangular de 44×30 px. `touch-action: pan-y pinch-zoom` deja pasar el scroll vertical y el zoom
      de la página (sólo el gesto horizontal sobre la barra lo toma el control). El relleno sale de `--tf-fill` (porcentaje) para que se vea igual en Chrome, Safari y Firefox. */
   .tf-grade {
     -webkit-appearance: none;
@@ -163,7 +163,7 @@
   .tf-grade:focus-visible {
     outline: 2.5px solid var(--tf-ink);
     outline-offset: 3px;
-    border-radius: 999px;
+    border-radius: 10px;
   }
   .tf-grade::-webkit-slider-runnable-track {
     height: 12px;
@@ -174,13 +174,13 @@
     -webkit-appearance: none;
     appearance: none;
     box-sizing: border-box;
-    width: 30px;
+    width: 44px;
     height: 30px;
     margin-top: -9px;
-    border-radius: 999px;
-    border: 4px solid var(--tf-surface);
+    border-radius: 8px;
+    border: 3px solid var(--tf-surface);
     background: var(--tf-accent);
-    box-shadow: 0 0 0 1.5px var(--tf-accent-dark), 0 2px 6px rgba(60, 40, 10, 0.3);
+    box-shadow: 0 0 0 1px var(--tf-accent-dark), 0 1px 3px rgba(60, 40, 10, 0.2);
   }
   .tf-grade::-moz-range-track {
     height: 12px;
@@ -194,12 +194,12 @@
   }
   .tf-grade::-moz-range-thumb {
     box-sizing: border-box;
-    width: 30px;
+    width: 44px;
     height: 30px;
-    border-radius: 999px;
-    border: 4px solid var(--tf-surface);
+    border-radius: 8px;
+    border: 3px solid var(--tf-surface);
     background: var(--tf-accent);
-    box-shadow: 0 0 0 1.5px var(--tf-accent-dark), 0 2px 6px rgba(60, 40, 10, 0.3);
+    box-shadow: 0 0 0 1px var(--tf-accent-dark), 0 1px 3px rgba(60, 40, 10, 0.2);
   }
   /* Tabla apilable: bajo 820 px cada fila es una tarjeta (el encabezado se oculta; cada celda trae su rótulo en `data-label`). */
   @media (max-width: 819.98px) {
