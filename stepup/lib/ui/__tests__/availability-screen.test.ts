@@ -50,7 +50,9 @@ test("el contenedor aprovecha el ancho del shell (el de las listas), también en
 
 test("las tarjetas ocupan el ancho y los formularios se reparten solos (auto-fit de 170 px mínimo), sin columnas fijas que compriman campos", () => {
   const editor = code(`${DIR}/availability-editor.tsx`);
-  assert.match(editor, /const FORM_GRID = "mt-4 grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,170px\),1fr\)\)\]/);
+  // La grilla vive en `availability-layout.ts`, compartida con el esqueleto de carga.
+  assert.match(code("components/calendar/availability-layout.ts"), /AVAILABILITY_FORM_GRID = "mt-4 grid grid-cols-\[repeat\(auto-fit,minmax\(min\(100%,170px\),1fr\)\)\]/);
+  assert.match(editor, /const FORM_GRID = AVAILABILITY_FORM_GRID;/);
   assert.equal((editor.match(/className=\{FORM_GRID\}/g) ?? []).length, 2, "bloqueos y excepciones");
   assert.doesNotMatch(editor, /sm:grid-cols-|nav:grid-cols-|sm:col-span|nav:col-span/, "nada de cuatro columnas fijas en anchos medios");
   // los botones de enviar ocupan su celda (44 px de alto lo da Button) y los campos conservan su control original
@@ -62,8 +64,10 @@ test("las tarjetas ocupan el ancho y los formularios se reparten solos (auto-fit
 test("estado vacío compacto: alineado a la izquierda, ~540 px como máximo en escritorio y fluido en móvil; las filas reales no lo heredan", () => {
   const editor = code(`${DIR}/availability-editor.tsx`);
   const empty = editor.slice(editor.indexOf("function EmptyNote"), editor.indexOf("function ListRow") > 0 ? editor.indexOf("function ListRow") : undefined);
-  assert.match(empty, /<li className="w-full max-w-\[540px\] rounded-md border-2 border-dashed/, "fluido (w-full) hasta 540 px");
-  const maxWidth = Number(/max-w-\[(\d+)px\]/.exec(empty)?.[1]);
+  assert.match(empty, /<li className=\{AVAILABILITY_EMPTY_CLASS\}>/);
+  const emptyClass = code("components/calendar/availability-layout.ts");
+  assert.match(emptyClass, /AVAILABILITY_EMPTY_CLASS = "w-full max-w-\[540px\] rounded-md border-2 border-dashed/, "fluido (w-full) hasta 540 px");
+  const maxWidth = Number(/max-w-\[(\d+)px\]/.exec(emptyClass)?.[1]);
   assert.ok(maxWidth >= 500 && maxWidth <= 560, `ancho máximo ${maxWidth}`);
   assert.doesNotMatch(empty, /mx-auto|text-center|justify-center/, "alineado a la izquierda");
   assert.match(editor, /<EmptyNote>Sin excepciones todavía\.<\/EmptyNote>/);
@@ -71,7 +75,8 @@ test("estado vacío compacto: alineado a la izquierda, ~540 px como máximo en e
   // la fila real (ListRow) y las listas no llevan el límite del estado vacío
   const row = editor.slice(editor.indexOf("function ListRow"), editor.indexOf("export function AvailabilityEditor"));
   assert.doesNotMatch(row, /max-w-/, "las filas con excepciones o bloqueos reales usan el ancho que necesitan");
-  assert.match(row, /flex flex-wrap items-center justify-between/, "información a la izquierda y «Quitar» al otro extremo");
+  assert.match(row, /<li className=\{AVAILABILITY_ROW_CLASS\}>/);
+  assert.match(code("components/calendar/availability-layout.ts"), /AVAILABILITY_ROW_CLASS = "flex flex-wrap items-center justify-between/, "información a la izquierda y «Quitar» al otro extremo");
   assert.match(editor, /<ul className="mt-3 flex flex-col gap-2">/, "la lista ocupa todo el ancho de la tarjeta");
   assert.doesNotMatch(editor.replace(empty, ""), /max-w-\[540px\]/, "el límite vive sólo en el estado vacío");
 });
