@@ -171,10 +171,12 @@ test("dirección de la lista: limpia, sin valores por defecto, igual para el ser
   assert.equal(parsed, "josé ñandú & co=1", "recargar o compartir la dirección devuelve el mismo texto");
 });
 
-test("circuito del campo: busca al escribir (200 ms), Enter al instante, sin llenar el historial ni perder foco", () => {
+test("circuito del campo: busca inmediatamente desde la primera letra, Enter opcional, sin llenar el historial ni perder foco", () => {
   const form = source("components/students/students-filters-form.tsx");
-  assert.match(form, /export const SEARCH_DEBOUNCE_MS = 200;/);
-  assert.match(form, /setTimeout\(\(\) => go\(searchHref\(value\), "replace"\), SEARCH_DEBOUNCE_MS\)/);
+  assert.doesNotMatch(form, /SEARCH_DEBOUNCE_MS|setTimeout/, "ninguna espera antes de buscar");
+  assert.match(form, /\(text !== "" \|\| search !== "" \|\| isPending\)/, "el aviso existe desde la primera letra aunque la consulta anterior estuviera vacía");
+  assert.match(form, /isPending \|\| cleanStudentSearchText\(text\) !== search/, "no muestra un conteo viejo mientras llega la respuesta");
+  assert.match(form, /function onTextChange\(value: string\)[\s\S]*?go\(searchHref\(value\), "replace"\)/);
   assert.match(form, /router\.replace\(href, \{ scroll: false \}\)/, "escribir reemplaza la dirección: sin una entrada de historial por letra y sin subir la página");
   assert.match(form, /router\.push\(href, \{ scroll: false \}\)/, "Enter / «Aplicar filtros» sí avanzan en el historial");
   assert.match(form, /onSubmit=\{onSubmit\}/);
@@ -182,7 +184,7 @@ test("circuito del campo: busca al escribir (200 ms), Enter al instante, sin lle
   assert.match(form, /startTransition\(\(\) => \{/, "la navegación es una transición: la lista vieja sigue visible, sin esqueleto, hasta que llega la nueva");
   // El campo es del navegador mientras se escribe: no se remonta ni se le pisa el texto.
   assert.match(form, /value=\{text\}/);
-  assert.match(form, /if \(!isPending && !debouncing && cleanStudentSearchText\(text\) !== search\)/, "una respuesta con otro texto en camino nunca pisa lo escrito");
+  assert.match(form, /if \(!isPending && cleanStudentSearchText\(text\) !== search\)/, "una respuesta con otro texto en camino nunca pisa lo escrito");
   assert.doesNotMatch(form, /<form[^>]*\bkey=/, "el formulario no se remonta");
   assert.match(form, /<div key=\{`\$\{status\}\|\$\{level\}\|\$\{modality\}\|\$\{paymentStatus\}\|\$\{sortBy\}`\}/, "sólo los selectores se renuevan al cambiar los filtros; el campo de texto nunca");
   assert.match(form, /onCompositionStart/);

@@ -11,9 +11,6 @@ import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import { PAYMENT_STATUS_FILTER_OPTIONS, SORT_OPTIONS } from "@/lib/students/list-filters";
 import { buildStudentsListHref, cleanStudentSearchText, MAX_STUDENT_SEARCH_LENGTH, STUDENTS_LIST_MEMORY_KEY } from "@/lib/students/list-url";
 
-/** Espera desde la última tecla hasta pedir los resultados: lo bastante corta para sentirse inmediata y lo bastante larga para no pedir una lista por cada letra. */
-export const SEARCH_DEBOUNCE_MS = 200;
-
 interface FilterValues {
   search: string;
   status: string;
@@ -94,7 +91,7 @@ function narrowingFilterLabels({ status, level, modality, paymentStatus }: Pick<
  * Búsqueda y filtros de Alumnos. El servidor sigue siendo el único que filtra, ordena y pagina (nunca se duplica el filtrado en el navegador): este formulario sólo PIDE la dirección
  * `/alumnos?q=…` que corresponde.
  *
- * - Buscar mientras se escribe: ~200 ms después de la última tecla se reemplaza la dirección (`router.replace`, sin llenar el historial letra por letra y sin la página: vuelve a la primera).
+ * - Cada cambio de texto pide los resultados inmediatamente (`router.replace`, sin llenar el historial letra por letra y sin la página: vuelve a la primera).
  *   Enter hace lo mismo al instante. Los demás filtros se aplican con «Aplicar filtros», como siempre; escribir nunca cambia los filtros ya aplicados.
  * - El campo es del navegador mientras se escribe: la lista nueva nunca le pisa el texto, el cursor ni el foco (una respuesta que llega con otro texto en camino se ignora). Sólo cuando la
  *   búsqueda cambia desde afuera (Limpiar, Quitar filtros, Atrás) el campo adopta el texto de la dirección.
@@ -108,19 +105,17 @@ export function StudentsFiltersForm(values: FilterValues) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [text, setText] = useState(search);
-  const [debouncing, setDebouncing] = useState(false);
   const [requestedHref, setRequestedHref] = useState<string | null>(null);
   const [lastSearchProp, setLastSearchProp] = useState(search);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetSearch, setSheetSearch] = useState(search);
   const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composingRef = useRef(false);
   const activeLabels = activeFilterLabels(values);
   const narrowingLabels = narrowingFilterLabels(values);
   const appliedHref = buildStudentsListHref({ q: search, status, level, modality, pago: paymentStatus, orden: sortBy });
 
-  // Los filtros ya aplicados, siempre los últimos (la espera de 200 ms nunca debe usar un valor viejo).
+  // Los filtros ya aplicados, siempre los últimos.
   const latestRef = useRef({ status, level, modality, pago: paymentStatus, orden: sortBy, appliedHref, requestedHref });
   useEffect(() => {
     latestRef.current = { status, level, modality, pago: paymentStatus, orden: sortBy, appliedHref, requestedHref };
@@ -129,7 +124,7 @@ export function StudentsFiltersForm(values: FilterValues) {
   // La búsqueda cambió desde afuera (Limpiar, Quitar filtros, Atrás): el campo adopta el texto, salvo que la usuaria tenga letras sin enviar o una respuesta en camino.
   if (search !== lastSearchProp) {
     setLastSearchProp(search);
-    if (!isPending && !debouncing && cleanStudentSearchText(text) !== search) {
+    if (!isPending && cleanStudentSearchText(text) !== search) {
       setText(search);
       setRequestedHref(null);
     }
@@ -143,21 +138,7 @@ export function StudentsFiltersForm(values: FilterValues) {
     }
   }, [appliedHref]);
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  function cancelTimer() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }
-
   function go(href: string, mode: "replace" | "push") {
-    cancelTimer();
-    setDebouncing(false);
     const latest = latestRef.current;
     if (href === (latest.requestedHref ?? latest.appliedHref)) return;
     setRequestedHref(href);
@@ -172,16 +153,10 @@ export function StudentsFiltersForm(values: FilterValues) {
     return buildStudentsListHref({ q: value, status: s, level: l, modality: m, pago, orden });
   }
 
-  function scheduleSearch(value: string) {
-    cancelTimer();
-    setDebouncing(true);
-    timerRef.current = setTimeout(() => go(searchHref(value), "replace"), SEARCH_DEBOUNCE_MS);
-  }
-
   function onTextChange(value: string) {
     setText(value);
     if (composingRef.current) return; // composición de teclado (acentos, IME): se busca al terminar
-    scheduleSearch(value);
+    go(searchHref(value), "replace");
   }
 
   function clearText() {
@@ -225,7 +200,7 @@ export function StudentsFiltersForm(values: FilterValues) {
                   }}
                   onCompositionEnd={(event) => {
                     composingRef.current = false;
-                    scheduleSearch(event.currentTarget.value);
+                    go(searchHref(event.currentTarget.value), "replace");
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Escape" && text !== "") {
@@ -239,7 +214,7 @@ export function StudentsFiltersForm(values: FilterValues) {
                   autoCapitalize="off"
                   spellCheck={false}
                   enterKeyHint="search"
-                  aria-describedby={search ? "students-search-status" : undefined}
+                  aria-describedby={text || search || isPending ? "students-search-status" : undefined}
                   className="block pl-11 pr-11"
                 />
                 {text !== "" && (
@@ -301,16 +276,17 @@ export function StudentsFiltersForm(values: FilterValues) {
         </div>
       </form>
 
-      {search !== "" && (
+      {(text !== "" || search !== "" || isPending) && (
         <div className="flex flex-col gap-2">
-          {/* La cantidad sale de la MISMA respuesta que la lista: nunca puede mostrar un número de otra búsqueda. «Buscando…» aparece sólo si la respuesta tarda. */}
+          {/* Desde la primera letra se muestra actividad; el conteo sólo aparece cuando corresponde al texto actual. */}
           <p id="students-search-status" role="status" aria-live="polite" className="flex flex-wrap items-baseline gap-x-3 text-[14.5px] font-[650] text-textSecondary [overflow-wrap:anywhere]">
-            <span>
-              {totalItems === 0 ? "Ninguna coincidencia" : `${totalItems} ${totalItems === 1 ? "coincidencia" : "coincidencias"}`} para «{search}»
-            </span>
-            <span aria-hidden className={`text-[13px] font-normal text-textMuted transition-opacity duration-150 ${isPending ? "opacity-100 delay-300" : "opacity-0"}`}>
-              Buscando…
-            </span>
+            {isPending || cleanStudentSearchText(text) !== search ? (
+              <span>Buscando{text ? ` «${text}»` : ""}…</span>
+            ) : (
+              <span>
+                {totalItems === 0 ? "Ninguna coincidencia" : `${totalItems} ${totalItems === 1 ? "coincidencia" : "coincidencias"}`} para «{search}»
+              </span>
+            )}
           </p>
           {showNotice && (
             <div className="flex max-w-[720px] gap-2.5 rounded-md border-[1.5px] border-infoLine bg-infoSoft px-3.5 py-3 text-[14px] text-textSecondary">
