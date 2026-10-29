@@ -2,6 +2,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { ArrowLeftIcon, CheckIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { CalendarSkeleton } from "@/components/nav/calendar-skeleton";
 import { linkClass } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { AVAILABILITY_EMPTY_CLASS, AVAILABILITY_FORM_GRID, AVAILABILITY_ROW_CLASS } from "@/components/calendar/availability-layout";
 import { PAGE_TITLE_CLASS, READING_WIDTH } from "@/components/ui/page-header";
 import { CARD_CLASS, PANEL_CLASS } from "@/components/ui/surfaces";
 import { ScreenFrame, SkAction, SkBar, SkHeader, SkPill, SkRound } from "@/components/ui/skeleton-kit";
@@ -550,12 +553,44 @@ function DisponibilidadBody({ title }: { title: string }) {
         </div>
         <SkBar className="h-11 w-11 shrink-0" />
       </div>
-      {/* El editor: 1.012 px en móvil y 493 px en escritorio (medidos en Production) */}
-      <div className="mt-6 h-[1012px] nav:h-[493px]">
-        <div className={`${CARD_CLASS} h-full`}>
-          <SkBar className="h-6 w-48" />
-          <SkBar className="mt-4 h-11 w-full opacity-80" />
-        </div>
+      {/* El editor, con las MISMAS piezas: tarjetas (`Card`), títulos y etiquetas reales, la grilla de formulario compartida (`availability-layout.ts`, se reparte en
+          columnas según el ancho igual que la real) y controles del alto real (46 px). Las listas dependen de los datos: se reservan dos filas de bloqueos. */}
+      <div className="mt-6 flex flex-col gap-5">
+        <Card>
+          <h2 className="font-display text-card font-semibold">Bloqueos semanales</h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {[0, 1].map((row) => (
+              <li key={row} className={AVAILABILITY_ROW_CLASS}>
+                <span className="min-w-0 py-1.5">
+                  <Ph text="Lunes 00:00–00:00 · Trabajo" />
+                </span>
+                <SkBar className="h-11 w-20" />
+              </li>
+            ))}
+          </ul>
+          <div className={AVAILABILITY_FORM_GRID}>
+            {["Día", "Desde", "Hasta", "Motivo"].map((label) => (
+              <Field key={label} label={label} htmlFor={`sk-${label}`}>
+                <SkBar className="h-[46px]" />
+              </Field>
+            ))}
+            <SkAction label="Agregar bloqueo" variant="secondary" className="w-full" />
+          </div>
+        </Card>
+        <Card>
+          <h2 className="font-display text-card font-semibold">Excepciones (vacaciones, feriados)</h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            <li className={AVAILABILITY_EMPTY_CLASS}>Sin excepciones todavía.</li>
+          </ul>
+          <div className={AVAILABILITY_FORM_GRID}>
+            {["Desde", "Hasta (opcional)", "Motivo"].map((label) => (
+              <Field key={label} label={label} htmlFor={`sk-ex-${label}`}>
+                <SkBar className="h-[46px]" />
+              </Field>
+            ))}
+            <SkAction label="Agregar excepción" variant="secondary" className="w-full" />
+          </div>
+        </Card>
       </div>
     </>
   );

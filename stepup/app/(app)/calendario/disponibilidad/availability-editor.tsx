@@ -7,6 +7,7 @@ import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AVAILABILITY_EMPTY_CLASS, AVAILABILITY_FORM_GRID, AVAILABILITY_ROW_CLASS } from "@/components/calendar/availability-layout";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import type { AvailabilityBlockReason, AvailabilityException, AvailabilityExceptionReason, TeacherAvailability, WeeklyAvailabilityBlock } from "@/lib/calendar/availability";
 import { formatCivilDate } from "@/lib/format/date-format";
@@ -24,20 +25,20 @@ function randomId(): string {
  * la tarjeta), de modo que en escritorio entran en una fila, en anchos medios en dos o tres y en móvil en una columna, sin
  * desbordes ni campos comprimidos. El botón de enviar es la última celda.
  */
-const FORM_GRID = "mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))] items-end gap-3.5 border-t-[1.5px] border-border pt-4";
+const FORM_GRID = AVAILABILITY_FORM_GRID;
 
 /**
  * Estado vacío de una lista: un bloque compacto alineado a la izquierda (como máximo ~540 px en escritorio) que en móvil ocupa el
  * ancho disponible. Sólo afecta al estado vacío: las filas reales de la lista usan todo el ancho que necesitan.
  */
 function EmptyNote({ children }: { children: React.ReactNode }) {
-  return <li className="w-full max-w-[540px] rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">{children}</li>;
+  return <li className={AVAILABILITY_EMPTY_CLASS}>{children}</li>;
 }
 
 /** Una fila de la lista (bloqueo o excepción) con «Quitar» (texto rojo, al otro extremo). */
 function ListRow({ children, onRemove, disabled }: { children: React.ReactNode; onRemove: () => void; disabled: boolean }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border-[1.5px] border-border bg-surface2 py-1 pl-3.5 pr-1.5 text-[15px] text-textPrimary">
+    <li className={AVAILABILITY_ROW_CLASS}>
       <span className="min-w-0 py-1.5 [overflow-wrap:anywhere]">{children}</span>
       <Button variant="dangerGhost" onClick={onRemove} disabled={disabled}>
         Quitar
