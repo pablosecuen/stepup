@@ -105,6 +105,7 @@ test("franja de anuncio: una sola, borde a borde, 34/30 px, amarillo y marrón, 
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<SiteHeader />"), "arriba del encabezado");
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<main"), "fuera del contenido principal");
   assert.match(BAR, /<strong>15 % OFF<\/strong>/);
+  assert.match(BAR, /<span>Próximamente<\/span>/, "la campaña no se anuncia como un precio contratado");
   assert.match(BAR, /<span>al pagar el año completo<\/span>/);
   assert.equal((LANDING.match(/15 % OFF/g) ?? []).length, 1, "no se duplica el anuncio en otras secciones");
   assert.doesNotMatch(BAR, /max-w|WRAP|rounded|px-4|mx-auto/, "sin ancho máximo, márgenes ni esquinas redondeadas");
@@ -132,7 +133,7 @@ test("franja de anuncio: copias ocultas a lectores y sin tabulaciones duplicadas
   assert.match(BAR, /ghost \? \{ tabIndex: -1, "aria-hidden": true \}/);
   assert.match(BAR, /<Message key=\{index\} ghost=\{index > 0\} \/>/, "sólo la primera copia es enlace enfocable");
   assert.match(BAR, /<div className="tf-announce-group" aria-hidden="true">/);
-  assert.match(BAR, /aria-label="Anuncio: 15 % de descuento al pagar el año completo"/);
+  assert.match(BAR, /aria-label="Anuncio: próxima promoción de 15 % de descuento al pagar el año completo"/);
   assert.match(BAR, /href="\/crear-cuenta"/, "el destino es la creación de cuenta real");
   assert.match(BAR, /import \{ TextLink \} from "@\/components\/auth\/public-links"/, "enlace público estándar, no next/link directo");
   assert.doesNotMatch(BAR, /from "next\/link"/);

@@ -18,3 +18,10 @@ Verificación:
 - No equivale a una prueba física de iPhone ni a verificar datos reales autenticados.
 
 Integración pendiente del bloque de Claude: app/page.tsx y components/landing/*, conservando toda la landing actual y agregando el anuncio amarillo de borde a borde hacia la izquierda. Encargo externo: design_handoff/PROMPT_CLAUDE_LANDING_NATURAL_20261028.txt. No se despliega una mitad ni se mezclan los cambios funcionales ajenos que siguen en parity-codex.
+
+INTEGRACIÓN CON CLAUDE (ded4f1d → 3cc0e91)
+- Integrada la landing sobre 176b516 sin conflictos.
+- Suite conjunta 5128/5128; lint, tipos y compilación de producción sin errores.
+- Comparación independiente: 203 nodos de texto estático originales; el único nodo retirado es el contador «2», que ahora se representa con NotificationBadge count={2}. La estructura de 12 secciones principales y las 5 pantallas del recorrido se conserva.
+- El catálogo SÍ incluye un plan anual; la promoción del 15 % no coincide exactamente con su tarifa actual. La franja se presenta como «Próximamente» y no modifica precios ni contratación.
+- Franja comprobada a 390 px: 30 px de alto, ancho igual al contenido visible del viewport, sin desborde horizontal. Fuentes DM Sans autoalojadas.
