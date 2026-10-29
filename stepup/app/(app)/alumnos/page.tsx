@@ -6,7 +6,8 @@ import { listCustomLevels } from "@/lib/repositories/custom-levels";
 import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { paginate } from "@/lib/students/filters";
-import { applyStudentListFilters, parsePaymentStatusFilter, parseSortOption, type StudentListFilterState, type StudentListRow } from "@/lib/students/list-filters";
+import { resolveStudentList, parsePaymentStatusFilter, parseSortOption, type StudentListFilterState, type StudentListRow } from "@/lib/students/list-filters";
+import { buildStudentsListHref, cleanStudentSearchText } from "@/lib/students/list-url";
 import { loadStudentListEntries } from "@/lib/students/load-students-list";
 import { loadStudentListAggregates } from "@/lib/repositories/student-list-aggregates";
 import { localDateKeyInTimeZone } from "@/lib/payments/dates";
@@ -30,27 +31,13 @@ interface AlumnosSearchParams {
   page?: string;
 }
 
-function buildQueryHref(params: AlumnosSearchParams, overrides: Partial<AlumnosSearchParams>): string {
-  const merged = { ...params, ...overrides };
-  const query = new URLSearchParams();
-  if (merged.q) query.set("q", merged.q);
-  if (merged.status && merged.status !== "activo") query.set("status", merged.status);
-  if (merged.level && merged.level !== "todos") query.set("level", merged.level);
-  if (merged.modality && merged.modality !== "todos") query.set("modality", merged.modality);
-  if (merged.pago && merged.pago !== "todos") query.set("pago", merged.pago);
-  if (merged.orden && merged.orden !== "nombre") query.set("orden", merged.orden);
-  if (merged.page && merged.page !== "1") query.set("page", merged.page);
-  const qs = query.toString();
-  return qs ? `/alumnos?${qs}` : "/alumnos";
-}
-
 export default async function AlumnosPage({ searchParams }: { searchParams: Promise<AlumnosSearchParams> }) {
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
 
   const params = await searchParams;
-  const search = params.q?.trim() ?? "";
+  const search = cleanStudentSearchText(params.q);
   const status = params.status?.trim() || "activo";
   const level = params.level?.trim() || "todos";
   const modality = params.modality?.trim() || "todos";
@@ -100,7 +87,8 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
     paymentStatus,
     sortBy,
   };
-  const filtered = applyStudentListFilters(entries, filters);
+  // Búsqueda, filtros y orden sobre TODOS los alumnos de la cuenta y recién después la página: un alumno de la página 5 aparece al buscarlo.
+  const { items: filtered, matchesOutsideFilters } = resolveStudentList(entries, filters);
   const result = paginate(filtered, page, PAGE_SIZE);
   const isFiltered = search !== "" || status !== "activo" || level !== "todos" || modality !== "todos" || paymentStatus !== "todos";
   // Promedio, clases del mes y tarea pendiente sólo de los alumnos que se muestran. Un fallo de esta información complementaria no rompe la lista.
@@ -115,6 +103,7 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
       totalItems={result.totalItems}
       isFiltered={isFiltered}
       hasAnyStudentEver={students.length > 0}
+      matchesOutsideFilters={matchesOutsideFilters}
       search={search}
       status={status}
       level={level}
@@ -122,7 +111,7 @@ export default async function AlumnosPage({ searchParams }: { searchParams: Prom
       paymentStatus={paymentStatus}
       sortBy={sortBy}
       customLevels={customLevels}
-      buildHref={(p) => buildQueryHref(params, { page: String(p) })}
+      buildHref={(p) => buildStudentsListHref({ ...params, q: search, page: String(p) })}
     />
   );
 }

@@ -6,6 +6,9 @@
  * El alumno sólo tiene un campo `name` con el nombre completo (no hay nombre/apellido separados), así que «cada palabra», «apellido + nombre» e «iniciales» se resuelven
  * tokenizando ese único campo. Prioridad (cada banda de puntaje es disjunta de la siguiente): nombre completo exacto → palabra exacta → comienzo del nombre → comienzo de una palabra →
  * contenido literal → iniciales → aproximada (error de tipeo o subsecuencia) → alfabético como desempate.
+ *
+ * Con una o dos letras (por palabra consultada) la coincidencia es SIEMPRE directa — comienzo, fragmento literal o iniciales contiguas —: sin errores de tipeo ni subsecuencia, para que
+ * la tolerancia no devuelva a casi todos los alumnos (pedido del 29/10/2026; antes «je» encontraba a «José» por distancia). El prefijo aproximado exige 4 letras.
  */
 
 const DIACRITICS_PATTERN = /[̀-ͯ]/g;
@@ -44,9 +47,9 @@ function damerauLevenshteinDistance(a: string, b: string): number {
   return distance[aLen][bLen];
 }
 
-/** Errores de tipeo tolerados según el largo de la PALABRA consultada: 1–2 letras → 1 (sólo sobre el prefijo), 3–5 → 1, 6–9 → 2, 10 o más → proporcional con tope de 4. */
+/** Errores de tipeo tolerados según el largo de la PALABRA consultada: 1–2 letras → ninguno (sólo coincidencia directa), 3–5 → 1, 6–9 → 2, 10 o más → proporcional con tope de 4. */
 function maxAllowedTypos(queryWordLength: number): number {
-  if (queryWordLength <= 2) return 1;
+  if (queryWordLength <= 2) return 0;
   if (queryWordLength <= 5) return 1;
   if (queryWordLength <= 9) return 2;
   return Math.min(4, Math.floor(queryWordLength / 5) + 1);
@@ -115,32 +118,36 @@ function matchWordPair(query: string, word: string): WordMatch | null {
   // Una sola letra que no abre la palabra sigue valiendo si la palabra la CONTIENE (sólo literal, nunca difuso): «z» encuentra a «Juan Perez».
   if (query.length === 1) return word.includes(query) ? { score: SCORE_CONTAINS_MIN, type: "contains" } : null;
 
-  if (query.length >= 3 && word.includes(query)) {
+  // Fragmento literal dentro de la palabra («andro» encuentra «Alejandro», «ro» encuentra «Rodrigo» y «Mauro»): también con dos letras, siempre sin tolerancia.
+  if (word.includes(query)) {
     const ratio = query.length / word.length;
     return { score: SCORE_CONTAINS_MIN + (SCORE_CONTAINS_MAX - SCORE_CONTAINS_MIN) * ratio, type: "contains" };
   }
 
+  // Con una o dos letras SÓLO hay coincidencia directa (comienzo o fragmento): la tolerancia a errores con tan poco texto devolvería a casi todos los alumnos.
+  if (query.length <= 2) return null;
+
   const allowedTypos = maxAllowedTypos(query.length);
 
-  // Prefijo aproximado: la consulta contra el tramo inicial de la palabra del mismo largo («je» encuentra «jose», «goms» encuentra «gomez»).
-  if (query.length >= 2) {
+  // Se evalúan las dos distancias y gana la mejor: «alejndro» está a 1 letra de «alejandro» (palabra completa) pero a 2 del tramo inicial de «alejandra».
+  let bestFuzzyRatio = -1;
+
+  // Prefijo aproximado: la consulta contra el tramo inicial de la palabra del mismo largo («goms» encuentra «gomez»). Desde 4 letras: con 3 sería demasiado amplio.
+  if (query.length >= 4) {
     const prefixDistance = damerauLevenshteinDistance(query, word.slice(0, query.length));
-    if (prefixDistance > 0 && prefixDistance <= allowedTypos) {
-      const ratio = 1 - prefixDistance / query.length;
-      return { score: SCORE_FUZZY_MIN + (SCORE_FUZZY_MAX - SCORE_FUZZY_MIN) * ratio, type: "fuzzy" };
-    }
+    if (prefixDistance > 0 && prefixDistance <= allowedTypos) bestFuzzyRatio = Math.max(bestFuzzyRatio, 1 - prefixDistance / query.length);
   }
 
   // Distancia sobre la palabra completa: letras omitidas o agregadas en cualquier posición y transposiciones, desde 3 letras.
   if (query.length >= 3) {
     const fullDistance = damerauLevenshteinDistance(query, word);
-    if (fullDistance > 0 && fullDistance <= allowedTypos) {
-      const ratio = 1 - fullDistance / Math.max(query.length, word.length);
-      return { score: SCORE_FUZZY_MIN + (SCORE_FUZZY_MAX - SCORE_FUZZY_MIN) * ratio, type: "fuzzy" };
-    }
+    if (fullDistance > 0 && fullDistance <= allowedTypos) bestFuzzyRatio = Math.max(bestFuzzyRatio, 1 - fullDistance / Math.max(query.length, word.length));
   }
 
-  if (query.length >= 2) {
+  if (bestFuzzyRatio >= 0) return { score: SCORE_FUZZY_MIN + (SCORE_FUZZY_MAX - SCORE_FUZZY_MIN) * bestFuzzyRatio, type: "fuzzy" };
+
+  // Subsecuencia (letras omitidas en cualquier parte): desde 4 letras; con 3 coincidiría con nombres sin relación («ale» dentro de «Álvarez»).
+  if (query.length >= 4) {
     const ratio = subsequenceRatio(query, word);
     if (ratio !== null) return { score: SCORE_SUBSEQUENCE_MIN + (SCORE_SUBSEQUENCE_MAX - SCORE_SUBSEQUENCE_MIN) * ratio, type: "subsequence" };
   }
@@ -158,6 +165,8 @@ function matchInitials(query: string, candidateWords: string[]): number | null {
   if (initials.length === 0) return null;
   if (initials.startsWith(query)) return SCORE_INITIALS_MAX;
   if (initials.includes(query)) return SCORE_INITIALS_MIN + (SCORE_INITIALS_MAX - SCORE_INITIALS_MIN) * 0.6;
+  // Con dos letras sólo vale la coincidencia contigua de iniciales: «a…b» salteando palabras alcanzaría a la mayoría de los nombres de tres palabras.
+  if (query.length <= 2) return null;
   let searchFrom = 0;
   for (const letter of query) {
     const foundAt = initials.indexOf(letter, searchFrom);
@@ -198,9 +207,11 @@ export function scoreStudentNameMatch(candidateName: string, query: string): Sco
 
   if (candidateNormalized === queryNormalized) return { score: SCORE_EXACT, matchType: "exact" };
 
+  let prefixResult: ScoredMatch | null = null;
   if (candidateNormalized.startsWith(queryNormalized)) {
     const ratio = queryNormalized.length / candidateNormalized.length;
-    return { score: SCORE_PREFIX_MIN + (SCORE_PREFIX_MAX - SCORE_PREFIX_MIN) * ratio, matchType: "prefix" };
+    prefixResult = { score: SCORE_PREFIX_MIN + (SCORE_PREFIX_MAX - SCORE_PREFIX_MIN) * ratio, matchType: "prefix" };
+    if (queryNormalized.length === 1) return prefixResult;
   }
 
   const candidateWords = tokenize(candidateNormalized);
@@ -222,7 +233,8 @@ export function scoreStudentNameMatch(candidateName: string, query: string): Sco
     if (initialsScore !== null) initialsResult = { score: initialsScore, matchType: "initials" };
   }
 
-  const result = wordResult ?? initialsResult;
+  // Un comienzo del nombre compite con la coincidencia palabra por palabra y gana la mejor: «maria» es palabra exacta de «María Luz» (960) y sólo comienzo de «Mariana» (≈890).
+  const result = prefixResult && (!wordResult || prefixResult.score >= wordResult.score) ? prefixResult : (wordResult ?? initialsResult);
   if (!result || result.score < MIN_ACCEPTABLE_SCORE) return null;
   return result;
 }
@@ -291,6 +303,30 @@ export function rankStudentsBySearch<T>(items: readonly T[], query: string, opti
   });
 
   return scored;
+}
+
+/**
+ * Clase de relevancia para listas que se ordenan por otro criterio (alfabético, próxima clase…): 0 nombre exacto → 1 palabra exacta → 2 comienzo (del nombre o de una palabra) →
+ * 3 fragmento literal o iniciales → 4 aproximada por error de tipeo → 5 aproximada por letras omitidas. Cada clase va entera antes que la siguiente; dentro de las clases 4 y 5
+ * conviene seguir el puntaje (cuán cerca está), dentro de las demás el orden elegido por la usuaria.
+ */
+export function searchRelevanceClass(matchType: StudentSearchMatchType): number {
+  switch (matchType) {
+    case "exact":
+      return 0;
+    case "word_exact":
+      return 1;
+    case "prefix":
+    case "word_prefix":
+      return 2;
+    case "contains":
+    case "initials":
+      return 3;
+    case "fuzzy":
+      return 4;
+    default:
+      return 5;
+  }
 }
 
 /** La misma búsqueda, devolviendo sólo los elementos en su orden final. */

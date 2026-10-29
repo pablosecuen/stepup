@@ -107,8 +107,14 @@ test('normalizeSearchText: minúsculas, sin tildes/diéresis, guiones/apóstrofe
 // Casos obligatorios exactos del pedido
 // ---------------------------------------------------------------------------
 
-test('je -> José (ejemplo insignia del pedido — dos letras, prefijo aproximado)', () => {
-  assert(idsOf(search('je')).includes('s3'), 'debe encontrar a José García');
+test('con dos letras sólo hay coincidencia directa (pedido del 29/10/2026): «je» ya no encuentra a «José» por distancia, «jo» sí por comienzo', () => {
+  assert(!idsOf(search('je')).includes('s3'), '«je» no es comienzo ni fragmento de ninguna palabra de «José García»: la tolerancia no se aplica con dos letras');
+  assert(idsOf(search('jo')).includes('s3'), '«jo» es el comienzo de «José»');
+  assert(idsOf(search('ca')).includes('s12'), '«ca» es el comienzo de «Camila»');
+  // Dos letras que no empiezan ninguna palabra pero están dentro de una: fragmento literal, nunca tolerancia.
+  assertEqual(idsOf(search('ui')).join(','), 's7', '«ui» es fragmento de «Ruiz» y de nadie más del padrón');
+  // La tolerancia con dos letras devolvería a casi todos: el padrón de 12 alumnos devuelve pocos con cualquier par que no sea literal.
+  for (const pair of ['xa', 'qz', 'zk', 'wj']) assertEqual(search(pair).length, 0, `«${pair}» no es literal en ningún nombre: no devuelve nada`);
 });
 
 test('jse -> José (tres letras, letra transpuesta/insertada)', () => {
@@ -155,9 +161,10 @@ test('mart gome -> Martina Gómez (orden normal, ambas palabras por prefijo)', (
   assert(idsOf(search('mart gome')).includes('s2'), 'debe encontrar a Martina Gómez');
 });
 
-test('mr -> María (prefijo aproximado de dos letras)', () => {
+test('mr -> sin coincidencia directa: dos letras equivocadas no se corrigen (antes encontraba a «María» por prefijo aproximado)', () => {
   const results = search('mr', [martinaGomez, mariaJoseFernandezLopez, juanEmee]);
-  assert(idsOf(results).includes('s5'), 'debe encontrar a María José Fernández López');
+  assertEqual(results.length, 0, 'ni comienzo, ni fragmento, ni iniciales contiguas');
+  assert(idsOf(search('ma', [martinaGomez, mariaJoseFernandezLopez, juanEmee])).includes('s5'), '«ma» sí es el comienzo de «María»');
 });
 
 // ---------------------------------------------------------------------------
@@ -278,12 +285,14 @@ test('ranking: exacta > prefijo > inicio de palabra > contenido > error tipográ
 test('scoreStudentNameMatch devuelve matchType coherente con la prioridad pedida (corrección 2026-07-22: palabra exacta e iniciales tienen su lugar correcto)', () => {
   const exact = scoreStudentNameMatch('Ana', 'ana');
   const wordExact = scoreStudentNameMatch('Juan Perez', 'perez');
-  const prefix = scoreStudentNameMatch('Ana Torres', 'ana');
+  const prefix = scoreStudentNameMatch('Anabel Torres', 'ana');
+  // «ana» ES una palabra entera de «Ana Torres»: cuenta como palabra exacta, por encima de un simple comienzo («Anabel»).
+  assertEqual(scoreStudentNameMatch('Ana Torres', 'ana')?.matchType, 'word_exact', 'una palabra exacta supera al comienzo del nombre');
   const wordPrefix = scoreStudentNameMatch('Martina Gómez', 'gom');
   const contains = scoreStudentNameMatch('Mariana', 'ana');
   const initials = scoreStudentNameMatch('Juan Pablo Gómez', 'jpg');
   const fuzzy = scoreStudentNameMatch('José García', 'jse');
-  const subsequence = scoreStudentNameMatch('Martina', 'mta');
+  const subsequence = scoreStudentNameMatch('Martina', 'mrtna');
 
   assertEqual(exact?.matchType, 'exact', 'nombre completo exacto');
   assertEqual(wordExact?.matchType, 'word_exact', 'palabra exacta ("perez" es exactamente una palabra de "Juan Perez")');
@@ -317,9 +326,12 @@ test('scoreStudentNameMatch devuelve matchType coherente con la prioridad pedida
   }
 });
 
-test('subsecuencia ordenada: "mta" en Martina y "vln" en Valentina, con umbral que evita resultados absurdos', () => {
-  assert(idsOf(search('mta')).includes('s2'), 'mta -> Martina Gómez');
-  assert(idsOf(search('vln')).includes('s10'), 'vln -> Valentina Sosa');
+test('subsecuencia ordenada (desde 4 letras): "mrtna" en Martina y "vlntna" en Valentina, con umbral que evita resultados absurdos', () => {
+  assert(idsOf(search('mrtna')).includes('s2'), 'mrtna -> Martina Gómez');
+  assert(idsOf(search('vlntna')).includes('s10'), 'vlntna -> Valentina Sosa');
+  // Con tres letras la subsecuencia coincidiría con nombres sin relación («ale» dentro de «Álvarez»): sólo vale la coincidencia directa o un error de tipeo.
+  assertEqual(scoreStudentNameMatch('Lucía Álvarez', 'ale'), null, 'tres letras salteadas no son una coincidencia');
+  assertEqual(scoreStudentNameMatch('Mauro Estel', 'mar'), null, 'tres letras salteadas no son una coincidencia');
   // Pero una subsecuencia de letras demasiado dispersa en una palabra
   // mucho más larga no debe aceptarse: "cla" existe como subsecuencia de
   // "constantinopla" (c...l...a), pero abarca casi toda la palabra —
@@ -402,7 +414,8 @@ test('rankStudentsBySearch expone puntaje y tipo de coincidencia por resultado',
 });
 
 test('matchesStudentSearch: verdadero/falso simple para pantallas que sólo filtran', () => {
-  assertEqual(matchesStudentSearch('José García', 'je'), true, 'coincide');
+  assertEqual(matchesStudentSearch('José García', 'jo'), true, 'coincide');
+  assertEqual(matchesStudentSearch('José García', 'jse'), true, 'coincide por un error de tipeo (tres letras o más)');
   assertEqual(matchesStudentSearch('José García', 'xyzxyz'), false, 'no coincide');
   assertEqual(matchesStudentSearch('José García', ''), true, 'consulta vacía siempre "coincide" (no filtra)');
 });

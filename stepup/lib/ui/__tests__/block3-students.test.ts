@@ -109,7 +109,8 @@ test("Editar alumno: Guardar es la acción principal y Cancelar vuelve a la fich
 test("Perfil: un solo h1 (el nombre), «Volver» como enlace de texto, «Editar alumno» secundaria y el cambio de estado lejos, en su propia tarjeta", () => {
   const header = code("components/students/profile/profile-header.tsx");
   assert.equal([...header.matchAll(/<h1\b/g)].length, 1);
-  assert.match(header, /<BackLink href="\/alumnos">Volver a Alumnos<\/BackLink>/);
+  assert.match(header, /<StudentsBackLink \/>/, "«Volver a Alumnos» recupera la búsqueda y los filtros de la lista");
+  assert.match(code("components/students/profile/students-back-link.tsx"), /<BackLink href=\{href\}>Volver a Alumnos<\/BackLink>/);
   assert.match(header, /variant="secondary" className="self-start"/);
   assert.doesNotMatch(code("components/ui/page-header.tsx"), /buttonClass\(/, "Volver no compite con Guardar o Crear");
   for (const file of sources("components/students/profile").filter((f) => !f.endsWith("profile-header.tsx"))) assert.doesNotMatch(code(file), /<h1\b/, `${file}: sin h1 extra`);

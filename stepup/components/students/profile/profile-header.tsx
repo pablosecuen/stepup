@@ -2,7 +2,7 @@ import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink } from "@/components/ui/button";
-import { BackLink } from "@/components/ui/page-header";
+import { StudentsBackLink } from "@/components/students/profile/students-back-link";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
@@ -17,7 +17,7 @@ import { LevelChip } from "@/components/students/student-card";
 export function StudentProfileHeader({ student }: { student: StudentRecord }) {
   return (
     <header>
-      <BackLink href="/alumnos">Volver a Alumnos</BackLink>
+      <StudentsBackLink />
       <div className="mt-2 flex flex-col gap-4 nav:flex-row nav:items-start nav:justify-between">
         <div className="flex min-w-0 items-start gap-4 nav:flex-1 nav:gap-5">
           <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="profile" />

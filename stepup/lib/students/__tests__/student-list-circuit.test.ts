@@ -193,7 +193,7 @@ test("el motor de estado de pago de producción es IDÉNTICO, byte a byte, al n�
 test("cableado: la página de Alumnos usa el motor, los filtros y los datos agregados (y la tarjeta nunca decide «al día» por su cuenta)", () => {
   const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
   const page = read("app/(app)/alumnos/page.tsx");
-  assert.match(page, /applyStudentListFilters\(entries, filters\)/);
+  assert.match(page, /resolveStudentList\(entries, filters\)/);
   assert.match(page, /loadStudentListEntries\(ctx, students\)/);
   assert.match(page, /loadStudentListAggregates\(ctx, ids, todayDateKey\)/);
   assert.match(read("lib/students/list-status.ts"), /projectStudentListPaymentStatus/);

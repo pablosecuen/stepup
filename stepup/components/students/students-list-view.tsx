@@ -4,6 +4,7 @@ import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import type { StudentListRow } from "@/lib/students/list-filters";
+import { buildStudentsListHref } from "@/lib/students/list-url";
 import type { CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
 import { StudentCard, StudentsTable } from "@/components/students/student-card";
 import { StudentsFiltersForm } from "@/components/students/students-filters-form";
@@ -21,6 +22,7 @@ export function StudentsListView({
   totalItems,
   isFiltered,
   hasAnyStudentEver,
+  matchesOutsideFilters,
   search,
   status,
   level,
@@ -36,6 +38,8 @@ export function StudentsListView({
   totalItems: number;
   isFiltered: boolean;
   hasAnyStudentEver: boolean;
+  /** Alumnos que coinciden con el texto buscado pero que estado, nivel, modalidad o pago dejan fuera. */
+  matchesOutsideFilters: number;
   search: string;
   status: string;
   level: string;
@@ -65,7 +69,17 @@ export function StudentsListView({
       />
 
       <div className="mt-6 flex flex-col gap-3.5">
-        <StudentsFiltersForm search={search} status={status} level={level} modality={modality} paymentStatus={paymentStatus} sortBy={sortBy} levelOptions={customLevels.map((l) => l.name)} />
+        <StudentsFiltersForm
+          search={search}
+          status={status}
+          level={level}
+          modality={modality}
+          paymentStatus={paymentStatus}
+          sortBy={sortBy}
+          levelOptions={customLevels.map((l) => l.name)}
+          totalItems={totalItems}
+          matchesOutsideFilters={matchesOutsideFilters}
+        />
         <ManageLevelsSection customLevels={customLevels} />
       </div>
 
@@ -89,8 +103,20 @@ export function StudentsListView({
         <div className="mt-5">
           <EmptyState
             icon={UsersIcon}
-            message={hasAnyStudentEver ? "Ningún alumno coincide con los filtros elegidos." : "Todavía no hay alumnos cargados."}
-            action={hasAnyStudentEver ? { label: "Limpiar filtros", href: "/alumnos" } : { label: "Agregar alumno", href: "/alumnos/nuevo" }}
+            message={
+              !hasAnyStudentEver
+                ? "Todavía no hay alumnos cargados."
+                : search
+                  ? `Ningún alumno coincide con «${search}» dentro de los filtros elegidos.`
+                  : "Ningún alumno coincide con los filtros elegidos."
+            }
+            action={
+              !hasAnyStudentEver
+                ? { label: "Agregar alumno", href: "/alumnos/nuevo" }
+                : search
+                  ? { label: "Borrar búsqueda", href: buildStudentsListHref({ status, level, modality, pago: paymentStatus, orden: sortBy }) }
+                  : { label: "Limpiar filtros", href: "/alumnos" }
+            }
           />
         </div>
       )}
