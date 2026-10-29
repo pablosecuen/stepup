@@ -50,15 +50,20 @@ export function SkAction({ label, variant = "primary", icon, className = "" }: {
  * Encabezado de página: el MISMO contenedor, título y alturas que `PageHeader`, con el título real. `subtitle` dibuja la barra del apoyo
  * (22 px, la línea real de 15 px); `action` es la acción principal real (`SkAction`) o una barra.
  */
-export function SkHeader({ title, subtitle = true, action }: { title: string; subtitle?: boolean; action?: ReactNode }) {
+export function SkHeader({ title, subtitle = true, action }: { title: string; subtitle?: boolean | string; action?: ReactNode }) {
   return (
     <div data-tf-header="" className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
         <p className={PAGE_TITLE_CLASS}>{title}</p>
-        {subtitle && (
-          <div className="mt-1.5 flex h-[22px] items-center">
-            <SkBar className="h-4 w-64 max-w-full" />
-          </div>
+        {typeof subtitle === "string" ? (
+          // Apoyo que no depende de datos: el texto REAL (no parpadea al llegar el contenido)
+          <p className="mt-1.5 text-[15px] text-textMuted">{subtitle}</p>
+        ) : (
+          subtitle && (
+            <div className="mt-1.5 flex h-[22px] items-center">
+              <SkBar className="h-4 w-28 max-w-full" />
+            </div>
+          )
         )}
       </div>
       {action}

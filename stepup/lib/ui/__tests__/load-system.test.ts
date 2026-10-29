@@ -133,7 +133,7 @@ test("accesibilidad del esqueleto: un solo aviso por pantalla, dibujo decorativo
 test("la ficha del alumno carga el encabezado y las pestañas primero y el cuerpo de cada pestaña en su propio límite (sin que uno espere al otro ni repetir consultas)", () => {
   const page = code("app/(app)/alumnos/[id]/page.tsx");
   assert.equal((page.match(/getStudent\(ctx, id\)/g) ?? []).length, 1, "el alumno se pide una sola vez");
-  assert.match(page, /<Suspense key=\{tab\} fallback=\{<ProfileTabSkeleton \/>\}>\s*<ProfileTabBody ctx=\{ctx\} student=\{student\} tab=\{tab\} \/>/, "ctx y alumno se reutilizan: ni segunda autenticación ni segunda consulta");
+  assert.match(page, /<Suspense key=\{tab\} fallback=\{<ProfileTabSkeleton tab=\{tab\} \/>\}>\s*<ProfileTabBody ctx=\{ctx\} student=\{student\} tab=\{tab\} \/>/, "ctx y alumno se reutilizan: ni segunda autenticación ni segunda consulta");
   const body = code("components/students/profile/profile-tab-body.tsx");
   assert.doesNotMatch(body, /requireAuthenticatedDbContext|getStudent\(/);
   assert.match(body, /Reintentar/, "un fallo del cuerpo muestra su mensaje y Reintentar en su lugar");

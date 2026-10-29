@@ -101,7 +101,7 @@ test("contenido que cambia sin cambiar de pantalla usa el mismo patrón (EnterOn
   assert.match(enter, /element\.animate\(\[\{ opacity: 0, transform: `translate3d\(0, \$\{REVEAL\.distancePx\}px, 0\)` \}, \{ opacity: 1, transform: "none" \}\], \{ duration: REVEAL\.durationMs/);
   assert.doesNotMatch(enter, /key=|setState|useState/, "no remonta ni guarda estado: se conservan el foco y el scroll");
   // Las pestañas del perfil ya no repintan toda la ficha: su cuerpo vive en un límite de carga con `key` por pestaña y entra como bloque.
-  assert.match(code("app/(app)/alumnos/[id]/page.tsx"), /<Suspense key=\{tab\} fallback=\{<ProfileTabSkeleton \/>\}>/);
+  assert.match(code("app/(app)/alumnos/[id]/page.tsx"), /<Suspense key=\{tab\} fallback=\{<ProfileTabSkeleton tab=\{tab\} \/>\}>/);
   assert.match(code("components/students/profile/profile-tab-body.tsx"), /<div className="tf-block">/);
   assert.match(code("components/calendar/calendar-workspace.tsx"), /<EnterOnChange changeKey=\{`\$\{view\}\|\$\{dayKeys\[0\]\}`\}/);
   assert.match(code("components/students/students-list-view.tsx"), /<EnterOnChange changeKey=/);

@@ -108,6 +108,8 @@ function InicioBody() {
           <SkFigure key={index} />
         ))}
       </div>
+      {/* Aviso de cobros del día (150 px medidos en Production con datos de QA) */}
+      <div className="mt-[15px] h-[150px] rounded-xl border-[1.5px] border-border bg-surface2" />
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:gap-0 nav:divide-x nav:divide-border">
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
@@ -118,18 +120,21 @@ function InicioBody() {
       </div>
       <div className="mt-5 grid grid-cols-1 items-start gap-5 nav:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${PANEL_CLASS} h-[440px]`}>
+          <div className={`${PANEL_CLASS} h-[166px] nav:h-[117px]`}>
+            <PanelTop />
+          </div>
+          <div className={`${PANEL_CLASS} h-[279px] nav:h-[219px]`}>
             <PanelTop />
           </div>
         </div>
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${PANEL_CLASS} h-[262px]`}>
+          <div className={`${PANEL_CLASS} h-[351px] nav:h-[321px]`}>
             <PanelTop />
           </div>
-          <div className={`${PANEL_CLASS} h-[206px]`}>
+          <div className={`${PANEL_CLASS} h-[238px]`}>
             <PanelTop />
           </div>
-          <div className={`${PANEL_CLASS} h-[138px]`}>
+          <div className={`${PANEL_CLASS} h-[146px]`}>
             <PanelTop />
           </div>
         </div>
@@ -162,11 +167,11 @@ function AlumnosBody({ title }: { title: string }) {
             </div>
           </div>
         </div>
-        <SkBar className="h-[46px] rounded-xl" />
+        <SkBar className="h-[58px] rounded-xl" />
       </div>
       <ul className="mt-5 flex flex-col gap-3 nav:hidden">
         {[0, 1, 2, 3].map((index) => (
-          <li key={index} className="flex min-h-[150px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card">
+          <li key={index} className="flex min-h-[217px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card">
             <SkRound className="h-11 w-11" />
             <div className="min-w-0 flex-1">
               <SkBar className="h-[22px] w-44 max-w-full" />
@@ -178,9 +183,9 @@ function AlumnosBody({ title }: { title: string }) {
         ))}
       </ul>
       <div className="mt-5 hidden overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card nav:block">
-        <div className="h-[41px] border-b-[1.5px] border-border bg-surface2" />
-        {[0, 1, 2, 3, 4, 5].map((index) => (
-          <SkRow key={index} height={78} />
+        <div className="h-[50px] border-b-[1.5px] border-border bg-surface2" />
+        {[0, 1, 2, 3, 4].map((index) => (
+          <SkRow key={index} height={110} />
         ))}
       </div>
     </>
@@ -189,19 +194,30 @@ function AlumnosBody({ title }: { title: string }) {
 
 // ───────────────────────────── Ficha del alumno ─────────────────────────────
 /** Cuerpo de una pestaña del perfil: lo usa la ficha mientras llega SU contenido (el encabezado y las pestañas ya están). */
-export function ProfileTabSkeleton() {
+export function ProfileTabSkeleton({ tab = "resumen" }: { tab?: string }) {
+  const panel = (height: number, key?: number) => (
+    <div key={key} style={{ height }} className={`${PANEL_CLASS} p-4 nav:p-5`}>
+      <SkBar className="h-6 w-40" />
+      <SkBar className="mt-4 h-4 w-3/4 max-w-lg opacity-80" />
+      <SkBar className="mt-2 h-4 w-1/2 max-w-md opacity-80" />
+    </div>
+  );
+  // «Resumen» (la pestaña de entrada) con su disposición real medida en Production: 121 · 117 · 2 × 119 · 3 × 117 · 242 px. Las demás pestañas, dos bloques.
+  if (tab === "resumen") {
+    return (
+      <div aria-hidden className="flex flex-col gap-4">
+        {panel(121)}
+        {panel(117)}
+        <div className="grid grid-cols-1 gap-4 nav:grid-cols-2">{[0, 1].map((index) => panel(119, index))}</div>
+        <div className="grid grid-cols-1 gap-4 nav:grid-cols-3">{[0, 1, 2].map((index) => panel(117, index))}</div>
+        {panel(242)}
+      </div>
+    );
+  }
   return (
-    <div aria-hidden className="flex flex-col gap-5">
-      <div className={`${PANEL_CLASS} h-[150px] p-4 nav:p-5`}>
-        <SkBar className="h-6 w-40" />
-        <SkBar className="mt-4 h-4 w-3/4 max-w-lg opacity-80" />
-        <SkBar className="mt-2 h-4 w-1/2 max-w-md opacity-80" />
-      </div>
-      <div className={`${PANEL_CLASS} h-[220px] p-4 nav:p-5`}>
-        <SkBar className="h-6 w-48" />
-        <SkBar className="mt-4 h-4 w-2/3 max-w-lg opacity-80" />
-        <SkBar className="mt-2 h-4 w-1/2 max-w-md opacity-80" />
-      </div>
+    <div aria-hidden className="flex flex-col gap-4">
+      {panel(150)}
+      {panel(220)}
     </div>
   );
 }
@@ -273,9 +289,9 @@ function CobrosBody({ title }: { title: string }) {
       <SkHeader title={title} />
       <SkPills className="mt-4" widths={["w-28", "w-24", "w-32"]} />
       <div className="mt-6 flex flex-col gap-3 nav:gap-0 nav:overflow-hidden nav:rounded-lg nav:border-[1.5px] nav:border-border nav:bg-surface nav:shadow-card">
-        <div className="hidden h-[41px] border-b-[1.5px] border-border bg-surface2 nav:block" />
-        {[0, 1, 2, 3, 4].map((index) => (
-          <div key={index} className="flex min-h-[132px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:h-[76px] nav:min-h-0 nav:items-center nav:rounded-none nav:border-0 nav:border-b nav:shadow-none nav:last:border-b-0">
+        <div className="hidden h-[50px] border-b-[1.5px] border-border bg-surface2 nav:block" />
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
+          <div key={index} className="flex min-h-[255px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:h-[69px] nav:min-h-0 nav:items-center nav:rounded-none nav:border-0 nav:border-b nav:shadow-none nav:last:border-b-0">
             <SkRound className="h-10 w-10" />
             <div className="min-w-0 flex-1">
               <SkBar className="h-4 w-44 max-w-full" />
@@ -289,9 +305,9 @@ function CobrosBody({ title }: { title: string }) {
   );
 }
 
-function KpiCard({ height }: { height: number }) {
+function KpiCard({ className }: { className: string }) {
   return (
-    <div style={{ minHeight: height }} className={CARD_CLASS}>
+    <div className={`${CARD_CLASS} ${className}`}>
       <SkBar className="h-4 w-32 max-w-full opacity-80" />
       <SkBar className="mt-2 h-[30px] w-28" />
     </div>
@@ -301,35 +317,38 @@ function KpiCard({ height }: { height: number }) {
 function ResumenBody({ title }: { title: string }) {
   return (
     <>
-      <SkHeader title={title} subtitle />
+      <SkHeader title={title} subtitle="Tus cobros, actividad y una guía para organizar lo ingresado." />
       <SkPills className="mt-4" widths={["w-28", "w-24", "w-32"]} />
-      <SkBar className="mt-3 h-6 w-52" />
-      <SkPills className="mt-5" widths={["w-28", "w-28", "w-24", "w-32"]} />
+      {/* El enlace «Ver comportamiento de pago» mide 44 px (alto táctil), no una línea de texto */}
+      <div className="mt-3 flex h-11 items-center">
+        <SkBar className="h-5 w-52" />
+      </div>
+      <SkPills className="mt-5" widths={["w-28", "w-32", "w-40", "w-28"]} />
       <div className="mt-5 grid grid-cols-2 gap-3 max-[400px]:grid-cols-1 nav:grid-cols-4 nav:gap-4">
         {[0, 1, 2, 3].map((index) => (
-          <KpiCard key={index} height={108} />
+          <KpiCard key={index} className="min-h-[121px] nav:min-h-[137px]" />
         ))}
       </div>
       <div className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 nav:mt-4 nav:gap-4">
         {[0, 1, 2].map((index) => (
-          <KpiCard key={index} height={92} />
+          <KpiCard key={index} className="min-h-[93px] nav:min-h-[99px]" />
         ))}
       </div>
       <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
-        <div className={`${CARD_CLASS} h-[330px]`}>
+        <div className={`${CARD_CLASS} h-[463px]`}>
           <SkBar className="h-6 w-44" />
-          <SkBar className="mt-3 h-[220px] w-full opacity-60" />
+          <SkBar className="mt-3 h-[340px] w-full opacity-60" />
         </div>
-        <div className={`${CARD_CLASS} h-[330px]`}>
+        <div className={`${CARD_CLASS} h-[463px]`}>
           <SkBar className="h-6 w-44" />
-          <SkBar className="mt-3 h-[220px] w-full opacity-60" />
+          <SkBar className="mt-3 h-[340px] w-full opacity-60" />
         </div>
       </div>
-      <div className={`${CARD_CLASS} mt-5 h-[430px]`}>
+      <div className={`${CARD_CLASS} mt-5 h-[553px]`}>
         <SkBar className="h-6 w-52" />
-        <SkBar className="mt-3 h-[300px] w-full opacity-60" />
+        <SkBar className="mt-3 h-[420px] w-full opacity-60" />
       </div>
-      <div className={`${CARD_CLASS} mt-5 h-[170px]`}>
+      <div className={`${CARD_CLASS} mt-5 h-[160px]`}>
         <SkBar className="h-6 w-48" />
         <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
           {[0, 1, 2, 3].map((index) => (
@@ -339,18 +358,18 @@ function ResumenBody({ title }: { title: string }) {
       </div>
       <div className="mt-5 flex flex-col gap-5 min-[1100px]:grid min-[1100px]:grid-cols-2 min-[1100px]:items-start">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${CARD_CLASS} h-[300px]`}>
+          <div className={`${CARD_CLASS} h-[359px]`}>
             <SkBar className="h-6 w-52" />
           </div>
-          <div className={`${CARD_CLASS} h-[220px]`}>
+          <div className={`${CARD_CLASS} h-[380px]`}>
             <SkBar className="h-6 w-40" />
           </div>
         </div>
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${CARD_CLASS} h-[260px]`}>
+          <div className={`${CARD_CLASS} h-[300px]`}>
             <SkBar className="h-6 w-56" />
           </div>
-          <div className={`${CARD_CLASS} h-[220px]`}>
+          <div className={`${CARD_CLASS} h-[439px]`}>
             <SkBar className="h-6 w-40" />
           </div>
         </div>
@@ -380,8 +399,8 @@ function RegistroBody({ title }: { title: string }) {
     <>
       <SkHeader title={title} action={<SkAction label="Clase no programada" variant="secondary" icon={<PlusIcon className="h-5 w-5" />} />} />
       <ul className={`mt-6 flex flex-col gap-3 ${READING_WIDTH}`}>
-        {[0, 1, 2, 3].map((index) => (
-          <li key={index} className={`${PANEL_CLASS} flex min-h-[112px] items-start gap-3.5 p-4`}>
+        {[0, 1, 2, 3, 4].map((index) => (
+          <li key={index} className={`${PANEL_CLASS} flex min-h-[139px] items-start gap-3.5 p-4 nav:min-h-[97px]`}>
             <SkRound className="h-12 w-12" />
             <div className="min-w-0 flex-1">
               <SkBar className="h-[25px] w-56 max-w-full" />
@@ -473,20 +492,23 @@ function DisponibilidadBody({ title }: { title: string }) {
 function ConfiguracionBody({ title }: { title: string }) {
   return (
     <>
-      <SkHeader title={title} />
+      <SkHeader title={title} subtitle="Tu cuenta, preferencias y datos." />
+      {/* Tres secciones como la pantalla real: Cuenta (dos tarjetas lado a lado desde 1024 px), Preferencias (columna de 480 px) y Acciones sensibles (560 px).
+          Cada una con su encabezado (título + apoyo, 65 px con su separación) y tarjetas de 100–216 px medidas en Production. */}
       <div className="mt-6 flex min-w-0 flex-col gap-9">
-        {[2, 3, 2, 3].map((rows, section) => (
-          <section key={section} className="flex flex-col gap-3">
-            <SkBar className="h-5 w-28" />
-            <div className="overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card">
-              {Array.from({ length: rows }, (_, row) => (
-                <div key={row} className="flex min-h-[72px] items-center gap-4 border-b border-border px-4 py-4 last:border-b-0 sm:px-5">
-                  <div className="min-w-0 flex-1">
-                    <SkBar className="h-5 w-40 max-w-full" />
-                    <SkBar className="mt-2 h-4 w-64 max-w-full opacity-80" />
-                  </div>
-                  <SkBar className="hidden h-11 w-28 sm:block" />
-                </div>
+        {[
+          { cards: [216, 135], layout: "lg:grid-cols-2" },
+          { cards: [208, 100, 135, 135, 135], layout: "max-w-[480px]" },
+          { cards: [100], layout: "max-w-[560px]" },
+        ].map((section, index) => (
+          <section key={index}>
+            <div className="flex h-[65px] flex-col justify-start gap-1.5">
+              <SkBar className="h-6 w-28" />
+              <SkBar className="h-4 w-72 max-w-full opacity-80" />
+            </div>
+            <div className={`grid grid-cols-1 items-start gap-4 ${section.layout}`}>
+              {section.cards.map((height, card) => (
+                <div key={card} style={{ height }} className="rounded-lg border-[1.5px] border-border bg-surface shadow-card" />
               ))}
             </div>
           </section>

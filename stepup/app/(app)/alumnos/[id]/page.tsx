@@ -62,7 +62,7 @@ export default async function AlumnoProfilePage({
       {tab === "cobros" && <ChargeGenerationTrigger />}
       {tab === "reportes" && <ReportCleanupTrigger />}
       <StudentProfileView student={student} tab={tab}>
-        <Suspense key={tab} fallback={<ProfileTabSkeleton />}>
+        <Suspense key={tab} fallback={<ProfileTabSkeleton tab={tab} />}>
           <ProfileTabBody ctx={ctx} student={student} tab={tab} />
         </Suspense>
       </StudentProfileView>
