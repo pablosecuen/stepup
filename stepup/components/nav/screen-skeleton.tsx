@@ -75,20 +75,21 @@ function SkRows({ count, height }: { count: number; height?: number }) {
   );
 }
 
-/** Cifra editorial (número en serifa + etiqueta): las medidas de `Figure`/`TextFigure` de Inicio. */
+/** Cifra editorial (número en serifa + etiqueta): las medidas de `Figure` de Inicio (el número baja a 28 px bajo 420 px de ancho, como el real). */
 function SkFigure({ className = "" }: { className?: string }) {
   return (
     <div className={`min-h-11 min-w-0 px-4 py-1 first:pl-0 nav:px-7 nav:first:pl-0 ${className}`}>
-      <SkBar className="h-[34px] w-12" />
+      <SkBar className="h-[34px] w-12 max-[420px]:h-[28px]" />
       <SkBar className="mt-1 h-4 w-24 max-w-full opacity-80" />
     </div>
   );
 }
 
-function PanelTop() {
+/** Encabezado de un panel de Inicio: con `title` es el título REAL (mismo estilo que `PanelHeader`); sin él, una barra. */
+function PanelTop({ title }: { title?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 pb-2.5 pt-3.5 nav:px-5">
-      <SkBar className="h-6 w-40" />
+      {title ? <p className="font-display text-[20px] font-semibold leading-tight tracking-tight">{title}</p> : <SkBar className="h-6 w-40" />}
       <SkBar className="h-5 w-16" />
     </div>
   );
@@ -101,7 +102,7 @@ function InicioBody() {
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <SkBar className="h-5 w-44" />
-          <SkBar className="mt-1.5 h-[38px] w-[min(420px,100%)] nav:h-[47px]" />
+          <SkBar className="mt-1 h-[38px] w-[min(420px,100%)] nav:h-[47px]" />
         </div>
         <div className="flex w-full items-center gap-3 nav:w-auto">
           <SkAction label="Nueva clase" variant="accent" icon={<PlusIcon className="h-5 w-5" />} className="flex-1 nav:flex-none" />
@@ -113,12 +114,12 @@ function InicioBody() {
           <SkFigure key={index} />
         ))}
       </div>
-      {/* Aviso de cobros del día (150 px medidos en Production con datos de QA) */}
-      <div className="mt-[15px] h-[150px] rounded-xl border-[1.5px] border-border bg-surface2" />
+      {/* Aviso de cobros del día: 150 px en escritorio y 142 px en móvil (medidos en Production con datos de QA) */}
+      <div className="mt-[15px] h-[142px] rounded-xl border-[1.5px] border-border bg-surface2 nav:h-[150px]" />
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:gap-0 nav:divide-x nav:divide-border">
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
-            <SkBar className="h-[26px] w-10" />
+            <SkBar className="h-[26px] w-10 max-[420px]:h-[22px]" />
             <SkBar className="mt-1 h-4 w-28 max-w-full opacity-80" />
           </div>
         ))}
@@ -129,18 +130,18 @@ function InicioBody() {
             <PanelTop />
           </div>
           <div className={`${PANEL_CLASS} h-[279px] nav:h-[219px]`}>
-            <PanelTop />
+            <PanelTop title="Tu día" />
           </div>
         </div>
         <div className="flex min-w-0 flex-col gap-5">
           <div className={`${PANEL_CLASS} h-[351px] nav:h-[321px]`}>
-            <PanelTop />
+            <PanelTop title="Clases por registrar" />
           </div>
           <div className={`${PANEL_CLASS} h-[238px]`}>
-            <PanelTop />
+            <PanelTop title="Recordatorios" />
           </div>
           <div className={`${PANEL_CLASS} h-[146px]`}>
-            <PanelTop />
+            <PanelTop title="Cobros de hoy" />
           </div>
         </div>
       </div>
@@ -175,7 +176,7 @@ function AlumnosBody({ title }: { title: string }) {
         <SkBar className="h-[58px] rounded-xl" />
       </div>
       <ul className="mt-5 flex flex-col gap-3 nav:hidden">
-        {[0, 1, 2, 3].map((index) => (
+        {[0, 1, 2, 3, 4].map((index) => (
           <li key={index} className="flex min-h-[217px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface px-3.5 py-3 shadow-card">
             <SkRound className="h-11 w-11" />
             <div className="min-w-0 flex-1">
@@ -198,63 +199,90 @@ function AlumnosBody({ title }: { title: string }) {
 }
 
 // ───────────────────────────── Ficha del alumno ─────────────────────────────
-/** Cuerpo de una pestaña del perfil: lo usa la ficha mientras llega SU contenido (el encabezado y las pestañas ya están). */
-export function ProfileTabSkeleton({ tab = "resumen" }: { tab?: string }) {
-  const panel = (height: number, key?: number) => (
-    <div key={key} style={{ height }} className={`${PANEL_CLASS} p-4 nav:p-5`}>
+/** Un bloque con el aspecto de un panel real (borde, radio y sombra de `PANEL_CLASS`) y el alto medido. */
+function ProfilePanel({ className }: { className: string }) {
+  return (
+    <div className={`${PANEL_CLASS} p-4 nav:p-5 ${className}`}>
       <SkBar className="h-6 w-40" />
       <SkBar className="mt-4 h-4 w-3/4 max-w-lg opacity-80" />
       <SkBar className="mt-2 h-4 w-1/2 max-w-md opacity-80" />
     </div>
   );
-  // «Resumen» (la pestaña de entrada) con su disposición real medida en Production: 121 · 117 · 2 × 119 · 3 × 117 · 242 px. Las demás pestañas, dos bloques.
+}
+
+/**
+ * Cuerpo de una pestaña del perfil: lo usa la ficha mientras llega SU contenido (el encabezado y las pestañas ya están). «Resumen» (la pestaña de
+ * entrada) con su disposición real medida en Production: la columna de contenido (gap 16 px) + «cambiar estado» (gap 24 px), a 390 y a 1366 px:
+ * 165/121 · 117 · 236/119 · 220/117, y 344/242 + 158/138. Las demás pestañas, dos bloques.
+ */
+export function ProfileTabSkeleton({ tab = "resumen" }: { tab?: string }) {
   if (tab === "resumen") {
     return (
-      <div aria-hidden className="flex flex-col gap-4">
-        {panel(121)}
-        {panel(117)}
-        <div className="grid grid-cols-1 gap-4 nav:grid-cols-2">{[0, 1].map((index) => panel(119, index))}</div>
-        <div className="grid grid-cols-1 gap-4 nav:grid-cols-3">{[0, 1, 2].map((index) => panel(117, index))}</div>
-        {panel(242)}
+      <div aria-hidden className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <ProfilePanel className="h-[165px] nav:h-[121px]" />
+          <ProfilePanel className="h-[117px]" />
+          <ProfilePanel className="h-[236px] nav:h-[119px]" />
+          <ProfilePanel className="h-[220px] nav:h-[117px]" />
+        </div>
+        <div>
+          <ProfilePanel className="h-[344px] nav:h-[242px]" />
+          <ProfilePanel className="mt-5 h-[158px] nav:h-[138px]" />
+        </div>
       </div>
     );
   }
   return (
     <div aria-hidden className="flex flex-col gap-4">
-      {panel(150)}
-      {panel(220)}
+      <ProfilePanel className="h-[150px]" />
+      <ProfilePanel className="h-[220px]" />
     </div>
   );
 }
 
+const PROFILE_TABS = ["Resumen", "Clases", "Progreso", "Tareas", "Cobros", "Reportes", "Información"];
+
 function AlumnoBody() {
+  // El MISMO marcado que `StudentProfileHeader` y `ProfileTabsNav` (clases y textos fijos reales); sólo el nombre, el estado y la fecha son bloques.
   return (
     <>
-      <SkBack label="Volver a Alumnos" />
-      <div className="mt-2 flex flex-col gap-4 nav:flex-row nav:items-start nav:justify-between">
-        <div className="flex min-w-0 items-start gap-4 nav:flex-1 nav:gap-5">
-          <SkRound className="h-14 w-14 nav:h-24 nav:w-24" />
-          <div className="min-w-0 flex-1">
-            <SkBar className="h-4 w-14" />
-            <SkBar className="mt-1 h-[33px] w-64 max-w-full nav:h-[43px]" />
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <SkPill className="h-[26px] w-16" />
-              <SkPill className="h-[26px] w-20" />
-              <SkPill className="h-[26px] w-24" />
+      <header>
+        <SkBack label="Volver a Alumnos" />
+        <div className="mt-2 flex flex-col gap-4 nav:flex-row nav:items-start nav:justify-between">
+          <div className="flex min-w-0 items-start gap-4 nav:flex-1 nav:gap-5">
+            <SkRound className="h-14 w-14 nav:h-24 nav:w-24" />
+            <div className="min-w-0 flex-1">
+              <p className="text-label font-bold uppercase text-textMuted">Alumno</p>
+              <p className="mt-0.5 font-display text-[30px] font-medium leading-[1.08] tracking-[-0.03em] nav:text-[40px]">
+                <Ph text="Nombre del alumno" />
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <SkPill className="h-[26px] w-16" />
+                <SkPill className="h-[26px] w-20" />
+                <SkPill className="h-[26px] w-24" />
+              </div>
+              <p className="mt-2 text-[14.5px] text-textMuted">
+                <Ph text="Alumno desde 00/00/0000" />
+              </p>
             </div>
-            <SkBar className="mt-2 h-[18px] w-44 opacity-80" />
           </div>
+          <SkAction label="Editar alumno" variant="secondary" icon={<PencilSquareIcon className="h-5 w-5" />} className="self-start" />
         </div>
-        <SkAction label="Editar alumno" variant="secondary" icon={<PencilSquareIcon className="h-5 w-5" />} className="self-start" />
-      </div>
-      <div className="mt-6 -mx-4 overflow-hidden px-4 nav:mx-0 nav:px-0">
-        <div className="flex w-max min-w-full gap-1 border-b-[1.5px] border-border">
-          {["w-16", "w-12", "w-16", "w-12", "w-14", "w-16", "w-20"].map((width, index) => (
-            <div key={index} className="flex min-h-11 items-center px-3.5 nav:px-4">
-              <SkBar className={`h-4 ${width}`} />
-            </div>
-          ))}
-        </div>
+      </header>
+      <div className="mt-6">
+        <nav className="relative -mx-4 overflow-hidden px-4 nav:mx-0 nav:px-0">
+          <ul className="flex w-max min-w-full gap-1 border-b-[1.5px] border-border">
+            {PROFILE_TABS.map((label, index) => (
+              <li key={label}>
+                <span
+                  className={`-mb-[1.5px] inline-flex min-h-11 items-center whitespace-nowrap border-b-[3px] px-3.5 text-[14.5px] nav:px-4 ${index === 0 ? "border-ink font-bold text-textPrimary" : "border-transparent font-semibold text-textMuted"}`}
+                >
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
       <div className="mt-5">
         <ProfileTabSkeleton />
@@ -400,7 +428,7 @@ function ResumenBody({ title }: { title: string }) {
         <OverviewCard title="Evolución de cobros" mobile={457} desktop={465} />
         <OverviewCard title="Distribución sugerida" mobile={605} desktop={449} />
       </div>
-      <OverviewCard title="Proyección y ahorro" mobile={750} desktop={555} className="mt-5" />
+      <OverviewCard title="Proyección y ahorro" mobile={752} desktop={555} className="mt-5" />
       <section className={`${CARD_CLASS} mt-5`}>
         <p className={CARD_TITLE_CLASS}>Actividad del período</p>
         <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
@@ -496,10 +524,15 @@ function SeriesBody({ title }: { title: string }) {
       <div className="mt-2">
         <SkHeader title={title} />
       </div>
-      <ul className="mt-6 flex flex-col gap-3.5">
+      {/* La MISMA lista que la real: tope de 70 vh (`max-h-[70vh]`), así el alto depende de la ventana igual que en la pantalla final */}
+      <ul className="mt-6 flex max-h-[70vh] flex-col gap-3.5 overflow-hidden pr-1">
         {[0, 1, 2].map((index) => (
           <li key={index}>
-            <SkCard height={182} />
+            <div className={`${CARD_CLASS} min-h-[320px] nav:min-h-[182px]`}>
+              <SkBar className="h-6 w-48 max-w-full" />
+              <SkBar className="mt-3 h-4 w-full max-w-md opacity-80" />
+              <SkBar className="mt-2 h-4 w-2/3 max-w-sm opacity-80" />
+            </div>
           </li>
         ))}
       </ul>
@@ -517,17 +550,11 @@ function DisponibilidadBody({ title }: { title: string }) {
         </div>
         <SkBar className="h-11 w-11 shrink-0" />
       </div>
-      <div className="mt-6 grid grid-cols-1 items-start gap-5 nav:grid-cols-2">
-        <div className={`${CARD_CLASS} min-h-[420px]`}>
+      {/* El editor: 1.012 px en móvil y 493 px en escritorio (medidos en Production) */}
+      <div className="mt-6 h-[1012px] nav:h-[493px]">
+        <div className={`${CARD_CLASS} h-full`}>
           <SkBar className="h-6 w-48" />
-          {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-            <SkBar key={index} className="mt-3 h-11 w-full opacity-80" />
-          ))}
-        </div>
-        <div className={`${CARD_CLASS} min-h-[260px]`}>
-          <SkBar className="h-6 w-56" />
-          <SkBar className="mt-3 h-11 w-full opacity-80" />
-          <SkBar className="mt-3 h-11 w-full opacity-80" />
+          <SkBar className="mt-4 h-11 w-full opacity-80" />
         </div>
       </div>
     </>

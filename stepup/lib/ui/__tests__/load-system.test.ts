@@ -140,3 +140,20 @@ test("la ficha del alumno carga el encabezado y las pestañas primero y el cuerp
   assert.match(body, /Reintentar/, "un fallo del cuerpo muestra su mensaje y Reintentar en su lugar");
   assert.match(body, /<div className="tf-block">/, "el cuerpo entra como bloque aunque la pantalla ya esté sellada");
 });
+
+test("paridad de textos: cada texto fijo que dibuja el esqueleto de Configuración, Resumen financiero y Cobros existe tal cual en la pantalla real (no se desajustan al cambiar un texto)", () => {
+  const skeleton = read("components/nav/screen-skeleton.tsx");
+  const segment = (from: string, to: string) => skeleton.slice(skeleton.indexOf(from), skeleton.indexOf(to, skeleton.indexOf(from)));
+  const config = segment("function ConfiguracionBody", "/** Subpantallas de lectura");
+  const realConfig = read("components/account/configuration-view.tsx") + read("components/account/navigation-preference.tsx");
+  const strings = [...config.matchAll(/(?:title|description|subtitle)="([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(strings.length >= 17, `textos de Configuración encontrados: ${strings.length}`);
+  for (const text of strings) assert.ok(realConfig.includes(text) || read("components/ui/page-header.tsx").includes(text) || read("app/(app)/configuracion/page.tsx").includes(text), `«${text}» no existe en la pantalla real de Configuración`);
+  const resumen = segment("function ResumenBody", "function ComportamientoBody");
+  const realResumen = read("components/finance/financial-overview-view.tsx") + read("components/finance/annual-projection.tsx") + read("components/payments/payments-section-nav.tsx");
+  for (const text of [...resumen.matchAll(/(?:label|title|subtitle)="([^"]+)"/g)].map((match) => match[1]).filter((value) => value !== "overview")) {
+    assert.ok(realResumen.includes(text) || text.startsWith("Resumen anual") || text.startsWith("Alumnos del año"), `«${text}» no existe en Resumen financiero`);
+  }
+  assert.match(resumen, /Kpi label="Facturación prevista"/);
+  for (const text of ["Alumno", "Concepto", "Vence", "Estado", "Saldo pendiente"]) assert.ok(read("components/payments/collections-view.tsx").includes(`<span>${text}</span>`) || read("components/payments/collections-view.tsx").includes(`>${text}</span>`), text);
+});
