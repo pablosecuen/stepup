@@ -29,3 +29,25 @@ Pruebas 5193/5193, `tsc` y `eslint` limpios, `next build --webpack` ok. Arnés l
 - La medición local usa páginas de prueba con la estructura de una pantalla (no datos reales); la fidelidad por pantalla con datos de QA se midió en Production (ver la entrega).
 - Un mismo bloque de «Resumen financiero», «Inicio» o «Cobros» no se parte en consultas independientes: sus datos salen de una sola carga (`loadHomeData`, `loadFinancialOverviewData`, …) y separarlos duplicaría consultas. El encabezado, la barra y el esqueleto específico sí quedan estables y los bloques entran escalonados.
 - No se probó en Safari ni en iPhone físicos; todo es emulación en Edge/Chromium.
+
+---
+
+## Segunda revisión (29/10/2026, tarde)
+
+### A · El bloqueo de la carga completa con el documento sin fotogramas — investigación
+**Dónde está la causa.** En una carga completa, Next envía primero el esqueleto (límite `loading.tsx`) y luego el contenido con una instrucción en línea del runtime de streaming de React (Fizz): `$RC(...)`. Para intercambiarlos decide según `$RT`: si no es un número usa `requestAnimationFrame($RV…)`; si lo es, `setTimeout`. `$RT` lo fija el propio React dentro de un `requestAnimationFrame` posterior al primer pintado. Si el documento no recibe fotogramas, el intercambio no ocurre y el HTML con el contenido queda en un `<div hidden>`.
+Después del intercambio, `$RV` vuelve a usar `requestAnimationFrame(g._reactRetry)` para reintentar la hidratación de ese límite: sin fotogramas el contenido ya está visible pero esa parte no se hidrata hasta que vuelven los fotogramas.
+
+**Versiones.** Idéntico en `react-dom` **19.3.0** (la del proyecto), **19.3.1** (`latest` en npm) y el canary **19.3.0-canary-dc9aed36-20261027** (el más reciente): se descargaron los tres paquetes a una carpeta temporal y se comparó `$RC`; ninguno cambia la regla. Next 16.3.8 acepta `react ^19`; no hay versión que lo corrija y **no hay opción pública** de React ni de Next para esto (ni en `renderToPipeableStream`/`renderToReadableStream` ni en `next.config`).
+
+**Qué se demostró y qué no.**
+- Con `requestAnimationFrame` sin ejecutarse (el panel integrado de Claude lo reporta así cuando está tapado/oculto: `rAF MUERTO`), la carga completa de Alumnos quedaba en «Cargando alumnos…» y con la protección actual se muestra el contenido sin intervención (Production y arnés local).
+- Con un servidor mínimo de `react-dom/server` (sin Next) en una pestaña **oculta de verdad** de Edge (headless y con ventana) el bloqueo **no se reproduce**: en esas automatizaciones la pestaña oculta sigue recibiendo fotogramas (`$RT` pasa a número). Por lo tanto **no está demostrado** que un Chrome/Edge de uso normal con una pestaña en segundo plano o tapada quede detenido; lo que sí está demostrado es la dependencia del runtime de React de `requestAnimationFrame` y que, cuando éste no corre, el contenido listo no se muestra. La especificación HTML no ejecuta los fotogramas de un documento oculto, así que es esperable en navegadores con limitación de segundo plano; falta comprobarlo en un Chrome/Safari/iPhone reales.
+
+**Alternativas públicas evaluadas.**
+1. *Quitar `loading.tsx`* (sin streaming del esqueleto en cargas completas): elimina la dependencia, pero una carga completa quedaría en blanco hasta tener los datos (como Inicio hoy) y se pierde el esqueleto de «Navegación inicial». Con el esqueleto del clic ya cubre la navegación entre pestañas, pero no reemplaza a la carga inicial. No se adoptó.
+2. *Hacer que el contenido llegue antes del primer envío* (todo en la misma pasada): no es controlable (depende del tiempo de las consultas).
+3. *Forzar la visibilidad por CSS de `div[hidden][id^="S:"]`*: mostraría el contenido en el lugar equivocado (al final del documento) y es un detalle interno igual.
+4. *Reemplazar `requestAnimationFrame` globalmente*: descartado por el pedido (altera a toda la página).
+
+**Decisión.** Se mantiene la protección actual —`window.$RT` numérico antes del runtime—, **endurecida**: sólo se asigna si React no definió ya un número, y una prueba lee el runtime instalado y falla si cambia la regla (para revisarla en la próxima actualización). Es la única variable interna que se toca. Queda registrado como defecto/limitación del framework **sin solución pública segura**; texto sugerido para el reporte a React: «Fizz `$RC` espera un `requestAnimationFrame` para fijar `$RT` antes de revelar un límite completado; con un documento sin fotogramas el contenido listo no se muestra y la hidratación del límite revelado tampoco avanza. Propuesta: usar `setTimeout` cuando `document.visibilityState === "hidden"`.»

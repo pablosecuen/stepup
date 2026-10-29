@@ -105,7 +105,8 @@ test("causa del bloqueo con la pestaña en segundo plano: el intercambio del str
   const runtime = readFileSync(join(ROOT, "node_modules/react-dom/cjs/react-dom-server.edge.production.js"), "utf8");
   assert.ok(runtime.includes('"number"!==typeof $RT?requestAnimationFrame($RV.bind(null,$RB))'), "runtime de React: sin $RT numérico espera un fotograma");
   assert.ok(runtime.includes("setTimeout($RV.bind(null,$RB)"), "runtime de React: con $RT numérico usa un temporizador");
-  assert.match(STREAMING_REVEAL_SCRIPT, /^window\.\$RT=-1e9;$/, "una marca de tiempo muy anterior a cualquier instante real");
+  assert.match(STREAMING_REVEAL_SCRIPT, /^if\(typeof window\.\$RT!=="number"\)window\.\$RT=-1e9;$/, "una marca de tiempo muy anterior a cualquier instante real, sólo si React no definió ya un número (sin pisar nada)");
+  assert.doesNotMatch(STREAMING_REVEAL_SCRIPT, /requestAnimationFrame|\$RV|\$RC|\$RB/, "sólo se toca $RT: ni se reemplaza requestAnimationFrame ni se llama a otras instrucciones internas");
   // Con ese valor el temporizador de React nunca es positivo fuera de su ventana propia (2,0–2,3 s): no agrega demora.
   const delayAt = (nowMs: number) => (2300 > nowMs && 2000 < nowMs ? 2300 - nowMs : -1e9 + 300 - nowMs);
   for (const nowMs of [50, 300, 900, 1500, 1999, 2300, 5000, 30000]) assert.ok(delayAt(nowMs) < 0, `sin demora a los ${nowMs} ms`);

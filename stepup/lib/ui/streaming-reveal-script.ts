@@ -17,4 +17,4 @@
  * aplicación no pasa por esta instrucción (la hace React en el cliente), y la hidratación posterior sigue su curso normal al volver a la pestaña.
  * Se imprime en el `<head>` del documento raíz, antes de cualquier instrucción de React.
  */
-export const STREAMING_REVEAL_SCRIPT = "window.$RT=-1e9;";
+export const STREAMING_REVEAL_SCRIPT = 'if(typeof window.$RT!=="number")window.$RT=-1e9;';
