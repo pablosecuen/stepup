@@ -92,7 +92,7 @@ test("Recordatorios: las cuatro categorías reales, sin acciones nuevas para «r
 
 test("Resumen financiero: los cinco períodos, la comparación sólo del mes actual y los formateadores únicos (nunca formatos crudos ni formateadores paralelos)", () => {
   const view = code(VIEWS[2]);
-  assert.match(view, /\["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"\]/);
+  assert.match(code("components/finance/overview-parts.tsx"), /\["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"\]/);
   assert.match(view, /data\.comparison \? <>vs\. período anterior: \{formatChange\(data\.comparison\.generated\.percentChange\)\}<\/> : undefined/);
   assert.match(view, /formatPercent\(value === null \? null : Math\.round\(value\), \{ signed: true \}\)/);
   for (const call of ["formatMoney(data.summary.generated)", "formatMoney(data.summary.collected)", "formatMoney(data.summary.pending)", "formatMoney(data.summary.overdue)", "formatWholeHours(data.activity.heldHours)", "formatHours(entry.occupiedHours)", "formatCivilMonthAbbrev("]) {

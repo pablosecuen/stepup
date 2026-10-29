@@ -4,6 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
+import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ChargeActions } from "@/components/payments/charge-actions";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
@@ -24,7 +25,6 @@ function collectionStatus(entry: CollectionsCenterEntry): { text: string; tone: 
 }
 
 // Columnas del escritorio (≥ 820 px): alumno · concepto · vence · estado · saldo · acciones. Debajo de 820 px cada fila es una tarjeta.
-const ROW_COLUMNS = "nav:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_96px_140px_minmax(0,1.1fr)_auto]";
 
 /**
  * Cobros (presentación). La página resuelve los datos; esta vista sólo muestra lo que ya carga: alumno, concepto, vencimiento,
@@ -48,8 +48,8 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
           <EmptyState icon={BanknotesIcon} message="No hay cobros pendientes." />
         </div>
       ) : (
-        <div className="mt-6 nav:overflow-hidden nav:rounded-lg nav:border-[1.5px] nav:border-border nav:bg-surface nav:shadow-card">
-          <div aria-hidden className={`hidden border-b-[1.5px] border-border bg-surface2 px-5 py-2.5 text-label font-bold uppercase text-textMuted nav:grid nav:items-center nav:gap-x-4 ${ROW_COLUMNS}`}>
+        <div className={COLLECTIONS_TABLE_CLASS}>
+          <div aria-hidden className={COLLECTIONS_HEADER_CLASS}>
             <span>Alumno</span>
             <span>Concepto</span>
             <span>Vence</span>
@@ -65,7 +65,7 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
               return (
                 <li
                   key={entry.chargeId}
-                  className={`flex flex-col gap-3 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:grid nav:items-center nav:gap-x-4 nav:gap-y-0 nav:rounded-none nav:border-0 nav:border-b nav:px-5 nav:py-3 nav:shadow-none nav:last:border-b-0 ${ROW_COLUMNS}`}
+                  className={COLLECTIONS_ROW_CLASS}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar initial={avatarInitials(entry.studentName)} tone={avatarToneFor(entry.studentId)} size="m" />

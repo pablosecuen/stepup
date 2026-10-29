@@ -36,7 +36,9 @@ const DIALOG = "components/finance/budget-adjust-dialog.tsx";
 test("Resumen financiero: encabezado, períodos y métricas conservados; el orden es cifras → evolución → distribución → actividad", () => {
   const view = code(VIEW);
   assert.match(view, /<PageHeader title="Resumen financiero" subtitle="Tus cobros, actividad y una guía para organizar lo ingresado\." \/>/);
-  assert.match(view, /\["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"\]/);
+  // Los períodos viven en las piezas compartidas con el esqueleto de carga y la vista los re-exporta.
+  assert.match(code("components/finance/overview-parts.tsx"), /\["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"\]/);
+  assert.match(view, /export \{ FINANCIAL_PRESETS \};/);
   for (const label of ["Facturación prevista", "Cobrado (por fecha real de pago)", "Pendiente en término", "Vencido"]) assert.ok(view.includes(`label="${label}"`), label);
   const order = ['aria-label="Cifras del período"', 'id="evolucion-titulo"', 'id="distribucion-titulo"', "Actividad del período"].map((needle) => view.indexOf(needle));
   assert.ok(order.every((i) => i > 0) && [...order].sort((a, b) => a - b).join() === order.join(), `orden de secciones: ${order}`);
@@ -138,7 +140,9 @@ test("la acción de guardado valida antes de tocar nada y repetirla es seguro; l
   const all = [...sources("app"), ...sources("components")];
   const isLanding = (file: string) => file.startsWith("components/landing/");
   const holders = all.filter((file) => !isLanding(file) && /Ajustar porcentajes|Distribución sugerida|saveBudgetDistributionAction|splitCollectedByPercent/.test(code(file)));
-  assert.deepEqual(holders.sort(), [DIALOG, SUGGESTION, VIEW].sort(), "la funcionalidad vive sólo en Resumen financiero");
+  // El esqueleto de carga de Resumen financiero repite el TÍTULO fijo «Distribución sugerida» (sin acciones, sin guardado, sin cálculo).
+  assert.deepEqual(holders.sort(), [DIALOG, SUGGESTION, VIEW, "components/nav/screen-skeleton.tsx"].sort(), "la funcionalidad vive sólo en Resumen financiero");
+  assert.doesNotMatch(code("components/nav/screen-skeleton.tsx"), /Ajustar porcentajes|saveBudgetDistributionAction|splitCollectedByPercent/);
   for (const file of all.filter(isLanding)) assert.doesNotMatch(code(file), /Ajustar porcentajes|saveBudgetDistributionAction|splitCollectedByPercent|BudgetSuggestion|budget-adjust-dialog/, `${file}: la landing no trae la funcionalidad, sólo una maqueta`);
   assert.equal(existsSync(join(ROOT, "components/account/budget-distribution-form.tsx")), false, "no se duplica: el formulario de Configuración se retiró");
 });

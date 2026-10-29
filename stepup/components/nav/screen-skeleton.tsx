@@ -1,10 +1,15 @@
-import type { ReactNode } from "react";
-import { ArrowLeftIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
+import type { CSSProperties, ReactNode } from "react";
+import { ArrowLeftIcon, CheckIcon, PencilSquareIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { CalendarSkeleton } from "@/components/nav/calendar-skeleton";
 import { linkClass } from "@/components/ui/button";
 import { PAGE_TITLE_CLASS, READING_WIDTH } from "@/components/ui/page-header";
 import { CARD_CLASS, PANEL_CLASS } from "@/components/ui/surfaces";
 import { ScreenFrame, SkAction, SkBar, SkHeader, SkPill, SkRound } from "@/components/ui/skeleton-kit";
+import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account/settings-ui";
+import { CARD_TITLE_CLASS, FINANCIAL_PRESETS, Kpi, Stat, periodPillClass } from "@/components/finance/overview-parts";
+import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
+import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
+import { FINANCIAL_PERIOD_PRESET_LABEL } from "@/lib/reports/period";
 import { resolveScreen } from "@/lib/nav/screens";
 
 /**
@@ -75,7 +80,7 @@ function SkFigure({ className = "" }: { className?: string }) {
   return (
     <div className={`min-h-11 min-w-0 px-4 py-1 first:pl-0 nav:px-7 nav:first:pl-0 ${className}`}>
       <SkBar className="h-[34px] w-12" />
-      <SkBar className="mt-1 h-[13px] w-24 max-w-full opacity-80" />
+      <SkBar className="mt-1 h-4 w-24 max-w-full opacity-80" />
     </div>
   );
 }
@@ -114,7 +119,7 @@ function InicioBody() {
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
             <SkBar className="h-[26px] w-10" />
-            <SkBar className="mt-1 h-[13px] w-28 max-w-full opacity-80" />
+            <SkBar className="mt-1 h-4 w-28 max-w-full opacity-80" />
           </div>
         ))}
       </div>
@@ -287,29 +292,73 @@ function CobrosBody({ title }: { title: string }) {
   return (
     <>
       <SkHeader title={title} />
-      <SkPills className="mt-4" widths={["w-28", "w-24", "w-32"]} />
-      <div className="mt-6 flex flex-col gap-3 nav:gap-0 nav:overflow-hidden nav:rounded-lg nav:border-[1.5px] nav:border-border nav:bg-surface nav:shadow-card">
-        <div className="hidden h-[50px] border-b-[1.5px] border-border bg-surface2 nav:block" />
-        {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
-          <div key={index} className="flex min-h-[255px] items-start gap-3 rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:h-[69px] nav:min-h-0 nav:items-center nav:rounded-none nav:border-0 nav:border-b nav:shadow-none nav:last:border-b-0">
-            <SkRound className="h-10 w-10" />
-            <div className="min-w-0 flex-1">
-              <SkBar className="h-4 w-44 max-w-full" />
-              <SkBar className="mt-2 h-3 w-32 max-w-full opacity-80" />
-            </div>
-            <SkPill className="hidden h-7 w-24 nav:block" />
-          </div>
-        ))}
+      <PaymentsSectionNav current="collections" />
+      <div className={COLLECTIONS_TABLE_CLASS}>
+        <div aria-hidden className={COLLECTIONS_HEADER_CLASS}>
+          <span>Alumno</span>
+          <span>Concepto</span>
+          <span>Vence</span>
+          <span>Estado</span>
+          <span className="text-right">Saldo pendiente</span>
+          <span className="w-[272px]" />
+        </div>
+        <ul className="flex flex-col gap-3 nav:gap-0">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
+            // Misma clase de fila que la real (`COLLECTIONS_ROW_CLASS`): tarjeta en móvil (~256 px con su contenido), fila de tabla en escritorio.
+            <li key={index} className={`${COLLECTIONS_ROW_CLASS} min-h-[256px] nav:min-h-0`}>
+              <div className="flex min-w-0 items-center gap-3">
+                <SkRound className="h-10 w-10" />
+                <div className="-my-1 flex min-h-11 items-center">
+                  <SkBar className="h-5 w-40" />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 text-[14px] nav:contents">
+                <p className="min-w-0 nav:text-[14.5px]">
+                  <Ph text="Mensualidad" />
+                </p>
+                <p className="nav:text-[14.5px]">
+                  <Ph text="00/00/0000" />
+                </p>
+              </div>
+              <div>
+                <SkPill className="h-[26px] w-24" />
+              </div>
+              <div className="min-w-0 nav:text-right">
+                <p className="text-[13px] nav:sr-only">Saldo pendiente</p>
+                <p className="font-display text-[26px] font-semibold leading-none tracking-tight nav:text-[20px]">
+                  <Ph text="$ 00.000,00" />
+                </p>
+              </div>
+              <div className="flex gap-2 nav:w-[272px]">
+                <SkBar className="h-11 w-32" />
+                <SkBar className="h-11 w-32" />
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </>
   );
 }
 
-function KpiCard({ className }: { className: string }) {
+/** Un dato en espera: un bloque con el MISMO tamaño de letra que el dato real (la línea mide lo mismo), nunca un alto inventado. */
+function Ph({ text, className = "" }: { text: string; className?: string }) {
+  return <span className={`rounded bg-paperDeep text-transparent ${className}`}>{text}</span>;
+}
+
+/**
+ * Tarjeta de un bloque de Resumen financiero cuyo cuerpo es un gráfico o una lista: el borde, el relleno y el título son los reales
+ * (`CARD_CLASS` + `CARD_TITLE_CLASS`) y el cuerpo reserva el alto que mide ese bloque con datos reales (`mobile` por debajo de 820 px, `desktop`
+ * desde 820 px). El alto del cuerpo = el total medido menos el borde, el relleno (16 px móvil · 20 px escritorio por lado), el título (24 px) y su separación (12 px).
+ */
+function OverviewCard({ title, mobile, desktop, className = "" }: { title: string; mobile: number; desktop: number; className?: string }) {
+  const style = { "--m": `${mobile - 71}px`, "--d": `${desktop - 79}px` } as CSSProperties;
   return (
     <div className={`${CARD_CLASS} ${className}`}>
-      <SkBar className="h-4 w-32 max-w-full opacity-80" />
-      <SkBar className="mt-2 h-[30px] w-28" />
+      <p className={CARD_TITLE_CLASS}>{title}</p>
+      <div style={style} className="mt-3 h-[var(--m)] nav:h-[var(--d)]">
+        <SkBar className="h-full w-full opacity-50" />
+      </div>
     </div>
   );
 }
@@ -318,60 +367,57 @@ function ResumenBody({ title }: { title: string }) {
   return (
     <>
       <SkHeader title={title} subtitle="Tus cobros, actividad y una guía para organizar lo ingresado." />
-      <SkPills className="mt-4" widths={["w-28", "w-24", "w-32"]} />
-      {/* El enlace «Ver comportamiento de pago» mide 44 px (alto táctil), no una línea de texto */}
-      <div className="mt-3 flex h-11 items-center">
-        <SkBar className="h-5 w-52" />
-      </div>
-      <SkPills className="mt-5" widths={["w-28", "w-32", "w-40", "w-28"]} />
-      <div className="mt-5 grid grid-cols-2 gap-3 max-[400px]:grid-cols-1 nav:grid-cols-4 nav:gap-4">
-        {[0, 1, 2, 3].map((index) => (
-          <KpiCard key={index} className="min-h-[121px] nav:min-h-[137px]" />
-        ))}
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 nav:mt-4 nav:gap-4">
-        {[0, 1, 2].map((index) => (
-          <KpiCard key={index} className="min-h-[93px] nav:min-h-[99px]" />
-        ))}
-      </div>
-      <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
-        <div className={`${CARD_CLASS} h-[463px]`}>
-          <SkBar className="h-6 w-44" />
-          <SkBar className="mt-3 h-[340px] w-full opacity-60" />
-        </div>
-        <div className={`${CARD_CLASS} h-[463px]`}>
-          <SkBar className="h-6 w-44" />
-          <SkBar className="mt-3 h-[340px] w-full opacity-60" />
-        </div>
-      </div>
-      <div className={`${CARD_CLASS} mt-5 h-[553px]`}>
-        <SkBar className="h-6 w-52" />
-        <SkBar className="mt-3 h-[420px] w-full opacity-60" />
-      </div>
-      <div className={`${CARD_CLASS} mt-5 h-[160px]`}>
-        <SkBar className="h-6 w-48" />
-        <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
-          {[0, 1, 2, 3].map((index) => (
-            <SkBar key={index} className="h-14" />
+      <PaymentsSectionNav current="overview" />
+      <p className="mt-3">
+        <span className={linkClass()}>Ver comportamiento de pago</span>
+      </p>
+      <nav className="mt-5">
+        <ul className="flex flex-wrap gap-2">
+          {FINANCIAL_PRESETS.map((preset, index) => (
+            <li key={preset}>
+              <span className={periodPillClass(index === 0)}>
+                {index === 0 && <CheckIcon className="h-4 w-4" />}
+                {FINANCIAL_PERIOD_PRESET_LABEL[preset]}
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
+      </nav>
+
+      <section className="mt-5 grid grid-cols-2 gap-3 max-[400px]:grid-cols-1 nav:grid-cols-4 nav:gap-4">
+        <Kpi label="Facturación prevista" value={<Ph text="$ 000.000,00" />} foot={<Ph text="vs. período anterior: +0 %" />} />
+        <Kpi label="Cobrado (por fecha real de pago)" value={<Ph text="$ 000.000,00" />} foot={<Ph text="vs. período anterior: +0 %" />} />
+        <Kpi label="Pendiente en término" value={<Ph text="$ 000.000,00" />} />
+        <Kpi label="Vencido" value={<Ph text="$ 000.000,00" />} />
+      </section>
+      <section className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 nav:mt-4 nav:gap-4">
+        <Kpi label="Deuda de meses anteriores" value={<Ph text="$ 000.000,00" />} />
+        <Kpi label="Alumnos que pagaron este mes" value={<Ph text="00" />} />
+        <Kpi label="Alumnos con deuda" value={<Ph text="00" />} />
+      </section>
+
+      <div className="mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <OverviewCard title="Evolución de cobros" mobile={457} desktop={465} />
+        <OverviewCard title="Distribución sugerida" mobile={605} desktop={449} />
       </div>
+      <OverviewCard title="Proyección y ahorro" mobile={750} desktop={555} className="mt-5" />
+      <section className={`${CARD_CLASS} mt-5`}>
+        <p className={CARD_TITLE_CLASS}>Actividad del período</p>
+        <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
+          <Stat label="Clases dictadas" value={<Ph text="00" />} />
+          <Stat label="Horas dictadas" value={<Ph text="000 h" />} />
+          <Stat label="Horas reprogramadas" value={<Ph text="00 h" />} />
+          <Stat label="Horas canceladas" value={<Ph text="00 h" />} />
+        </div>
+      </section>
       <div className="mt-5 flex flex-col gap-5 min-[1100px]:grid min-[1100px]:grid-cols-2 min-[1100px]:items-start">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${CARD_CLASS} h-[359px]`}>
-            <SkBar className="h-6 w-52" />
-          </div>
-          <div className={`${CARD_CLASS} h-[380px]`}>
-            <SkBar className="h-6 w-40" />
-          </div>
+          <OverviewCard title="Valor programado de tu hora" mobile={543} desktop={416} />
+          <OverviewCard title="Resumen anual" mobile={286} desktop={252} />
         </div>
         <div className="flex min-w-0 flex-col gap-5">
-          <div className={`${CARD_CLASS} h-[300px]`}>
-            <SkBar className="h-6 w-56" />
-          </div>
-          <div className={`${CARD_CLASS} h-[439px]`}>
-            <SkBar className="h-6 w-40" />
-          </div>
+          <OverviewCard title="Demanda semanal y horaria" mobile={359} desktop={345} />
+          <OverviewCard title="Alumnos del año" mobile={428} desktop={396} />
         </div>
       </div>
     </>
@@ -400,7 +446,7 @@ function RegistroBody({ title }: { title: string }) {
       <SkHeader title={title} action={<SkAction label="Clase no programada" variant="secondary" icon={<PlusIcon className="h-5 w-5" />} />} />
       <ul className={`mt-6 flex flex-col gap-3 ${READING_WIDTH}`}>
         {[0, 1, 2, 3, 4].map((index) => (
-          <li key={index} className={`${PANEL_CLASS} flex min-h-[139px] items-start gap-3.5 p-4 nav:min-h-[97px]`}>
+          <li key={index} className={`${PANEL_CLASS} flex min-h-[140px] items-start gap-3.5 p-4 nav:min-h-[83px]`}>
             <SkRound className="h-12 w-12" />
             <div className="min-w-0 flex-1">
               <SkBar className="h-[25px] w-56 max-w-full" />
@@ -453,7 +499,7 @@ function SeriesBody({ title }: { title: string }) {
       <ul className="mt-6 flex flex-col gap-3.5">
         {[0, 1, 2].map((index) => (
           <li key={index}>
-            <SkCard height={150} />
+            <SkCard height={182} />
           </li>
         ))}
       </ul>
@@ -490,29 +536,64 @@ function DisponibilidadBody({ title }: { title: string }) {
 
 // ───────────────────────────── Configuración y subpantallas ─────────────────────────────
 function ConfiguracionBody({ title }: { title: string }) {
+  // Las MISMAS piezas que la pantalla real (`SettingsSection`/`SettingsCard`/`SettingsRow`) con sus textos fijos; sólo los datos y los controles son bloques
+  // (del alto real del control: 44 px los botones y el campo, 96 px las dos opciones de la ubicación de la navegación). Un test comprueba que cada texto
+  // existe también en `configuration-view.tsx` / `navigation-preference.tsx`. «Datos de prueba» sólo existe si hay datos de prueba marcados: no se reserva.
   return (
     <>
       <SkHeader title={title} subtitle="Tu cuenta, preferencias y datos." />
-      {/* Tres secciones como la pantalla real: Cuenta (dos tarjetas lado a lado desde 1024 px), Preferencias (columna de 480 px) y Acciones sensibles (560 px).
-          Cada una con su encabezado (título + apoyo, 65 px con su separación) y tarjetas de 100–216 px medidas en Production. */}
       <div className="mt-6 flex min-w-0 flex-col gap-9">
-        {[
-          { cards: [216, 135], layout: "lg:grid-cols-2" },
-          { cards: [208, 100, 135, 135, 135], layout: "max-w-[480px]" },
-          { cards: [100], layout: "max-w-[560px]" },
-        ].map((section, index) => (
-          <section key={index}>
-            <div className="flex h-[65px] flex-col justify-start gap-1.5">
-              <SkBar className="h-6 w-28" />
-              <SkBar className="h-4 w-72 max-w-full opacity-80" />
+        <SettingsSection id="sk-cuenta" title="Cuenta" description="Tus datos de acceso y cómo aparecés en TeacherFlow." columns="lg:grid-cols-2">
+          <SettingsCard>
+            <div className="flex items-center gap-4 px-4 py-4 sm:px-5">
+              <SkRound className="h-12 w-12" />
+              <div className="min-w-0">
+                <SkBar className="h-7 w-40" />
+                <SkBar className="mt-0.5 h-5 w-48 max-w-full" />
+              </div>
             </div>
-            <div className={`grid grid-cols-1 items-start gap-4 ${section.layout}`}>
-              {section.cards.map((height, card) => (
-                <div key={card} style={{ height }} className="rounded-lg border-[1.5px] border-border bg-surface shadow-card" />
-              ))}
-            </div>
-          </section>
-        ))}
+            <SettingsRow title="Nombre visible" description="Es el nombre que usa el saludo de Inicio.">
+              <SkBar className="h-11 w-full" />
+            </SettingsRow>
+          </SettingsCard>
+          <SettingsCard>
+            <SettingsRow title="Contraseña" description="Te enviamos un enlace a tu correo para elegir una nueva.">
+              <SkBar className="h-11 w-44" />
+            </SettingsRow>
+          </SettingsCard>
+        </SettingsSection>
+
+        <SettingsSection id="sk-preferencias" title="Preferencias" description="Organizá cómo funciona TeacherFlow." columns="max-w-[480px]">
+          <SettingsCard>
+            <SettingsRow title="Ubicación de la navegación" description="Elegí la barra inferior o los accesos dentro del logo. Se guarda en este navegador, como preferencia del dispositivo.">
+              <SkBar className="h-24 w-full" />
+            </SettingsRow>
+          </SettingsCard>
+          <SettingsCard>
+            <SettingsRow title="Dos dispositivos a la vez" description="Podés mantener dos sesiones abiertas. Al entrar desde un tercer dispositivo se elige cuál reemplazar. Cada sesión es independiente." />
+          </SettingsCard>
+          <SettingsCard>
+            <SettingsRow title="Tutorial de TeacherFlow" description="Volvé a recorrer las funciones principales.">
+              <SkBar className="h-11 w-32" />
+            </SettingsRow>
+          </SettingsCard>
+          <SettingsCard>
+            <SettingsRow title="Políticas de cobro" description="Los recargos por atraso están desactivados. El semáforo de mora usa plazos fijos." />
+          </SettingsCard>
+          <SettingsCard>
+            <SettingsRow title="Revisar consistencia" description="Detecta diferencias y permite revisar las correcciones seguras. Los casos ambiguos conservan sus pagos y quedan para revisión.">
+              <SkBar className="h-11 w-36" />
+            </SettingsRow>
+          </SettingsCard>
+        </SettingsSection>
+
+        <SettingsSection id="sk-acciones-sensibles" title="Acciones sensibles" description="Afectan a tu cuenta. Siempre piden confirmación antes de ejecutarse." columns="max-w-[560px]">
+          <SettingsCard>
+            <SettingsRow title="Eliminar cuenta" description="Borra tu cuenta y todos tus datos de forma permanente.">
+              <SkBar className="h-11 w-40" />
+            </SettingsRow>
+          </SettingsCard>
+        </SettingsSection>
       </div>
     </>
   );

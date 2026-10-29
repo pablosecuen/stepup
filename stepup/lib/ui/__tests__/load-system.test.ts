@@ -117,7 +117,7 @@ test("causa del bloqueo con la pestaña en segundo plano: el intercambio del str
 test("accesibilidad del esqueleto: un solo aviso por pantalla, dibujo decorativo fuera del lector, aviso de demora con Reintentar y sin esqueleto infinito", () => {
   const kit = code("components/ui/skeleton-kit.tsx");
   assert.equal((kit.match(/role="status"/g) ?? []).length, 1, "un único role=status (no uno por bloque)");
-  assert.match(kit, /<div aria-hidden className=\{innerClassName\}>/, "todos los bloques decorativos fuera del árbol de accesibilidad");
+  assert.match(kit, /<div aria-hidden inert className=\{innerClassName\}>/, "todos los bloques decorativos fuera del árbol de accesibilidad e INERTES (el dibujo usa piezas reales con enlaces: nada enfocable ni pulsable)");
   assert.match(kit, /if \(optimistic\) \{[\s\S]*?data-tf-pending-skeleton=""[\s\S]*?\}\s*return \(/, "el esqueleto del clic no es otra región viva: el aviso lo da NavigationProgress");
   assert.doesNotMatch(kit.slice(kit.indexOf("if (optimistic)"), kit.indexOf("return (\n    <div data-tf-skeleton=\"\" role")), /role="status"|aria-live/);
   const watchdog = code("components/ui/skeleton-watchdog.tsx");

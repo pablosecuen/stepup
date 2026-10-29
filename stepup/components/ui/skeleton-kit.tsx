@@ -79,7 +79,7 @@ export function SkHeader({ title, subtitle = true, action }: { title: string; su
  */
 export function ScreenFrame({ label, width = "wide", optimistic = false, retryHref, className, innerClassName, children }: { label: string; width?: SkeletonWidth; optimistic?: boolean; retryHref?: string; className?: string; innerClassName?: string; children: ReactNode }) {
   const drawing = (
-    <div aria-hidden className={innerClassName}>
+    <div aria-hidden inert className={innerClassName}>
       {children}
     </div>
   );

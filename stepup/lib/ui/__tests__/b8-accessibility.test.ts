@@ -130,7 +130,7 @@ test("todo enlace de texto o botón del área privada y pública declara 44 px d
     if (EXEMPT.some((r) => r.test(file))) continue;
     const source = read(file);
     for (const tag of openingTags(source, ["Link", "PrivateLink", "a"])) {
-      if (/sr-only|min-h-1[1-9]|min-h-\[|\bh-1[12]\b|min-h-16|min-h-14|buttonClass\(|linkClass\(/.test(tag.text)) continue; // buttonClass/linkClass siempre traen min-h-11 (design-tokens.test.ts)
+      if (/sr-only|min-h-1[1-9]|min-h-\[|\bh-1[12]\b|min-h-16|min-h-14|buttonClass\(|linkClass\(|periodPillClass\(/.test(tag.text)) continue; // periodPillClass trae min-h-11 (components/finance/overview-parts.tsx) // buttonClass/linkClass siempre traen min-h-11 (design-tokens.test.ts)
       offenders.push(`${file}:${lineOf(source, tag.index)}`);
     }
   }

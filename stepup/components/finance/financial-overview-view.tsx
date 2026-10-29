@@ -4,6 +4,7 @@ import PrivateLink from "@/components/nav/private-link";
 import { linkClass } from "@/components/ui/button";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { CARD_CLASS } from "@/components/ui/surfaces";
+import { FINANCIAL_PRESETS, Kpi, Stat, periodPillClass } from "@/components/finance/overview-parts";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { CollectedEvolutionChart } from "@/components/finance/collected-evolution-chart";
 import { BudgetSuggestion } from "@/components/finance/budget-suggestion";
@@ -14,7 +15,7 @@ import { FINANCIAL_PERIOD_PRESET_LABEL, type FinancialPeriodPreset } from "@/lib
 import { formatCivilDate, formatCivilMonth, formatCivilMonthAbbrev, formatCivilMonthLongYear } from "@/lib/format/date-format";
 import { formatCount, formatHours, formatMoney, formatPercent } from "@/lib/format/number-format";
 
-export const FINANCIAL_PRESETS: FinancialPeriodPreset[] = ["current_month", "last_3_months", "last_6_months", "current_year", "previous_year"];
+export { FINANCIAL_PRESETS };
 // Lunes = 0 … domingo = 6 (como el motor de demanda).
 const WEEKDAY_LABEL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const LEVEL_BUCKET_LABEL: Record<string, string> = { sin_nivel: "Sin nivel", nivel_mixto: "Nivel mixto" };
@@ -35,26 +36,6 @@ function formatWholeHours(hours: number): string {
 }
 
 const CARD = CARD_CLASS;
-
-function Kpi({ label, value, valueClass = "text-textPrimary", foot }: { label: string; value: string; valueClass?: string; foot?: ReactNode }) {
-  return (
-    <div className={`${CARD} [container-type:inline-size]`}>
-      <p className="text-[13px] font-[650] text-textMuted">{label}</p>
-      {/* El importe se ajusta al ancho de SU tarjeta (nunca se parte un número en dos renglones): 36 px cuando hay lugar, menos cuando la tarjeta es angosta. */}
-      <p className={`mt-1.5 whitespace-nowrap font-display text-[clamp(16px,11cqw,34px)] font-medium leading-none tracking-tight tf-num ${valueClass}`}>{value}</p>
-      {foot && <p className="mt-2 text-[13px] text-textMuted">{foot}</p>}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-md border border-border bg-lavenderSoft/40 px-3.5 py-3">
-      <p className="text-[13px] font-[650] text-textMuted">{label}</p>
-      <p className="mt-1 font-display text-[30px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{value}</p>
-    </div>
-  );
-}
 
 /** Fila de una distribución: etiqueta, valor en texto y una barra proporcional (decorativa: el valor ya está escrito). */
 function ShareRow({ label, value, percent }: { label: string; value: string; percent: number }) {
@@ -112,9 +93,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
                 <PrivateLink
                   href={`/resumen-financiero?preset=${p}`}
                   aria-current={selected ? "true" : undefined}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border-[1.5px] px-4 text-[14.5px] font-[650] transition-colors duration-150 ${
-                    selected ? "border-ink bg-ink text-background" : "border-borderMid bg-surface text-textPrimary hover:border-ink"
-                  }`}
+                  className={periodPillClass(selected)}
                 >
                   {selected && <CheckIcon className="h-4 w-4" aria-hidden />}
                   {FINANCIAL_PERIOD_PRESET_LABEL[p]}
