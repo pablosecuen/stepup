@@ -1,6 +1,4 @@
 import Link from "@/components/nav/private-link";
-import { Suspense } from "react";
-import { MonthlyFinancialSummary } from "@/components/dashboard/monthly-financial-summary";
 import { ArrowRightIcon, BellIcon, CheckCircleIcon, ChevronRightIcon, ExclamationTriangleIcon, PlusIcon, SunIcon } from "@heroicons/react/24/outline";
 import { DayPlanner } from "@/components/dashboard/day-planner";
 import { FirstSteps } from "@/components/dashboard/first-steps";
@@ -131,7 +129,6 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
       )}
 
       {!onboarding && <DailyCollectionsNotice summary={data.collectionsUrgency} todayDateKey={data.todayDateKey} />}
-      {!onboarding && <Suspense fallback={<p role="status" className="mt-5 text-sm">Cargando resumen del mes…</p>}><MonthlyFinancialSummary /></Suspense>}
 
       {!onboarding && (
         <section aria-label="Indicadores" data-enter="2" className="tf-enter mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:divide-x nav:divide-border nav:gap-0">

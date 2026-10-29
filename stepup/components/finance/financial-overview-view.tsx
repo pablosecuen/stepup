@@ -239,7 +239,8 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         </section>
       </div>
 
-      <section aria-labelledby="anual-titulo" className={`${CARD} mt-5`}>
+      <div className="mt-5 grid items-start gap-5 min-[1100px]:grid-cols-2">
+      <section aria-labelledby="anual-titulo" className={CARD}>
         <h2 id="anual-titulo" className="font-display text-card font-semibold">
           Resumen anual {data.year}
         </h2>
@@ -250,9 +251,9 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         </div>
         <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Modalidad más utilizada</h3>
         {data.modality.breakdown.every((entry) => entry.hours <= 0) ? (
-          <p className="mt-2 text-[15px] text-textMuted">Todavía no hay clases dictadas este año.</p>
+          <p className="mt-2 text-[15px] text-textMuted">{data.annualActivity.heldHours > 0 ? "No hay detalle de modalidad disponible para estas clases." : "Todavía no hay clases dictadas este año."}</p>
         ) : (
-          <div className="mt-2 grid grid-cols-1 gap-4 nav:grid-cols-3 nav:gap-6">
+          <div className="mt-2 grid grid-cols-1 gap-3">
             {data.modality.breakdown.map((entry) => (
               <ShareRow
                 key={entry.modality}
@@ -265,7 +266,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         )}
       </section>
 
-      <section aria-labelledby="alumnos-titulo" className={`${CARD} mt-5`}>
+      <section aria-labelledby="alumnos-titulo" className={CARD}>
         <h2 id="alumnos-titulo" className="font-display text-card font-semibold">
           Alumnos del año — {data.studentYear.year}
         </h2>
@@ -275,7 +276,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           <Stat label="Nuevos este año" value={data.studentYear.newStudentsThisYear} />
         </div>
         <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Incorporación mensual</h3>
-        <ol className="mt-2 grid grid-cols-6 gap-x-2 gap-y-3 min-[560px]:grid-cols-12">
+        <ol className="mt-2 grid grid-cols-6 gap-x-2 gap-y-3">
           {data.newStudentsPerMonth.months.map((entry) => (
             <li key={entry.month} className="text-center">
               <p className={`font-display text-[20px] leading-none tf-num ${data.newStudentsPerMonth.peakMonths.includes(entry.month) ? "font-bold text-accentDark" : "font-semibold text-textPrimary"}`}>{entry.count}</p>
@@ -294,6 +295,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           {data.newStudentsPerMonth.previousYearTotal === null ? "Sin comparación disponible con el año anterior." : `Año anterior: ${data.newStudentsPerMonth.previousYearTotal} alumno(s) nuevo(s).`}
         </p>
       </section>
+      </div>
     </div>
   );
 }

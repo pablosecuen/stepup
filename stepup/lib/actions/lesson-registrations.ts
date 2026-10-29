@@ -26,6 +26,7 @@ import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/paymen
 import { syncPerClassCharge } from "@/lib/repositories/payments";
 import { listStudentsCoveredByTrainingPlan } from "@/lib/repositories/training-coverage";
 import { actionErrorMessage } from "@/lib/errors/action-error";
+import { registrationIdentity } from "@/lib/lessons/registration-identity";
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -76,10 +77,7 @@ export async function startRegistrationAction(input: StartRegistrationActionInpu
     const primary = participants[0];
 
     const registration = await startLessonRegistration(ctx, {
-      calendarLessonId: calendarItem.materializedLessonId,
-      recurrenceId: input.recurrenceId,
-      occurrenceKey: input.occurrenceKey,
-      recurrenceIndex: input.recurrenceIndex,
+      ...registrationIdentity(calendarItem),
       primaryStudentId: primary.id,
       studentName: primary.name,
       level: primary.levels[0] ?? "",

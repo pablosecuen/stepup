@@ -17,7 +17,7 @@ const CARD = "rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card
 /** Columnas apiladas Necesidades / Gustos / Ahorro por mes. Las proyectadas van más claras y con borde punteado: el estado nunca se comunica sólo con el color (también figura en la tabla de abajo). */
 function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   const WIDTH = 600;
-  const HEIGHT = 190;
+  const HEIGHT = 130;
   const PAD = { top: 8, bottom: 22, left: 4, right: 4 };
   const slot = (WIDTH - PAD.left - PAD.right) / 12;
   const barWidth = slot * 0.4;
@@ -25,7 +25,7 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   const scale = (HEIGHT - PAD.top - PAD.bottom) / max;
   const summary = plan.months.map((month) => `${MONTH_LONG[Number(month.billingPeriod.slice(5, 7)) - 1]}: ${STATUS_LABEL[month.status].toLowerCase()}, ${formatMoney(month.totalForDistribution)}`).join("; ");
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="tf-chart-enter h-auto w-full max-w-[760px]">
+    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="tf-chart-enter h-auto w-full max-w-[600px]">
       <line x1={PAD.left} x2={WIDTH - PAD.right} y1={HEIGHT - PAD.bottom} y2={HEIGHT - PAD.bottom} className="stroke-borderMid" strokeWidth={1} />
       {plan.months.map((month, index) => {
         const x = PAD.left + index * slot + (slot - barWidth) / 2;
@@ -126,7 +126,8 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
         </ul>
       </nav>
 
-      <div className="mt-4">
+      <div className="mt-4 grid items-start gap-4 min-[1100px]:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
+      <div className="min-w-0">
         <AnnualChart plan={plan} year={year} />
         <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Leyenda">
           <LegendItem swatch="bg-dataNeeds" label="Necesidades" />
@@ -136,10 +137,7 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
           <LegendItem swatch="bg-textSecondary" label="Estimado" dashed />
         </ul>
       </div>
-
-      {plan.projectionWarning && <p role="status" className="mt-3 rounded-md border-[1.5px] border-infoLine bg-infoSoft px-3.5 py-2.5 text-[14px] text-textSecondary">{PROJECTION_WARNING_MESSAGES[plan.projectionWarning]}</p>}
-
-      <dl className="mt-4 grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[1100px]:grid-cols-1">
         <div className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-3">
           <dt className="text-[13.5px] font-[650] text-textSecondary">Ahorro teórico acumulado con ingresos reales</dt>
           <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary">{formatMoney(plan.cumulativeRealTheoreticalSavings)}</dd>
@@ -149,6 +147,9 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
           <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary">{formatMoney(plan.cumulativeProjectedTheoreticalSavings)}</dd>
         </div>
       </dl>
+      </div>
+
+      {plan.projectionWarning && <p role="status" className="mt-3 rounded-md border-[1.5px] border-infoLine bg-infoSoft px-3.5 py-2.5 text-[14px] text-textSecondary">{PROJECTION_WARNING_MESSAGES[plan.projectionWarning]}</p>}
 
       <details className="mt-4 rounded-lg border-[1.5px] border-border">
         <summary className="flex min-h-11 cursor-pointer items-center px-4 text-[14.5px] font-[650] text-textPrimary">Ver detalle mes a mes</summary>

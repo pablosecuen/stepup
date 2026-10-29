@@ -1,0 +1,10 @@
+Correcciones a partir de las capturas del 28/10
+
+Inicio: se retira el panel Resumen del mes. Se conserva el acceso a Resumen financiero y el aviso de cobros que requieren atención.
+Finanzas: proyección de 130 unidades de alto (antes 190), ancho máximo 600 px (antes 760); totales al lado en escritorio. Resumen anual y Alumnos del año comparten fila en pantallas grandes. Sin cambios de importes ni cálculos.
+Modalidad: cuando hay horas dictadas pero no desglose, se informa que falta ese detalle, sin afirmar que no se dictaron clases.
+Registro: la identidad se resuelve desde la clase cargada por el servidor. Una clase materializada se registra por su id; sólo una ocurrencia virtual requiere serie y clave. No se inventa una clave con la nueva fecha ni se modifica una clase reprogramada. Las validaciones de propiedad de la RPC siguen intactas.
+
+Verificación: 5130/5130 pruebas, lint, typecheck y build webpack correctos. Regresión de clase materializada con recurrence_id y sin occurrence_key; virtual válida y virtual incompleta.
+Tareas: en el código actual una revisión común conserva selección por taskId+studentId; repositorio filtra las revisiones por alumno. La revisión grupal está dentro de ParticipantCard y la revisión superior está condicionada a !isGroup. Existe prueba que una tarea común resuelta para un alumno sigue pendiente para el otro. La cuenta QA disponible no contiene PET: no se declara verificado ese registro real.
+Calificaciones: tres alternativas interactivas fuera del producto, en output/calificaciones-opciones.html. Se conserva el control publicado hasta elegir una alternativa.
