@@ -5,7 +5,6 @@ import {loadCalendarViewForRange} from '@/lib/calendar/view';
 import {getTeacherAvailability} from '@/lib/repositories/teacher-availability';
 import {listStudents,createStudent,type NewStudentInput} from '@/lib/repositories/students';
 import {calendarEditPayload} from '@/lib/calendar/parity';
-import {instantDateKey} from '@/lib/calendar/civil-calendar';
 import {localDateTimeToInstantIso} from '@/lib/calendar/timezone';
 import {instantFromClockTime,arrivalFromLateTime} from '@/lib/live-class/live-class';
 import {actionErrorMessage} from '@/lib/errors/action-error';
@@ -20,15 +19,6 @@ export async function calendarSlotsAction(month:string){
   const [items,availability]=await Promise.all([loadCalendarViewForRange(ctx,new Date(start),new Date(Date.parse(start)+32*86400000),undefined,{includeTestData:true}),getTeacherAvailability(ctx)]);
   return {items:items.map(({id,start,end,status,studentName,occupiesSlot})=>({id,start,end,status,studentName,occupiesSlot})),availability};
  }catch(error){return {error:actionErrorMessage('calendar-slots',error)};}
-}
-export async function nextHomeworkDatesAction(studentId:string|string[],after:string){
- try{
-  const ctx=await requireAuthenticatedDbContext();
-  const start=new Date(after);if(!Number.isFinite(start.getTime()))throw new Error('Fecha inválida');
-  const items=await loadCalendarViewForRange(ctx,start,new Date(start.getTime()+90*86400000),undefined,{includeTestData:true});
-  const ids=Array.isArray(studentId)?studentId:[studentId];
-  return {dates:[...new Set(items.filter(i=>i.start>after&&(i.status==='scheduled'||i.status==='rescheduled')&&i.occupiesSlot!==false&&ids.every(id=>i.studentId===id||i.participantIds.includes(id))).map(i=>instantDateKey(i.start)))].slice(0,12)};
- }catch(error){return {error:actionErrorMessage('homework-dates',error)};}
 }
 export async function inlineCalendarStudentAction(input:NewStudentInput,operationId:string,confirmDuplicate=false){
  try{const ctx=await requireAuthenticatedDbContext();const result=await createStudent(ctx,input,{operationId,confirmDuplicate});if(result.status==='possible_duplicate')return {error:'Ya hay alumnos parecidos. Confirmá si querés crear otro.',duplicate:true};refresh();return {student:{id:result.student.id,name:result.student.name,level:result.student.levels.join(', '),status:result.student.status}};}catch(error){return {error:actionErrorMessage('inline-student',error)};}

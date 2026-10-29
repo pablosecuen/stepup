@@ -11,7 +11,6 @@ import { normalizeSkillGradeValue } from "@/lib/lessons/grades";
 import { isStudentHomeworkPersonalized } from "@/lib/lessons/registration-form";
 import { SKILLS, SKILL_LABEL, type Skill } from "@/lib/lessons/skills";
 import { formatCivilDate, formatInstantDate } from "@/lib/format/date-format";
-import { HomeworkDateChoices } from "./homework-schedule";
 
 /**
  * Piezas del formulario de registro de una clase que comparten la clase individual y cada participante de un grupo — mismos campos, mismos
@@ -232,10 +231,9 @@ export function EvaluationFields({ studentName, studentId, form, onChange }: { s
 }
 
 /** «Tarea para realizar» + «Fecha de entrega (opcional)»: la caja de tarea de la clase (común) y, en un grupo, la personalizada de un alumno. */
-export function HomeworkFields({ idPrefix, description, dueDate, onDescriptionChange, onDueDateChange, ariaSuffix = "", studentId }: { idPrefix: string; description: string; dueDate: string; onDescriptionChange: (value: string) => void; onDueDateChange: (value: string) => void; ariaSuffix?: string;studentId?:string }) {
+export function HomeworkFields({ idPrefix, description, dueDate, onDescriptionChange, onDueDateChange, ariaSuffix = "" }: { idPrefix: string; description: string; dueDate: string; onDescriptionChange: (value: string) => void; onDueDateChange: (value: string) => void; ariaSuffix?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-3.5">
-      <HomeworkDateChoices value={dueDate} onChange={onDueDateChange} studentId={studentId} />
       <Field label="Tarea para realizar" htmlFor={`${idPrefix}-desc`} hint="Esta tarea aparecerá como pendiente cuando registres la próxima clase del alumno.">
         <TextArea id={`${idPrefix}-desc`} rows={3} placeholder="Ej. Ejercicios de present perfect, unidad 5" aria-label={`Tarea para realizar${ariaSuffix}`} value={description} onChange={(e) => onDescriptionChange(e.target.value)} />
       </Field>
@@ -274,7 +272,7 @@ export function PersonalizedHomework({ studentName, studentId, form, onChange }:
       {expanded && (
         <>
           <p className="text-[13px] text-textMuted">Reemplaza la tarea común sólo para {studentName}.</p>
-          <HomeworkFields idPrefix={id} studentId={studentId} ariaSuffix={` de ${studentName}`} description={form.homeworkDescription} dueDate={form.homeworkDueDate} onDescriptionChange={(homeworkDescription) => onChange({ homeworkDescription })} onDueDateChange={(homeworkDueDate) => onChange({ homeworkDueDate })} />
+          <HomeworkFields idPrefix={id} ariaSuffix={` de ${studentName}`} description={form.homeworkDescription} dueDate={form.homeworkDueDate} onDescriptionChange={(homeworkDescription) => onChange({ homeworkDescription })} onDueDateChange={(homeworkDueDate) => onChange({ homeworkDueDate })} />
         </>
       )}
     </div>

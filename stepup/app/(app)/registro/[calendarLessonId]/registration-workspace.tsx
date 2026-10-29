@@ -42,7 +42,6 @@ import type { RegistrationPaymentPrompt } from "@/lib/payments/registration-paym
 import { AttendanceChoice, EvaluationFields, HomeworkFields, PendingHomeworkReview, PersonalizedHomework, participantDraftKey, type ParticipantForm, type ParticipantFormPatch } from "@/components/registro/registration-form-parts";
 import { DraftsProvider, applyPendingToList, applyPendingToTopics, useDraftsStore } from "@/components/registro/draft-items";
 import { useRegistrationGuard } from "@/lib/lessons/use-registration-guard";
-import { HomeworkScheduleContext } from "@/components/registro/homework-schedule";
 
 import { CONTENT_DRAFT_KEYS } from "@/components/registro/pedagogical-content-editor";
 import { flushPendingCaptions } from "@/components/registro/lesson-files-editor";
@@ -566,7 +565,6 @@ export function RegistrationWorkspace({
   const savedAttendanceNote = !isGroup && singleForm.attendanceStatus && singleForm.attendanceStatus !== "presente" ? ATTENDANCE_STATUS_LABEL[singleForm.attendanceStatus] : null;
 
   return (
-    <HomeworkScheduleContext.Provider value={{studentIds:participants.map(p=>p.studentId),after:scheduledStartAt}}>
     <DraftsProvider value={draftsStore.api}>
     {paymentPrompts && <ClassPaymentPrompt items={paymentPrompts} classLabel={classLabel} registrationId={registration.id} onFinished={() => router.push(afterPromptHref)} />}
     <div className="flex flex-col gap-4">
@@ -759,6 +757,6 @@ export function RegistrationWorkspace({
         )}
       </div>
     </div>
-    </DraftsProvider></HomeworkScheduleContext.Provider>
+    </DraftsProvider>
   );
 }
