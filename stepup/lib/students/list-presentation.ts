@@ -4,6 +4,7 @@ import { formatInstantDayShort, formatInstantTime } from "../format/date-format.
 import { localDateKeyInTimeZone } from "../payments/dates.ts";
 import type { StudentStatus } from "../db/database.types.ts";
 import type { StudentStatusProjection } from "./list-status.ts";
+import { isNewStudent } from "./new-student.ts";
 
 export type StatusTone = "ok" | "info" | "warn" | "bad" | "neutral";
 export type StatusIcon = "check" | "clock" | "alert" | "warning" | "cross" | "none";
@@ -70,11 +71,12 @@ export interface StudentBadgeView {
  * Insignias de la tarjeta, en el orden del original: estado (si no es activo), destacado, nuevo, pago vencido (con el texto específico de la deuda, p. ej. «Julio vencido»), tarea pendiente.
  * «Reporte pendiente» no se muestra: en el original ningún flujo real lo activa (siempre `false`).
  */
-export function studentBadges(input: { status: StudentStatus; isFeatured: boolean; isNew: boolean; payment: StudentStatusProjection; hasPendingHomework: boolean }): StudentBadgeView[] {
+export function studentBadges(input: { status: StudentStatus; isFeatured: boolean; dateJoined: string | null; now?: Date; payment: StudentStatusProjection; hasPendingHomework: boolean }): StudentBadgeView[] {
   const badges: StudentBadgeView[] = [];
   if (input.status !== "activo") badges.push({ kind: input.status, label: input.status === "pausado" ? "Pausado" : input.status === "inactivo" ? "Inactivo" : "Archivado" });
   if (input.isFeatured) badges.push({ kind: "destacado", label: "Destacado" });
-  if (input.isNew) badges.push({ kind: "nuevo", label: "Nuevo" });
+  // «Nuevo» se deriva de la fecha de alta y vence solo (`new-student.ts`); la marca `is_new` guardada ya no se consulta.
+  if (isNewStudent(input.dateJoined, input.now)) badges.push({ kind: "nuevo", label: "Nuevo" });
   if (input.payment.hasOverduePayment) badges.push({ kind: "pago_vencido", label: input.payment.overdueDebtLabel ?? "Pago vencido" });
   if (input.hasPendingHomework) badges.push({ kind: "tarea_pendiente", label: "Tarea pendiente" });
   return badges;

@@ -138,11 +138,13 @@ test("parámetros de la URL: lo desconocido vuelve al valor por defecto (nunca r
 });
 
 test("insignias, próxima clase y promedio se presentan con texto (nunca sólo color) y en el orden del original", () => {
-  const status = project([student("x", { isFeatured: true, isNew: true, status: "pausado" })], [charge("c", "x", "2026-09", 1000, "2026-09-10")], [], []).get("x")!;
-  const badges = studentBadges({ status: "pausado", isFeatured: true, isNew: true, payment: { ...status, hasOverduePayment: true, overdueDebtLabel: "Septiembre vencido" }, hasPendingHomework: true });
+  const alta = new Date("2026-10-28T15:00:00Z"); // 12:00 en Buenos Aires; alta de ayer → «Nuevo»
+  const status = project([student("x", { isFeatured: true, isNew: false, status: "pausado" })], [charge("c", "x", "2026-09", 1000, "2026-09-10")], [], []).get("x")!;
+  const badges = studentBadges({ status: "pausado", isFeatured: true, dateJoined: "2026-10-27", now: alta, payment: { ...status, hasOverduePayment: true, overdueDebtLabel: "Septiembre vencido" }, hasPendingHomework: true });
   assert.deepEqual(badges.map((b) => b.kind), ["pausado", "destacado", "nuevo", "pago_vencido", "tarea_pendiente"]);
   assert.equal(badges[3].label, "Septiembre vencido");
-  assert.equal(studentBadges({ status: "activo", isFeatured: false, isNew: false, payment: { ...status, hasOverduePayment: false }, hasPendingHomework: false }).length, 0);
+  assert.equal(studentBadges({ status: "activo", isFeatured: false, dateJoined: "2026-01-01", now: alta, payment: { ...status, hasOverduePayment: false }, hasPendingHomework: false }).length, 0);
+  assert.equal(studentBadges({ status: "activo", isFeatured: false, dateJoined: "2026-01-01", now: alta, payment: { ...status, hasOverduePayment: false }, hasPendingHomework: false }).some((b) => b.kind === "nuevo"), false, "un alumno antiguo aunque tenga la marca guardada en «verdadero»");
 
   const now = new Date("2026-10-28T15:00:00Z"); // 12:00 en Buenos Aires
   assert.equal(nextClassLabel(null, null, now), "Sin próxima clase programada");

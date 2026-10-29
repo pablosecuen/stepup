@@ -33,7 +33,7 @@ export function PaymentStatusChip({ row }: { row: StudentListRow }) {
 
 /** Insignias de la fila: estado del alumno, destacado, nuevo, pago vencido (con el período) y tarea pendiente. */
 export function StudentBadges({ row }: { row: StudentListRow }) {
-  const badges = studentBadges({ status: row.student.status, isFeatured: row.student.isFeatured, isNew: row.student.isNew, payment: row.payment, hasPendingHomework: row.aggregates.hasPendingHomework });
+  const badges = studentBadges({ status: row.student.status, isFeatured: row.student.isFeatured, dateJoined: row.student.dateJoined, payment: row.payment, hasPendingHomework: row.aggregates.hasPendingHomework });
   if (badges.length === 0) return null;
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label="Avisos del alumno">

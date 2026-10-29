@@ -5,6 +5,7 @@ import type { StudentBillingPlan as EnginePlan } from "../payments/engine/featur
 import { resolveStudentBillingPlan, type StudentBillingPlan } from "../payments/billing-plan.ts";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord } from "../repositories/payments-mapping.ts";
 import type { StudentRecord } from "../repositories/students-mapping.ts";
+import { isNewStudentOn } from "./new-student.ts";
 
 /** Registros de la base → estado que entiende el motor de pagos del original (misma forma que sus pruebas; sin ajustes porque los recargos están desactivados). */
 export function toEnginePaymentsState(input: { charges: readonly PaymentChargeRecord[]; payments: readonly PaymentRecord[]; allocations: readonly PaymentAllocationRecord[] }): PaymentsRepositoryState {
@@ -77,7 +78,7 @@ export function projectStudentStatuses(input: { students: readonly StudentRecord
     classesThisMonth: 0,
     lastPaymentAt: null,
     isFeatured: student.isFeatured,
-    isNew: student.isNew,
+    isNew: isNewStudentOn(student.dateJoined, input.todayDateKey),
     hasOverduePayment: false,
     hasPendingReport: false,
     hasPendingHomework: false,
