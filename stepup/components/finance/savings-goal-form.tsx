@@ -92,7 +92,7 @@ export function SavingsGoalForm({ goal, cumulativeRealTheoreticalSavings, progre
         (progress.complete ? (
           <div className="flex flex-col gap-2 border-t-[1.5px] border-border pt-3.5">
             <div role="progressbar" aria-label="Progreso del objetivo de ahorro" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.progressPercent} className="h-2.5 w-full overflow-hidden rounded-pill bg-paperDeep">
-              <div className="h-full rounded-pill bg-pastelSageText" style={{ width: `${progress.progressPercent}%` }} />
+              <div className="h-full rounded-pill bg-budgetSavings" style={{ width: `${progress.progressPercent}%` }} />
             </div>
             <p className="text-[14.5px] text-textPrimary tf-num">
               <strong>{progress.progressPercent} % del objetivo</strong> — {formatMoney(cumulativeRealTheoreticalSavings)} de {formatMoney(goal.targetAmount ?? 0)} (ahorro teórico)

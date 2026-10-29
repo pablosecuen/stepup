@@ -83,6 +83,12 @@ const config: Config = {
         pastelLavenderText: "#625571",
         pastelSage: "#DDEDDC",
         pastelSageText: "#59602F",
+        // Colores de las TRES categorías del plan 50/30/20 en los gráficos financieros (dona, barras apiladas, leyendas, indicadores): azul, violeta y verde bien
+        // distintos entre sí y siempre los mismos (29/10/2026). Sólo se usan como relleno/trazo/muestra (3:1), nunca como color de texto. Exclusivos de esas
+        // categorías: los estados «Real / Mes en curso / Estimado» se distinguen por trama y borde, nunca con otro color parecido a estos.
+        budgetNeeds: "#2563EB",
+        budgetWants: "#9333EA",
+        budgetSavings: "#008568",
       },
       fontFamily: {
         // Variables definidas por `next/font` en app/layout.tsx.

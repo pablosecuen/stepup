@@ -516,7 +516,7 @@ export function ScreenCobros() {
 
 /** Dona del plan 50/30/20 (mismas proporciones y colores de datos que la pantalla real). */
 export function BudgetDonut({ total, size = 132 }: { total: number; size?: number }) {
-  const strokes = ["stroke-dataNeeds", "stroke-pastelLavenderText", "stroke-pastelSageText"];
+  const strokes = ["stroke-budgetNeeds", "stroke-budgetWants", "stroke-budgetSavings"];
   const offsets = DEMO_BUDGET.map((_, index) => 25 - DEMO_BUDGET.slice(0, index).reduce((sum, item) => sum + item.percent, 0));
   return (
     <div className="shrink-0">
@@ -541,7 +541,7 @@ export function BudgetDonut({ total, size = 132 }: { total: number; size?: numbe
 }
 
 export function BudgetLegend({ total }: { total: number }) {
-  const swatches = ["bg-dataNeeds", "bg-pastelLavenderText", "bg-pastelSageText"];
+  const swatches = ["bg-budgetNeeds", "bg-budgetWants", "bg-budgetSavings"];
   return (
     <ul className="min-w-[210px] flex-1 space-y-1.5 text-[13px]">
       {DEMO_BUDGET.map((item, index) => (

@@ -174,14 +174,14 @@ test("vacíos con acción: el estado vacío admite UNA acción y todas las accio
       "components/students/profile/clases-tab.tsx → /registro",
       "components/students/profile/progreso-tab.tsx → /registro",
       "components/students/profile/resumen-tab.tsx → /registro",
-      "components/students/students-list-view.tsx → /alumnos",
       "components/students/students-list-view.tsx → /alumnos/nuevo",
     ],
   );
   for (const [file, href] of used) assert.ok(routeExists(href), `${file}: ${href} existe`);
 
   const alumnos = code("components/students/students-list-view.tsx");
-  assert.match(alumnos, /hasAnyStudentEver \? \{ label: "Limpiar filtros", href: "\/alumnos" \} : \{ label: "Agregar alumno", href: "\/alumnos\/nuevo" \}/, "con filtros: limpiar; sin alumnos: agregar");
+  // Sin alumnos: agregar. Con una búsqueda: borrar SÓLO la búsqueda (los demás filtros se conservan). Con filtros sin búsqueda: limpiarlos.
+  assert.match(alumnos, /!hasAnyStudentEver\s*\? \{ label: "Agregar alumno", href: "\/alumnos\/nuevo" \}\s*: search\s*\? \{ label: "Borrar búsqueda", href: buildStudentsListHref\(\{ status, level, modality, pago: paymentStatus, orden: sortBy \}\) \}\s*: \{ label: "Limpiar filtros", href: "\/alumnos" \}/);
 });
 
 test("los vacíos que son un buen estado (nada pendiente) no inventan acciones", () => {

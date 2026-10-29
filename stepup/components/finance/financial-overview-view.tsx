@@ -181,8 +181,10 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         </div>
       </section>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 nav:grid-cols-2">
-        <section aria-labelledby="hora-titulo" className={CARD}>
+      {/* Dos columnas independientes en escritorio (cada tarjeta mide lo que necesita su contenido: ninguna se estira a la altura de la columna vecina ni deja un hueco debajo); en pantallas menores, una sola columna en el mismo orden de lectura. */}
+      <div className="mt-5 flex flex-col gap-5 min-[1100px]:grid min-[1100px]:grid-cols-2 min-[1100px]:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
+          <section aria-labelledby="hora-titulo" className={CARD}>
           <h2 id="hora-titulo" className="font-display text-card font-semibold">
             Valor programado de tu hora
           </h2>
@@ -207,7 +209,34 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           )}
         </section>
 
-        <section aria-labelledby="demanda-titulo" className={CARD}>
+          <section aria-labelledby="anual-titulo" className={CARD}>
+        <h2 id="anual-titulo" className="font-display text-card font-semibold">
+          Resumen anual {data.year}
+        </h2>
+        <div className="mt-4 grid max-w-[650px] grid-cols-3 gap-2 nav:gap-3">
+          <Stat label="Horas dictadas" value={formatWholeHours(data.annualActivity.heldHours)} />
+          <Stat label="Horas reprogramadas" value={formatWholeHours(data.annualActivity.rescheduledHours)} />
+          <Stat label="Horas canceladas" value={formatWholeHours(data.annualActivity.cancelledHours)} />
+        </div>
+        <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Modalidad más utilizada</h3>
+        {data.modality.breakdown.every((entry) => entry.hours <= 0) ? (
+          <p className="mt-2 text-[15px] text-textMuted">{data.annualActivity.heldHours > 0 ? "No hay detalle de modalidad disponible para estas clases." : "Todavía no hay clases dictadas este año."}</p>
+        ) : (
+          <div className="mt-2 grid grid-cols-1 gap-3">
+            {data.modality.breakdown.map((entry) => (
+              <ShareRow
+                key={entry.modality}
+                label={`${MODALITY_LABEL[entry.modality]}${data.modality.mostUsed.includes(entry.modality) ? " · Más utilizada" : ""}`}
+                value={`${formatPercent(Math.round(entry.percent))} · ${formatWholeHours(entry.hours)} · ${formatCount(entry.lessonCount)} clase(s)`}
+                percent={entry.percent}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+        </div>
+        <div className="flex min-w-0 flex-col gap-5">
+          <section aria-labelledby="demanda-titulo" className={CARD}>
           <h2 id="demanda-titulo" className="font-display text-card font-semibold">
             Demanda semanal y horaria
           </h2>
@@ -237,36 +266,8 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
             </>
           )}
         </section>
-      </div>
 
-      <div className="mt-5 grid items-start gap-5 min-[1100px]:grid-cols-2">
-      <section aria-labelledby="anual-titulo" className={CARD}>
-        <h2 id="anual-titulo" className="font-display text-card font-semibold">
-          Resumen anual {data.year}
-        </h2>
-        <div className="mt-4 grid max-w-[650px] grid-cols-3 gap-2 nav:gap-3">
-          <Stat label="Horas dictadas" value={formatWholeHours(data.annualActivity.heldHours)} />
-          <Stat label="Horas reprogramadas" value={formatWholeHours(data.annualActivity.rescheduledHours)} />
-          <Stat label="Horas canceladas" value={formatWholeHours(data.annualActivity.cancelledHours)} />
-        </div>
-        <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Modalidad más utilizada</h3>
-        {data.modality.breakdown.every((entry) => entry.hours <= 0) ? (
-          <p className="mt-2 text-[15px] text-textMuted">{data.annualActivity.heldHours > 0 ? "No hay detalle de modalidad disponible para estas clases." : "Todavía no hay clases dictadas este año."}</p>
-        ) : (
-          <div className="mt-2 grid grid-cols-1 gap-3">
-            {data.modality.breakdown.map((entry) => (
-              <ShareRow
-                key={entry.modality}
-                label={`${MODALITY_LABEL[entry.modality]}${data.modality.mostUsed.includes(entry.modality) ? " · Más utilizada" : ""}`}
-                value={`${formatPercent(Math.round(entry.percent))} · ${formatWholeHours(entry.hours)} · ${formatCount(entry.lessonCount)} clase(s)`}
-                percent={entry.percent}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="alumnos-titulo" className={CARD}>
+          <section aria-labelledby="alumnos-titulo" className={CARD}>
         <h2 id="alumnos-titulo" className="font-display text-card font-semibold">
           Alumnos del año — {data.studentYear.year}
         </h2>
@@ -295,6 +296,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           {data.newStudentsPerMonth.previousYearTotal === null ? "Sin comparación disponible con el año anterior." : `Año anterior: ${data.newStudentsPerMonth.previousYearTotal} alumno(s) nuevo(s).`}
         </p>
       </section>
+        </div>
       </div>
     </div>
   );

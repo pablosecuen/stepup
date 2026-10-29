@@ -14,37 +14,73 @@ const STATUS_LABEL: Record<MonthBudgetStatus, string> = { real: "Dato real", cur
 
 const CARD = "rounded-lg border-[1.5px] border-border bg-surface p-4 shadow-card nav:p-5";
 
-/** Columnas apiladas Necesidades / Gustos / Ahorro por mes. Las proyectadas van más claras y con borde punteado: el estado nunca se comunica sólo con el color (también figura en la tabla de abajo). */
+type BudgetPartKey = "needs" | "wants" | "savings";
+
+/** Relleno sólido, trama del mismo color y muestra de cada categoría: el MISMO azul / violeta / verde en barras, leyenda, dona e indicadores (sin opacidad: el color es el de la leyenda). */
+const PART_STYLE: Record<BudgetPartKey, { solid: string; hatch: string; pattern: string; swatch: string }> = {
+  needs: { solid: "fill-budgetNeeds", hatch: "fill-budgetNeeds", pattern: "budget-hatch-needs", swatch: "bg-budgetNeeds" },
+  wants: { solid: "fill-budgetWants", hatch: "fill-budgetWants", pattern: "budget-hatch-wants", swatch: "bg-budgetWants" },
+  savings: { solid: "fill-budgetSavings", hatch: "fill-budgetSavings", pattern: "budget-hatch-savings", swatch: "bg-budgetSavings" },
+};
+
+/**
+ * Columnas apiladas Necesidades / Gustos / Ahorro por mes. El color es la categoría; el ESTADO del mes se distingue con un tratamiento aparte, nunca aclarando el color:
+ * «Real» = relleno sólido; «Mes en curso» = relleno sólido con un borde grueso de tinta alrededor de la columna; «Estimado» = trama diagonal del color de cada categoría con borde punteado.
+ * El estado también va en texto: la leyenda, el resumen para lectores de pantalla y la tabla de abajo.
+ */
 function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   const WIDTH = 600;
   const HEIGHT = 130;
   const PAD = { top: 8, bottom: 22, left: 4, right: 4 };
   const slot = (WIDTH - PAD.left - PAD.right) / 12;
-  const barWidth = slot * 0.4;
+  const barWidth = slot * 0.52;
   const max = Math.max(1, ...plan.months.map((month) => month.totalForDistribution));
   const scale = (HEIGHT - PAD.top - PAD.bottom) / max;
   const summary = plan.months.map((month) => `${MONTH_LONG[Number(month.billingPeriod.slice(5, 7)) - 1]}: ${STATUS_LABEL[month.status].toLowerCase()}, ${formatMoney(month.totalForDistribution)}`).join("; ");
   return (
     <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Distribución anual ${year}. ${summary}`} className="tf-chart-enter h-auto w-full max-w-[600px]">
+      <defs>
+        {(Object.keys(PART_STYLE) as BudgetPartKey[]).map((key) => (
+          <pattern key={key} id={PART_STYLE[key].pattern} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width={6} height={6} className="fill-surface" />
+            <rect width={3.2} height={6} className={PART_STYLE[key].hatch} />
+          </pattern>
+        ))}
+      </defs>
       <line x1={PAD.left} x2={WIDTH - PAD.right} y1={HEIGHT - PAD.bottom} y2={HEIGHT - PAD.bottom} className="stroke-borderMid" strokeWidth={1} />
       {plan.months.map((month, index) => {
         const x = PAD.left + index * slot + (slot - barWidth) / 2;
-        const parts: { key: "needs" | "wants" | "savings"; value: number; className: string }[] = [
-          { key: "needs", value: month.needs, className: "fill-dataNeeds" },
-          { key: "wants", value: month.wants, className: "fill-pastelLavenderText" },
-          { key: "savings", value: month.savings, className: "fill-pastelSageText" },
+        const parts: { key: BudgetPartKey; value: number }[] = [
+          { key: "needs", value: month.needs },
+          { key: "wants", value: month.wants },
+          { key: "savings", value: month.savings },
         ];
-        let y = HEIGHT - PAD.bottom;
-        const projected = month.status !== "real";
+        const baseline = HEIGHT - PAD.bottom;
+        let y = baseline;
+        const estimated = month.status === "projected";
+        const current = month.status === "current_month";
         return (
-          <g key={month.billingPeriod} opacity={projected ? 0.5 : 1}>
+          <g key={month.billingPeriod}>
             {parts.map((part) => {
               const height = part.value * scale;
               y -= height;
               if (height <= 0) return null;
-              return <rect key={part.key} x={x} y={y} width={barWidth} height={height} className={part.className} stroke={projected ? "currentColor" : "none"} strokeDasharray={projected ? "3 2" : undefined} strokeWidth={projected ? 1 : 0} />;
+              return <rect key={part.key} x={x} y={y} width={barWidth} height={height} className={estimated ? undefined : PART_STYLE[part.key].solid} fill={estimated ? `url(#${PART_STYLE[part.key].pattern})` : undefined} />;
             })}
-            <text x={x + barWidth / 2} y={HEIGHT - 6} textAnchor="middle" className="fill-textMuted" fontSize={11} fontWeight={650}>
+            {(current || estimated) && baseline - y > 0 && (
+              <rect
+                x={x - 1}
+                y={y - 1}
+                width={barWidth + 2}
+                height={baseline - y + 2}
+                rx={1.5}
+                fill="none"
+                className={current ? "stroke-ink" : "stroke-textSecondary"}
+                strokeWidth={current ? 2.2 : 1.2}
+                strokeDasharray={estimated ? "3 2" : undefined}
+              />
+            )}
+            <text x={x + barWidth / 2} y={HEIGHT - 6} textAnchor="middle" className={current ? "fill-ink" : "fill-textMuted"} fontSize={11} fontWeight={current ? 800 : 650}>
               {MONTH_SHORT[index]}
             </text>
           </g>
@@ -54,10 +90,17 @@ function AnnualChart({ plan, year }: { plan: AnnualBudgetPlan; year: string }) {
   );
 }
 
-function LegendItem({ swatch, label, dashed }: { swatch: string; label: string; dashed?: boolean }) {
+/** Muestra + texto de la leyenda. `kind` sólo se usa en los ESTADOS (Real / Mes en curso / Estimado): relleno liso, con borde grueso o en trama punteada — la muestra de cada estado es neutra para no parecerse a ninguna categoría. */
+function LegendItem({ swatch, label, kind = "solid" }: { swatch: string; label: string; kind?: "solid" | "current" | "hatched" }) {
+  const treatment =
+    kind === "current"
+      ? "outline outline-2 outline-offset-1 outline-ink"
+      : kind === "hatched"
+        ? "border border-dashed border-textSecondary [background-image:repeating-linear-gradient(135deg,theme(colors.textSecondary)_0_1.5px,transparent_1.5px_4px)]"
+        : "";
   return (
     <li className="flex items-center gap-1.5 text-[13.5px] text-textSecondary">
-      <span aria-hidden className={`h-3 w-3 rounded-[3px] ${swatch} ${dashed ? "border border-dashed border-textSecondary opacity-60" : ""}`} />
+      <span aria-hidden className={`h-3 w-3 shrink-0 rounded-[3px] ${swatch} ${treatment}`} />
       {label}
     </li>
   );
@@ -130,11 +173,12 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
       <div className="min-w-0">
         <AnnualChart plan={plan} year={year} />
         <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Leyenda">
-          <LegendItem swatch="bg-dataNeeds" label="Necesidades" />
-          <LegendItem swatch="bg-pastelLavenderText" label="Gustos" />
-          <LegendItem swatch="bg-pastelSageText" label="Ahorro" />
+          <LegendItem swatch={PART_STYLE.needs.swatch} label="Necesidades" />
+          <LegendItem swatch={PART_STYLE.wants.swatch} label="Gustos" />
+          <LegendItem swatch={PART_STYLE.savings.swatch} label="Ahorro" />
           <LegendItem swatch="bg-textSecondary" label="Real" />
-          <LegendItem swatch="bg-textSecondary" label="Estimado" dashed />
+          <LegendItem swatch="bg-textSecondary" label="Mes en curso" kind="current" />
+          <LegendItem swatch="bg-transparent" label="Estimado" kind="hatched" />
         </ul>
       </div>
       <dl className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[1100px]:grid-cols-1">

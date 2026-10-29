@@ -97,9 +97,9 @@ test("«Distribución sugerida»: sobre lo COBRADO del período, con aclaración
   assert.match(suggestion, /Todavía no hay dinero cobrado en este período, así que cada categoría muestra/, "cero cobrado: $ 0 y un estado claro");
   assert.match(suggestion, /formatMoney\(hasCollected \? collected : 0\)/, "nunca NaN");
   // colores: azul, violeta y verde; nada de rojo para categorías normales
-  assert.match(suggestion, /needs: \{[^}]*dataNeeds/);
-  assert.match(suggestion, /wants: \{[^}]*pastelLavenderText/);
-  assert.match(suggestion, /savings: \{[^}]*pastelSageText/);
+  assert.match(suggestion, /needs: \{[^}]*budgetNeeds/);
+  assert.match(suggestion, /wants: \{[^}]*budgetWants/);
+  assert.match(suggestion, /savings: \{[^}]*budgetSavings/);
   assert.doesNotMatch(suggestion, /bg-bad|text-bad|stroke-bad|accent|statusRojo/);
   assert.doesNotMatch(suggestion, /gastaste|ahorraste/i, "nunca presenta los importes como gastos o ahorro reales");
 });

@@ -9,10 +9,11 @@ import { splitCollectedByPercent, type BudgetCategory } from "@/lib/payments/bud
 import type { BudgetDistribution } from "@/lib/payments/budget-distribution";
 import { formatMoney } from "@/lib/format/number-format";
 
-const CATEGORY_UI: Record<BudgetCategory, { label: string; text: string; swatch: string; stroke: string }> = {
-  needs: { label: "Necesidades", text: "text-dataNeeds", swatch: "bg-dataNeeds", stroke: "stroke-dataNeeds" },
-  wants: { label: "Gustos", text: "text-pastelLavenderText", swatch: "bg-pastelLavenderText", stroke: "stroke-pastelLavenderText" },
-  savings: { label: "Ahorro", text: "text-pastelSageText", swatch: "bg-pastelSageText", stroke: "stroke-pastelSageText" },
+/** Un color por categoría, el mismo en dona, barra, leyenda e indicadores (y en las barras de «Proyección y ahorro»): azul, violeta y verde. Siempre sólidos, sin opacidad. */
+const CATEGORY_UI: Record<BudgetCategory, { label: string; swatch: string; stroke: string }> = {
+  needs: { label: "Necesidades", swatch: "bg-budgetNeeds", stroke: "stroke-budgetNeeds" },
+  wants: { label: "Gustos", swatch: "bg-budgetWants", stroke: "stroke-budgetWants" },
+  savings: { label: "Ahorro", swatch: "bg-budgetSavings", stroke: "stroke-budgetSavings" },
 };
 
 /** Dona de tres tramos (viewBox 36, circunferencia 100): cada tramo mide exactamente su porcentaje. */
@@ -90,7 +91,7 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
                   {CATEGORY_UI[share.category].label}
                 </dt>
                 <dd className="text-right font-bold tf-num text-textPrimary">
-                  <span className={CATEGORY_UI[share.category].text}>{share.percent} %</span>
+                  <span>{share.percent} %</span>
                   <span className="ml-2 font-[650] text-textSecondary [overflow-wrap:anywhere]">{formatMoney(share.amount)}</span>
                 </dd>
               </div>

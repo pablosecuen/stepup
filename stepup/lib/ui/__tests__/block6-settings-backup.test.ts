@@ -31,9 +31,9 @@ test("Configuración y Respaldo ya no usan el azul heredado ni el semáforo de c
     assert.doesNotMatch(source, /pastelLavender|pastelSage|dataNeeds/, `${file}: los colores del plan 50/30/20 ya no están en Configuración`);
   }
   const budget = code(BUDGET);
-  assert.match(budget, /bg-dataNeeds/);
-  assert.match(budget, /bg-pastelLavenderText/);
-  assert.match(budget, /bg-pastelSageText/);
+  assert.match(budget, /bg-budgetNeeds/);
+  assert.match(budget, /bg-budgetWants/);
+  assert.match(budget, /bg-budgetSavings/);
 });
 
 test("el azul heredado de interfaz se retiró: el token no existe y ninguna pantalla lo usa", () => {

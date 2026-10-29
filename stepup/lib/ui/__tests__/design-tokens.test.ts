@@ -107,11 +107,14 @@ test("los tokens reservados siguen siendo suyos: el semáforo de cobro y el plan
   // La distribución sugerida vive en Resumen financiero: la leyenda y la dona usan sus colores; los controles del diálogo son terracota.
   const budget = code("components/finance/budget-suggestion.tsx");
   const adjust = code("components/finance/budget-adjust-dialog.tsx");
-  assert.match(budget, /text-dataNeeds/);
-  assert.match(adjust, /text-dataNeeds/);
-  assert.match(adjust, /accent-accent/, "los controles son terracota (el color de dato queda en la cifra y la barra)");
-  assert.match(budget, /bg-dataNeeds/);
-  assert.match(budget, /stroke-dataNeeds/, "la dona usa el mismo azul");
+  // 29/10/2026: las tres categorías pasan a azul / violeta / verde propios (`budgetNeeds|Wants|Savings`), siempre como muestra, relleno o trazo (la cifra va en el color de texto normal).
+  assert.equal(colors.budgetNeeds, "#2563EB");
+  assert.equal(colors.budgetWants, "#9333EA");
+  assert.equal(colors.budgetSavings, "#008568");
+  assert.match(adjust, /swatch="bg-budgetNeeds"/);
+  assert.match(adjust, /accent-accent/, "los controles son terracota (el color de dato queda en la muestra y la barra)");
+  assert.match(budget, /bg-budgetNeeds/);
+  assert.match(budget, /stroke-budgetNeeds/, "la dona usa el mismo azul que la leyenda");
   assert.doesNotMatch(budget + adjust, /brandBlue/, "el plan 50/30/20 no depende del azul heredado");
   assert.doesNotMatch(budget + adjust, /statusVerde|statusRojo|statusAmarillo|statusNaranja|bg-bad|text-bad|bg-accent\b/, "ninguna categoría normal usa rojo, terracota ni el semáforo de cobro");
   // Los componentes nuevos no usan los tokens exclusivos del plan 50/30/20 ni el semáforo.

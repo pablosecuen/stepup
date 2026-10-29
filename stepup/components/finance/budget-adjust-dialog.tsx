@@ -10,12 +10,16 @@ import { Dialog } from "@/components/ui/dialog";
 
 const INITIAL_STATE: FormState = {};
 
-function Slider({ label, value, onChange, colorClass }: { label: string; value: number; onChange: (value: number) => void; colorClass: string }) {
+/** `swatch`: la muestra de color de la categoría (el mismo azul / violeta / verde de los gráficos); la cifra va en el color de texto normal, siempre legible. */
+function Slider({ label, value, onChange, swatch }: { label: string; value: number; onChange: (value: number) => void; swatch: string }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="flex items-center justify-between text-[14.5px] font-[650] text-textSecondary">
-        <span>{label}</span>
-        <span className={`font-bold tf-num ${colorClass}`}>{value} %</span>
+        <span className="flex items-center gap-2">
+          <span aria-hidden className={`h-3 w-3 shrink-0 rounded-sm ${swatch}`} />
+          {label}
+        </span>
+        <span className="font-bold tf-num text-textPrimary">{value} %</span>
       </span>
       <input type="range" min={0} max={100} step={1} value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-11 w-full accent-accent" />
     </label>
@@ -58,9 +62,9 @@ export function BudgetAdjustDialog({ initial, onClose, onSaved }: { initial: Bud
     >
       <p className="text-[14px] text-textMuted">Es una guía para organizar lo cobrado. No representa tus gastos ni tu ahorro real.</p>
       <form id={formId} action={formAction} className="flex flex-col gap-2.5">
-        <Slider label="Necesidades" value={draft.needs} onChange={(value) => setDraft(adjustNeeds(draft, value))} colorClass="text-dataNeeds" />
-        <Slider label="Gustos" value={draft.wants} onChange={(value) => setDraft(adjustWants(draft, value))} colorClass="text-pastelLavenderText" />
-        <Slider label="Ahorro" value={draft.savings} onChange={(value) => setDraft(adjustSavings(draft, value))} colorClass="text-pastelSageText" />
+        <Slider label="Necesidades" value={draft.needs} onChange={(value) => setDraft(adjustNeeds(draft, value))} swatch="bg-budgetNeeds" />
+        <Slider label="Gustos" value={draft.wants} onChange={(value) => setDraft(adjustWants(draft, value))} swatch="bg-budgetWants" />
+        <Slider label="Ahorro" value={draft.savings} onChange={(value) => setDraft(adjustSavings(draft, value))} swatch="bg-budgetSavings" />
         <p role="status" aria-live="polite" className="text-[14.5px] font-[650] text-textPrimary tf-num">
           Suma: {sum} %
         </p>
