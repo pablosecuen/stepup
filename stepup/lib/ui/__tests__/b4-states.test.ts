@@ -51,7 +51,7 @@ test("cada sección privada (salvo Inicio) tiene su loading.tsx con el esqueleto
     assert.ok(existsSync(join(ROOT, file)), `${file} existe`);
     const source = code(file);
     assert.match(source, /export default function Loading\(\)/);
-    assert.match(source, /<RouteSkeleton path="\/[^"]*" \/>/, "esqueleto de su pantalla, con nombre accesible «Cargando …» del registro de pantallas");
+    assert.match(source, /<(?:RouteSkeleton path|DestinationSkeleton fallbackPath)="\/[^"]*" \/>/, "esqueleto de su pantalla, con nombre accesible «Cargando …» del registro de pantallas");
     assert.doesNotMatch(source, /"use client"/);
   }
 });

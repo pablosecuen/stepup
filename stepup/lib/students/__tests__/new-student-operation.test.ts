@@ -53,7 +53,7 @@ test("el prefetch tampoco escribe: la página no tiene efectos y los enlaces a e
     if (file.startsWith("components/auth/") || file === "components/nav/private-link.tsx") continue;
     assert.doesNotMatch(read(file), /from "next\/link"/, `${file} no importa next/link directo`);
   }
-  assert.match(read("components/nav/private-link.tsx"), /prefetch=\{false\}/);
+  assert.match(read("components/nav/private-link.tsx"), /prefetch=\{profilePrefetchHref !== null && profilePrefetchHref === props\.href\}/);
 });
 
 test("ningún código de la aplicación vuelve a reclamar borradores en una carga", () => {

@@ -1,4 +1,5 @@
 import type { Viewport } from "next";
+import { ViewTransition } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { PrimaryNav } from "@/components/nav/primary-nav";
@@ -84,7 +85,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">
         <SignOutButton />
       </div>
-      <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0"><ScreenSlot />{children}</main>
+      <ViewTransition name="tf-route-content" default="none" update={{ default: "none", "tf-navigation": "tf-content-swap" }}>
+        <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0"><ScreenSlot />{children}</main>
+      </ViewTransition>
     </div>
   );
 }

@@ -106,10 +106,10 @@ test("logout: acción propia (botón → signOutAction existente vía guardNetwo
   assert.doesNotMatch(signOut, /confirm\(|Dialog|window\.confirm/, "como antes, cerrar sesión no pide confirmación (no destruye nada)");
 });
 
-test("ausencia de prefetch: ningún enlace del área privada puede precargar", () => {
+test("sin precarga masiva: sólo el destino señalado puede prepararse, con guardas de sesión", () => {
   const privateLink = read("components/nav/private-link.tsx");
-  assert.match(privateLink, /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{false\}\s*\/>/, "prefetch={false} va DESPUÉS del spread: no se puede reactivar");
-  assert.doesNotMatch(privateLink.slice(privateLink.lastIndexOf("prefetch={false}")), /\{\.\.\.[a-z]+\}/i, "ningún spread posterior a prefetch={false}");
+  assert.match(privateLink, /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{profilePrefetchHref !== null && profilePrefetchHref === props\.href\}\s*\/>/, "prefetch={false} va DESPUÉS del spread: no se puede reactivar");
+  assert.doesNotMatch(privateLink.slice(privateLink.lastIndexOf("prefetch=")), /\{\.\.\.[a-z]+\}/i, "ningún spread posterior a prefetch={false}");
   assert.match(privateLink, /shouldPrefetchOnIntent\(/, "la única precarga es la de intención (lista cerrada, 3 s, una por destino)");
   assert.match(privateLink, /event\.pointerType === "mouse"/);
   assert.match(privateLink, /:focus-visible/);

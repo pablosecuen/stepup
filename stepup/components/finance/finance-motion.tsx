@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 /** Animate only actual marks, once when visible; values, labels and final geometry never change. */
 export function FinanceMotion({ children, className, signature = "" }: { children: ReactNode; className?: string; signature?: string }) {
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const presented = useRef<string | null>(null);
+  const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
+  useLayoutEffect(() => {
     const element = root.current;
     if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = element.getBoundingClientRect();
+    const visible = rect.bottom > 0 && rect.top < window.innerHeight;
+    // HTML already painted before hydration must never jump from its final value back to zero.
+    if (!hydrated) { if (visible) presented.current = signature; return; }
+    if (presented.current === signature) return;
+    presented.current = signature;
     const animations: Animation[] = [];
     let observed = true;
     const run = () => {
@@ -25,10 +37,11 @@ export function FinanceMotion({ children, className, signature = "" }: { childre
         animations.push(arc.animate([{ strokeDasharray: "0 100" }, { strokeDasharray: target }], { duration: 700, delay: index * 40, easing: "cubic-bezier(.2,.75,.2,1)" }));
       });
     };
-    if (!("IntersectionObserver" in window)) { run(); return () => animations.forEach(animation => animation.cancel()); }
+    // For client navigation, start before the first paint; below the fold, start on entry.
+    if (visible || !("IntersectionObserver" in window)) { run(); return () => animations.forEach(animation => animation.cancel()); }
     const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { run(); observer.disconnect(); } }, { threshold: 0.12 });
     observer.observe(element);
     return () => { observed = false; observer.disconnect(); animations.forEach(animation => animation.cancel()); };
-  }, [signature]);
+  }, [signature, hydrated]);
   return <div ref={root} className={className}>{children}</div>;
 }

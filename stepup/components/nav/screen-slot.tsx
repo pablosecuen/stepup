@@ -1,10 +1,13 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { addTransitionType, startTransition, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { RouteSkeleton } from "@/components/nav/screen-skeleton";
 import { activePendingNavigation, getPendingNavigation, subscribePendingNavigation } from "@/lib/nav/pending-destination";
 import { isScreenChange, pathnameOf, resolveScreen } from "@/lib/nav/screens";
+import type { PendingNavigation } from "@/lib/nav/pending-destination";
+
+export const SKELETON_AFTER_MS = 100;
 
 /**
  * Esqueleto optimista del clic (29/10/2026): apenas se pulsa un enlace a OTRA pantalla se dibuja el esqueleto del destino dentro del
@@ -18,6 +21,15 @@ export function ScreenSlot() {
   const pathname = usePathname();
   const pending = useSyncExternalStore(subscribePendingNavigation, getPendingNavigation, () => null);
   const active = activePendingNavigation(pending, pathname);
-  if (!active || !isScreenChange(pathname, active.destination) || !resolveScreen(pathnameOf(active.destination))) return null;
+  const [visible, setVisible] = useState<PendingNavigation | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setTimeout(() => {
+      if (getPendingNavigation() === active) startTransition(() => { addTransitionType("tf-navigation"); setVisible(active); });
+    }, SKELETON_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [active]);
+  // Cached responses crossfade directly. Slow responses get the skeleton, with no minimum display time.
+  if (!active || visible !== active || !isScreenChange(pathname, active.destination) || !resolveScreen(pathnameOf(active.destination))) return null;
   return <RouteSkeleton path={pathnameOf(active.destination)} optimistic retryHref={active.destination} />;
 }

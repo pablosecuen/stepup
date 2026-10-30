@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { startTransition, ViewTransition, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { formatCivilMonthAbbrev, formatCivilMonthLongYear } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
 import type { MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
@@ -81,7 +81,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
   }
 
   return (
-    <FinanceMotion signature={`${presentation}:${series.map(point => `${point.month}:${point.amount}`).join("|")}`}>
+    <FinanceMotion signature={series.map(point => `${point.month}:${point.amount}`).join("|")}>
       <p className="text-[13.5px] text-textMuted">
         {caption}
         {peak && (
@@ -92,10 +92,12 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Presentación de los cobros por mes">
-        {(["bars", "pie"] as const).map(mode => <button key={mode} type="button" aria-pressed={presentation === mode} onClick={() => { setPresentation(mode); setTip(null); }} className={`inline-flex min-h-11 items-center rounded-pill border px-4 text-[13px] font-semibold transition-colors motion-reduce:transition-none ${presentation === mode ? "border-ink bg-ink text-surface" : "border-borderMid bg-surface text-textSecondary hover:bg-lavenderSoft"}`}>{mode === "bars" ? "Barras" : "Torta por meses"}</button>)}
+        {(["bars", "pie"] as const).map(mode => <button key={mode} type="button" aria-pressed={presentation === mode} onClick={() => { startTransition(() => setPresentation(mode)); setTip(null); }} className={`inline-flex min-h-11 items-center rounded-pill border px-4 text-[13px] font-semibold transition-colors motion-reduce:transition-none ${presentation === mode ? "border-ink bg-ink text-surface" : "border-borderMid bg-surface text-textSecondary hover:bg-lavenderSoft"}`}>{mode === "bars" ? "Barras" : "Torta por meses"}</button>)}
       </div>
 
-      <div hidden={presentation !== "bars"} role="group" aria-label="Cobrado por mes. Recorré los meses con las flechas." className="tf-chart-enter mt-3 overflow-x-auto pb-1">
+      <ViewTransition key={presentation} name="tf-collected-presentation" share="tf-chart-swap" enter="tf-chart-swap" default="none">
+      <div data-tf-chart-stage>
+      <div hidden={presentation !== "bars"} role="group" aria-label="Cobrado por mes. Recorré los meses con las flechas." className="mt-3 overflow-x-auto pb-1">
         <ul className="flex w-max items-end gap-1.5 border-b-[1.5px] border-borderMid" style={{ width: series.length > 6 ? `${series.length * 50 - 6}px` : undefined }}>
           {series.map((point, index) => {
             const height = point.amount > 0 && max > 0 ? Math.max(2, Math.round((point.amount / max) * 100)) : 0;
@@ -138,7 +140,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
         </ul>
       </div>
 
-      {presentation === "pie" && <div className="tf-chart-enter mt-5 grid max-w-[620px] grid-cols-1 items-start gap-5 min-[480px]:grid-cols-[160px_minmax(0,1fr)]">
+      {presentation === "pie" && <div className="mt-5 grid max-w-[620px] grid-cols-1 items-start gap-5 min-[480px]:grid-cols-[160px_minmax(0,1fr)]">
         <div className="w-40 shrink-0">
           <svg viewBox="0 0 36 36" role="img" aria-label={`Cobrado por mes: ${series.map(label).join("; ")}`} className="h-40 w-40">
             {model.segments.map((point,index) => point.percent > 0 ? <circle data-tf-finance-arc key={point.month} cx="18" cy="18" r="15.9155" fill="none" stroke={monthColor(point.month)} strokeWidth={activeIndex === index || point.isPeak ? 5.2 : 4.2} strokeDasharray={`${Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))} ${100-Math.max(0,point.percent - (point.percent < 100 ? .4 : 0))}`} strokeDashoffset={point.offset} /> : null)}
@@ -154,6 +156,8 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
         </ul>
       </div>}
 
+      </div>
+      </ViewTransition>
       <details className="mt-3 max-w-[620px] rounded-md border-[1.5px] border-border bg-surface2">
         <summary className="flex min-h-11 cursor-pointer items-center px-3.5 text-[14px] font-[650] text-textSecondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset">Ver datos en tabla</summary>
         <div className="overflow-x-auto px-3.5 pb-3">

@@ -91,15 +91,15 @@ test("cableado: un solo escucha en el documento (captura), se restablece al camb
   assert.doesNotMatch(css, /tf-nav-progress[^}]*infinite/);
 });
 
-test("la precarga sigue apagada y ninguna ruta de solo lectura comprobada es necesaria para eso: PrivateLink no admite `prefetch` y nada lo reactiva", () => {
+test("la precarga sólo se habilita por intención en PrivateLink y las demás pantallas no pueden reactivarla", () => {
   const link = code("components/nav/private-link.tsx");
   assert.match(link, /Omit<ComponentProps<typeof NextLink>, "prefetch">/);
-  assert.match(link, /prefetch=\{false\}/);
+  assert.match(link, /prefetch=\{profilePrefetchHref !== null && profilePrefetchHref === props\.href\}/);
   const offenders: string[] = [];
   for (const file of [...sources("app"), ...sources("components")]) {
     if (file === "components/nav/private-link.tsx") continue;
     // La precarga de las páginas públicas (login, crear cuenta…) vive en public-links; en el área privada no existe.
-    if (/\bprefetch=\{(?!false)/.test(code(file)) || /\bprefetch\b(?!=)/.test(code(file).replace(/prefetch=\{false\}/g, ""))) offenders.push(file);
+    if (/\bprefetch=\{(?!false)/.test(code(file)) || /\bprefetch\b(?!=)/.test(code(file).replace(/prefetch=\{profilePrefetchHref !== null && profilePrefetchHref === props\.href\}/g, ""))) offenders.push(file);
   }
   assert.deepEqual(offenders, []);
 });

@@ -143,9 +143,9 @@ test("la generación de cobros y el barrido de PDFs sólo se alcanzan desde Serv
   assert.match(read("components/students/profile/report-cleanup-trigger.tsx"), /useEffect\(/);
 });
 
-test("los enlaces del área privada nunca precargan (prefetch={false}) y las páginas públicas sólo apuntan a rutas públicas", () => {
+test("los enlaces privados limitan la precarga a intención y las páginas públicas sólo apuntan a rutas públicas", () => {
   // (sin comentarios: el texto `prefetch={false}` también aparece en la documentación del componente)
-  assert.match(stripComments(read("components/nav/private-link.tsx")), /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{false\}\s*\/>/);
+  assert.match(stripComments(read("components/nav/private-link.tsx")), /<NextLink\s+\{\.\.\.props\}[\s\S]*?prefetch=\{profilePrefetchHref !== null && profilePrefetchHref === props\.href\}\s*\/>/);
   // La única precarga permitida es la de INTENCIÓN (lib/nav/intent-prefetch.ts: lista cerrada, 3 s, una por destino) y vive sólo en PrivateLink.
   assert.match(stripComments(read("components/nav/private-link.tsx")), /shouldPrefetchOnIntent\(/);
   const publicLinks = [

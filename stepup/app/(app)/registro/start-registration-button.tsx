@@ -37,7 +37,7 @@ export function StartRegistrationButton({
       }
       const destination = `/registro/${result.data.calendarLessonId}`;
       startSharedName(snapshot, destination);
-      router.push(destination);
+      router.push(destination, { transitionTypes: ["tf-navigation"] });
     });
   }
 

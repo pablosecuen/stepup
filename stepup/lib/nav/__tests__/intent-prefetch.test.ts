@@ -4,11 +4,16 @@ import { INTENT_MIN_PAGE_AGE_MS, INTENT_PREFETCH_ROUTES, INTENT_REPEAT_AFTER_MS,
 
 const base = { href: "/alumnos" as unknown, pageAgeMs: 10_000, nowMs: 1_000_000, lastPrefetchAtMs: null as number | null };
 
-test("rutas: sólo secciones con esqueleto; nunca Inicio, rutas con identificadores ni destinos externos", () => {
+test("rutas: secciones y fichas elegidas por intención; nunca Inicio, edición ni destinos externos", () => {
   assert.equal(shouldPrefetchOnIntent(base), true);
   for (const href of ["/calendario", "/cobros", "/registro", "/recordatorios", "/resumen-financiero", "/configuracion", "/calendario/series", "/calendario/disponibilidad"]) assert.equal(shouldPrefetchOnIntent({ ...base, href }), true, href);
   for (const href of ["/inicio", "/alumnos/abc-123", "/alumnos/abc-123/editar", "/registro/9f8e", "/login", "/facturacion", "https://otro.com/alumnos", "//otro.com/alumnos", "alumnos", "", undefined, null, 42]) assert.equal(shouldPrefetchOnIntent({ ...base, href }), false, String(href));
   assert.ok(!INTENT_PREFETCH_ROUTES.has("/inicio"), "Inicio no tiene esqueleto: precargarlo ejecutaría la pantalla entera");
+  const href="/alumnos/15c792ac-d3e6-497f-85ca-9a3ca5a4f42a";
+  assert.equal(shouldPrefetchOnIntent({...base,href}),true);
+  assert.equal(shouldPrefetchOnIntent({...base,href:`/cobros${href}?tab=cobros`}),true);
+  assert.equal(shouldPrefetchOnIntent({...base,href,pageAgeMs:1}),false);
+  assert.equal(shouldPrefetchOnIntent({...base,href,saveData:true}),false);
 });
 
 test("la consulta y el ancla no cambian la decisión, y la barra final se ignora", () => {

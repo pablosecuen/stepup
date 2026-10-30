@@ -558,3 +558,28 @@ html:has(.tf-landing) {
     animation: tf-dialog-in 160ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 }
+
+/* The router owns one visual handoff. Skeletons, streamed content and shared names participate in that same commit. */
+::view-transition { pointer-events: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+[data-tf-shared-name] { view-transition-class: tf-shared-name; }
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(.tf-content-swap), ::view-transition-group(.tf-chart-swap) {
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(.2,.75,.2,1);
+  }
+  ::view-transition-old(.tf-content-swap), ::view-transition-old(.tf-chart-swap) {
+    animation: tf-fade-out 120ms ease-out both;
+  }
+  ::view-transition-new(.tf-content-swap), ::view-transition-new(.tf-chart-swap) {
+    animation: tf-fade-in 220ms ease-out both;
+  }
+  ::view-transition-group(.tf-shared-name) { animation-duration: 300ms; animation-timing-function: cubic-bezier(.22,.8,.2,1); }
+  :root:active-view-transition .tf-page-main > *,
+  :root:active-view-transition .tf-page-main > .tf-screen > *,
+  :root:active-view-transition .tf-block,
+  :root:active-view-transition .tf-enter { animation: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

@@ -94,7 +94,7 @@ test("cada loading.tsx identifica su sección (nombre accesible único, sin enca
   const sections = readdirSync(join(ROOT, "app/(app)")).filter((entry) => statSync(join(ROOT, "app/(app)", entry)).isDirectory() && existsSync(join(ROOT, "app/(app)", entry, "loading.tsx")));
   assert.ok(sections.length >= 8, sections.join(", "));
   // El nombre accesible sale del registro único de pantallas (`lib/nav/screens.ts`): único por pantalla y siempre «Cargando …».
-  for (const section of sections) assert.match(code(`app/(app)/${section}/loading.tsx`), /<RouteSkeleton path="\/[^"]*" \/>/, `${section}: loading sin esqueleto de pantalla`);
+  for (const section of sections) assert.match(code(`app/(app)/${section}/loading.tsx`), /<(?:RouteSkeleton path|DestinationSkeleton fallbackPath)="\/[^"]*" \/>/, `${section}: loading sin esqueleto de pantalla`);
   const labels = allScreenLabels();
   assert.equal(new Set(labels).size, labels.length, "etiqueta repetida");
   assert.ok(labels.every((label) => /^Cargando [^"]+…$/.test(label)), "toda etiqueta es «Cargando …»");

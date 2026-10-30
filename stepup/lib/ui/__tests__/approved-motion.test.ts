@@ -65,7 +65,8 @@ test("los movimientos no ocultan datos por defecto y respetan movimiento reducid
   assert.match(finance, /observer\.disconnect\(\)/);
   const shared = read("components/nav/shared-name-transition.tsx");
   assert.match(shared, /event\.ctrlKey \|\| event\.metaKey \|\| event\.shiftKey \|\| event\.altKey/);
-  assert.match(shared, /setTimeout\(restore, 450\)/);
-  assert.match(shared, /pointerEvents: "none"/);
+  assert.match(shared, /element\.style\.viewTransitionName = snapshot\.transitionName/);
+  assert.doesNotMatch(shared, /createElement|MutationObserver|target\.style\.opacity/, "el nombre no aparece tarde como una copia después de cargar");
+  assert.match(read("app/(app)/layout.tsx"), /<ViewTransition name="tf-route-content" default="none" update=\{\{ default: "none", "tf-navigation": "tf-content-swap" \}\}>/);
   assert.doesNotMatch(shared, /preventDefault\(|stopPropagation\(/, "no sustituye la navegación nativa");
 });

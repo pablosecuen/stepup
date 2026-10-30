@@ -24,7 +24,7 @@ export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
     <PrivateLink href={`/alumnos/${student.id}`} className="flex min-h-[72px] min-w-0 flex-1 items-start gap-3 rounded-lg px-3.5 py-3">
       <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="l" />
       <div className="min-w-0 flex-1">
-        <p data-tf-shared-name title={student.name} className="line-clamp-2 font-sans text-[16px] font-semibold leading-snug text-textPrimary">{student.name}</p>
+        <p data-tf-shared-name data-tf-shared-id={student.id} style={{ viewTransitionName: `tf-student-${student.id}` }} title={student.name} className="line-clamp-2 font-sans text-[16px] font-semibold leading-snug text-textPrimary">{student.name}</p>
         <p className="mt-0.5 text-[13px] text-textMuted [overflow-wrap:anywhere]">
           {student.levels.length > 0 ? `Nivel ${student.levels.join(", ")}` : "Sin nivel"} · {MODALITY_LABEL[student.modality]}
         </p>
@@ -84,7 +84,7 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
                 className="-my-1 flex min-h-11 items-center gap-3 rounded-md after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-[2.5px] focus-visible:after:-outline-offset-2 focus-visible:after:outline-ink group-hover:underline group-hover:decoration-borderMid group-hover:underline-offset-[3px]"
               >
                 <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="m" />
-                <span data-tf-shared-name title={student.name} className="line-clamp-2 max-w-[260px] font-[650] text-textPrimary">{student.name}</span>
+                <span data-tf-shared-name data-tf-shared-id={student.id} style={{ viewTransitionName: `tf-student-${student.id}` }} title={student.name} className="line-clamp-2 max-w-[260px] font-[650] text-textPrimary">{student.name}</span>
               </PrivateLink>
               <div className="mt-1 empty:hidden">
                 <StudentBadges row={row} />

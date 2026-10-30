@@ -61,12 +61,12 @@ export function StudentProfileView({ student, tab, children, fromPayments = fals
     <div className={PAGE_WIDTH.medium}>
       <StudentProfileHeader student={student} fromPayments={fromPayments} />
 
-      <div className="mt-6">
+      <div data-tf-static="" className="mt-6">
         <ProfileTabsNav studentId={student.id} active={tab} fromPayments={fromPayments} />
       </div>
 
       <ReplacementNotices studentId={student.id} />
-      <div className="mt-5">{children}</div>
+      <div data-tf-static="" className="mt-5">{children}</div>
     </div>
   );
 }
