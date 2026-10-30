@@ -1,6 +1,7 @@
 /**
  * Memoria de la pestaña «Por alumno» (sessionStorage, sólo de esta pestaña del navegador): al abrir un detalle o la edición de un plan se guarda la dirección de la lista
- * (con su búsqueda, filtro y orden) y el desplazamiento; al volver, la lista se dibuja igual y vuelve a ese punto. Sin almacenamiento, la lista simplemente empieza arriba.
+ * (con su búsqueda, filtro y orden), el desplazamiento y los alumnos con sus conceptos desplegados; al volver, la lista se dibuja igual y vuelve a ese punto. Sin almacenamiento,
+ * la lista simplemente empieza arriba y cerrada.
  */
 export const PER_STUDENT_MEMORY_KEY = "teacherflow:cobros-por-alumno";
 const MEMORY_MAX_AGE_MS = 30 * 60 * 1000;
@@ -10,6 +11,8 @@ export interface PerStudentMemory {
   href: string;
   y: number;
   studentId: string | null;
+  /** Alumnos cuyos conceptos estaban desplegados. */
+  expanded: string[];
   at: number;
 }
 
@@ -20,7 +23,8 @@ export function readPerStudentMemory(now: number = Date.now()): PerStudentMemory
     const parsed = JSON.parse(raw) as Partial<PerStudentMemory>;
     if (typeof parsed.href !== "string" || !LIST_HREF_PATTERN.test(parsed.href)) return null;
     if (typeof parsed.at !== "number" || now - parsed.at > MEMORY_MAX_AGE_MS) return null;
-    return { href: parsed.href, y: typeof parsed.y === "number" && parsed.y >= 0 ? parsed.y : 0, studentId: typeof parsed.studentId === "string" ? parsed.studentId : null, at: parsed.at };
+    const expanded = Array.isArray(parsed.expanded) ? parsed.expanded.filter((id): id is string => typeof id === "string").slice(0, 500) : [];
+    return { href: parsed.href, y: typeof parsed.y === "number" && parsed.y >= 0 ? parsed.y : 0, studentId: typeof parsed.studentId === "string" ? parsed.studentId : null, expanded, at: parsed.at };
   } catch {
     return null;
   }

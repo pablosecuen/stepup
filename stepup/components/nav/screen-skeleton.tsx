@@ -12,7 +12,7 @@ import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account
 import { CARD_TITLE_CLASS, FINANCIAL_PRESETS, Kpi, Stat, periodPillClass } from "@/components/finance/overview-parts";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
-import { PER_STUDENT_COLGROUP, PER_STUDENT_GROUP_CLASS, PER_STUDENT_HEAD_ROW_CLASS, PER_STUDENT_TABLE_CLASS, PER_STUDENT_TABLE_WRAP_CLASS, PER_STUDENT_TD_CLASS, PER_STUDENT_TH_CLASS, PER_STUDENT_TOOLBAR_CLASS } from "@/components/payments/per-student-layout";
+import { PER_STUDENT_AMOUNT_GRID_CLASS, PER_STUDENT_COLGROUP, PER_STUDENT_GROUP_CLASS, PER_STUDENT_HEAD_ROW_CLASS, PER_STUDENT_INDICATOR_CLASS, PER_STUDENT_ROW_CLASS, PER_STUDENT_TABLE_CLASS, PER_STUDENT_TABLE_WRAP_CLASS, PER_STUDENT_TD_CLASS, PER_STUDENT_TH_CLASS, PER_STUDENT_TOOLBAR_CLASS, PER_STUDENT_UNIT_CLASS } from "@/components/payments/per-student-layout";
 import { FINANCIAL_PERIOD_PRESET_LABEL } from "@/lib/reports/period";
 import { resolveScreen } from "@/lib/nav/screens";
 
@@ -424,7 +424,7 @@ function PorAlumnoBody({ title }: { title: string }) {
           </thead>
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((index) => (
             <tbody key={index} className={PER_STUDENT_GROUP_CLASS}>
-              <tr>
+              <tr className={PER_STUDENT_ROW_CLASS}>
                 <td className={PER_STUDENT_TD_CLASS}>
                   <div className="flex min-h-11 items-center">
                     <SkBar className="h-4 w-3/4" />
@@ -433,8 +433,16 @@ function PorAlumnoBody({ title }: { title: string }) {
                 <td className={`${PER_STUDENT_TD_CLASS} text-[13px] nav:text-[14px]`}>
                   <Ph text="00/00/0000" />
                 </td>
-                <td className={`${PER_STUDENT_TD_CLASS} text-right text-[13px] nav:text-[14px]`}>
-                  <Ph text="$ 00.000 / mes" />
+                <td className={PER_STUDENT_TD_CLASS}>
+                  <div className={PER_STUDENT_AMOUNT_GRID_CLASS}>
+                    <span className={PER_STUDENT_INDICATOR_CLASS} />
+                    <span className="text-right">
+                      <Ph text="$ 00.000" />
+                    </span>
+                    <span className={PER_STUDENT_UNIT_CLASS}>
+                      <Ph text="/ mes" />
+                    </span>
+                  </div>
                 </td>
                 <td className="p-0" />
               </tr>

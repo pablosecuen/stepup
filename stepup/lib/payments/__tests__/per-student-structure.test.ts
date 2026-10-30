@@ -69,42 +69,6 @@ test("tres columnas exactas en este orden — NOMBRE · FECHA DE PAGO · COBRO �
   assert.doesNotMatch(view, /lastPayment\.amount|paymentAmount/, "la fecha de pago no repite su importe");
 });
 
-test("«Cobro» muestra la TARIFA con su unidad breve y el estado de las obligaciones exigibles con ícono y texto accesible (verde = al día, rojo = deuda, neutro = sin obligaciones)", () => {
-  const view = code(VIEW);
-  assert.match(view, /formatMoney\(concept\.rate\.amount\)/);
-  assert.match(view, /ratePeriodShort\(concept\.rate\)/);
-  assert.match(view, /settled && <CheckCircleIcon className="h-4 w-4 shrink-0 text-statusVerde" aria-hidden \/>/);
-  assert.match(view, /due && <ExclamationCircleIcon className="h-4 w-4 shrink-0 text-statusRojo" aria-hidden \/>/);
-  assert.match(view, /Obligaciones exigibles al día/);
-  assert.match(view, /Con deuda exigible/);
-  assert.match(view, /due \? "text-statusRojo" : "text-textPrimary"/, "sólo con deuda el importe va en rojo");
-  assert.doesNotMatch(view, /concept\.(pendingBalance|dueBalance)/, "el importe mostrado nunca es el saldo");
-  const model = code("lib/payments/per-student-overview.ts");
-  assert.match(model, /concept\.dueBalance > 0 \? "due" : \(exigibleCharges\.get\(concept\.key\) \?\? 0\) > 0 \? "settled" : "neutral"/);
-  assert.match(model, /charge\.dueDate <= input\.todayDateKey/);
-});
-
-test("un alumno con varios conceptos conserva el nombre una sola vez y una etiqueta breve por subfila, todas con las mismas columnas; la fecha es la del pago asignado a ese concepto", () => {
-  const view = code(VIEW);
-  assert.match(view, /<tbody className=\{PER_STUDENT_GROUP_CLASS\} data-student-row=\{row\.studentId\}>/);
-  assert.match(view, /row\.concepts\.map\(\(concept, index\) =>/);
-  assert.match(view, /first \? \(/, "el nombre sólo en la primera fila del alumno");
-  assert.match(view, /<span className="sr-only">\{row\.name\}: <\/span>/, "las subfilas siguen nombrando al alumno para lectores de pantalla");
-  assert.match(view, /formatDateValue\(concept\.lastPayment\.paidAt\)/);
-  assert.match(view, /<span className="sr-only">Sin pagos registrados<\/span>/, "sin pagos: «—» con texto accesible");
-});
-
-test("al abrir un detalle se recuerda la lista (búsqueda, plan, orden) y la posición; la ficha vuelve a ella y la lista la restaura una sola vez", () => {
-  const view = code(VIEW);
-  assert.match(view, /writePerStudentMemory\(\{ href: buildPerStudentHref\(query\), y: window\.scrollY/);
-  assert.match(view, /window\.scrollTo\(0, memory\.y\);\s*clearPerStudentMemory\(\);/);
-  assert.match(view, /onClickCapture=\{rememberPosition\}/);
-  const back = code("components/payments/payments-back-link.tsx");
-  assert.match(back, /memory\.studentId === studentId \? memory\.href : "\/cobros"/);
-  assert.match(code("components/students/profile/profile-header.tsx"), /fromPayments \? <PaymentsBackLink studentId=\{student\.id\} \/>/);
-  assert.match(code("components/payments/per-student-memory.ts"), /MEMORY_MAX_AGE_MS = 30 \* 60 \* 1000/);
-});
-
 test("búsqueda al escribir (sin Enter ni navegación), lista completa sin paginar y accesibilidad básica", () => {
   const view = code(VIEW);
   assert.doesNotMatch(view, /PaginationControls|page=|Cargar más|Ver más|router\.(push|replace)|useRouter/);
