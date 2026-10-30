@@ -120,15 +120,15 @@ function StudentGroup({ row }: { row: PerStudentRow }) {
                     <PrivateLink
                       href={detailHref(row.studentId)}
                       data-per-student-link={row.studentId}
-                      className="line-clamp-2 flex min-h-11 items-center text-[13.5px] font-[650] leading-tight text-textPrimary [overflow-wrap:anywhere] hover:underline hover:decoration-borderMid hover:underline-offset-[3px] nav:text-[14.5px]"
+                      className="flex min-h-11 items-center text-[13.5px] font-[650] leading-tight text-textPrimary [overflow-wrap:anywhere] hover:underline hover:decoration-borderMid hover:underline-offset-[3px] nav:text-[14.5px]"
                     >
-                      {row.name}
+                      <span className="line-clamp-2">{row.name}</span>
                     </PrivateLink>
                     {tag && <p className="-mt-1.5 pb-1 text-[12px] leading-tight text-textMuted [overflow-wrap:anywhere]">{tag}</p>}
                   </div>
                 </div>
               ) : (
-                <p className="min-h-8 border-l-2 border-borderMid py-1 pl-2 text-[12px] leading-tight text-textMuted [overflow-wrap:anywhere] nav:ml-[38px] nav:pl-3">
+                <p className="flex min-h-8 items-center border-l-2 border-borderMid py-1 pl-1.5 text-[11.5px] leading-tight text-textMuted [overflow-wrap:anywhere] nav:ml-[38px] nav:pl-3 nav:text-[12px]">
                   <span className="sr-only">{row.name}: </span>
                   {tag}
                 </p>

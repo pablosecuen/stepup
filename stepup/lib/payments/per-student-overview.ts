@@ -346,7 +346,7 @@ export function ratePeriodLabel(rate: ConceptRate): string {
 }
 
 export const PLAN_FILTER_LABEL: Record<"todos" | PlanFilterKey, string> = {
-  todos: "Todos los planes",
+  todos: "Todos",
   per_class: "Por clase",
   weekly: "Semanal",
   biweekly: "Quincenal",
