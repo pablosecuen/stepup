@@ -411,7 +411,7 @@ function PorAlumnoBody({ title }: { title: string }) {
         </div>
         <ul className="flex flex-col gap-3 nav:gap-0">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
-            <li key={index} className={`${PER_STUDENT_ROW_CLASS} min-h-[212px] nav:min-h-[72px]`}>
+            <li key={index} className={`${PER_STUDENT_ROW_CLASS} min-h-[236px] nav:min-h-[83px]`}>
               <div className={PER_STUDENT_GRID_CLASS}>
                 <div className="col-span-2 flex min-w-0 items-center gap-3 nav:col-auto">
                   <SkRound className="h-10 w-10" />
