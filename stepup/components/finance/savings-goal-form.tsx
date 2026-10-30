@@ -50,11 +50,14 @@ export function SavingsGoalForm({ goal, cumulativeRealTheoreticalSavings, progre
   }
 
   return (
-    <form action={formAction} aria-labelledby={`${uid}-titulo`} className="mt-5 flex flex-col gap-3.5 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h3 id={`${uid}-titulo`} className="min-w-0 font-display text-[18px] font-semibold leading-tight">
-          Definir objetivo de ahorro
-        </h3>
+    <details className="mt-3 w-full max-w-3xl rounded-lg border-[1.5px] border-border bg-surface2">
+      <summary id={`${uid}-titulo`} className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-[14.5px] font-[650] text-textPrimary">
+        <span>Objetivo de ahorro</span>
+        <span className="text-[13px] font-normal text-textSecondary">{goal.enabled ? "Activo · Ver o editar" : "Opcional · Configurar"}</span>
+        <span aria-hidden="true" className="ml-auto">⌄</span>
+      </summary>
+    <form action={formAction} aria-labelledby={`${uid}-titulo`} className="flex flex-col gap-3 border-t border-border p-3 sm:p-4">
+      <div>
         <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-[14.5px] font-[650] text-textPrimary">
           <input type="checkbox" name="enabled" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="h-5 w-5 accent-ink" disabled={pending} />
           Activar objetivo de ahorro
@@ -111,5 +114,6 @@ export function SavingsGoalForm({ goal, cumulativeRealTheoreticalSavings, progre
           <p className="border-t-[1.5px] border-border pt-3.5 text-[14px] text-textMuted">Completá el monto y la fecha para ver el progreso.</p>
         ))}
     </form>
+    </details>
   );
 }
