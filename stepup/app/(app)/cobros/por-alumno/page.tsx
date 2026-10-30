@@ -25,10 +25,11 @@ export default async function PerStudentPage({ searchParams }: { searchParams: P
   let rows: PerStudentRow[];
   try {
     const ctx = await requireAuthenticatedDbContext();
+    const todayDateKey = localDateKeyInTimeZone(new Date());
     const [allStudents, charges, payments, allocations, agreements, excludedStudentIds] = await Promise.all([listStudents(ctx), listAllCharges(ctx), listAllPayments(ctx), listAllAllocations(ctx), listTrainingBillingAgreements(ctx), loadExcludedStudentIds(ctx)]);
     // Mismo criterio que la lista de Alumnos: los alumnos de prueba que la propia cuenta confirmó como excluidos (reversible) no figuran.
     const students = withoutExcludedStudents(allStudents, excludedStudentIds);
-    rows = buildPerStudentRows({ students, charges, payments, allocations, agreements, currentPeriod: localDateKeyInTimeZone(new Date()).slice(0, 7) });
+    rows = buildPerStudentRows({ students, charges, payments, allocations, agreements, currentPeriod: todayDateKey.slice(0, 7), todayDateKey });
   } catch {
     return <PerStudentErrorView />;
   }

@@ -49,6 +49,12 @@ export interface UnassignedPayment {
 
 export type ConceptKind = "plan" | "previous_plan" | "training";
 
+/**
+ * Estado de las obligaciones EXIGIBLES de un concepto (cobros no anulados cuyo vencimiento ya llegó): «due» si queda algo por pagar de ellas (un pago parcial sigue pendiente),
+ * «settled» si hay obligaciones exigibles y todas están saldadas, y «neutral» si no hay ninguna (sin cobros generados o sólo cobros futuros): nunca un «pagado» sin obligaciones.
+ */
+export type ObligationStatus = "settled" | "due" | "neutral";
+
 export interface PerStudentConcept {
   key: string;
   kind: ConceptKind;
@@ -65,13 +71,16 @@ export interface PerStudentConcept {
   lastPayment: ConceptPayment | null;
   pendingBalance: number;
   openCharges: number;
+  /** Cuánto falta de las obligaciones ya exigibles (no se muestra: sólo decide el estado). */
+  dueBalance: number;
+  obligation: ObligationStatus;
 }
 
 export interface PerStudentRow {
   studentId: string;
   name: string;
   concepts: PerStudentConcept[];
-  /** Último pago no anulado del alumno, sea cual fuere su concepto (ordena por fecha de pago). */
+  /** Fecha del último pago ASIGNADO a algún concepto del alumno (ordena por fecha de pago). */
   latestPaidAt: string | null;
   /** Pagos vigentes sin ninguna asignación a un cobro, del más reciente al más antiguo. */
   unassignedPayments: UnassignedPayment[];
@@ -86,6 +95,8 @@ export interface PerStudentInput {
   agreements: readonly TrainingBillingAgreementRecord[];
   /** «AAAA-MM» del mes actual (decide qué importe pendiente ya rige). */
   currentPeriod: string;
+  /** «AAAA-MM-DD» de hoy: una obligación es exigible si su vencimiento es de hoy o anterior. */
+  todayDateKey: string;
 }
 
 const PLAN_CHARGE_TYPE = { per_class: "por_clase", weekly: "semanal", biweekly: "quincenal", monthly: "mensual", class_package: "paquete" } as const;
@@ -192,7 +203,7 @@ export function buildPerStudentRows(input: PerStudentInput): PerStudentRow[] {
     const planConceptKey = plan.type === "complimentary" ? "plan:complimentary" : `plan:${PLAN_CHARGE_TYPE[plan.type]}`;
     const concepts = new Map<string, PerStudentConcept>();
     const { rate, upcoming } = planRate(plan, input.currentPeriod);
-    concepts.set(planConceptKey, { key: planConceptKey, kind: "plan", planKey, label: planLabel(plan), seriesName: null, rate, upcomingRate: upcoming, lastPayment: null, pendingBalance: 0, openCharges: 0 });
+    concepts.set(planConceptKey, { key: planConceptKey, kind: "plan", planKey, label: planLabel(plan), seriesName: null, rate, upcomingRate: upcoming, lastPayment: null, pendingBalance: 0, openCharges: 0, dueBalance: 0, obligation: "neutral" });
 
     const conceptOfCharge = new Map<string, string>();
     for (const charge of charges) {
@@ -205,25 +216,30 @@ export function buildPerStudentRows(input: PerStudentInput): PerStudentRow[] {
       }
       if (charge.chargeType === "entrenamiento") {
         const { rate: fee, upcoming: nextFee } = trainingRate(charge.trainingBillingAgreementId ? agreementsById.get(charge.trainingBillingAgreementId) : undefined, input.currentPeriod);
-        concepts.set(key, { key, kind: "training", planKey: "training", label: "Entrenamiento", seriesName: charge.trainingSeriesName, rate: fee, upcomingRate: nextFee, lastPayment: null, pendingBalance: 0, openCharges: 0 });
+        concepts.set(key, { key, kind: "training", planKey: "training", label: "Entrenamiento", seriesName: charge.trainingSeriesName, rate: fee, upcomingRate: nextFee, lastPayment: null, pendingBalance: 0, openCharges: 0, dueBalance: 0, obligation: "neutral" });
       } else {
         const previousKey = CHARGE_PLAN_KEY[charge.chargeType];
-        concepts.set(key, { key, kind: "previous_plan", planKey: null, label: `Plan anterior (${previousKey ? PLAN_NAME[previousKey] : charge.chargeType})`, seriesName: null, rate: null, upcomingRate: null, lastPayment: null, pendingBalance: 0, openCharges: 0 });
+        concepts.set(key, { key, kind: "previous_plan", planKey: null, label: `Plan anterior (${previousKey ? PLAN_NAME[previousKey] : charge.chargeType})`, seriesName: null, rate: null, upcomingRate: null, lastPayment: null, pendingBalance: 0, openCharges: 0, dueBalance: 0, obligation: "neutral" });
       }
     }
 
     // Saldo pendiente por concepto: lo que falta de cada cobro NO anulado.
     let pendingBalance = 0;
+    const exigibleCharges = new Map<string, number>();
     for (const charge of charges) {
       if (charge.voidedAt !== null) continue;
+      const exigible = charge.dueDate <= input.todayDateKey;
+      if (exigible) exigibleCharges.set(conceptOfCharge.get(charge.id) ?? "", (exigibleCharges.get(conceptOfCharge.get(charge.id) ?? "") ?? 0) + 1);
       const balance = Math.max(0, charge.originalAmount - (paidByCharge.get(charge.id) ?? 0));
       if (balance <= 0) continue;
       const concept = concepts.get(conceptOfCharge.get(charge.id) ?? "");
       if (!concept) continue;
       concept.pendingBalance += balance;
       concept.openCharges += 1;
+      if (exigible) concept.dueBalance += balance;
       pendingBalance += balance;
     }
+    for (const concept of concepts.values()) concept.obligation = concept.dueBalance > 0 ? "due" : (exigibleCharges.get(concept.key) ?? 0) > 0 ? "settled" : "neutral";
 
     // Último pago de cada concepto (sólo por asignaciones) y pagos sin asignación.
     const unassignedPayments: UnassignedPayment[] = [];
@@ -249,7 +265,7 @@ export function buildPerStudentRows(input: PerStudentInput): PerStudentRow[] {
     // Un plan anterior sólo se muestra si tiene algo que decir (un pago o un saldo): si no, sería ruido.
     const visible = [...concepts.values()].filter((concept) => concept.kind !== "previous_plan" || concept.lastPayment !== null || concept.pendingBalance > 0);
     const ordered = visible.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "plan" ? -1 : b.kind === "plan" ? 1 : a.kind === "training" ? -1 : 1));
-    rows.push({ studentId: student.id, name: student.name, concepts: ordered, latestPaidAt: payments[0]?.paidAt ?? null, unassignedPayments, pendingBalance });
+    rows.push({ studentId: student.id, name: student.name, concepts: ordered, latestPaidAt: ordered.reduce<string | null>((latest, concept) => (concept.lastPayment && (latest === null || concept.lastPayment.paidAt > latest) ? concept.lastPayment.paidAt : latest), null), unassignedPayments, pendingBalance });
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }) || (a.studentId < b.studentId ? -1 : 1));
 }
@@ -363,4 +379,29 @@ export function buildPerStudentHref(query: PerStudentQuery): string {
   if (query.sort !== "nombre") params.set("orden", query.sort);
   const search = params.toString();
   return search ? `/cobros/por-alumno?${search}` : "/cobros/por-alumno";
+}
+
+/** Unidad breve de la tarifa: «/ mes», «/ clase»… */
+export function ratePeriodShort(rate: ConceptRate): string {
+  return `/ ${rate.period}`;
+}
+
+/** Etiqueta breve de un concepto cuando el alumno tiene más de uno. Con dos acuerdos de entrenamiento se distingue por el nombre de la serie. */
+export function conceptShortLabel(concept: PerStudentConcept, trainingCount: number): string {
+  if (concept.kind === "training") return trainingCount > 1 && concept.seriesName ? `Entrenamiento · ${concept.seriesName}` : "Entrenamiento";
+  if (concept.kind === "previous_plan") return "Plan anterior";
+  switch (concept.planKey) {
+    case "per_class":
+      return "Clases";
+    case "weekly":
+      return "Semanal";
+    case "biweekly":
+      return "Quincenal";
+    case "monthly":
+      return "Mensual";
+    case "class_package":
+      return "Paquete";
+    default:
+      return "Sin cargo";
+  }
 }

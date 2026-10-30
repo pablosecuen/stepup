@@ -1,11 +1,14 @@
 /**
- * Disposición de «Cobros › Por alumno», compartida por la vista real y por su esqueleto de carga: columnas del escritorio (≥ 820 px: nombre · cobro · fecha de pago ·
- * saldo pendiente · acciones; debajo de 820 px cada alumno es una tarjeta compacta), la barra de búsqueda y filtros, y las clases de la tabla, su encabezado y cada fila.
+ * Disposición de «Cobros › Por alumno», compartida por la vista real y por su esqueleto de carga: UNA tabla de tres columnas (nombre · fecha de pago · cobro) más una pista
+ * angosta sin encabezado para el menú «⋯». Todas las filas comparten las mismas columnas (nunca se alinea cada fila por separado): el nombre a la izquierda, la fecha bajo su
+ * encabezado y el importe alineado a la derecha, también en móvil.
  */
-export const PER_STUDENT_COLUMNS = "nav:grid-cols-[minmax(0,1.2fr)_minmax(0,1.25fr)_minmax(0,1.35fr)_minmax(0,0.85fr)_auto]";
-export const PER_STUDENT_TOOLBAR_CLASS = "mt-5 flex flex-col gap-3 nav:flex-row nav:items-end";
-export const PER_STUDENT_TABLE_CLASS = "mt-4 nav:overflow-hidden nav:rounded-lg nav:border-[1.5px] nav:border-border nav:bg-surface nav:shadow-card";
-export const PER_STUDENT_HEADER_CLASS = `hidden border-b-[1.5px] border-border bg-surface2 px-5 py-2.5 text-label font-bold uppercase text-textMuted nav:grid nav:items-center nav:gap-x-4 ${PER_STUDENT_COLUMNS}`;
-export const PER_STUDENT_ROW_CLASS = "flex flex-col rounded-lg border-[1.5px] border-border bg-surface p-3.5 shadow-card nav:rounded-none nav:border-0 nav:border-b nav:px-5 nav:py-3 nav:shadow-none nav:last:border-b-0";
-export const PER_STUDENT_GRID_CLASS = `grid grid-cols-2 gap-x-3 gap-y-2.5 nav:items-start nav:gap-x-4 nav:gap-y-0 ${PER_STUDENT_COLUMNS}`;
-export const PER_STUDENT_SUBROWS_CLASS = "mt-2.5 flex flex-col gap-2.5 border-t-[1.5px] border-border pt-2.5 nav:mt-2 nav:pt-2";
+export const PER_STUDENT_TOOLBAR_CLASS = "mt-4 flex flex-col gap-2.5 nav:flex-row nav:items-end";
+export const PER_STUDENT_TABLE_WRAP_CLASS = "mt-3 overflow-hidden rounded-lg border-[1.5px] border-border bg-surface shadow-card";
+export const PER_STUDENT_TABLE_CLASS = "w-full table-fixed border-collapse text-left";
+/** Anchos de las columnas (móvil / escritorio): el nombre ocupa el resto. */
+export const PER_STUDENT_COLGROUP = ["", "w-[84px] nav:w-[150px]", "w-[112px] nav:w-[210px]", "w-10 nav:w-12"] as const;
+export const PER_STUDENT_HEAD_ROW_CLASS = "border-b-[1.5px] border-border bg-surface2";
+export const PER_STUDENT_TH_CLASS = "px-2 py-2 align-bottom text-[11px] font-bold uppercase leading-tight text-textMuted nav:px-5 nav:text-label";
+export const PER_STUDENT_GROUP_CLASS = "border-t-[1.5px] border-border first-of-type:border-t-0";
+export const PER_STUDENT_TD_CLASS = "px-2 py-0.5 align-middle nav:px-5";

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPerStudentHref, buildPerStudentRows, parsePerStudentQuery, queryPerStudentRows, ratePeriodLabel, rowSortRate, type PerStudentInput, type PerStudentRow } from "../per-student-overview.ts";
+import { buildPerStudentHref, buildPerStudentRows, conceptShortLabel, ratePeriodShort, parsePerStudentQuery, queryPerStudentRows, ratePeriodLabel, rowSortRate, type PerStudentInput, type PerStudentRow } from "../per-student-overview.ts";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord, TrainingBillingAgreementRecord } from "../../repositories/payments-mapping.ts";
 
 /** Cobros › Por alumno: tarifa vigente, último pago y saldo de cada alumno ACTIVO, sin mezclar conceptos. Lógica pura. */
@@ -19,7 +19,7 @@ const allocation = (p: PaymentRecord, c: PaymentChargeRecord, amount: number): P
 const agreement = (overrides: Partial<TrainingBillingAgreementRecord> = {}): TrainingBillingAgreementRecord => ({ id: id("ag"), monthlyFee: 60000, pendingMonthlyFee: null, pendingMonthlyFeeEffectiveFrom: null, startPeriod: "2026-09", ...overrides });
 
 function build(overrides: Partial<PerStudentInput>): PerStudentRow[] {
-  return buildPerStudentRows({ students: [], charges: [], payments: [], allocations: [], agreements: [], currentPeriod: "2026-10", ...overrides });
+  return buildPerStudentRows({ students: [], charges: [], payments: [], allocations: [], agreements: [], currentPeriod: "2026-10", todayDateKey: "2026-10-29", ...overrides });
 }
 
 test("incluye a TODOS los alumnos activos (también sin cargos ni pagos) y excluye pausados, inactivos y archivados", () => {
@@ -153,7 +153,7 @@ test("un pago sin asignación no se atribuye a ningún concepto: queda aparte, s
   assert.equal(row.concepts.length, 1);
   assert.equal(row.concepts[0].lastPayment, null, "ningún cobro de la mensualidad recibió ese pago");
   assert.deepEqual(row.unassignedPayments.map((item) => [item.paymentId, item.amount]), [[suelto.id, 25000]]);
-  assert.equal(row.latestPaidAt, "2026-10-15", "igual cuenta como el último pago registrado del alumno");
+  assert.equal(row.latestPaidAt, null, "sin asignación no es «el último pago» de ningún concepto: la tabla no lo muestra");
 });
 
 test("el pago declarado al dar de alta se marca como tal (no es un ingreso observado)", () => {
@@ -200,7 +200,9 @@ function sample(): PerStudentRow[] {
     student("Fede Luna", { billingPlan: { type: "weekly", amount: 25000, dueWeekday: 2 } }),
   ];
   const pagos = [payment(students[0].id, 80000, "2026-10-02"), payment(students[1].id, 20000, "2026-09-15"), payment(students[2].id, 60000, "2026-10-09")];
-  return build({ students, payments: pagos });
+  // cada pago está asignado a un cobro de su alumno (sin asignación, un pago no figura como «último pago» de ningún concepto)
+  const cobros = [charge(students[0].id, { chargeType: "mensual", originalAmount: 80000 }), charge(students[1].id, { chargeType: "por_clase", originalAmount: 20000 }), charge(students[2].id, { chargeType: "mensual", originalAmount: 60000 })];
+  return build({ students, charges: cobros, payments: pagos, allocations: pagos.map((p, i) => allocation(p, cobros[i], p.amount)) });
 }
 
 test("ordenar por tarifa compara sólo dentro de la misma periodicidad: clase, semana y mes no se mezclan", () => {
@@ -250,4 +252,49 @@ test("el estado de la consulta viaja en la dirección: sólo lo que se aparta de
   assert.equal(buildPerStudentHref({ text: " ana ", plan: "monthly", sort: "tarifa_desc" }), "/cobros/por-alumno?q=ana&plan=monthly&orden=tarifa_desc");
   assert.deepEqual(parsePerStudentQuery({ q: "ana", plan: "monthly", orden: "tarifa_desc" }), { text: "ana", plan: "monthly", sort: "tarifa_desc" });
   assert.deepEqual(parsePerStudentQuery({ plan: "inventado", orden: "otro" }), { text: "", plan: "todos", sort: "nombre" });
+});
+
+test("estado de las obligaciones exigibles: saldadas → tilde; con deuda (aunque haya un pago parcial) → deuda; sin obligaciones o sólo futuras → neutro (nunca «pagado» por no tener cargos)", () => {
+  const plan = { type: "monthly", amount: 80000, dueDay: 10 } as const;
+  const alDia = student("AlDia", { billingPlan: plan });
+  const cAlDia = charge(alDia.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-10-10" });
+  const pAlDia = payment(alDia.id, 80000, "2026-10-05");
+  const parcial = student("Parcial", { billingPlan: plan });
+  const cParcial = charge(parcial.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-10-10" });
+  const pParcial = payment(parcial.id, 30000, "2026-10-05");
+  const debe = student("Debe", { billingPlan: plan });
+  const cDebe = charge(debe.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-10-10" });
+  const sinCargos = student("SinCargos", { billingPlan: plan });
+  const futuro = student("Futuro", { billingPlan: plan });
+  const cFuturo = charge(futuro.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-11-10", billingPeriod: "2026-11" });
+  const anulado = student("Anulado", { billingPlan: plan });
+  const cAnulado = charge(anulado.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-10-10", voidedAt: "2026-10-11T00:00:00Z", voidReason: "x" });
+  const vence = student("VenceHoy", { billingPlan: plan });
+  const cVence = charge(vence.id, { chargeType: "mensual", originalAmount: 80000, dueDate: "2026-10-29" });
+  const rows = build({
+    students: [alDia, parcial, debe, sinCargos, futuro, anulado, vence],
+    charges: [cAlDia, cParcial, cDebe, cFuturo, cAnulado, cVence],
+    payments: [pAlDia, pParcial],
+    allocations: [allocation(pAlDia, cAlDia, 80000), allocation(pParcial, cParcial, 30000)],
+  });
+  const status = Object.fromEntries(rows.map((row) => [row.name, row.concepts[0].obligation]));
+  assert.deepEqual(status, { AlDia: "settled", Parcial: "due", Debe: "due", SinCargos: "neutral", Futuro: "neutral", Anulado: "neutral", VenceHoy: "due" });
+  // la tarifa sigue siendo la del plan, no el saldo ni lo pagado
+  assert.deepEqual(rows.find((row) => row.name === "Parcial")?.concepts[0].rate, { amount: 80000, period: "mes" });
+  assert.equal(rows.find((row) => row.name === "Parcial")?.concepts[0].dueBalance, 50000);
+});
+
+test("con varios conceptos cada uno tiene su propio estado y su propia fecha; una deuda de uno no tiñe al otro", () => {
+  const eli = student("Eli", { billingPlan: { type: "per_class", amount: 18000 } });
+  const ag = agreement({ monthlyFee: 65000 });
+  const clase = charge(eli.id, { chargeType: "por_clase", originalAmount: 18000, dueDate: "2026-10-12" });
+  const entre = charge(eli.id, { chargeType: "entrenamiento", originalAmount: 65000, trainingBillingAgreementId: ag.id, trainingSeriesName: "Martes", dueDate: "2026-10-10" });
+  const pClase = payment(eli.id, 18000, "2026-10-12");
+  const [row] = build({ students: [eli], charges: [clase, entre], payments: [pClase], allocations: [allocation(pClase, clase, 18000)], agreements: [ag] });
+  assert.deepEqual(row.concepts.map((concept) => [concept.kind, concept.obligation, concept.lastPayment?.paidAt ?? null]), [["plan", "settled", "2026-10-12"], ["training", "due", null]]);
+  assert.equal(conceptShortLabel(row.concepts[0], 1), "Clases");
+  assert.equal(conceptShortLabel(row.concepts[1], 1), "Entrenamiento");
+  assert.equal(conceptShortLabel(row.concepts[1], 2), "Entrenamiento · Martes");
+  assert.equal(ratePeriodShort(row.concepts[0].rate!), "/ clase");
+  assert.equal(ratePeriodShort(row.concepts[1].rate!), "/ mes");
 });

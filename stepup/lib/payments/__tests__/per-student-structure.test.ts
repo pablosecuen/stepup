@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { resolveScreen } from "../../nav/screens.ts";
 
 /**
- * Cobros › Por alumno (29/10/2026): pestaña de CONSULTA dentro de Cobros. Estas pruebas fijan que sólo lee, que no crea un segundo mecanismo para editar tarifas,
- * que usa el esqueleto y la carga compartidos y que conserva la pestaña, el filtro y la posición al volver.
+ * Cobros › Por alumno (29/10/2026, presentación compacta 30/10/2026): pestaña de CONSULTA dentro de Cobros. Estas pruebas fijan que sólo lee, que no crea un segundo mecanismo para editar
+ * tarifas, que es UNA tabla de tres columnas, que usa el esqueleto y la carga compartidos y que conserva la pestaña, el filtro y la posición al volver.
  */
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
@@ -27,64 +27,92 @@ test("la página sólo LEE: ni Server Actions, ni el generador de cobros, ni esc
   assert.doesNotMatch(builder, /supabase|fetch\(|await |async |from "@\/lib\/(actions|db)/, "el cálculo es puro");
 });
 
-test("no hay un segundo mecanismo de edición de tarifas: «Editar plan» y «Editar cuota» llevan al circuito existente y la vista no importa acciones", () => {
+test("no hay un segundo mecanismo de edición de tarifas: el menú «⋯» lleva al circuito existente y la vista no importa acciones", () => {
   const view = code(VIEW);
   assert.doesNotMatch(view, /@\/lib\/actions\/|changeBillingPlanAction|changeMonthlyAmountAction|editTrainingBillingFee|BillingPlanCard|TrainingBillingConfigButton|<Dialog|useTransition/);
-  assert.match(view, /\/cobros\/alumnos\/\$\{studentId\}\?tab=cobros/, "Ver detalle: la ficha de cobros del alumno");
-  assert.match(view, /#plan-\$\{studentId\}/, "Editar plan: la tarjeta «Plan de cobro» de esa ficha");
-  assert.match(view, /href="\/calendario\/series"/, "Editar cuota de entrenamiento: donde ya vive (Series)");
-  assert.match(code("components/students/profile/billing-plan-card.tsx"), /id=\{`plan-\$\{studentId\}`\}/, "el ancla existe en la ficha");
-  assert.match(code("components/students/profile/billing-plan-card.tsx"), /Editar plan de cobro/);
+  assert.ok(view.includes("/cobros/alumnos/${studentId}?tab=cobros"), "Ver detalle: la ficha de cobros del alumno");
+  assert.ok(view.includes("#plan-${studentId}"), "Editar plan: la tarjeta «Plan de cobro» de esa ficha");
+  assert.ok(view.includes('href: "/calendario/series"'), "Editar cuota de entrenamiento: donde ya vive (Series)");
+  assert.ok(code("components/students/profile/billing-plan-card.tsx").includes("id={`plan-${studentId}`}"), "el ancla existe en la ficha");
+  const menu = code("components/payments/per-student-menu.tsx");
+  assert.ok(menu.includes("aria-label={`Acciones de ${label}`}"));
+  assert.doesNotMatch(menu, /@\/lib\/actions\//);
 });
 
-test("la pestaña está en la navegación de Cobros, es una pantalla del registro de carga y tiene su esqueleto y su loading", () => {
+test("la pestaña está en la navegación de Cobros, es una pantalla del registro de carga y tiene su esqueleto de tabla y su loading", () => {
   assert.match(code("components/payments/payments-section-nav.tsx"), /key: "students", href: "\/cobros\/por-alumno", label: "Por alumno"/);
   const screen = resolveScreen("/cobros/por-alumno");
   assert.equal(screen?.key, "por-alumno");
   assert.equal(screen?.title, "Cobros");
-  assert.equal(screen?.width, "wide");
   assert.equal(resolveScreen("/cobros")?.key, "cobros", "el Centro de cobros sigue siendo su propia pantalla");
-  assert.equal(resolveScreen("/cobros/alumnos/6f1c0a3e-1111-2222-3333-444455556666")?.key, "alumno");
   assert.ok(existsSync(join(ROOT, "app/(app)/cobros/por-alumno/loading.tsx")));
   assert.match(code("app/(app)/cobros/por-alumno/loading.tsx"), /<DestinationSkeleton fallbackPath="\/cobros\/por-alumno" \/>/);
   const skeleton = code("components/nav/screen-skeleton.tsx");
   assert.match(skeleton, /case "por-alumno":\s*return <PorAlumnoBody/);
-  assert.match(skeleton, /PER_STUDENT_GRID_CLASS[\s\S]*PER_STUDENT_ROW_CLASS/, "el esqueleto usa las mismas clases de fila que la vista real");
-  assert.match(code("lib/nav/primary-nav-items.ts"), /related: \["\/resumen-financiero"\]/);
+  assert.match(skeleton, /PER_STUDENT_COLGROUP[\s\S]*PER_STUDENT_GROUP_CLASS[\s\S]*PER_STUDENT_TD_CLASS/, "el esqueleto usa las mismas columnas y celdas que la tabla real");
 });
 
-test("un solo encabezado, sin paginación: la lista completa en una vista desplazable y la búsqueda se aplica al escribir (sin Enter)", () => {
+test("tres columnas exactas en este orden — NOMBRE · FECHA DE PAGO · COBRO — en UNA tabla real con columnas compartidas (más el menú, sin encabezado)", () => {
   const view = code(VIEW);
-  assert.doesNotMatch(view, /PaginationControls|page=|slice\(\s*\(?page|Cargar más|Ver más/);
-  assert.match(view, /onChange=\{\(event\) => setText\(event\.target\.value\.slice\(0, 80\)\)\}/);
-  assert.match(view, /onSubmit=\{\(event\) => event\.preventDefault\(\)\}/, "Enter no recarga ni navega");
-  assert.match(view, /role="search"/);
-  assert.match(view, /role="status" aria-live="polite"/, "el recuento se anuncia");
-  assert.doesNotMatch(view, /router\.(push|replace)|useRouter/, "buscar, filtrar y ordenar no navegan: no hay recarga ni esqueleto");
-  assert.match(view, /window\.history\.replaceState\(/, "la búsqueda, el plan y el orden quedan en la dirección");
+  const head = view.slice(view.indexOf("<thead>"), view.indexOf("</thead>"));
+  const labels = [...head.matchAll(/>\s*(Nombre|Fecha de pago|Cobro)\s*</g)].map((match) => match[1]);
+  assert.deepEqual(labels, ["Nombre", "Fecha de pago", "Cobro"]);
+  assert.match(view, /<table className=\{PER_STUDENT_TABLE_CLASS\}/);
+  assert.match(view, /<colgroup>/);
+  assert.match(head, /text-right`\}>\s*Cobro/, "el importe se alinea a la derecha bajo su encabezado");
+  assert.match(code("components/payments/per-student-layout.ts"), /table-fixed/);
+  for (const forbidden of ["Saldo pendiente", "Sin saldo pendiente", "cobros abiertos", "cobro abierto", "conceptos de cobro", "Cada uno con su tarifa", "Pago sin concepto", "Situación inicial declarada"]) {
+    assert.ok(!view.includes(forbidden), forbidden + " ya no se muestra");
+  }
+  assert.doesNotMatch(view, /subtitle=/, "sin párrafo explicativo bajo el título");
+  assert.doesNotMatch(view, /pendingBalance|openCharges|unassignedPayments|upcomingRate/, "la tabla no muestra saldos, conceptos sueltos ni cambios programados");
+  assert.doesNotMatch(view, /lastPayment\.amount|paymentAmount/, "la fecha de pago no repite su importe");
+});
+
+test("«Cobro» muestra la TARIFA con su unidad breve y el estado de las obligaciones exigibles con ícono y texto accesible (verde = al día, rojo = deuda, neutro = sin obligaciones)", () => {
+  const view = code(VIEW);
+  assert.match(view, /formatMoney\(concept\.rate\.amount\)/);
+  assert.match(view, /ratePeriodShort\(concept\.rate\)/);
+  assert.match(view, /settled && <CheckCircleIcon className="h-4 w-4 shrink-0 text-statusVerde" aria-hidden \/>/);
+  assert.match(view, /due && <ExclamationCircleIcon className="h-4 w-4 shrink-0 text-statusRojo" aria-hidden \/>/);
+  assert.match(view, /Obligaciones exigibles al día/);
+  assert.match(view, /Con deuda exigible/);
+  assert.match(view, /due \? "text-statusRojo" : "text-textPrimary"/, "sólo con deuda el importe va en rojo");
+  assert.doesNotMatch(view, /concept\.(pendingBalance|dueBalance)/, "el importe mostrado nunca es el saldo");
+  const model = code("lib/payments/per-student-overview.ts");
+  assert.match(model, /concept\.dueBalance > 0 \? "due" : \(exigibleCharges\.get\(concept\.key\) \?\? 0\) > 0 \? "settled" : "neutral"/);
+  assert.match(model, /charge\.dueDate <= input\.todayDateKey/);
+});
+
+test("un alumno con varios conceptos conserva el nombre una sola vez y una etiqueta breve por subfila, todas con las mismas columnas; la fecha es la del pago asignado a ese concepto", () => {
+  const view = code(VIEW);
+  assert.match(view, /<tbody className=\{PER_STUDENT_GROUP_CLASS\} data-student-row=\{row\.studentId\}>/);
+  assert.match(view, /row\.concepts\.map\(\(concept, index\) =>/);
+  assert.match(view, /first \? \(/, "el nombre sólo en la primera fila del alumno");
+  assert.match(view, /<span className="sr-only">\{row\.name\}: <\/span>/, "las subfilas siguen nombrando al alumno para lectores de pantalla");
+  assert.match(view, /formatDateValue\(concept\.lastPayment\.paidAt\)/);
+  assert.match(view, /<span className="sr-only">Sin pagos registrados<\/span>/, "sin pagos: «—» con texto accesible");
 });
 
 test("al abrir un detalle se recuerda la lista (búsqueda, plan, orden) y la posición; la ficha vuelve a ella y la lista la restaura una sola vez", () => {
   const view = code(VIEW);
   assert.match(view, /writePerStudentMemory\(\{ href: buildPerStudentHref\(query\), y: window\.scrollY/);
   assert.match(view, /window\.scrollTo\(0, memory\.y\);\s*clearPerStudentMemory\(\);/);
-  assert.match(view, /data-per-student-link/);
+  assert.match(view, /onClickCapture=\{rememberPosition\}/);
   const back = code("components/payments/payments-back-link.tsx");
-  assert.match(back, /memory\.studentId === studentId \? memory\.href : "\/cobros"/, "sólo vuelve a la lista si se salió de ella hacia ESTE alumno");
-  assert.match(back, /\(\) => "\/cobros"/, "el servidor y el primer dibujo son siempre /cobros (sin diferencias de hidratación)");
+  assert.match(back, /memory\.studentId === studentId \? memory\.href : "\/cobros"/);
   assert.match(code("components/students/profile/profile-header.tsx"), /fromPayments \? <PaymentsBackLink studentId=\{student\.id\} \/>/);
-  const memory = code("components/payments/per-student-memory.ts");
-  assert.match(memory, /\^\\\/cobros\\\/por-alumno/, "sólo se acepta una dirección de la propia lista, nunca un destino arbitrario");
-  assert.match(memory, /MEMORY_MAX_AGE_MS = 30 \* 60 \* 1000/);
+  assert.match(code("components/payments/per-student-memory.ts"), /MEMORY_MAX_AGE_MS = 30 \* 60 \* 1000/);
 });
 
-test("accesibilidad: cada dato se rotula con texto (nunca sólo color), los controles táctiles miden 44 px y no hay estado comunicado por color", () => {
+test("búsqueda al escribir (sin Enter ni navegación), lista completa sin paginar y accesibilidad básica", () => {
   const view = code(VIEW);
-  assert.match(view, /min-h-11/);
-  for (const text of ["Saldo pendiente", "Sin pagos registrados", "Sin saldo pendiente", "Ver detalle", "Editar plan", "Editar cuota"]) assert.ok(view.includes(text), text);
-  assert.match(view, /Pago sin cobro asignado: no se puede saber a qué concepto corresponde\./);
-  assert.match(view, /Situación inicial declarada, no un cobro registrado en una fecha\./);
-  assert.match(view, /<span className="sr-only"> de \{row\.name\}<\/span>/, "los enlaces repetidos dicen de quién son");
-  assert.match(view, /aria-label=\{`Conceptos de \$\{row\.name\}`\}/);
-  assert.doesNotMatch(view, /statusVerde|text-red|bg-red|text-green|bg-green/, "ni semáforos ni rojo/verde: es una consulta");
+  assert.doesNotMatch(view, /PaginationControls|page=|Cargar más|Ver más|router\.(push|replace)|useRouter/);
+  assert.match(view, /onChange=\{\(event\) => setText\(event\.target\.value\.slice\(0, 80\)\)\}/);
+  assert.match(view, /onSubmit=\{\(event\) => event\.preventDefault\(\)\}/);
+  assert.match(view, /role="status" aria-live="polite"/);
+  assert.match(view, /window\.history\.replaceState\(/);
+  assert.match(view, /<caption className="sr-only">/);
+  assert.match(view, /min-h-11/, "el enlace del nombre mide al menos 44 px");
+  assert.match(code("components/payments/per-student-menu.tsx"), /h-11 w-9/);
 });
