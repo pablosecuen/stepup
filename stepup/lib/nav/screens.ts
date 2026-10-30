@@ -17,6 +17,7 @@ export type ScreenKey =
   | "calendario-info"
   | "clase-form"
   | "cobros"
+  | "por-alumno"
   | "resumen"
   | "comportamiento"
   | "registro"
@@ -59,6 +60,7 @@ const DEFINITIONS: readonly ScreenDefinition[] = [
   def("clase-form", "Cargando el formulario de clase…", "Nueva clase", "narrow", /^\/calendario\/nueva$/, "Volver al Calendario"),
   def("calendario", "Cargando el calendario…", "Calendario", "wide", /^\/calendario$/),
   def("alumno", "Cargando los cobros del alumno…", null, "medium", /^\/cobros\/alumnos\/[^\/]+$/, "Volver a Cobros"),
+  def("por-alumno", "Cargando cobros por alumno…", "Cobros", "wide", /^\/cobros\/por-alumno$/),
   def("cobros", "Cargando cobros…", "Cobros", "wide", /^\/cobros$/),
   def("comportamiento", "Cargando el comportamiento de pago…", "Comportamiento de pago", "wide", /^\/resumen-financiero\/comportamiento-de-pago$/, "Volver al Resumen financiero"),
   def("resumen", "Cargando el resumen financiero…", "Resumen financiero", "wide", /^\/resumen-financiero$/),

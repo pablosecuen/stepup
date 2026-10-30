@@ -12,6 +12,7 @@ import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account
 import { CARD_TITLE_CLASS, FINANCIAL_PRESETS, Kpi, Stat, periodPillClass } from "@/components/finance/overview-parts";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
+import { PER_STUDENT_GRID_CLASS, PER_STUDENT_HEADER_CLASS, PER_STUDENT_ROW_CLASS, PER_STUDENT_TABLE_CLASS, PER_STUDENT_TOOLBAR_CLASS } from "@/components/payments/per-student-layout";
 import { FINANCIAL_PERIOD_PRESET_LABEL } from "@/lib/reports/period";
 import { resolveScreen } from "@/lib/nav/screens";
 
@@ -372,6 +373,83 @@ function CobrosBody({ title }: { title: string }) {
   );
 }
 
+/** Cobros › Por alumno: el encabezado, la sección, la barra de búsqueda y el encabezado de la tabla son los reales; cada alumno es una fila con las columnas de la vista final. */
+function PorAlumnoBody({ title }: { title: string }) {
+  return (
+    <>
+      <SkHeader title={title} subtitle="Tarifa vigente, último pago y saldo de cada alumno activo." />
+      <PaymentsSectionNav current="students" />
+      <div aria-hidden className={PER_STUDENT_TOOLBAR_CLASS}>
+        <div className="min-w-0 nav:w-[320px]">
+          <Field label="Buscar alumno" htmlFor="sk-por-alumno-q">
+            <SkBar className="h-[46px] w-full" />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3 nav:flex nav:items-end">
+          <div className="min-w-0 nav:w-[190px]">
+            <Field label="Plan" htmlFor="sk-por-alumno-plan">
+              <SkBar className="h-[46px] w-full" />
+            </Field>
+          </div>
+          <div className="min-w-0 nav:w-[250px]">
+            <Field label="Ordenar por" htmlFor="sk-por-alumno-sort">
+              <SkBar className="h-[46px] w-full" />
+            </Field>
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[13.5px]">
+        <Ph text="00 alumnos activos." />
+      </p>
+      <div className={PER_STUDENT_TABLE_CLASS}>
+        <div aria-hidden className={PER_STUDENT_HEADER_CLASS}>
+          <span>Nombre</span>
+          <span>Cobro</span>
+          <span>Fecha de pago</span>
+          <span>Saldo pendiente</span>
+          <span className="w-[200px]" />
+        </div>
+        <ul className="flex flex-col gap-3 nav:gap-0">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
+            <li key={index} className={`${PER_STUDENT_ROW_CLASS} min-h-[212px] nav:min-h-[72px]`}>
+              <div className={PER_STUDENT_GRID_CLASS}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <SkRound className="h-10 w-10" />
+                  <div className="-my-1 flex min-h-11 items-center">
+                    <SkBar className="h-5 w-40" />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[14px] nav:text-[14.5px]">
+                    <Ph text="Mensual" />
+                  </p>
+                  <p className="text-[15px] nav:text-[14.5px]">
+                    <Ph text="$ 00.000 por mes" />
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[15px] nav:text-[14.5px]">
+                    <Ph text="00/00/0000 · $ 00.000" />
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] nav:text-[13.5px]">
+                    <Ph text="Saldo pendiente: $ 00.000" />
+                  </p>
+                </div>
+                <div className="flex gap-2 nav:w-[200px] nav:justify-end">
+                  <SkBar className="h-11 w-28" />
+                  <SkBar className="h-11 w-28" />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
 /** Un dato en espera: un bloque con el MISMO tamaño de letra que el dato real (la línea mide lo mismo), nunca un alto inventado. */
 function Ph({ text, className = "" }: { text: string; className?: string }) {
   return <span className={`rounded bg-paperDeep text-transparent ${className}`}>{text}</span>;
@@ -705,6 +783,8 @@ function Body({ path, title }: { path: string; title: string | null }) {
       return <FormBody title={title} back={screen.back} withSubtitle />;
     case "cobros":
       return <CobrosBody title={title ?? "Cobros"} />;
+    case "por-alumno":
+      return <PorAlumnoBody title={title ?? "Cobros"} />;
     case "resumen":
       return <ResumenBody title={title ?? "Resumen financiero"} />;
     case "comportamiento":

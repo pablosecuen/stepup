@@ -42,7 +42,8 @@ test("los cobros del alumno tienen URL propia, permanecen en Cobros y conservan 
   assert.doesNotMatch(page, /createAdminClient|service_role/);
   assert.match(page, /ProfileTabBody ctx=\{ctx\} student=\{student\} tab=\{tab\} fromPayments/);
   assert.match(read("components/payments/collections-view.tsx"), /href=\{`\/cobros\/alumnos\/\$\{entry.studentId\}\?tab=cobros`\}/);
-  assert.match(read("components/students/profile/profile-header.tsx"), /<BackLink href="\/cobros">Volver a Cobros/);
+  assert.match(read("components/students/profile/profile-header.tsx"), /fromPayments \? <PaymentsBackLink studentId=\{student\.id\} \/>/);
+  assert.match(read("components/payments/payments-back-link.tsx"), /\(\) => "\/cobros"[\s\S]*<BackLink href=\{href\}>Volver a Cobros<\/BackLink>/, "vuelve a Cobros (o a «Por alumno» si se salió de allí) con el mismo texto");
   assert.match(read("components/students/profile/profile-tabs-nav.tsx"), /fromPayments \? "\/cobros\/alumnos" : "\/alumnos"/);
 });
 

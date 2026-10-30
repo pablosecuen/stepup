@@ -1,11 +1,12 @@
 import PrivateLink from "@/components/nav/private-link";
 
-// Navegación secundaria de «Cobros»: «Centro de cobros» y «Resumen financiero» son dos vistas de la misma sección (el resumen ya
-// no es una pantalla aislada). Mismas rutas de siempre. En móvil es la única forma de pasar de una a otra dentro de la pantalla
+// Navegación secundaria de «Cobros»: «Centro de cobros», «Por alumno» y «Resumen financiero» son tres vistas de la misma sección (el resumen ya
+// no es una pantalla aislada; «Por alumno» es una vista de consulta). Mismas rutas de siempre. En móvil es la única forma de pasar de una a otra dentro de la pantalla
 // (la barra inferior conserva sus cinco destinos). El estado activo se dice con texto en negrita y `aria-current`, no sólo con color.
 
 const SECTIONS = [
   { key: "collections", href: "/cobros", label: "Centro de cobros" },
+  { key: "students", href: "/cobros/por-alumno", label: "Por alumno" },
   { key: "overview", href: "/resumen-financiero", label: "Resumen financiero" },
 ] as const;
 

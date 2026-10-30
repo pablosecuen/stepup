@@ -3,7 +3,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { StudentsBackLink } from "@/components/students/profile/students-back-link";
-import { BackLink } from "@/components/ui/page-header";
+import { PaymentsBackLink } from "@/components/payments/payments-back-link";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
@@ -18,7 +18,7 @@ import { LevelChip } from "@/components/students/student-card";
 export function StudentProfileHeader({ student, fromPayments = false }: { student: StudentRecord; fromPayments?: boolean }) {
   return (
     <header data-tf-header="">
-      {fromPayments ? <BackLink href="/cobros">Volver a Cobros</BackLink> : <StudentsBackLink />}
+      {fromPayments ? <PaymentsBackLink studentId={student.id} /> : <StudentsBackLink />}
       <div className="mt-2 flex flex-col gap-4 nav:flex-row nav:items-start nav:justify-between">
         <div className="flex min-w-0 items-start gap-4 nav:flex-1 nav:gap-5">
           <Avatar initial={avatarInitials(student.name)} tone={avatarToneFor(student.id)} size="profile" />

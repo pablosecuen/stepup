@@ -12,6 +12,7 @@ export const INTENT_PREFETCH_ROUTES: ReadonlySet<string> = new Set([
   "/alumnos",
   "/calendario",
   "/cobros",
+  "/cobros/por-alumno",
   "/registro",
   "/recordatorios",
   "/resumen-financiero",
