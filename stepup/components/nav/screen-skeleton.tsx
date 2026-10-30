@@ -413,7 +413,7 @@ function PorAlumnoBody({ title }: { title: string }) {
           {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (
             <li key={index} className={`${PER_STUDENT_ROW_CLASS} min-h-[212px] nav:min-h-[72px]`}>
               <div className={PER_STUDENT_GRID_CLASS}>
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="col-span-2 flex min-w-0 items-center gap-3 nav:col-auto">
                   <SkRound className="h-10 w-10" />
                   <div className="-my-1 flex min-h-11 items-center">
                     <SkBar className="h-5 w-40" />
@@ -432,12 +432,12 @@ function PorAlumnoBody({ title }: { title: string }) {
                     <Ph text="00/00/0000 · $ 00.000" />
                   </p>
                 </div>
-                <div className="min-w-0">
+                <div className="col-span-2 min-w-0 nav:col-auto">
                   <p className="text-[13px] nav:text-[13.5px]">
                     <Ph text="Saldo pendiente: $ 00.000" />
                   </p>
                 </div>
-                <div className="flex gap-2 nav:w-[200px] nav:justify-end">
+                <div className="col-span-2 flex gap-2 nav:col-auto nav:w-[200px] nav:justify-end">
                   <SkBar className="h-11 w-28" />
                   <SkBar className="h-11 w-28" />
                 </div>

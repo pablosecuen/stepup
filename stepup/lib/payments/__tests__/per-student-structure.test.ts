@@ -20,7 +20,8 @@ test("la página sólo LEE: ni Server Actions, ni el generador de cobros, ni esc
   const page = code(PAGE);
   assert.doesNotMatch(page, /ChargeGenerationTrigger|@\/lib\/actions\/|\.(insert|update|upsert|delete|rpc)\(|ensure[A-Z]|syncPerClass|registerPayment|voidPayment|voidCharge/);
   assert.match(page, /requireAuthenticatedDbContext\(\)/);
-  for (const reader of ["listStudents(ctx)", "listAllCharges(ctx)", "listAllPayments(ctx)", "listAllAllocations(ctx)", "listTrainingBillingAgreements(ctx)"]) assert.ok(page.includes(reader), reader);
+  for (const reader of ["listStudents(ctx)", "listAllCharges(ctx)", "listAllPayments(ctx)", "listAllAllocations(ctx)", "listTrainingBillingAgreements(ctx)", "loadExcludedStudentIds(ctx)"]) assert.ok(page.includes(reader), reader);
+  assert.match(page, /withoutExcludedStudents\(allStudents, excludedStudentIds\)/, "mismo criterio que la lista de Alumnos con los alumnos de prueba excluidos");
   assert.match(page, /export const dynamic = "force-dynamic"/);
   const builder = code("lib/payments/per-student-overview.ts");
   assert.doesNotMatch(builder, /supabase|fetch\(|await |async |from "@\/lib\/(actions|db)/, "el cálculo es puro");

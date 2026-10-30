@@ -3,6 +3,8 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { listAllAllocations, listAllCharges, listAllPayments, listTrainingBillingAgreements } from "@/lib/repositories/payments";
 import { listStudents } from "@/lib/repositories/students";
+import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
+import { withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { PerStudentErrorView, PerStudentView } from "@/components/payments/per-student-view";
 import { buildPerStudentRows, parsePerStudentQuery, type PerStudentRow } from "@/lib/payments/per-student-overview";
 import { localDateKeyInTimeZone } from "@/lib/payments/dates";
@@ -23,7 +25,9 @@ export default async function PerStudentPage({ searchParams }: { searchParams: P
   let rows: PerStudentRow[];
   try {
     const ctx = await requireAuthenticatedDbContext();
-    const [students, charges, payments, allocations, agreements] = await Promise.all([listStudents(ctx), listAllCharges(ctx), listAllPayments(ctx), listAllAllocations(ctx), listTrainingBillingAgreements(ctx)]);
+    const [allStudents, charges, payments, allocations, agreements, excludedStudentIds] = await Promise.all([listStudents(ctx), listAllCharges(ctx), listAllPayments(ctx), listAllAllocations(ctx), listTrainingBillingAgreements(ctx), loadExcludedStudentIds(ctx)]);
+    // Mismo criterio que la lista de Alumnos: los alumnos de prueba que la propia cuenta confirmó como excluidos (reversible) no figuran.
+    const students = withoutExcludedStudents(allStudents, excludedStudentIds);
     rows = buildPerStudentRows({ students, charges, payments, allocations, agreements, currentPeriod: localDateKeyInTimeZone(new Date()).slice(0, 7) });
   } catch {
     return <PerStudentErrorView />;

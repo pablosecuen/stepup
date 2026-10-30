@@ -87,7 +87,7 @@ function PaymentCell({ children }: { children: ReactNode }) {
 
 function BalanceCell({ amount, openCharges }: { amount: number; openCharges: number }) {
   return (
-    <div className="min-w-0">
+    <div className="col-span-2 min-w-0 nav:col-auto">
       {amount > 0 ? (
         <>
           <p className="tf-num text-[13px] text-textSecondary nav:text-[13.5px]">
@@ -120,7 +120,7 @@ function StudentRowItem({ row }: { row: PerStudentRow }) {
   return (
     <li className={PER_STUDENT_ROW_CLASS} data-student-row={row.studentId}>
       <div className={PER_STUDENT_GRID_CLASS}>
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="col-span-2 flex min-w-0 items-center gap-3 nav:col-auto">
           <Avatar initial={avatarInitials(row.name)} tone={avatarToneFor(row.studentId)} size="m" />
           <PrivateLink
             href={detailHref(row.studentId)}
@@ -137,7 +137,7 @@ function StudentRowItem({ row }: { row: PerStudentRow }) {
           </>
         ) : (
           <>
-            <div className="min-w-0">
+            <div className="col-span-2 min-w-0 nav:col-auto">
               <p className={SMALL_LABEL}>Cobro</p>
               <p className="text-[14px] font-semibold text-textPrimary nav:text-[14.5px]">{row.concepts.length} conceptos de cobro</p>
               <p className="text-[12.5px] text-textMuted">Cada uno con su tarifa y su pago, abajo.</p>
@@ -146,7 +146,7 @@ function StudentRowItem({ row }: { row: PerStudentRow }) {
           </>
         )}
         <BalanceCell amount={row.pendingBalance} openCharges={row.concepts.reduce((sum, item) => sum + item.openCharges, 0)} />
-        <div className="flex flex-wrap items-center gap-2 nav:justify-end">
+        <div className="col-span-2 flex flex-wrap items-center gap-2 nav:col-auto nav:justify-end">
           <PrivateLink href={detailHref(row.studentId)} data-per-student-link={row.studentId} className={`min-h-11 ${ACTION_CLASS}`}>
             Ver detalle<span className="sr-only"> de {row.name}</span>
           </PrivateLink>
@@ -161,14 +161,14 @@ function StudentRowItem({ row }: { row: PerStudentRow }) {
         <ul aria-label={`Conceptos de ${row.name}`} className={PER_STUDENT_SUBROWS_CLASS}>
           {row.concepts.map((item) => (
             <li key={item.key} className={PER_STUDENT_GRID_CLASS}>
-              <div className="min-w-0 border-l-2 border-borderMid pl-3 nav:pl-4">
+              <div className="col-span-2 min-w-0 border-l-2 border-borderMid pl-3 nav:col-auto nav:pl-4">
                 <p className="text-[14px] font-semibold text-textPrimary [overflow-wrap:anywhere] nav:text-[14.5px]">{item.kind === "training" ? "Entrenamiento" : item.label}</p>
                 {item.seriesName && <p className="text-[12.5px] text-textMuted [overflow-wrap:anywhere]">Serie: {item.seriesName}</p>}
               </div>
               <RateCell concept={item} />
               <PaymentCell>{item.lastPayment ? <PaymentDetail payment={item.lastPayment} /> : <p className="text-[14px] text-textSecondary nav:text-[14.5px]">Sin pagos registrados</p>}</PaymentCell>
               <BalanceCell amount={item.pendingBalance} openCharges={item.openCharges} />
-              <div className="flex flex-wrap items-center gap-2 nav:justify-end">
+              <div className="col-span-2 flex flex-wrap items-center gap-2 nav:col-auto nav:justify-end">
                 {item.kind === "plan" && (
                   <PrivateLink href={editPlanHref(row.studentId)} data-per-student-link={row.studentId} className={`min-h-11 ${ACTION_CLASS}`}>
                     Editar plan<span className="sr-only"> de {row.name}</span>
@@ -184,7 +184,7 @@ function StudentRowItem({ row }: { row: PerStudentRow }) {
           ))}
           {row.unassignedPayments.length > 0 && (
             <li className={PER_STUDENT_GRID_CLASS}>
-              <div className="min-w-0 border-l-2 border-borderMid pl-3 nav:pl-4">
+              <div className="col-span-2 min-w-0 border-l-2 border-borderMid pl-3 nav:col-auto nav:pl-4">
                 <p className="text-[14px] font-semibold text-textPrimary nav:text-[14.5px]">Pago sin concepto identificado</p>
               </div>
               <div aria-hidden className="max-nav:hidden" />
