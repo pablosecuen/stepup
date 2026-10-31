@@ -80,7 +80,7 @@ export interface PerStudentRow {
   studentId: string;
   name: string;
   concepts: PerStudentConcept[];
-  /** Fecha del último pago ASIGNADO a algún concepto del alumno (ordena por fecha de pago). */
+  /** Fecha del último pago real (no anulado) del alumno, tenga o no asignación: es la fecha principal de la fila y ordena por fecha de pago. */
   latestPaidAt: string | null;
   /** Pagos vigentes sin ninguna asignación a un cobro, del más reciente al más antiguo. */
   unassignedPayments: UnassignedPayment[];
@@ -265,7 +265,7 @@ export function buildPerStudentRows(input: PerStudentInput): PerStudentRow[] {
     // Un plan anterior sólo se muestra si tiene algo que decir (un pago o un saldo): si no, sería ruido.
     const visible = [...concepts.values()].filter((concept) => concept.kind !== "previous_plan" || concept.lastPayment !== null || concept.pendingBalance > 0);
     const ordered = visible.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "plan" ? -1 : b.kind === "plan" ? 1 : a.kind === "training" ? -1 : 1));
-    rows.push({ studentId: student.id, name: student.name, concepts: ordered, latestPaidAt: ordered.reduce<string | null>((latest, concept) => (concept.lastPayment && (latest === null || concept.lastPayment.paidAt > latest) ? concept.lastPayment.paidAt : latest), null), unassignedPayments, pendingBalance });
+    rows.push({ studentId: student.id, name: student.name, concepts: ordered, latestPaidAt: payments[0]?.paidAt ?? null, unassignedPayments, pendingBalance });
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }) || (a.studentId < b.studentId ? -1 : 1));
 }
@@ -404,4 +404,32 @@ export function conceptShortLabel(concept: PerStudentConcept, trainingCount: num
     default:
       return "Sin cargo";
   }
+}
+
+/**
+ * Qué muestra «Cobro» (una sola regla, igual para un alumno y para cada uno de sus conceptos, tenga uno o varios):
+ *  - «debt»: hay saldo pendiente real (importe de los cobros no anulados menos las asignaciones de pagos no anulados, sumado sin duplicar) → ese total, en rojo;
+ *  - «rate»: sin deuda, la tarifa vigente con su unidad; con tilde si lo exigible está saldado, neutra si no hay información suficiente;
+ *  - «none»: sin tarifa («Sin cargo» o «—»).
+ */
+export type CobroDisplay =
+  | { kind: "debt"; amount: number }
+  | { kind: "rate"; rate: ConceptRate; status: "settled" | "neutral" }
+  | { kind: "none"; label: "Sin cargo" | "—"; status: "settled" | "neutral" };
+
+export function cobroDisplayForConcept(concept: PerStudentConcept): CobroDisplay {
+  if (concept.pendingBalance > 0) return { kind: "debt", amount: concept.pendingBalance };
+  const status = concept.obligation === "settled" ? "settled" : "neutral";
+  if (concept.rate) return { kind: "rate", rate: concept.rate, status };
+  return { kind: "none", label: concept.planKey === "complimentary" ? "Sin cargo" : "—", status };
+}
+
+/**
+ * La fila principal: la deuda REAL total del alumno (suma de los saldos de todos sus cargos vigentes: nunca de tarifas, ni de distinta periodicidad) o, sin deuda, la tarifa del primer
+ * concepto que la tiene (el plan antes que el entrenamiento) con el estado de ESE concepto: un tilde sólo si su propio cobro está saldado.
+ */
+export function cobroDisplayForRow(row: PerStudentRow): CobroDisplay {
+  if (row.pendingBalance > 0) return { kind: "debt", amount: row.pendingBalance };
+  const primary = row.concepts.find((concept) => concept.kind !== "previous_plan" && concept.rate !== null) ?? row.concepts[0];
+  return primary ? cobroDisplayForConcept(primary) : { kind: "none", label: "—", status: "neutral" };
 }

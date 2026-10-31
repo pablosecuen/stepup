@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ExclamationCircleIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,14 +13,18 @@ import { PerStudentMenu, type PerStudentMenuItem } from "@/components/payments/p
 import {
   PER_STUDENT_AMOUNT_GRID_CLASS,
   PER_STUDENT_COLGROUP,
+  PER_STUDENT_DOLLAR_CLASS,
+  PER_STUDENT_FIGURE_CLASS,
   PER_STUDENT_GROUP_CLASS,
   PER_STUDENT_HEAD_ROW_CLASS,
   PER_STUDENT_INDICATOR_CLASS,
+  PER_STUDENT_NONE_CLASS,
   PER_STUDENT_ROW_CLASS,
   PER_STUDENT_TABLE_CLASS,
   PER_STUDENT_TABLE_WRAP_CLASS,
   PER_STUDENT_TD_CLASS,
   PER_STUDENT_TH_CLASS,
+  PER_STUDENT_TOGGLE_SLOT_CLASS,
   PER_STUDENT_TOOLBAR_CLASS,
   PER_STUDENT_UNIT_CLASS,
 } from "@/components/payments/per-student-layout";
@@ -34,9 +38,12 @@ import {
   PER_STUDENT_SORTS,
   PLAN_FILTER_LABEL,
   buildPerStudentHref,
+  cobroDisplayForConcept,
+  cobroDisplayForRow,
   conceptShortLabel,
   queryPerStudentRows,
   ratePeriodShort,
+  type CobroDisplay,
   type PerStudentConcept,
   type PerStudentQuery,
   type PerStudentRow,
@@ -50,42 +57,50 @@ function editPlanHref(studentId: string): string {
   return `${detailHref(studentId)}#plan-${studentId}`;
 }
 
+/** Las cifras sin el signo: el signo $ tiene su propia posición en la grilla. */
+function moneyDigits(amount: number): string {
+  const text = formatMoney(amount);
+  return text.slice(text.indexOf("$") + 1).trim();
+}
+
 /**
- * «Cobro» de UN concepto: la TARIFA con su unidad, nunca el saldo. Tres posiciones reservadas —indicador · importe · unidad— para que las tildes y los importes de todas las filas
- * queden sobre los mismos ejes: tilde verde con obligaciones exigibles saldadas; importe en rojo con ícono de alerta si queda deuda exigible; neutro (posición vacía) si no hay obligaciones
- * exigibles. Cada estado también se dice con texto accesible, no sólo con color.
+ * «Cobro» (la misma regla para el alumno y para cada concepto, ver `cobroDisplayForRow`): con deuda, el TOTAL de los saldos reales pendientes en rojo con ícono de alerta; sin deuda, la tarifa
+ * con su unidad, con tilde verde sólo si lo exigible está pagado y neutra si no hay información suficiente. Indicador, signo $, cifra, unidad y desplegable son columnas propias.
  */
-function AmountCell({ concept }: { concept: PerStudentConcept }) {
-  const due = concept.obligation === "due";
-  const settled = concept.obligation === "settled";
+function AmountCell({ display, toggle }: { display: CobroDisplay; toggle?: ReactNode }) {
+  const debt = display.kind === "debt";
+  const settled = display.kind !== "debt" && display.status === "settled";
+  const tone = debt ? "text-statusRojo" : "text-textPrimary";
   return (
     <td className={PER_STUDENT_TD_CLASS}>
       <div className={PER_STUDENT_AMOUNT_GRID_CLASS}>
         <span className={PER_STUDENT_INDICATOR_CLASS}>
           {settled && <CheckCircleIcon className="h-4 w-4 text-statusVerde" aria-hidden />}
-          {due && <ExclamationCircleIcon className="h-4 w-4 text-statusRojo" aria-hidden />}
+          {debt && <ExclamationCircleIcon className="h-4 w-4 text-statusRojo" aria-hidden />}
         </span>
-        {concept.rate ? (
-          <>
-            <span className={`tf-num whitespace-nowrap text-right font-semibold ${due ? "text-statusRojo" : "text-textPrimary"}`}>{formatMoney(concept.rate.amount)}</span>
-            <span className={`${PER_STUDENT_UNIT_CLASS} whitespace-nowrap`}>{ratePeriodShort(concept.rate)}</span>
-          </>
+        {display.kind === "none" ? (
+          <span className={PER_STUDENT_NONE_CLASS}>{display.label}</span>
         ) : (
-          <span className="text-right text-textMuted nav:col-span-2">{concept.planKey === "complimentary" ? "Sin cargo" : "—"}</span>
+          <>
+            <span className={`${PER_STUDENT_DOLLAR_CLASS} font-semibold ${tone}`}>$</span>
+            <span className={`${PER_STUDENT_FIGURE_CLASS} font-semibold ${tone}`}>{moneyDigits(display.kind === "debt" ? display.amount : display.rate.amount)}</span>
+            <span className={PER_STUDENT_UNIT_CLASS}>{display.kind === "debt" ? "deuda" : ratePeriodShort(display.rate)}</span>
+          </>
         )}
+        <span className={PER_STUDENT_TOGGLE_SLOT_CLASS}>{toggle}</span>
         {settled && <span className="sr-only">Obligaciones exigibles al día</span>}
-        {due && <span className="sr-only">Con deuda exigible</span>}
+        {debt && <span className="sr-only">Con deuda: total pendiente</span>}
       </div>
     </td>
   );
 }
 
-/** «Fecha de pago»: sólo la fecha del último pago realmente asignado a ESE concepto (sin su importe); «—» si no hay. */
-function DateCell({ concept }: { concept: PerStudentConcept }) {
+/** «Fecha de pago»: sólo la fecha (sin importe) —la del último pago real del alumno en su fila, la del pago asignado a ese concepto en cada detalle—; «—» si no hay. */
+function DateCell({ paidAt }: { paidAt: string | null }) {
   return (
     <td className={`${PER_STUDENT_TD_CLASS} whitespace-nowrap text-[13px] nav:text-[14px]`}>
-      {concept.lastPayment ? (
-        <span className="tf-num text-textPrimary">{formatDateValue(concept.lastPayment.paidAt)}</span>
+      {paidAt ? (
+        <span className="tf-num text-textPrimary">{formatDateValue(paidAt)}</span>
       ) : (
         <>
           <span aria-hidden className="text-textMuted">
@@ -105,14 +120,12 @@ function conceptItems(row: PerStudentRow, concept: PerStudentConcept): PerStuden
   return [];
 }
 
-/** Una fila por alumno, siempre con la misma estructura (nombre · fecha de pago · cobro). Con varios conceptos, «Varios conceptos» los despliega en subfilas con las mismas columnas. */
+/** Una fila cerrada por alumno, siempre con la misma estructura (nombre · fecha de pago · cobro). El desplegable abre sus conceptos en subfilas con las mismas columnas. */
 function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boolean; onToggle: () => void }) {
-  const multiple = row.concepts.length > 1;
   const trainingCount = row.concepts.filter((concept) => concept.kind === "training").length;
   const groupId = `conceptos-${row.studentId}`;
-  const single = row.concepts[0];
   const detail: PerStudentMenuItem = { key: "detail", label: "Ver detalle", href: detailHref(row.studentId) };
-  const mainItems: PerStudentMenuItem[] = multiple ? [detail] : [detail, ...conceptItems(row, single)];
+  const mainItems: PerStudentMenuItem[] = row.concepts.length === 1 ? [detail, ...conceptItems(row, row.concepts[0])] : [detail];
   return (
     <tbody id={groupId} className={PER_STUDENT_GROUP_CLASS} data-student-row={row.studentId} data-open={open ? "true" : "false"}>
       <tr className={PER_STUDENT_ROW_CLASS}>
@@ -126,41 +139,31 @@ function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boole
               data-per-student-link={row.studentId}
               className="flex min-h-11 min-w-0 items-center text-[13.5px] font-[650] leading-tight text-textPrimary [overflow-wrap:anywhere] hover:underline hover:decoration-borderMid hover:underline-offset-[3px] nav:text-[14.5px]"
             >
-              <span data-tf-shared-name data-tf-shared-id={row.studentId} style={{ viewTransitionName: `tf-student-${row.studentId}` }} title={row.name} className="line-clamp-2">
+              <span data-tf-shared-name data-tf-shared-id={row.studentId} title={row.name} className="line-clamp-2">
                 {row.name}
               </span>
             </PrivateLink>
           </div>
         </th>
-        {multiple ? (
-          <>
-            <td className={PER_STUDENT_TD_CLASS}>
-              <span className="sr-only">Varios conceptos: cada uno tiene su fecha de pago</span>
-            </td>
-            <td className={`${PER_STUDENT_TD_CLASS} text-right`}>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-controls={open ? groupId : undefined}
-                aria-label={`${open ? "Ocultar" : "Ver"} los conceptos de ${row.name}`}
-                onClick={onToggle}
-                className="inline-flex min-h-11 items-center justify-end gap-1 rounded-md px-1 text-right text-[12.5px] font-semibold leading-tight text-textPrimary hover:bg-paperDeep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink nav:text-[14px]"
-              >
-                <span>Varios conceptos</span>
-                <ChevronDownIcon className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} aria-hidden />
-              </button>
-            </td>
-          </>
-        ) : (
-          <>
-            <DateCell concept={single} />
-            <AmountCell concept={single} />
-          </>
-        )}
+        <DateCell paidAt={row.latestPaidAt} />
+        <AmountCell
+          display={cobroDisplayForRow(row)}
+          toggle={
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={open ? groupId : undefined}
+              aria-label={`${open ? "Ocultar" : "Ver"} los conceptos de ${row.name}`}
+              onClick={onToggle}
+              className="inline-flex h-11 w-7 items-center justify-center rounded-md text-textSecondary hover:bg-paperDeep hover:text-textPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink nav:w-9"
+            >
+              <ChevronDownIcon className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+          }
+        />
         <td className="px-0 py-0 align-middle">{mainItems.length > 0 && <PerStudentMenu studentId={row.studentId} label={row.name} items={mainItems} />}</td>
       </tr>
-      {multiple &&
-        open &&
+      {open &&
         row.concepts.map((concept) => {
           const tag = conceptShortLabel(concept, trainingCount);
           const items = conceptItems(row, concept);
@@ -172,8 +175,8 @@ function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boole
                   {tag}
                 </p>
               </th>
-              <DateCell concept={concept} />
-              <AmountCell concept={concept} />
+              <DateCell paidAt={concept.lastPayment?.paidAt ?? null} />
+              <AmountCell display={cobroDisplayForConcept(concept)} />
               <td className="px-0 py-0 align-middle">{items.length > 0 && <PerStudentMenu studentId={row.studentId} label={`${row.name}, ${tag}`} items={items} />}</td>
             </tr>
           );
@@ -208,6 +211,32 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
   }, [query]);
 
   // Al volver de un detalle: mismos conceptos desplegados y, ya dibujados, el mismo punto de desplazamiento. La memoria sólo existe en el navegador: se aplica tras hidratar.
+  // El efecto del desplazamiento va ANTES que el de la restauración: en el montaje corre primero (sin nada pendiente) y sólo actúa en el dibujo que sigue a restaurar los desplegables.
+  useLayoutEffect(() => {
+    const y = pendingScrollY.current;
+    if (y === null) return;
+    pendingScrollY.current = null;
+    window.scrollTo(0, y);
+    // El router también acomoda el desplazamiento de la pantalla recién montada: se reafirma unos instantes, salvo que la persona ya se haya movido.
+    let moved = false;
+    const stop = () => {
+      moved = true;
+    };
+    window.addEventListener("wheel", stop, { once: true, passive: true });
+    window.addEventListener("touchstart", stop, { once: true, passive: true });
+    window.addEventListener("keydown", stop, { once: true });
+    const timers = [0, 60, 160, 320, 600].map((delay) =>
+      window.setTimeout(() => {
+        if (!moved && Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+      }, delay),
+    );
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("wheel", stop);
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("keydown", stop);
+    };
+  }, [expanded]);
   useLayoutEffect(() => {
     const memory = readPerStudentMemory();
     if (!memory) return;
@@ -220,11 +249,6 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
     // sólo al montar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useLayoutEffect(() => {
-    if (pendingScrollY.current === null) return;
-    window.scrollTo(0, pendingScrollY.current);
-    pendingScrollY.current = null;
-  }, [expanded]);
 
   function toggle(studentId: string) {
     setExpanded((current) => {

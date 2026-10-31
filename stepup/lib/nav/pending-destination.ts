@@ -11,7 +11,31 @@ export interface PendingNavigation {
   /** «/ruta?x=y» del destino. */
   readonly destination: string;
   /** Ruta («/ruta», sin parámetros) desde donde se hizo clic. */
-  readonly fromPath: string;
+  readonly fromPath: string;}
+
+/**
+ * El nombre compartido del elemento pulsado (p. ej. el alumno de una fila). El esqueleto del destino lo dibuja IGUAL, con el mismo nombre de transición, para que la transición
+ * del nombre aterrice en su encabezado aunque los datos tarden y el contenido real lo reemplace sin saltos. Se guarda de forma SÍNCRONA en el clic (el esqueleto de `loading.tsx`
+ * se dibuja en la transición de la propia navegación, antes de que el destino pendiente se publique) y sin avisar a nadie: sólo se LEE al dibujar. Vale para su destino y unos segundos.
+ */
+export interface SharedNameHint {
+  readonly id: string;
+  readonly text: string;
+}
+const SHARED_NAME_HINT_MAX_AGE_MS = 10_000;
+let sharedNameHint: { pathname: string; hint: SharedNameHint; at: number } | null = null;
+
+export function rememberSharedName(pathname: string, hint: SharedNameHint | null, now: number = Date.now()): void {
+  sharedNameHint = hint ? { pathname, hint, at: now } : null;
+}
+
+/** El nombre del último clic cuyo destino es una ruta como `pattern` (el esqueleto de una ficha no conoce su ruta exacta: `loading.tsx` se dibuja en la propia transición). */
+export function readSharedNameMatching(pattern: RegExp, now: number = Date.now()): SharedNameHint | null {
+  return sharedNameHint && pattern.test(sharedNameHint.pathname) && now - sharedNameHint.at <= SHARED_NAME_HINT_MAX_AGE_MS ? sharedNameHint.hint : null;
+}
+
+export function readSharedName(pathname: string, now: number = Date.now()): SharedNameHint | null {
+  return sharedNameHint && sharedNameHint.pathname === pathname && now - sharedNameHint.at <= SHARED_NAME_HINT_MAX_AGE_MS ? sharedNameHint.hint : null;
 }
 
 type Listener = () => void;

@@ -78,5 +78,5 @@ test("búsqueda al escribir (sin Enter ni navegación), lista completa sin pagin
   assert.match(view, /window\.history\.replaceState\(/);
   assert.match(view, /<caption className="sr-only">/);
   assert.match(view, /min-h-11/, "el enlace del nombre mide al menos 44 px");
-  assert.match(code("components/payments/per-student-menu.tsx"), /h-11 w-9/);
+  assert.match(code("components/payments/per-student-menu.tsx"), /h-11 w-8/);
 });

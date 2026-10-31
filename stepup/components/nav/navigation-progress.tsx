@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { GIVE_UP_AFTER_MS, SLOW_AFTER_MS, decideClick, resolveNavigationIntent } from "@/lib/nav/navigation-intent";
-import { clearPendingNavigation, setPendingNavigation } from "@/lib/nav/pending-destination";
+import { clearPendingNavigation, rememberSharedName, setPendingNavigation } from "@/lib/nav/pending-destination";
 import { isScreenChange, pathnameOf } from "@/lib/nav/screens";
 
 /** Atrás/Adelante: el navegador ya cambió la dirección; si la pantalla no cambió en este tiempo (no estaba guardada) se muestra su esqueleto. Evita un parpadeo cuando se restaura al instante. */
@@ -92,6 +92,10 @@ function ProgressInner() {
       if (isScreenChange(pathRef.current, intent.destination)) {
         const destination = intent.destination;
         const fromPath = pathRef.current;
+        const nameElement = anchor.matches("[data-tf-shared-name]") ? anchor : anchor.querySelector<HTMLElement>("[data-tf-shared-name]");
+        const sharedText = nameElement?.textContent?.trim() ?? "";
+        const sharedName = nameElement?.dataset.tfSharedId && sharedText ? { id: nameElement.dataset.tfSharedId, text: sharedText } : null;
+        rememberSharedName(pathnameOf(destination), sharedName);
         window.setTimeout(() => {
           if (pendingRef.current?.destination === destination) setPendingNavigation({ destination, fromPath });
         }, 0);

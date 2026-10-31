@@ -62,7 +62,7 @@ test("esqueleto optimista del clic: se dibuja dentro de <main> antes del conteni
   assert.match(CSS, /\.tf-page-main:has\(> \[data-tf-pending-skeleton\]\) > :not\(\[data-tf-pending-skeleton\]\) \{\s*display: none !important;/);
   const slot = code("components/nav/screen-slot.tsx");
   assert.match(slot, /isScreenChange\(pathname, active\.destination\)/);
-  assert.match(slot, /<RouteSkeleton path=\{pathnameOf\(active\.destination\)\} optimistic retryHref=\{active\.destination\} \/>/);
+  assert.match(slot, /<RouteSkeleton path=\{pathnameOf\(active\.destination\)\} optimistic retryHref=\{active\.destination\} sharedName=\{readSharedName\(pathnameOf\(active\.destination\)\)\} \/>/);
   const progress = code("components/nav/navigation-progress.tsx");
   assert.match(progress, /if \(isScreenChange\(pathRef\.current, intent\.destination\)\) \{[\s\S]*?window\.setTimeout\(\(\) => \{\s*if \(pendingRef\.current\?\.destination === destination\) setPendingNavigation\(\{ destination, fromPath \}\);\s*\}, 0\);/, "apenas pasa el clic, sin esperar al servidor");
   // Causa real hallada con interacción: publicarlo DENTRO del escucha de captura re-renderiza la navegación (ícono activo = otro nodo SVG) y el clic sobre el ícono se perdía.

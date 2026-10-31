@@ -90,7 +90,7 @@ test("el esqueleto aparece al instante (sin animación propia ni brillo), con la
   for (const route of ["alumnos", "alumnos/[id]", "alumnos/nuevo", "alumnos/[id]/editar", "calendario", "calendario/nueva", "calendario/series", "calendario/disponibilidad", "cobros", "resumen-financiero", "recordatorios", "registro", "registro/nuevo", "registro/[calendarLessonId]", "configuracion"]) assert.ok(found.includes(`app/(app)/${route}/loading.tsx`), route);
   // Inicio sigue sin loading.tsx: su redirect de recuperación de sesión (B0) debe ser HTTP real
   assert.equal(existsSync(join(ROOT, "app/(app)/inicio/loading.tsx")), false);
-  for (const file of found) assert.match(code(file), /<(?:RouteSkeleton path|DestinationSkeleton fallbackPath)="\/[^"]*" \/>/, `${file}: sale del registro único de pantallas`);
+  for (const file of found) assert.match(code(file), /<(?:RouteSkeleton path|DestinationSkeleton fallbackPath|ProfileLoadingSkeleton path)="\/[^"]*" \/>/, `${file}: sale del registro único de pantallas`);
   const labels = allScreenLabels();
   assert.equal(new Set(labels).size, labels.length, "etiqueta accesible única por pantalla");
 });

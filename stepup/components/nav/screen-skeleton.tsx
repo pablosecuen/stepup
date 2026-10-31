@@ -12,9 +12,10 @@ import { SettingsCard, SettingsRow, SettingsSection } from "@/components/account
 import { CARD_TITLE_CLASS, FINANCIAL_PRESETS, Kpi, Stat, periodPillClass } from "@/components/finance/overview-parts";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
-import { PER_STUDENT_AMOUNT_GRID_CLASS, PER_STUDENT_COLGROUP, PER_STUDENT_GROUP_CLASS, PER_STUDENT_HEAD_ROW_CLASS, PER_STUDENT_INDICATOR_CLASS, PER_STUDENT_ROW_CLASS, PER_STUDENT_TABLE_CLASS, PER_STUDENT_TABLE_WRAP_CLASS, PER_STUDENT_TD_CLASS, PER_STUDENT_TH_CLASS, PER_STUDENT_TOOLBAR_CLASS, PER_STUDENT_UNIT_CLASS } from "@/components/payments/per-student-layout";
+import { PER_STUDENT_AMOUNT_GRID_CLASS, PER_STUDENT_COLGROUP, PER_STUDENT_DOLLAR_CLASS, PER_STUDENT_FIGURE_CLASS, PER_STUDENT_GROUP_CLASS, PER_STUDENT_HEAD_ROW_CLASS, PER_STUDENT_INDICATOR_CLASS, PER_STUDENT_ROW_CLASS, PER_STUDENT_TABLE_CLASS, PER_STUDENT_TABLE_WRAP_CLASS, PER_STUDENT_TD_CLASS, PER_STUDENT_TH_CLASS, PER_STUDENT_TOGGLE_SLOT_CLASS, PER_STUDENT_TOOLBAR_CLASS, PER_STUDENT_UNIT_CLASS } from "@/components/payments/per-student-layout";
 import { FINANCIAL_PERIOD_PRESET_LABEL } from "@/lib/reports/period";
 import { resolveScreen } from "@/lib/nav/screens";
+import type { SharedNameHint } from "@/lib/nav/pending-destination";
 
 /**
  * Esqueletos de carga de CADA pantalla del área privada (29/10/2026). Uno por pantalla —no uno genérico para todas—, con el contenedor, los
@@ -246,19 +247,25 @@ export function ProfileTabSkeleton({ tab = "resumen" }: { tab?: string }) {
 
 const PROFILE_TABS = ["Resumen", "Clases", "Progreso", "Tareas", "Cobros", "Reportes", "Información"];
 
-function AlumnoBody() {
+function AlumnoBody({ back, sharedName }: { back: string | null; sharedName: SharedNameHint | null }) {
   // El MISMO marcado que `StudentProfileHeader` y `ProfileTabsNav` (clases y textos fijos reales); sólo el nombre, el estado y la fecha son bloques.
   return (
     <>
       <header>
-        <SkBack label="Volver a Alumnos" />
+        <SkBack label={back ?? "Volver a Alumnos"} />
         <div className="mt-2 flex flex-col gap-4 nav:flex-row nav:items-start nav:justify-between">
           <div className="flex min-w-0 items-start gap-4 nav:flex-1 nav:gap-5">
             <SkRound className="h-14 w-14 nav:h-24 nav:w-24" />
             <div className="min-w-0 flex-1">
               <p className="text-label font-bold uppercase text-textMuted">Alumno</p>
               <p className="mt-0.5 font-display text-[30px] font-medium leading-[1.08] tracking-[-0.03em] nav:text-[40px]">
-                <Ph text="Nombre del alumno" />
+                {sharedName ? (
+                  <span data-tf-shared-name data-tf-shared-id={sharedName.id} style={{ viewTransitionName: `tf-student-${sharedName.id}` }}>
+                    {sharedName.text}
+                  </span>
+                ) : (
+                  <Ph text="Nombre del alumno" />
+                )}
               </p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 <SkPill className="h-[26px] w-16" />
@@ -436,12 +443,16 @@ function PorAlumnoBody({ title }: { title: string }) {
                 <td className={PER_STUDENT_TD_CLASS}>
                   <div className={PER_STUDENT_AMOUNT_GRID_CLASS}>
                     <span className={PER_STUDENT_INDICATOR_CLASS} />
-                    <span className="text-right">
-                      <Ph text="$ 00.000" />
+                    <span className={PER_STUDENT_DOLLAR_CLASS}>
+                      <Ph text="$" />
+                    </span>
+                    <span className={PER_STUDENT_FIGURE_CLASS}>
+                      <Ph text="00.000" />
                     </span>
                     <span className={PER_STUDENT_UNIT_CLASS}>
                       <Ph text="/ mes" />
                     </span>
+                    <span className={PER_STUDENT_TOGGLE_SLOT_CLASS} />
                   </div>
                 </td>
                 <td className="p-0" />
@@ -772,7 +783,7 @@ function SkHeaderBar() {
   );
 }
 
-function Body({ path, title }: { path: string; title: string | null }) {
+function Body({ path, title, sharedName }: { path: string; title: string | null; sharedName: SharedNameHint | null }) {
   const screen = resolveScreen(path);
   switch (screen?.key) {
     case "inicio":
@@ -780,7 +791,7 @@ function Body({ path, title }: { path: string; title: string | null }) {
     case "alumnos":
       return <AlumnosBody title={title ?? "Alumnos"} />;
     case "alumno":
-      return <AlumnoBody />;
+      return <AlumnoBody back={screen.back} sharedName={sharedName} />;
     case "alumno-form":
     case "clase-form":
     case "registro-form":
@@ -821,13 +832,13 @@ function Body({ path, title }: { path: string; title: string | null }) {
  * El esqueleto de la pantalla de `path` (una ruta de muestra para las dinámicas: «/alumnos/_», «/registro/_»…). `optimistic` es el que se
  * dibuja al hacer clic, antes de que el servidor responda; `retryHref` es a dónde lleva «Reintentar» si la carga se cuelga.
  */
-export function RouteSkeleton({ path, optimistic = false, retryHref }: { path: string; optimistic?: boolean; retryHref?: string }): ReactNode {
+export function RouteSkeleton({ path, optimistic = false, retryHref, sharedName = null }: { path: string; optimistic?: boolean; retryHref?: string; sharedName?: SharedNameHint | null }): ReactNode {
   const screen = resolveScreen(path);
   if (!screen) return null;
   if (screen.key === "calendario") return <CalendarSkeleton label={screen.label} optimistic={optimistic} retryHref={retryHref} />;
   return (
     <ScreenFrame label={screen.label} width={screen.width} optimistic={optimistic} retryHref={retryHref}>
-      <Body path={path} title={screen.title} />
+      <Body path={path} title={screen.title} sharedName={sharedName} />
     </ScreenFrame>
   );
 }

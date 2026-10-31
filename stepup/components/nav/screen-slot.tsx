@@ -3,7 +3,7 @@
 import { addTransitionType, startTransition, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { RouteSkeleton } from "@/components/nav/screen-skeleton";
-import { activePendingNavigation, getPendingNavigation, subscribePendingNavigation } from "@/lib/nav/pending-destination";
+import { activePendingNavigation, getPendingNavigation, readSharedName, subscribePendingNavigation } from "@/lib/nav/pending-destination";
 import { isScreenChange, pathnameOf, resolveScreen } from "@/lib/nav/screens";
 import type { PendingNavigation } from "@/lib/nav/pending-destination";
 
@@ -31,5 +31,5 @@ export function ScreenSlot() {
   }, [active]);
   // Cached responses crossfade directly. Slow responses get the skeleton, with no minimum display time.
   if (!active || visible !== active || !isScreenChange(pathname, active.destination) || !resolveScreen(pathnameOf(active.destination))) return null;
-  return <RouteSkeleton path={pathnameOf(active.destination)} optimistic retryHref={active.destination} />;
+  return <RouteSkeleton path={pathnameOf(active.destination)} optimistic retryHref={active.destination} sharedName={readSharedName(pathnameOf(active.destination))} />;
 }

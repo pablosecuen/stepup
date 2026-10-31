@@ -69,7 +69,7 @@ export function PerStudentMenu({ studentId, label, items }: { studentId: string;
           }
           setOpen(true);
         }}
-        className="flex h-11 w-9 items-center justify-center rounded-md text-textSecondary transition-colors hover:bg-paperDeep hover:text-textPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink nav:w-11"
+        className="flex h-11 w-8 items-center justify-center rounded-md text-textSecondary transition-colors hover:bg-paperDeep hover:text-textPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink nav:w-11"
       >
         <EllipsisVerticalIcon className="h-5 w-5" aria-hidden />
       </button>
