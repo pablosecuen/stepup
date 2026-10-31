@@ -18,9 +18,6 @@ import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord, Train
 export type PlanFilterKey = "per_class" | "weekly" | "biweekly" | "monthly" | "class_package" | "complimentary" | "training";
 export type RatePeriod = "clase" | "semana" | "quincena" | "mes" | "paquete";
 
-/** Orden fijo de las periodicidades: los importes sólo se comparan dentro de la misma. */
-export const RATE_PERIOD_ORDER: readonly RatePeriod[] = ["clase", "semana", "quincena", "mes", "paquete"];
-
 export interface ConceptRate {
   amount: number;
   period: RatePeriod;
@@ -285,15 +282,20 @@ function activeConcepts(row: PerStudentRow, plan: PerStudentQuery["plan"]): PerS
   return row.concepts.filter((concept) => concept.kind !== "previous_plan" && (plan === "todos" || concept.planKey === plan));
 }
 
-/** La tarifa con la que se ordena una fila: la del primer concepto vigente (del plan filtrado, si lo hay) que tenga tarifa. */
-export function rowSortRate(row: PerStudentRow, plan: PerStudentQuery["plan"]): ConceptRate | null {
-  return activeConcepts(row, plan).find((concept) => concept.rate !== null)?.rate ?? null;
+/**
+ * El importe NUMÉRICO que muestra la columna «Cobro» de una fila (la deuda total si hay deuda; si no, la tarifa), o `null` si no muestra ninguno («Sin cargo», «—» o un valor no
+ * numérico). Es lo que ordena «Cobro: de mayor a menor / de menor a mayor»: nunca un texto formateado, ni una tarifa convertida a otra periodicidad.
+ */
+export function rowCobroAmount(row: PerStudentRow): number | null {
+  const display = cobroDisplayForRow(row);
+  const amount = display.kind === "debt" ? display.amount : display.kind === "rate" ? display.rate.amount : null;
+  return typeof amount === "number" && Number.isFinite(amount) ? amount : null;
 }
 
 /**
- * Busca sobre la lista COMPLETA (con el mismo motor de búsqueda que Alumnos), filtra por plan y ordena. Las tarifas se comparan sólo dentro de la misma periodicidad:
- * se agrupan por periodicidad (clase, semana, quincena, mes, paquete) y recién dentro de cada grupo se ordena por importe; los alumnos sin tarifa van al final. Los
- * alumnos sin pagos van siempre al final al ordenar por fecha de pago.
+ * Busca sobre la lista COMPLETA (con el mismo motor de búsqueda que Alumnos), filtra por plan y ordena TODOS los resultados. «Cobro» ordena toda la lista por el importe numérico
+ * que muestra cada fila (`rowCobroAmount`), sin agrupar antes por plan, periodicidad, deuda ni cantidad de conceptos; los importes ausentes van al final en ambos sentidos, el cero
+ * participa como cero y los empates se desempatan por nombre. Los alumnos sin pagos van siempre al final al ordenar por fecha de pago.
  */
 export function queryPerStudentRows(rows: readonly PerStudentRow[], query: PerStudentQuery): PerStudentRow[] {
   const text = query.text.trim();
@@ -308,14 +310,12 @@ export function queryPerStudentRows(rows: readonly PerStudentRow[], query: PerSt
     case "tarifa_asc":
     case "tarifa_desc": {
       const sign = query.sort === "tarifa_asc" ? 1 : -1;
+      const amounts = new Map(result.map((row) => [row.studentId, rowCobroAmount(row)]));
       return result.sort((a, b) => {
-        const rateA = rowSortRate(a, query.plan);
-        const rateB = rowSortRate(b, query.plan);
-        if (!rateA || !rateB) return rateA ? -1 : rateB ? 1 : byName(a, b);
-        const periodA = RATE_PERIOD_ORDER.indexOf(rateA.period);
-        const periodB = RATE_PERIOD_ORDER.indexOf(rateB.period);
-        if (periodA !== periodB) return periodA - periodB;
-        return sign * (rateA.amount - rateB.amount) || byName(a, b);
+        const amountA = amounts.get(a.studentId) ?? null;
+        const amountB = amounts.get(b.studentId) ?? null;
+        if (amountA === null || amountB === null) return amountA === null && amountB === null ? byName(a, b) : amountA === null ? 1 : -1;
+        return sign * (amountA - amountB) || byName(a, b);
       });
     }
     case "pago_reciente":
@@ -359,8 +359,8 @@ export const PLAN_FILTER_LABEL: Record<"todos" | PlanFilterKey, string> = {
 export const PER_STUDENT_SORT_LABEL: Record<PerStudentSort, string> = {
   nombre: "Nombre (A a Z)",
   nombre_desc: "Nombre (Z a A)",
-  tarifa_asc: "Tarifa: de menor a mayor",
-  tarifa_desc: "Tarifa: de mayor a menor",
+  tarifa_asc: "Cobro: de menor a mayor",
+  tarifa_desc: "Cobro: de mayor a menor",
   pago_reciente: "Pago: más reciente primero",
   pago_antiguo: "Pago: más antiguo primero",
 };

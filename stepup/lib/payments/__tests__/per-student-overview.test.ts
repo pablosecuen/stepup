@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calculateChargeBalance, calculatePaidAmountForCharge } from "../charge-balance.ts";
-import { buildPerStudentHref, buildPerStudentRows, cobroDisplayForConcept, cobroDisplayForRow, conceptShortLabel, ratePeriodShort, parsePerStudentQuery, queryPerStudentRows, ratePeriodLabel, rowSortRate, type PerStudentInput, type PerStudentRow } from "../per-student-overview.ts";
+import { buildPerStudentHref, buildPerStudentRows, cobroDisplayForConcept, cobroDisplayForRow, conceptShortLabel, ratePeriodShort, parsePerStudentQuery, queryPerStudentRows, ratePeriodLabel, type PerStudentInput, type PerStudentRow } from "../per-student-overview.ts";
 import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord, TrainingBillingAgreementRecord } from "../../repositories/payments-mapping.ts";
 
 /** Cobros › Por alumno: tarifa vigente, último pago y saldo de cada alumno ACTIVO, sin mezclar conceptos. Lógica pura. */
@@ -206,14 +206,6 @@ function sample(): PerStudentRow[] {
   return build({ students, charges: cobros, payments: pagos, allocations: pagos.map((p, i) => allocation(p, cobros[i], p.amount)) });
 }
 
-test("ordenar por tarifa compara sólo dentro de la misma periodicidad: clase, semana y mes no se mezclan", () => {
-  const asc = queryPerStudentRows(sample(), { text: "", plan: "todos", sort: "tarifa_asc" }).map((row) => row.name);
-  // clase (9.000 < 20.000) → semana → mes (60.000 < 80.000) → sin tarifa al final
-  assert.deepEqual(asc, ["Dani Ruiz", "Beto Gómez", "Fede Luna", "Carla Díaz", "Ana Pérez", "Eli Soto"]);
-  const desc = queryPerStudentRows(sample(), { text: "", plan: "todos", sort: "tarifa_desc" }).map((row) => row.name);
-  assert.deepEqual(desc, ["Beto Gómez", "Dani Ruiz", "Fede Luna", "Ana Pérez", "Carla Díaz", "Eli Soto"], "los grupos de periodicidad mantienen su orden; dentro de cada uno se invierte el importe");
-});
-
 test("ordenar por fecha de pago: el más reciente primero o el más antiguo primero; sin pagos siempre al final", () => {
   const recent = queryPerStudentRows(sample(), { text: "", plan: "todos", sort: "pago_reciente" }).map((row) => row.name);
   assert.deepEqual(recent.slice(0, 3), ["Carla Díaz", "Ana Pérez", "Beto Gómez"]);
@@ -236,16 +228,6 @@ test("filtrar por plan deja sólo a quienes lo tienen vigente; la búsqueda reco
   assert.deepEqual(queryPerStudentRows(sample(), { text: "perez", plan: "todos", sort: "nombre" }).map((row) => row.name), ["Ana Pérez"]);
   assert.deepEqual(queryPerStudentRows(sample(), { text: "d", plan: "todos", sort: "nombre" }).map((row) => row.name).includes("Dani Ruiz"), true);
   assert.deepEqual(queryPerStudentRows(sample(), { text: "zzzz", plan: "todos", sort: "nombre" }), []);
-});
-
-test("con un plan filtrado, la tarifa de orden es la de ese plan (el entrenamiento de un alumno con plan por clase se ordena como entrenamiento)", () => {
-  const eli = student("Eli", { billingPlan: { type: "per_class", amount: 18000 } });
-  const ag = agreement({ monthlyFee: 65000 });
-  const entre = charge(eli.id, { chargeType: "entrenamiento", originalAmount: 65000, trainingBillingAgreementId: ag.id, trainingSeriesName: "S" });
-  const [row] = build({ students: [eli], charges: [entre], agreements: [ag] });
-  assert.deepEqual(rowSortRate(row, "todos"), { amount: 18000, period: "clase" });
-  assert.deepEqual(rowSortRate(row, "training"), { amount: 65000, period: "mes" });
-  assert.equal(queryPerStudentRows([row], { text: "", plan: "training", sort: "nombre" }).length, 1);
 });
 
 test("el estado de la consulta viaja en la dirección: sólo lo que se aparta de lo predeterminado, y valores inválidos vuelven al predeterminado", () => {
