@@ -1,5 +1,6 @@
 import { PlusIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { EnterOnChange } from "@/components/ui/enter-on-change";
+import { ListCascade } from "@/components/ui/list-cascade";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
@@ -85,11 +86,12 @@ export function StudentsListView({
 
       {/* Sólo entra al cambiar de página de resultados: escribir, filtrar u ordenar actualizan la lista en su lugar, sin animar de nuevo. */}
       <EnterOnChange changeKey={`pagina-${page}`}>
+      <ListCascade key={page}>
       {rows.length > 0 ? (
         <>
           <ul className="mt-5 flex flex-col gap-3 nav:hidden">
             {rows.map((row) => (
-              <li key={row.student.id}>
+              <li key={row.student.id} data-tf-cascade-row>
                 <StudentCard row={row} now={now} />
               </li>
             ))}
@@ -120,6 +122,7 @@ export function StudentsListView({
           />
         </div>
       )}
+      </ListCascade>
       </EnterOnChange>
     </div>
   );

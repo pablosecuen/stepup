@@ -1,3 +1,4 @@
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { FinanceMotion } from "@/components/finance/finance-motion";
 import PrivateLink from "@/components/nav/private-link";
@@ -189,11 +190,11 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
       <dl className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[1100px]:grid-cols-1">
         <div className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-3">
           <dt className="text-[13.5px] font-[650] text-textSecondary">Ahorro teórico acumulado con ingresos reales</dt>
-          <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary">{formatMoney(plan.cumulativeRealTheoreticalSavings)}</dd>
+          <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary"><AnimatedNumber value={plan.cumulativeRealTheoreticalSavings} /></dd>
         </div>
         <div className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-3">
           <dt className="text-[13.5px] font-[650] text-textSecondary">Ahorro estimado al completar 12 meses</dt>
-          <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary">{formatMoney(plan.cumulativeProjectedTheoreticalSavings)}</dd>
+          <dd className="mt-0.5 font-display text-[22px] font-semibold tf-num text-textPrimary"><AnimatedNumber value={plan.cumulativeProjectedTheoreticalSavings} /></dd>
         </div>
       </dl>
       </div>

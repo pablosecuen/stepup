@@ -8,7 +8,7 @@ export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "dang
 export type ButtonSize = "md" | "lg";
 
 const BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border-[1.5px] px-[18px] py-2 text-center text-[14.5px] font-[650] leading-tight transition-[background-color,border-color,color,transform] duration-150 ease-premium active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50";
+  "tf-motion-button inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border-[1.5px] px-[18px] py-2 text-center text-[14.5px] font-[650] leading-tight transition-[background-color,border-color,color,transform] duration-150 ease-premium active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "border-ink bg-ink text-background hover:border-sideLine hover:bg-sideLine",

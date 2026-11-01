@@ -1,4 +1,5 @@
 "use client";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 import { useCallback, useState } from "react";
 import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline";
@@ -76,7 +77,7 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
         </p>
       )}
 
-      <p className="mt-4 text-[13px] text-textMuted">Cobrado en el período<span className="mt-1 block whitespace-nowrap font-display text-[26px] text-textPrimary tf-num">{formatMoney(hasCollected ? collected : 0)}</span></p>
+      <p className="mt-4 text-[13px] text-textMuted">Cobrado en el período<span className="mt-1 block whitespace-nowrap font-display text-[26px] text-textPrimary tf-num"><AnimatedNumber value={hasCollected ? collected : 0} /></span></p>
       <div className="mt-3 flex max-w-[620px] flex-col items-start gap-5 min-[480px]:flex-row min-[480px]:items-center">
         <Donut shares={shares} />
         <div className="w-full min-w-0 flex-1">
@@ -94,7 +95,7 @@ export function BudgetSuggestion({ collected, distribution }: { collected: numbe
                 </dt>
                 <dd className="text-right font-bold tf-num text-textPrimary">
                   <span>{share.percent} %</span>
-                  <span className="ml-2 font-[650] text-textSecondary [overflow-wrap:anywhere]">{formatMoney(share.amount)}</span>
+                  <span className="ml-2 font-[650] text-textSecondary [overflow-wrap:anywhere]"><AnimatedNumber value={share.amount} /></span>
                 </dd>
               </div>
             ))}

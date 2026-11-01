@@ -76,7 +76,7 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
         {rows.map((row) => {
           const { student } = row;
           return (
-          <Tr key={student.id} className="relative cursor-pointer">
+          <Tr key={student.id} data-tf-cascade-row className="relative cursor-pointer">
             <Td className="min-w-[220px]">
               <PrivateLink
                 href={`/alumnos/${student.id}`}

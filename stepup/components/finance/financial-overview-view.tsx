@@ -1,3 +1,4 @@
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import type { ReactNode } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
@@ -107,23 +108,23 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
       <section aria-label="Cifras del período" className="mt-5 grid grid-cols-2 gap-3 max-[400px]:grid-cols-1 nav:grid-cols-4 nav:gap-4">
         <Kpi
           label="Facturación prevista"
-          value={formatMoney(data.summary.generated)}
+          value={<AnimatedNumber value={data.summary.generated} />}
           foot={data.comparison ? <>vs. período anterior: {formatChange(data.comparison.generated.percentChange)}</> : undefined}
         />
         <Kpi
           label="Cobrado (por fecha real de pago)"
-          value={formatMoney(data.summary.collected)}
+          value={<AnimatedNumber value={data.summary.collected} />}
           valueClass="text-accentDark"
           foot={data.comparison ? <>vs. período anterior: {formatChange(data.comparison.collected.percentChange)}</> : undefined}
         />
-        <Kpi label="Pendiente en término" value={formatMoney(data.summary.pending)} />
-        <Kpi label="Vencido" value={formatMoney(data.summary.overdue)} valueClass="text-bad" />
+        <Kpi label="Pendiente en término" value={<AnimatedNumber value={data.summary.pending} />} />
+        <Kpi label="Vencido" value={<AnimatedNumber value={data.summary.overdue} />} valueClass="text-bad" />
       </section>
 
       <section aria-label="Este mes" className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3 nav:mt-4 nav:gap-4">
-        <Kpi label="Deuda de meses anteriores" value={formatMoney(data.monthSnapshot.priorPeriodsDebt)} valueClass={data.monthSnapshot.priorPeriodsDebt > 0 ? "text-bad" : "text-textPrimary"} />
-        <Kpi label="Alumnos que pagaron este mes" value={formatCount(data.monthSnapshot.studentsPaidThisMonth)} />
-        <Kpi label="Alumnos con deuda" value={formatCount(data.monthSnapshot.studentsWithDebt)} valueClass={data.monthSnapshot.studentsWithDebt > 0 ? "text-bad" : "text-textPrimary"} />
+        <Kpi label="Deuda de meses anteriores" value={<AnimatedNumber value={data.monthSnapshot.priorPeriodsDebt} />} valueClass={data.monthSnapshot.priorPeriodsDebt > 0 ? "text-bad" : "text-textPrimary"} />
+        <Kpi label="Alumnos que pagaron este mes" value={<AnimatedNumber value={data.monthSnapshot.studentsPaidThisMonth} kind="count" />} />
+        <Kpi label="Alumnos con deuda" value={<AnimatedNumber value={data.monthSnapshot.studentsWithDebt} kind="count" />} valueClass={data.monthSnapshot.studentsWithDebt > 0 ? "text-bad" : "text-textPrimary"} />
       </section>
 
       {/* Dos tarjetas lado a lado cuando entran (escritorio ancho) y en una columna en móvil. */}

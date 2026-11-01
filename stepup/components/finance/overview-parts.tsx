@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { CARD_CLASS } from "@/components/ui/surfaces";
 import type { FinancialPeriodPreset } from "@/lib/reports/period";
 
@@ -31,7 +32,7 @@ export function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-md border border-border bg-lavenderSoft/40 px-3.5 py-3">
       <p className="text-[13px] font-[650] text-textMuted">{label}</p>
-      <p className="mt-1 font-display text-[30px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{value}</p>
+      <p className="mt-1 font-display text-[30px] font-semibold leading-none tracking-tight tf-num text-textPrimary [overflow-wrap:anywhere]">{typeof value === "number" ? <AnimatedNumber value={value} kind="count" /> : value}</p>
     </div>
   );
 }

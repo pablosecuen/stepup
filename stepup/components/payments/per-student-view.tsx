@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { BanknotesIcon, CheckCircleIcon, ChevronDownIcon, ExclamationCircleIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Avatar } from "@/components/ui/avatar";
+import { ListCascade } from "@/components/ui/list-cascade";
 import { linkClass } from "@/components/ui/button";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
@@ -128,7 +129,7 @@ function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boole
   const mainItems: PerStudentMenuItem[] = row.concepts.length === 1 ? [detail, ...conceptItems(row, row.concepts[0])] : [detail];
   return (
     <tbody id={groupId} className={PER_STUDENT_GROUP_CLASS} data-student-row={row.studentId} data-open={open ? "true" : "false"}>
-      <tr className={PER_STUDENT_ROW_CLASS}>
+      <tr data-tf-cascade-row className={PER_STUDENT_ROW_CLASS}>
         <th scope="row" className={`${PER_STUDENT_TD_CLASS} text-left font-normal`}>
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="hidden nav:inline-flex">
@@ -365,6 +366,7 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
               </button>
             </div>
           ) : (
+            <ListCascade>
             <div className={PER_STUDENT_TABLE_WRAP_CLASS}>
               <table className={PER_STUDENT_TABLE_CLASS} onClickCapture={rememberPosition} onAuxClick={rememberPosition}>
                 <caption className="sr-only">Tarifa vigente y fecha del último pago de cada alumno activo</caption>
@@ -394,6 +396,7 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
                 ))}
               </table>
             </div>
+            </ListCascade>
           )}
         </>
       )}

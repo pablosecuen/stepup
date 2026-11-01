@@ -13,7 +13,8 @@ export function FinanceMotion({ children, className, signature = "" }: { childre
   const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
   useLayoutEffect(() => {
     const element = root.current;
-    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!element || reduce.matches) return;
     const rect = element.getBoundingClientRect();
     const visible = rect.bottom > 0 && rect.top < window.innerHeight;
     // HTML already painted before hydration must never jump from its final value back to zero.
@@ -29,19 +30,25 @@ export function FinanceMotion({ children, className, signature = "" }: { childre
         if (!bar.animate) return;
         bar.style.transformOrigin = "center bottom";
         bar.style.transformBox = "fill-box";
-        animations.push(bar.animate([{ transform: "scaleY(.025)" }, { transform: "scaleY(1)" }], { duration: 600, delay: Math.min(index * 32, 220), easing: "cubic-bezier(.2,.75,.2,1)" }));
+        animations.push(bar.animate([{ transform: "scaleY(.025)" }, { transform: "scaleY(1)" }], { duration: 800, delay: Math.min(index * 24, 160), easing: "cubic-bezier(.2,.75,.2,1)" }));
       });
       element.querySelectorAll<SVGCircleElement>("[data-tf-finance-arc]").forEach((arc, index) => {
         const target = arc.getAttribute("stroke-dasharray");
         if (!target || !arc.animate) return;
-        animations.push(arc.animate([{ strokeDasharray: "0 100" }, { strokeDasharray: target }], { duration: 700, delay: index * 40, easing: "cubic-bezier(.2,.75,.2,1)" }));
+        animations.push(arc.animate([{ strokeDasharray: "0 100" }, { strokeDasharray: target }], { duration: 900, delay: Math.min(index * 30, 90), easing: "cubic-bezier(.2,.75,.2,1)" }));
       });
     };
     // For client navigation, start before the first paint; below the fold, start on entry.
-    if (visible || !("IntersectionObserver" in window)) { run(); return () => animations.forEach(animation => animation.cancel()); }
+    const cancel = () => {
+      if (observed || animations.some(animation => animation.playState !== "finished")) presented.current = null;
+      observed = false;
+      animations.forEach(animation => animation.cancel());
+    };
+    reduce.addEventListener("change", cancel);
+    if (visible || !("IntersectionObserver" in window)) { run(); return () => { reduce.removeEventListener("change", cancel); cancel(); }; }
     const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { run(); observer.disconnect(); } }, { threshold: 0.12 });
     observer.observe(element);
-    return () => { observed = false; observer.disconnect(); animations.forEach(animation => animation.cancel()); };
+    return () => { reduce.removeEventListener("change", cancel); observer.disconnect(); cancel(); };
   }, [signature, hydrated]);
   return <div ref={root} className={className}>{children}</div>;
 }
