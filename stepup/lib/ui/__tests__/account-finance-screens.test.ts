@@ -94,10 +94,10 @@ test("«Distribución sugerida»: sobre lo COBRADO del período, con aclaración
   assert.match(suggestion, /role="img" aria-label=\{`Distribución sugerida: \$\{summary\}`\}/, "la dona se lee como texto");
   assert.match(suggestion, /<span>Suma<\/span>[\s\S]*\{sum\} %/, "suma final visible");
   assert.match(suggestion, /\{share\.percent\} %/);
-  assert.match(suggestion, /formatMoney\(share\.amount\)/);
+  assert.match(suggestion, /<AnimatedNumber value=\{share\.amount\} \/>/);
   assert.match(suggestion, /Ajustar porcentajes/);
   assert.match(suggestion, /Todavía no hay dinero cobrado en este período, así que cada categoría muestra/, "cero cobrado: $ 0 y un estado claro");
-  assert.match(suggestion, /formatMoney\(hasCollected \? collected : 0\)/, "nunca NaN");
+  assert.match(suggestion, /<AnimatedNumber value=\{hasCollected \? collected : 0\} \/>/, "nunca NaN");
   // colores: azul, violeta y verde; nada de rojo para categorías normales
   assert.match(suggestion, /needs: \{[^}]*budgetNeeds/);
   assert.match(suggestion, /wants: \{[^}]*budgetWants/);

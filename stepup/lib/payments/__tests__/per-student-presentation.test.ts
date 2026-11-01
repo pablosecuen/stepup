@@ -20,7 +20,7 @@ test("al entrar todo está cerrado: ninguna subfila por defecto y todas las fila
   const view = code(VIEW);
   assert.match(view, /useState<ReadonlySet<string>>\(\(\) => new Set\(\)\)/, "ningún alumno desplegado de entrada");
   assert.match(view, /\{open &&\s*row\.concepts\.map/, "las subfilas sólo existen con el alumno desplegado");
-  assert.match(view, /<tr className=\{PER_STUDENT_ROW_CLASS\}>/);
+  assert.match(view, /<tr data-tf-cascade-row className=\{PER_STUDENT_ROW_CLASS\}>/);
   assert.match(code(LAYOUT), /PER_STUDENT_ROW_CLASS = "h-\[52px\] nav:h-12"/);
   for (const file of [VIEW, "components/nav/screen-skeleton.tsx", "lib/payments/per-student-overview.ts"]) assert.doesNotMatch(read(file), /Varios conceptos/, file);
 });

@@ -92,7 +92,7 @@ test("las cifras, los períodos, la tabla y la selección de año se conservan",
     assert.ok(annual.includes(piece), piece);
   }
   const suggestion = code("components/finance/budget-suggestion.tsx");
-  assert.match(suggestion, /formatMoney\(share\.amount\)/);
+  assert.match(suggestion, /<AnimatedNumber value=\{share\.amount\} \/>/);
   assert.match(suggestion, /\{share\.percent\} %/);
   assert.match(suggestion, /<span>Suma<\/span>/);
 });

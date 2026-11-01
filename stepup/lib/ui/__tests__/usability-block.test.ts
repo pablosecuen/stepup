@@ -117,7 +117,7 @@ test("la fila completa del alumno abre el perfil con UN solo enlace por fila (un
   const source = code("components/students/student-card.tsx");
   const table = source.slice(source.indexOf("export function StudentsTable"));
   assert.equal((table.match(/<PrivateLink\b/g) ?? []).length, 1, "un único enlace en la fila de la tabla");
-  assert.match(table, /<Tr key=\{student\.id\} className="relative cursor-pointer">/);
+  assert.match(table, /<Tr key=\{student\.id\} data-tf-cascade-row className="relative cursor-pointer">/);
   assert.match(table, /aria-label=\{`Abrir perfil de \$\{student\.name\}`\}/);
   assert.match(table, /after:absolute after:inset-0/, "el pseudo-elemento del enlace cubre toda la fila");
   assert.match(table, /focus-visible:after:outline/, "el foco se ve alrededor de la fila entera");
