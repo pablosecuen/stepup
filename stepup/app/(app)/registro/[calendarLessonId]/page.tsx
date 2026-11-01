@@ -9,7 +9,9 @@ import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calenda
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { RegistrationChargeCard, type RegistrationChargeLine } from "@/components/registro/registration-charge-card";
-import { listStudentsCoveredByTrainingPlan } from "@/lib/repositories/training-coverage";
+import { resolveRegistrationBilling } from "@/lib/repositories/training-coverage";
+import { RegistrationBillingPanel } from "@/components/registro/registration-billing-panel";
+import { buildBillingRows, type BillingRow } from "@/lib/registro/billing-rows";
 import { listChargeStatusForRegistration } from "@/lib/repositories/payments";
 import { logLoadFailure } from "@/lib/errors/load-failure";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
@@ -41,13 +43,12 @@ export default async function RegistroClasePage({ params, searchParams }: { para
   let detail;
   let calendarLesson;
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
-  let showPerClassBillingControls = false;
+  let billingRows: BillingRow[] = [];
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
   let lessonContent: LessonContent | null = null;
   let materialLibrary: LibraryMaterial[] = [];
   let incidents: OriginIncidentView[] = [];
   let chargeLines: RegistrationChargeLine[] = [];
-  let coveredByTrainingPlan = false;
   try {
     const ctx = await requireAuthenticatedDbContext();
     [detail, calendarLesson] = await Promise.all([
@@ -58,18 +59,28 @@ export default async function RegistroClasePage({ params, searchParams }: { para
     if (detail && calendarLesson) {
       const students = await listStudents(ctx);
       const studentById = new Map(students.map((s) => [s.id, s]));
-      showPerClassBillingControls = detail.participants.some(p => { const s = studentById.get(p.studentId); return s && resolveStudentBillingPlan({billingPlan:s.billingPlan as StudentBillingPlan|null,billingType:s.billingType,price:s.price}).type === "per_class"; });
       participantsInfo = detail.participants.map((p) => {
         const student = studentById.get(p.studentId);
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
       });
 
+      // Cobro de un ENTRENAMIENTO, participante por participante (sólo informativo: si no se puede leer, la pantalla sigue como siempre). Una clase común no tiene panel.
+      if (detail.registration.activityKind === "training") {
+        const participantIds = detail.participants.map((p: { studentId: string }) => p.studentId);
+        const billing = await resolveRegistrationBilling(ctx, { registrationId: detail.registration.id, activityKind: detail.registration.activityKind, recurrenceId: calendarLesson.recurrenceId, calendarLessonId: calendarLesson.id, participantIds, sessionAnchorIso: calendarLesson.startAt }).catch(() => null);
+        if (billing) {
+          billingRows = buildBillingRows({
+            activityKind: detail.registration.activityKind,
+            participants: participantsInfo.map((p) => { const s = studentById.get(p.studentId); return { studentId: p.studentId, name: p.name, billsPerClass: !!s && resolveStudentBillingPlan({ billingPlan: s.billingPlan as StudentBillingPlan | null, billingType: s.billingType, price: s.price }).type === "per_class" }; }),
+            decisions: billing.decisions,
+            agreementLabels: billing.agreementLabels,
+          });
+        }
+      }
+
       // Cobro de ESTA clase (sólo informativo: si no se puede leer, la pantalla sigue como siempre).
       if (detail.registration.status === "completed") {
-        const participantIds = detail.participants.map((p: { studentId: string }) => p.studentId);
-        const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson.recurrenceId, participantIds, sessionAnchorIso: calendarLesson.startAt,calendarLessonId:calendarLesson.id }).catch(() => new Set<string>());
-        coveredByTrainingPlan = participantIds.length > 0 && participantIds.every((studentId: string) => coveredStudents.has(studentId));
-        const statuses = coveredByTrainingPlan ? [] : await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => []);
+        const statuses = await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => []);
         chargeLines = statuses.map((status) => ({ chargeId: status.chargeId, studentId: status.studentId, studentName: studentById.get(status.studentId)?.name ?? "Alumno", total: status.total, paid: status.paid, balance: status.balance, state: status.state, payments: status.payments }));
       }
 
@@ -150,7 +161,8 @@ export default async function RegistroClasePage({ params, searchParams }: { para
       backLabel={returnHref ? "Volver al Calendario" : undefined}
     >
       <OriginIncidentsCard incidents={incidents} />
-      <RegistrationChargeCard lines={chargeLines} coveredByTrainingPlan={coveredByTrainingPlan} />
+      <RegistrationBillingPanel registrationId={detail.registration.id} rows={billingRows} />
+      <RegistrationChargeCard lines={chargeLines} />
       {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
         // Al cambiar el resultado de la clase el formulario se vuelve a armar con lo que quedó guardado.
@@ -160,7 +172,6 @@ export default async function RegistroClasePage({ params, searchParams }: { para
         classLabel={`${ACTIVITY_KIND_LABEL[detail.registration.activityKind as keyof typeof ACTIVITY_KIND_LABEL] ?? "Clase"} · ${formatInstantDayLongTime(calendarLesson.startAt)}`}
         knownChargeIds={chargeLines.map((line) => line.chargeId)}
         initialContent={lessonContent}
-        showPerClassBillingControls={showPerClassBillingControls}
         materialLibrary={materialLibrary}
         registration={detail.registration}
         participants={participantsInfo}

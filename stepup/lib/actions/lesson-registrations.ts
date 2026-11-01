@@ -23,8 +23,8 @@ import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { adhocEndAt, isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
 import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
-import { syncPerClassCharge } from "@/lib/repositories/payments";
-import { listStudentsCoveredByTrainingPlan } from "@/lib/repositories/training-coverage";
+import { listChargeStatusForRegistration, syncPerClassCharge } from "@/lib/repositories/payments";
+import { resolveRegistrationBilling, saveRegistrationBillingResolution } from "@/lib/repositories/training-coverage";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 import { registrationIdentity } from "@/lib/lessons/registration-identity";
 
@@ -294,13 +294,13 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
   const outcome = detail.registration.outcome as AdhocOutcome;
   const lateCancellationPolicy = (detail.registration.lateCancellationPolicy ?? null) as LateCancellationPolicy | null;
 
-  // El cobro depende de la ACTIVIDAD: una sesión de entrenamiento cubierta por la cuota mensual de su serie no genera cobro por clase suelta, aunque el alumno pague sus otras clases por clase.
-  // Con `amount: null` la sincronización retira sólo un cobro por clase de ESTE registro que siga sin pagos (nunca toca uno con pagos).
+  // El cobro depende de la ACTIVIDAD y se resuelve POR PARTICIPANTE: una sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo no genera cobro por clase suelta, aunque el
+  // alumno pague sus otras clases por clase; una clase suelta nunca queda cubierta por ningún entrenamiento. Si a la sesión le falta una asociación (no declara su acuerdo, o el
+  // participante no pertenece al de su serie) NO se genera ni se retira ningún cobro hasta que la profesora lo resuelva. Con `amount: null` la sincronización retira sólo un cobro por
+  // clase de ESTE registro que siga sin pagos (nunca toca uno con pagos).
   const calendarLesson = detail.registration.calendarLessonId ? await getCalendarLesson(ctx, detail.registration.calendarLessonId) : null;
-  // Por alumno: la sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo y SU período (serie con acuerdo, o sesión suelta de un único acuerdo con el mismo grupo y la cuota de ese acuerdo en el mes). Nunca por tener alguna cuota de entrenamiento.
   const sessionAnchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
-  const coveredStudents = await listStudentsCoveredByTrainingPlan(ctx, { activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor,calendarLessonId:detail.registration.calendarLessonId });
-  const isCovered = (studentId: string) => coveredStudents.has(studentId);
+  const billing = await resolveRegistrationBilling(ctx, { registrationId, activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, calendarLessonId: detail.registration.calendarLessonId, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor });
 
   const participants = detail.participants
     .map((p) => {
@@ -308,7 +308,9 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
       if (!student) return null;
       const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
       if (plan.type !== "per_class") return null;
-      const amount = detail.registration.isBillable === false || isCovered(p.studentId) ? 0 : computePerClassBilledAmount({
+      const decision = billing.decisions.get(p.studentId);
+      if (!decision || decision.kind === "needs_association") return null;
+      const amount = detail.registration.isBillable === false || decision.kind === "covered" ? 0 : computePerClassBilledAmount({
         perClassAmount: plan.amount,
         outcome,
         isClassHeld: detail.registration.countsAsClass,
@@ -320,6 +322,52 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
     .filter((p): p is { studentId: string; amount: number | null } => p !== null);
 
   if (participants.length > 0) await syncPerClassCharge(ctx, registrationId, participants);
+}
+
+export interface ResolveRegistrationBillingActionInput {
+  registrationId: string;
+  studentId: string;
+  /** El entrenamiento al que pertenece la sesión para ese alumno, o `null` para cobrarla como clase suelta (régimen propio del alumno). */
+  agreementId: string | null;
+}
+
+/**
+ * Resuelve EXPLÍCITAMENTE, para UN participante, cómo se cobra una sesión de entrenamiento a la que le faltaba la asociación: «cubierta por la cuota de ESTE entrenamiento» o «cobrar como
+ * clase suelta». La decisión queda guardada (guardar, finalizar, editar o reintentar leen la misma); sólo se acepta un entrenamiento al que el alumno pertenece o que declara la sesión.
+ * Si el registro ya está finalizado, el cobro por clase se sincroniza en el acto: se crea el cobro de la clase suelta, o se retira el cobro sin pagos. Un cobro que ya tiene pagos
+ * nunca se anula ni se reasigna: se avisa para que lo revise.
+ */
+export async function resolveRegistrationBillingAction(input: ResolveRegistrationBillingActionInput): Promise<ActionResult<{ note: string | null }>> {
+  if (!input?.registrationId || !input.studentId) return { error: "Falta indicar el registro y el alumno." };
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const detail = await getLessonRegistrationDetail(ctx, input.registrationId);
+    if (!detail) return { error: "Registro no encontrado." };
+    if (detail.registration.activityKind !== "training") return { error: "Sólo una sesión de entrenamiento necesita esta decisión." };
+    if (!detail.participants.some((p) => p.studentId === input.studentId)) return { error: "Ese alumno no participa de este registro." };
+    const calendarLesson = detail.registration.calendarLessonId ? await getCalendarLesson(ctx, detail.registration.calendarLessonId) : null;
+    const sessionAnchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
+    const billing = await resolveRegistrationBilling(ctx, { registrationId: input.registrationId, activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, calendarLessonId: detail.registration.calendarLessonId, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor });
+    if (input.agreementId && !(billing.candidatesByStudent.get(input.studentId) ?? []).includes(input.agreementId)) return { error: "Ese entrenamiento no corresponde a este alumno." };
+
+    await saveRegistrationBillingResolution(ctx, { registrationId: input.registrationId, studentId: input.studentId, agreementId: input.agreementId });
+
+    let note: string | null = null;
+    if (detail.registration.status === "completed") {
+      await syncPerClassChargesForRegistration(ctx, input.registrationId);
+      // Cubierta por la cuota pero con un cobro por clase que ya tiene pagos: no se anula ni se reasigna nada automáticamente.
+      if (input.agreementId) {
+        const remaining = await listChargeStatusForRegistration(ctx, input.registrationId);
+        if (remaining.some((charge) => charge.studentId === input.studentId)) note = "Esta clase ya tenía un cobro con pagos registrados: no se modificó. Revisalo en Cobros.";
+      }
+    }
+    revalidatePath("/registro");
+    revalidatePath("/cobros");
+    return { data: { note } };
+  } catch (error) {
+    if (error instanceof LessonRegistrationNotFoundError) return { error: "Registro no encontrado." };
+    return { error: actionErrorMessage("lesson-registrations", error) };
+  }
 }
 
 export interface EditCompletedRegistrationParticipantActionInput {

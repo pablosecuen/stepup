@@ -5,6 +5,9 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getLessonRegistrationDetail, listPendingHomeworkTasksForStudent } from "@/lib/repositories/lesson-registrations";
 import { listStudents } from "@/lib/repositories/students";
 import { listChargeStatusForRegistration } from "@/lib/repositories/payments";
+import { resolveRegistrationBilling } from "@/lib/repositories/training-coverage";
+import { RegistrationBillingPanel } from "@/components/registro/registration-billing-panel";
+import { buildBillingRows, type BillingRow } from "@/lib/registro/billing-rows";
 import { activityKindSupportsHomework, ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import { ADHOC_OUTCOME_LABEL } from "@/lib/lessons/adhoc";
 import { ErrorState } from "@/components/ui/states";
@@ -43,7 +46,7 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
 
   let detail;
   let participantsInfo: { studentId: string; name: string; level: string }[] = [];
-  let showPerClassBillingControls = false;
+  let billingRows: BillingRow[] = [];
   let pendingHomeworkByStudentId: Record<string, Awaited<ReturnType<typeof listPendingHomeworkTasksForStudent>>> = {};
   let lessonContent: LessonContent | null = null;
   let materialLibrary: LibraryMaterial[] = [];
@@ -57,11 +60,24 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
     if (detail) {
       const students = await listStudents(ctx);
       const studentById = new Map(students.map((s) => [s.id, s]));
-      showPerClassBillingControls = detail.participants.some(p => { const s = studentById.get(p.studentId); return s && resolveStudentBillingPlan({billingPlan:s.billingPlan as StudentBillingPlan|null,billingType:s.billingType,price:s.price}).type === "per_class"; });
       participantsInfo = detail.participants.map((p) => {
         const student = studentById.get(p.studentId);
         return { studentId: p.studentId, name: student?.name ?? "Alumno", level: student?.levels[0] ?? "" };
       });
+
+      // Un registro suelto casi siempre es una clase común (sin panel); si viene como entrenamiento, se muestra cómo se cobra cada participante.
+      if (detail.registration.activityKind === "training") {
+        const anchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
+        const billing = await resolveRegistrationBilling(ctx, { registrationId: detail.registration.id, activityKind: detail.registration.activityKind, recurrenceId: null, calendarLessonId: null, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: anchor }).catch(() => null);
+        if (billing) {
+          billingRows = buildBillingRows({
+            activityKind: detail.registration.activityKind,
+            participants: participantsInfo.map((p) => { const s = studentById.get(p.studentId); return { studentId: p.studentId, name: p.name, billsPerClass: !!s && resolveStudentBillingPlan({ billingPlan: s.billingPlan as StudentBillingPlan | null, billingType: s.billingType, price: s.price }).type === "per_class" }; }),
+            decisions: billing.decisions,
+            agreementLabels: billing.agreementLabels,
+          });
+        }
+      }
 
       if (detail.registration.status === "completed") knownChargeIds = (await listChargeStatusForRegistration(ctx, detail.registration.id).catch(() => [])).map((status) => status.chargeId);
       lessonContent = await getLessonContent(ctx, detail.registration.id);
@@ -128,12 +144,12 @@ export default async function RegistroLibrePage({ params }: { params: Promise<{ 
       kindLabel={ACTIVITY_KIND_LABEL[registration.activityKind]}
     >
       <OriginIncidentsCard incidents={incidents} />
+      <RegistrationBillingPanel registrationId={registration.id} rows={billingRows} />
       {lessonContent && !detail.registration.countsAsClass && <LessonContentCard includePedagogy={false} content={lessonContent} studentNames={Object.fromEntries(participantsInfo.map((p) => [p.studentId, p.name]))} />}
       <RegistrationWorkspace
         classLabel={`${ACTIVITY_KIND_LABEL[registration.activityKind]} · ${formatInstantDayLongTime(scheduledStartAt)}`}
         knownChargeIds={knownChargeIds}
         initialContent={lessonContent}
-        showPerClassBillingControls={showPerClassBillingControls}
         materialLibrary={materialLibrary}
         registration={registration}
         participants={participantsInfo}

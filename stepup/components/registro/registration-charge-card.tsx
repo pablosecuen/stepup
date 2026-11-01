@@ -1,4 +1,3 @@
-import { Notice } from "@/components/ui/notice";
 import { ChargeActions } from "@/components/payments/charge-actions";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
@@ -17,17 +16,10 @@ export interface RegistrationChargeLine {
 
 /**
  * Situación REAL del cobro de ESTA clase (pagada, parcial o pendiente) con los pagos asignados a ese cobro — nunca los de otra clase, serie o entrenamiento.
- * Una sesión de entrenamiento cubierta por la cuota mensual de su serie lo dice y no muestra cobro por clase.
+ * Una sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo no genera cobro por clase: eso lo explica `RegistrationBillingPanel`, participante por participante.
  * Con saldo, «Registrar pago» paga SÓLO el cobro de esta clase (`chargeId` fijo): nunca se reparte hacia un entrenamiento ni hacia otra clase del alumno. Es el equivalente web del aviso de cobro al dictar la clase de la app original (pagó el total / una parte / después).
  */
-export function RegistrationChargeCard({ lines, coveredByTrainingPlan }: { lines: RegistrationChargeLine[]; coveredByTrainingPlan: boolean }) {
-  if (coveredByTrainingPlan) {
-    return (
-      <Notice tone="info" title="Cubierta por la cuota mensual del entrenamiento">
-        Esta sesión es parte del entrenamiento y se cobra con su cuota mensual: no genera un cobro por clase. Tus clases individuales siguen cobrándose aparte.
-      </Notice>
-    );
-  }
+export function RegistrationChargeCard({ lines }: { lines: RegistrationChargeLine[] }) {
   if (lines.length === 0) return null;
   return (
     <section aria-label="Cobro de esta clase" className="rounded-lg border-[1.5px] border-border bg-surface2 p-4">
