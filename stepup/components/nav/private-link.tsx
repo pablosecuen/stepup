@@ -38,6 +38,7 @@ export default function PrivateLink({ onPointerEnter, onPointerDown, onFocus, ..
   return (
     <NextLink
       {...props}
+      className={`tf-motion-link ${props.className ?? ""}`}
       transitionTypes={["tf-navigation"]}
       onPointerEnter={(event: PointerEvent<HTMLAnchorElement>) => {
         onPointerEnter?.(event);

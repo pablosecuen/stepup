@@ -33,7 +33,7 @@ export function buttonClass({ variant = "primary", size = "md", block = false }:
 
 /** Clases de un enlace de texto (acento oscuro, subrayado al pasar). 44 px de alto. */
 export function linkClass({ block = false }: { block?: boolean } = {}): string {
-  return `inline-flex min-h-11 items-center gap-1.5 text-[14.5px] font-[650] text-accentDark underline-offset-[3px] hover:underline${block ? " w-full justify-center" : ""}`;
+  return `tf-motion-link inline-flex min-h-11 items-center gap-1.5 text-[14.5px] font-[650] text-accentDark underline-offset-[3px] hover:underline${block ? " w-full justify-center" : ""}`;
 }
 
 /** Giro de «ocupado» dentro de un botón. Se detiene con «reducir movimiento». */

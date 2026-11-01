@@ -16,17 +16,14 @@ export function ListCascade({ children }: { children: ReactNode }) {
       if (played.has(row) || !row.getClientRects().length || !row.animate) return;
       played.add(row);
       animations.push(row.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], {
-        duration: 320, delay: Math.min(index * 40, 240), fill: "backwards", easing: "cubic-bezier(.2,.75,.2,1)",
+        duration: 650, delay: Math.min(index * 110, 660), fill: "backwards", easing: "cubic-bezier(.2,.75,.2,1)",
       }));
     };
     const observer = new IntersectionObserver(entries => {
       entries.filter(entry => entry.isIntersecting).sort((a,b) => a.boundingClientRect.top-b.boundingClientRect.top).forEach((entry,index) => { run(entry.target,index); observer.unobserve(entry.target); });
     });
-    let index = 0;
     element.querySelectorAll("[data-tf-cascade-row]").forEach(row => {
-      const rect = row.getBoundingClientRect();
-      if (!row.getClientRects().length) return;
-      if (rect.bottom > 0 && rect.top < window.innerHeight) run(row,index++); else observer.observe(row);
+      if (row.getClientRects().length) observer.observe(row);
     });
     const stop = () => { observer.disconnect(); animations.forEach(animation => animation.cancel()); };
     reduce.addEventListener("change", stop);

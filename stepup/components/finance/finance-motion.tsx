@@ -1,54 +1,44 @@
 "use client";
 
-import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
-const subscribeHydration = () => () => {};
-const clientSnapshot = () => true;
-const serverSnapshot = () => false;
-
-/** Animate only actual marks, once when visible; values, labels and final geometry never change. */
+/** Prepare each actual chart before it enters; play only inside the readable viewport. */
 export function FinanceMotion({ children, className, signature = "" }: { children: ReactNode; className?: string; signature?: string }) {
   const root = useRef<HTMLDivElement>(null);
-  const presented = useRef<string | null>(null);
-  const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
+  const presented = useRef(new WeakMap<Element, string>());
   useLayoutEffect(() => {
     const element = root.current;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (!element || reduce.matches) return;
-    const rect = element.getBoundingClientRect();
-    const visible = rect.bottom > 0 && rect.top < window.innerHeight;
-    // HTML already painted before hydration must never jump from its final value back to zero.
-    if (!hydrated) { if (visible) presented.current = signature; return; }
-    if (presented.current === signature) return;
-    presented.current = signature;
-    const animations: Animation[] = [];
-    let observed = true;
-    const run = () => {
-      if (!observed) return;
-      observed = false;
-      element.querySelectorAll<HTMLElement | SVGElement>("[data-tf-finance-bar]").forEach((bar, index) => {
-        if (!bar.animate) return;
-        bar.style.transformOrigin = "center bottom";
-        bar.style.transformBox = "fill-box";
-        animations.push(bar.animate([{ transform: "scaleY(.025)" }, { transform: "scaleY(1)" }], { duration: 800, delay: Math.min(index * 24, 160), easing: "cubic-bezier(.2,.75,.2,1)" }));
+    const seen = presented.current;
+    const groups = new Map<Element, Animation[]>();
+    element.querySelectorAll<HTMLElement | SVGElement>("[data-tf-finance-bar], [data-tf-finance-arc]").forEach((mark,index) => {
+      const target = mark.closest("svg") ?? mark.closest("ul") ?? mark.parentElement ?? mark;
+      if (seen.get(target) === signature || !mark.animate) return;
+      const arc = mark.hasAttribute("data-tf-finance-arc");
+      if (!arc) { mark.style.transformOrigin = "center bottom"; mark.style.transformBox = "fill-box"; }
+      const animation = mark.animate(arc ? [{strokeDasharray:"0 100"},{strokeDasharray:mark.getAttribute("stroke-dasharray") ?? "0 100"}] : [{transform:"scaleY(.025)"},{transform:"scaleY(1)"}], {
+        duration:1000, delay:Math.min(index * 30,150), easing:"cubic-bezier(.2,.75,.2,1)", fill:"backwards",
       });
-      element.querySelectorAll<SVGCircleElement>("[data-tf-finance-arc]").forEach((arc, index) => {
-        const target = arc.getAttribute("stroke-dasharray");
-        if (!target || !arc.animate) return;
-        animations.push(arc.animate([{ strokeDasharray: "0 100" }, { strokeDasharray: target }], { duration: 900, delay: Math.min(index * 30, 90), easing: "cubic-bezier(.2,.75,.2,1)" }));
+      animation.pause(); animation.currentTime = 0;
+      const animations = groups.get(target) ?? [];
+      animations.push(animation); groups.set(target,animations);
+    });
+    const unfinished = new Set<Element>();
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting || entry.intersectionRatio < .35 || seen.get(entry.target) === signature) return;
+        observer.unobserve(entry.target);
+        seen.set(entry.target,signature); unfinished.add(entry.target);
+        const animations = groups.get(entry.target) ?? [];
+        animations.forEach(animation => animation.play());
+        Promise.allSettled(animations.map(animation => animation.finished)).then(() => unfinished.delete(entry.target));
       });
-    };
-    // For client navigation, start before the first paint; below the fold, start on entry.
-    const cancel = () => {
-      if (observed || animations.some(animation => animation.playState !== "finished")) presented.current = null;
-      observed = false;
-      animations.forEach(animation => animation.cancel());
-    };
-    reduce.addEventListener("change", cancel);
-    if (visible || !("IntersectionObserver" in window)) { run(); return () => { reduce.removeEventListener("change", cancel); cancel(); }; }
-    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { run(); observer.disconnect(); } }, { threshold: 0.12 });
-    observer.observe(element);
-    return () => { reduce.removeEventListener("change", cancel); observer.disconnect(); cancel(); };
-  }, [signature, hydrated]);
+    }, { threshold:.35, rootMargin:"-64px 0px -12% 0px" });
+    groups.forEach((_,target) => observer.observe(target));
+    const stop = () => { observer.disconnect(); groups.forEach(animations => animations.forEach(animation => animation.cancel())); };
+    reduce.addEventListener("change",stop);
+    return () => { reduce.removeEventListener("change",stop); unfinished.forEach(target => seen.delete(target)); stop(); };
+  }, [signature]);
   return <div ref={root} className={className}>{children}</div>;
 }

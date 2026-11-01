@@ -11,22 +11,22 @@
 .tf-page-main [data-tf-student-name]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .tf-page-main section[aria-labelledby]{background-image:linear-gradient(120deg,#E8E4EF45,transparent 55%)}
 
-/* Shared response: a bottom-up wash, without moving layout or changing semantic colors. */
-:where(.tf-motion-button, .tf-page-main button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), .tf-landing button, .tf-page-main a[class*="rounded-pill"], .tf-landing a[class*="rounded"]) {
-  background-image: linear-gradient(color-mix(in srgb, currentColor 12%, transparent), color-mix(in srgb, currentColor 12%, transparent));
-  background-size: 100% 0%;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  transition: background-size 280ms cubic-bezier(.2,.75,.2,1), background-color 220ms ease, border-color 220ms ease, color 220ms ease, transform 220ms ease, translate 220ms ease;
+/* All shared links include the sidebar and mobile navigation, outside main. */
+body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary) {
+  background-image:linear-gradient(var(--tf-control-wash,color-mix(in srgb,currentColor 20%,transparent)),var(--tf-control-wash,color-mix(in srgb,currentColor 20%,transparent)));
+  background-size:100% 0%; background-position:center bottom; background-repeat:no-repeat;
+  transition:background-size 320ms cubic-bezier(.2,.75,.2,1),background-color 280ms ease,color 280ms ease,border-color 280ms ease,translate 280ms ease;
 }
 @media (hover:hover) and (pointer:fine) {
-  :where(.tf-motion-button, .tf-page-main button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), .tf-landing button, .tf-page-main a[class*="rounded-pill"], .tf-landing a[class*="rounded"]):not(:disabled):not([aria-disabled="true"]):hover {
-    background-size: 100% 100%;
-    translate: 0 -2px;
-  }
+  body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):not(:disabled):not([aria-disabled="true"]):hover { background-size:100% 100%; translate:0 -3px; }
 }
-:where(.tf-motion-button, .tf-page-main button, .tf-landing button, .tf-page-main a[class*="rounded-pill"], .tf-landing a[class*="rounded"]):focus-visible { background-size:100% 100%; }
-:where(.tf-motion-button, .tf-page-main button, .tf-landing button, .tf-page-main a[class*="rounded-pill"], .tf-landing a[class*="rounded"]):not(:disabled):active { background-size:100% 100%; }
-@media (prefers-reduced-motion:reduce) {
-  :where(.tf-motion-button, .tf-page-main button, .tf-landing button, .tf-page-main a[class*="rounded-pill"], .tf-landing a[class*="rounded"]) { transition:none; translate:none !important; }
+body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):focus-visible { background-size:100% 100%; translate:0 -2px; }
+body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):not(:disabled):not([aria-disabled="true"]):active { background-size:100% 100%; }
+@media(prefers-reduced-motion:reduce) {
+  body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary) { transition:none; translate:none !important; }
 }
+
+body :is(button,a):is([class~="bg-ink"],[class~="bg-accent"],[class~="bg-bad"]) { --tf-control-wash:#0000001f; }
+
+/* Keep stretched row links anchored to the row; transforming them changes their containing block. */
+body .tf-motion-link[class*="after:absolute"] { translate:none !important; }

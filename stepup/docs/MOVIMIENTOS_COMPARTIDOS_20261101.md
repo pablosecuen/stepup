@@ -20,3 +20,15 @@ Evidencia fuera del repositorio: `output/movimientos-20261101/` (capturas, muest
 No probado en iPhone/Safari físicos. Movimiento reducido revisado en el código y sus salidas accesibles; no se cambió la preferencia del sistema del usuario. La sesión privada del panel indica dispositivo reemplazado; no se reemplazó ni cerró ninguna sesión y no se usaron datos reales.
 
 Controles locales: suite completa 5255/5255, lint completo sin errores y build de producción correcto. Las pruebas estructurales existentes se adaptaron al componente numérico compartido y a los atributos de cascada; se conservaron las comprobaciones financieras, de aislamiento y de navegación.
+
+## Corrección tras la revisión del usuario
+
+Se reemplazó el disparo por tarjeta completa por observación del SVG o de la fila real de barras. Las marcas quedan pausadas en el primer fotograma hasta entrar un 35 % en el área legible (se descuenta el encabezado y el borde inferior); las cifras esperan a que se vea un 50 %. No consumen su animación debajo de la pantalla. La entrada dura 1000 ms en los gráficos. No se repite al pasar el mouse ni al abrir detalles.
+
+Cascada ralentizada: 650 ms por fila y 110 ms entre filas, con retraso máximo de 660 ms. Los enlaces compartidos incluyen ahora la navegación lateral y móvil, fuera de main, además de los controles y resúmenes desplegables. Relleno 320 ms y elevación de 3 px con mouse, 2 px con foco de teclado. La respuesta al toque usa el mismo relleno. Se igualó la prioridad de selectores: antes el estilo base ganaba al foco/active y anulaba el relleno; se comprobó corregido en Registro con teclado (100 % de relleno, -2 px), y en Alumnos y Configuración con puntero. Los botones de color sólido usan oscurecimiento para no reducir el contraste del texto claro.
+
+Laboratorio temporal con PrimaryNav y gráficos reales, retirado antes de la publicación. Antes de hacer scroll: gráfico a y=1100 fuera del viewport de 720 px, contador visual $0, barras scaleY(.025), arcos 0 100. Al desplazarse apareció el conteo parcial $9.039.344,99 y las marcas en crecimiento; al finalizar llegó a $14.518.950,50. Evidencia: output/movimientos-viewport-20261101/. Sin datos reales ni cambios de sesión.
+
+Base integrada: 4f0ee96, que conserva la separación financiera de Claude. Se verificó sólo por lectura que la migración 20261101120000 ya estaba aplicada en la base enlazada; este bloque no ejecutó migraciones.
+
+Controles de esta corrección: 5268/5268 pruebas, tipos y lint sin errores, compilación de producción correcta. Se preserva el área clicable completa de los enlaces extendidos de las tablas: reciben el relleno sin transformar el elemento que ancla su superficie absoluta.

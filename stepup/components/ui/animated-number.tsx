@@ -1,11 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { formatCount, formatMoney, formatHours, formatPercent } from "@/lib/format/number-format";
 
-const subscribe = () => () => {};
-const client = () => true;
-const server = () => false;
 const formats = { money: formatMoney, count: formatCount, hours: formatHours, percent: formatPercent };
 
 /** Reserve final width and accessible value; only the decorative copy counts. */
@@ -13,18 +10,12 @@ export function AnimatedNumber({ value, kind = "money" }: { value: number; kind?
   const root = useRef<HTMLSpanElement>(null);
   const visual = useRef<HTMLSpanElement>(null);
   const seen = useRef<string | null>(null);
-  const hydrated = useSyncExternalStore(subscribe, client, server);
   const text = formats[kind](value);
   useLayoutEffect(() => {
     const element = root.current, output = visual.current;
     if (!element || !output) return;
     const key = `${kind}:${value}`;
-    const rect = element.getBoundingClientRect();
-    const visible = rect.top < window.innerHeight && rect.bottom > 0;
-    // Never rewind HTML already visible before hydration.
-    if (!hydrated) { if (visible) seen.current = key; return; }
     if (seen.current === key || !Number.isFinite(value)) return;
-    seen.current = key;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (reduce.matches) return;
     let frame = 0, start: number | null = null, complete = false;
@@ -38,18 +29,19 @@ export function AnimatedNumber({ value, kind = "money" }: { value: number; kind?
       if (progress < 1) frame = requestAnimationFrame(tick);
       else complete = true;
     };
-    const run = () => { if (reduce.matches) { finish(); return; } output.textContent = formats[kind](0); frame = requestAnimationFrame(tick); };
+    const run = () => { if (reduce.matches) { finish(); return; } seen.current = key; output.textContent = formats[kind](0); frame = requestAnimationFrame(tick); };
     const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); run(); }
-    }, { threshold: 0.15 });
-    if (visible) run(); else observer.observe(element);
+      if (entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= .5)) { observer.disconnect(); run(); }
+    }, { threshold: .5, rootMargin: "-64px 0px -12% 0px" });
+    output.textContent = formats[kind](0);
+    observer.observe(element);
     reduce.addEventListener("change", finish);
     return () => {
       observer.disconnect(); reduce.removeEventListener("change", finish); finish();
       // React's development effect rehearsal must not cancel the only entrance.
       if (!complete && seen.current === key) seen.current = null;
     };
-  }, [value, kind, text, hydrated]);
+  }, [value, kind, text]);
   return <span ref={root} className="inline-grid whitespace-nowrap align-baseline tf-num">
     <span aria-hidden="true" className="invisible col-start-1 row-start-1">{text}</span>
     <span ref={visual} aria-hidden="true" className="col-start-1 row-start-1">{text}</span>

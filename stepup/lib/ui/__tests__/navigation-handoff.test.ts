@@ -43,8 +43,22 @@ test("el cambio de gráfico tiene un solo relevo, sin reiniciar la entrada de lo
   assert.match(read("app/(app)/layout.tsx"),/update=\{\{ default: "none", "tf-navigation": "tf-content-swap" \}\}/,"un cambio local de gráfico no vuelve a animar la pantalla entera");
   const marks=read("components/finance/finance-motion.tsx");
   assert.match(marks,/useLayoutEffect/);
-  assert.match(marks,/if \(!hydrated\) \{ if \(visible\) presented\.current = signature; return; \}/);
-  assert.match(marks,/if \(presented\.current === signature\) return/);
+  assert.match(marks,/mark\.closest\("svg"\) \?\? mark\.closest\("ul"\)/,"se observa el gráfico real, no toda la tarjeta");
+  assert.match(marks,/entry\.intersectionRatio < \.35/);
+  assert.match(marks,/seen\.get\(entry\.target\) === signature/);
+  assert.match(marks,/rootMargin:\s*"-64px 0px -12% 0px"/);
+  assert.match(marks,/animation\.pause\(\); animation\.currentTime = 0/,"las marcas esperan sin consumirse fuera de pantalla");
+  assert.match(marks,/animations\.forEach\(animation => animation\.play\(\)\)/,"sólo el observador pone el gráfico en marcha");
+});
+
+test("el efecto de controles incluye los enlaces del menú y el foco no pierde frente al estilo base",()=>{
+  const link=read("components/nav/private-link.tsx");
+  assert.match(link,/className=\{`tf-motion-link \$\{props\.className \?\? ""\}`\}/);
+  const css=read("app/natural-theme.css");
+  const selector='body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary)';
+  assert.ok(css.includes(`${selector}:focus-visible { background-size:100% 100%;`));
+  assert.ok(css.includes(`${selector}:not(:disabled):not([aria-disabled="true"]):active`));
+  assert.match(css,/prefers-reduced-motion:reduce/);
 });
 test("el encabezado de la ficha no vuelve a subir cuando llega el cuerpo y el movimiento reducido anula el relevo nativo",()=>{
   assert.match(read("components/students/profile/profile-header.tsx"),/<header data-tf-header="">/);
