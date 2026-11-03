@@ -328,7 +328,7 @@ export function NewLessonForm({
 
       {mode === "single" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-          <AvailabilityPicker date={date} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onDurationChange={value=>setDurationMinutes(String(value))} onSelect={(date,time)=>{setDate(date);setHour(String(Number(time.slice(0,2))));setMinute(String(Number(time.slice(3,5))));}} />
+          <AvailabilityPicker date={date} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onSelect={(date,time)=>{setDate(date);setHour(String(Number(time.slice(0,2))));setMinute(String(Number(time.slice(3,5))));}} />
           <Field label="Fecha *" htmlFor="date">
             <TextInput id="date" name="date" type="date" required value={date} onChange={(e) => { singleTouched.current = true; setDate(e.target.value); }} />
           </Field>
@@ -348,7 +348,7 @@ export function NewLessonForm({
             <Field label="Fecha de inicio *" htmlFor="startDate">
               <TextInput id="startDate" name="startDate" type="date" required value={startDate} onChange={(e) => { seriesTouched.current = true; setStartDate(e.target.value); }} />
             </Field>
-            <AvailabilityPicker date={startDate} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onDurationChange={value=>setDurationMinutes(String(value))} onSelect={(date,time)=>seedSeriesFrom({date,hour:Number(time.slice(0,2)),minute:Number(time.slice(3,5)),durationMinutes:Number(durationMinutes)||60})} />
+            <AvailabilityPicker date={startDate} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onSelect={(date,time)=>seedSeriesFrom({date,hour:Number(time.slice(0,2)),minute:Number(time.slice(3,5)),durationMinutes:Number(durationMinutes)||60})} />
             <Field label="Fecha de fin (opcional)" htmlFor="endDate">
               <TextInput id="endDate" name="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </Field>

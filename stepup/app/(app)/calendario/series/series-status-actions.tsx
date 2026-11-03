@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, endSeriesFromTodayAction, type FormState } from "@/lib/actions/calendar";
 import { Dialog } from "@/components/ui/dialog";
 import { SeriesSwapPanel, type SwapOption } from "@/components/calendar/series-swap-panel";
+import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel";
+import { upcomingSeriesOccurrencesAction, type UpcomingSeriesOccurrence } from "@/lib/actions/schedule-change";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,11 @@ export function SeriesStatusActions({
   const [editingFuture, setEditingFuture] = useState(false);
   const [editingParticipants, setEditingParticipants] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
+  // «Cambiar horario»: mover una clase (o esta y las siguientes) a cualquier horario libre, sin necesidad de otra serie.
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [upcoming, setUpcoming] = useState<UpcomingSeriesOccurrence[] | null>(null);
+  const [upcomingError, setUpcomingError] = useState<string | null>(null);
+  const [changeIndex, setChangeIndex] = useState(0);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const initialCycle = (weeks.length > 0 ? weeks.length : 1) as 1 | 2 | 3 | 4;
   const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(initialCycle);
@@ -148,11 +155,25 @@ export function SeriesStatusActions({
     });
   }
 
-  function submitEditFuture(formData: FormData, allowOverlap = false, confirmReplace = replaceConfirmed) {
+  function openChange() {
+    setEditingFuture(false);
+    setEditingParticipants(false);
+    setSwapOpen(false);
+    setChangeOpen((value) => !value);
+    if (changeOpen) return;
+    setUpcoming(null);
+    setUpcomingError(null);
+    setChangeIndex(0);
+    void upcomingSeriesOccurrencesAction(ruleId).then((result) => {
+      if (result.error) setUpcomingError(result.error);
+      else setUpcoming(result.items ?? []);
+    });
+  }
+
+  function submitEditFuture(formData: FormData, confirmReplace = replaceConfirmed) {
     setError(null);
     setOverlapWarning(null);
     setReplaceWarning(null);
-    if (allowOverlap) formData.set("allowOverlap", "true");
     if (confirmReplace) formData.set("confirmReplace", "true");
     formData.set("originalRecurrenceId", ruleId);
     formData.set("weeksJson", weekCyclesToWeeksJson(weekCycles));
@@ -206,12 +227,18 @@ export function SeriesStatusActions({
           </Button>
         )}
         {status !== "ended" && (
+          <Button variant="secondary" aria-expanded={changeOpen} onClick={openChange}>
+            {changeOpen ? "Cerrar" : "Cambiar horario"}
+          </Button>
+        )}
+        {status !== "ended" && (
           <Button
             variant="secondary"
             aria-expanded={editingFuture}
             onClick={() => {
               setEditingParticipants(false);
               setSwapOpen(false);
+              setChangeOpen(false);
               setEditingFuture((v) => !v);
             }}
           >
@@ -225,6 +252,7 @@ export function SeriesStatusActions({
             onClick={() => {
               setEditingFuture(false);
               setSwapOpen(false);
+              setChangeOpen(false);
               setEditingParticipants((v) => !v);
             }}
           >
@@ -238,6 +266,7 @@ export function SeriesStatusActions({
             onClick={() => {
               setEditingFuture(false);
               setEditingParticipants(false);
+              setChangeOpen(false);
               setSwapOpen((v) => !v);
             }}
           >
@@ -252,6 +281,30 @@ export function SeriesStatusActions({
       </div>
 
       {error && <FormErrorBox message={error} />}
+
+      {changeOpen && (
+        <div className="flex flex-col gap-3 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+          <div>
+            <h3 className="font-display text-card font-semibold">Cambiar horario</h3>
+            <p className="mt-0.5 text-[13.5px] text-textMuted">Mové una clase (o esta y las siguientes) a un horario libre. No hace falta otra serie: el intercambio con otra serie está aparte, en «Intercambiar horarios».</p>
+          </div>
+          {upcomingError && <FormErrorBox message={upcomingError} />}
+          {!upcoming && !upcomingError && <p role="status">Buscando las próximas clases…</p>}
+          {upcoming && upcoming.length === 0 && <Notice tone="info">Esta serie no tiene clases próximas para cambiar.</Notice>}
+          {upcoming && upcoming.length > 0 && (
+            <>
+              <Field label="Clase que querés cambiar" htmlFor={`change-occurrence-${ruleId}`}>
+                <select id={`change-occurrence-${ruleId}`} value={changeIndex} onChange={(event) => setChangeIndex(Number(event.target.value))} className="min-h-11 w-full rounded-md border-[1.5px] border-border bg-surface px-3 text-[15px]">
+                  {upcoming.map((item, index) => (
+                    <option key={item.id} value={index}>{`${formatCivilDayLabelShort(instantDateKey(item.start))} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}`}</option>
+                  ))}
+                </select>
+              </Field>
+              <ChangeSchedulePanel key={upcoming[changeIndex].id} occurrence={upcoming[changeIndex]} initialScope="series" onCancel={() => setChangeOpen(false)} onDone={() => { setChangeOpen(false); router.refresh(); }} />
+            </>
+          )}
+        </div>
+      )}
 
       {swapOpen && <SeriesSwapPanel options={swapOptions} fixedId={ruleId} onClose={() => setSwapOpen(false)} />}
 
@@ -316,7 +369,7 @@ export function SeriesStatusActions({
                     const form = (event.currentTarget as HTMLElement).closest("form");
                     if (!form) return;
                     setReplaceConfirmed(true);
-                    submitEditFuture(new FormData(form), false, true);
+                    submitEditFuture(new FormData(form), true);
                   }}
                 >
                   Confirmar y reemplazar
@@ -328,20 +381,10 @@ export function SeriesStatusActions({
             </Notice>
           )}
           {overlapWarning && (
-            <Notice tone="warn" title="El nuevo horario se superpone con otra clase">
+            <Notice tone="warn" title="El nuevo horario se superpone con otra clase o está bloqueado">
               <p className="[overflow-wrap:anywhere]">{overlapWarning}</p>
-              <p className="mt-1.5">Si estás intercambiando horarios con otra serie, guardalo igual y después cambiá la otra: hasta entonces las dos clases se verán superpuestas en el Calendario.</p>
-              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  variant="secondary"
-                  disabled={pending}
-                  onClick={(event) => {
-                    const form = (event.currentTarget as HTMLElement).closest("form");
-                    if (form) submitEditFuture(new FormData(form), true);
-                  }}
-                >
-                  Guardar igual (queda superpuesto)
-                </Button>
+              <p className="mt-1.5">No se puede dejar dos clases superpuestas: elegí otro horario libre. Si querés intercambiar horarios con otra serie, usá «Intercambiar horarios», que cambia las dos a la vez.</p>
+              <div className="mt-2.5">
                 <Button variant="ghost" onClick={() => setOverlapWarning(null)}>
                   Cambiar el horario
                 </Button>

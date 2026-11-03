@@ -201,8 +201,8 @@ export function AnnualProjection({ annual, savingsGoal, distributionSavingsPerce
 
       {plan.projectionWarning && <p role="status" className="mt-3 rounded-md border-[1.5px] border-infoLine bg-infoSoft px-3.5 py-2.5 text-[14px] text-textSecondary">{PROJECTION_WARNING_MESSAGES[plan.projectionWarning]}</p>}
 
-      <details className="mt-4 rounded-lg border-[1.5px] border-border">
-        <summary className="flex min-h-11 cursor-pointer items-center px-4 text-[14.5px] font-[650] text-textPrimary">Ver detalle mes a mes</summary>
+      <details className="mt-4 w-fit max-w-full rounded-lg border-[1.5px] border-border open:w-full">
+        <summary className="flex min-h-11 cursor-pointer items-center px-4 py-2 text-[14.5px] font-[650] text-textPrimary">Ver detalle mes a mes</summary>
         <div className="px-2 pb-2">
         <Table stackable caption={`Distribución mensual ${year}`}>
           <thead>

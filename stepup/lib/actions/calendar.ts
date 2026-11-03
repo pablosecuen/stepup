@@ -605,6 +605,15 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       return { error: "La duración elegida no es válida." };
     }
   }
+  let weeksPatch: RecurrenceWeek[] | null = null;
+  if (keepPattern && formData.has("weeksPatchJson")) {
+    try {
+      weeksPatch = JSON.parse(readString(formData, "weeksPatchJson")) as RecurrenceWeek[];
+      if (!Array.isArray(weeksPatch) || weeksPatch.length < 1 || weeksPatch.length > 4) throw new Error("patrón");
+    } catch {
+      return { error: "El patrón semanal no es válido." };
+    }
+  }
   if (!effectiveDate) return { error: "Elegí la fecha efectiva." };
   if (!keepPattern && participantIds.length === 0) return { error: "Elegí al menos un alumno." };
 
@@ -645,6 +654,8 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
         if (patched.matched === 0) return { error: "No se encontró el horario de esta clase en el patrón de la serie: no se cambió nada." };
         weeks = patched.weeks;
       }
+      // «Cambiar horario»: el patrón nuevo lo calcula `changeSeriesSlotAction` del lado del servidor a partir de ESTE mismo tramo.
+      if (weeksPatch) weeks = weeksPatch;
     }
     const primaryStudentId = currentRule.primaryStudentId;
     if (!primaryStudentId) return { error: "Serie no encontrada." };
@@ -661,8 +672,9 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     // Igual que la app original: el nuevo horario no puede superponerse con otra clase ni caer en un horario bloqueado.
     // Se valida ANTES de guardar; si choca no se escribe nada.
     // La profesora puede aceptar el choque a propósito (`allowOverlap`, tras ver el aviso): nunca queda un conflicto en silencio.
-    const allowOverlap = readString(formData, "allowOverlap") === "true";
-    const patternUnchanged = keepPattern && !durationPatch;
+    // «Guardar igual» sólo existe para un cambio de DURACIÓN. Un cambio de día u hora (patrón nuevo o «Cambiar horario») nunca deja dos clases superpuestas: se valida siempre.
+    const allowOverlap = readString(formData, "allowOverlap") === "true" && keepPattern && !!durationPatch && !weeksPatch;
+    const patternUnchanged = keepPattern && !durationPatch && !weeksPatch;
     if (!allowOverlap && !patternUnchanged) {
       const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, replacedRuleIds, successorEndDate, effectiveDate, todayDate, weeks, participantIds });
       if (conflictMessage) return { error: conflictMessage, conflict: true };

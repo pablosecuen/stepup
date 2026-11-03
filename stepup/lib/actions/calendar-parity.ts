@@ -4,6 +4,9 @@ import {requireAuthenticatedDbContext} from '@/lib/db/server-context';
 import {loadCalendarViewForRange} from '@/lib/calendar/view';
 import {getTeacherAvailability} from '@/lib/repositories/teacher-availability';
 import {listStudents,createStudent,type NewStudentInput} from '@/lib/repositories/students';
+import {listRecurrenceRules} from '@/lib/repositories/recurrence-rules';
+import {replacementSeriesFamilyIds} from '@/lib/calendar/replacement-visibility';
+import {getLocalDateKey} from '@/lib/calendar/timezone';
 import {calendarEditPayload} from '@/lib/calendar/parity';
 import {localDateTimeToInstantIso} from '@/lib/calendar/timezone';
 import {instantFromClockTime,arrivalFromLateTime} from '@/lib/live-class/live-class';
@@ -11,13 +14,15 @@ import {actionErrorMessage} from '@/lib/errors/action-error';
 import type {StudentArrival} from '@/lib/payments/engine/features/new-class/types';
 const zone='America/Argentina/Buenos_Aires';
 function refresh(){for(const p of ['/inicio','/calendario','/alumnos','/registro','/configuracion'])revalidatePath(p);}
-export async function calendarSlotsAction(month:string){
+/** Disponibilidad del mes para elegir horario. Con `recurrenceId` devuelve además los tramos de ESA serie (`lineage`): la operación los reemplaza, así que el selector no los cuenta como ocupados. */
+export async function calendarSlotsAction(month:string,recurrenceId?:string|null){
  try{
   if(!/^\d{4}-\d{2}$/.test(month))throw new Error('Mes inválido');
   const ctx=await requireAuthenticatedDbContext();const date=`${month}-01`;
   const start=localDateTimeToInstantIso({date,hour:0,minute:0,timeZone:zone});
   const [items,availability]=await Promise.all([loadCalendarViewForRange(ctx,new Date(start),new Date(Date.parse(start)+32*86400000),undefined,{includeTestData:true}),getTeacherAvailability(ctx)]);
-  return {items:items.map(({id,start,end,status,studentName,occupiesSlot})=>({id,start,end,status,studentName,occupiesSlot})),availability};
+  const lineage=recurrenceId?[...replacementSeriesFamilyIds(await listRecurrenceRules(ctx),recurrenceId)]:[];
+  return {items:items.map(({id,start,end,status,studentName,occupiesSlot,recurrenceId:rid})=>({id,start,end,status,studentName,occupiesSlot,recurrenceId:rid??null})),availability,lineage,todayDate:getLocalDateKey(new Date().toISOString(),zone)};
  }catch(error){return {error:actionErrorMessage('calendar-slots',error)};}
 }
 export async function inlineCalendarStudentAction(input:NewStudentInput,operationId:string,confirmDuplicate=false){

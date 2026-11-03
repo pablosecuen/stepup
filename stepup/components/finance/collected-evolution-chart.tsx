@@ -158,7 +158,7 @@ export function CollectedEvolutionChart({ series, caption }: { series: readonly 
 
       </div>
       </ViewTransition>
-      <details className="mt-3 max-w-[620px] rounded-md border-[1.5px] border-border bg-surface2">
+      <details className="mt-3 w-fit max-w-full rounded-md border-[1.5px] border-border bg-surface2 open:w-full open:max-w-[620px]">
         <summary className="flex min-h-11 cursor-pointer items-center px-3.5 text-[14px] font-[650] text-textSecondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset">Ver datos en tabla</summary>
         <div className="overflow-x-auto px-3.5 pb-3">
           <table className="w-full min-w-[260px] text-left text-[14px]">

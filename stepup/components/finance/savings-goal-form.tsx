@@ -50,11 +50,11 @@ export function SavingsGoalForm({ goal, cumulativeRealTheoreticalSavings, progre
   }
 
   return (
-    <details className="mt-3 w-full max-w-3xl rounded-lg border-[1.5px] border-border bg-surface2">
+    <details className="mt-3 w-fit max-w-full rounded-lg border-[1.5px] border-border bg-surface2 open:w-full open:max-w-3xl">
       <summary id={`${uid}-titulo`} className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-[14.5px] font-[650] text-textPrimary">
         <span>Objetivo de ahorro</span>
         <span className="text-[13px] font-normal text-textSecondary">{goal.enabled ? "Activo · Ver o editar" : "Opcional · Configurar"}</span>
-        <span aria-hidden="true" className="ml-auto">⌄</span>
+        <span aria-hidden="true">⌄</span>
       </summary>
     <form action={formAction} aria-labelledby={`${uid}-titulo`} className="flex flex-col gap-3 border-t border-border p-3 sm:p-4">
       <div>
