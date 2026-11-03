@@ -526,6 +526,9 @@ export async function rescheduleOccurrenceAction(input: RescheduleOccurrenceActi
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/calendario");
+  revalidatePath("/registro");
+  revalidatePath("/inicio");
+  revalidatePath("/recordatorios");
   return {};
 }
 

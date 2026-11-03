@@ -105,7 +105,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const dayStart = new Date(dayStartIso);
   // Información complementaria (horas del mes y promedio): arranca a la vez que las demás lecturas; si no se puede leer, esas dos cifras dicen «Sin datos» y el resto de Inicio sigue igual.
   const statsInputsPromise = loadHomeStatsInputs(ctx, todayDateKey.slice(0, 7)).catch(() => null);
-  const [{ rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds }, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
+  const [calendarBase, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
     listCalendarLessonsInRange(ctx, now.toISOString(), horizonEnd.toISOString()),
@@ -113,7 +113,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     listOpenChargeBalances(ctx),
   ]);
   const statsInputs = await statsInputsPromise;
-  const calendarBase = { rules: allRules, students, exceptions, occurrenceMarkers, excludedStudentIds };
+  const { rules: allRules, students, exceptions, excludedStudentIds } = calendarBase;
   // Datos de prueba confirmados (R16): fuera de la agenda, los pendientes y las clases vacías; con la lista vacía no cambia nada.
   const rules = withoutExcludedRules(allRules, excludedStudentIds);
   const horizonLessons = withoutExcludedLessons(allHorizonLessons, excludedStudentIds);

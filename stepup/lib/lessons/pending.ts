@@ -5,8 +5,8 @@ import type { CalendarViewItem } from "../calendar/occurrences.ts";
  * `pendingClasses.ts` (móvil). Se habilita para registrar desde
  * `max(inicio, fin - 10min)` — nunca antes de que la clase realmente
  * empiece a terminar — y queda pendiente indefinidamente hasta que se
- * registre (sin vencimiento). `calendar_lessons.status` es la única fuente
- * real de "ya no necesita registro": al finalizar un registro, ese status
+ * registre (sin vencimiento). Se respetan los orígenes liberados y los
+ * reemplazos persistidos del calendario. Al finalizar un registro, su status
  * pasa a `'completed'` en la misma transacción (ver
  * `finalize_lesson_registration`), así que una clase ya finalizada nunca
  * vuelve a pasar este filtro — no hace falta consultar `lesson_registrations`
@@ -15,6 +15,9 @@ import type { CalendarViewItem } from "../calendar/occurrences.ts";
 export const PENDING_REGISTRATION_LEAD_TIME_MS = 10 * 60 * 1000;
 
 export function isEligibleForPendingRegistration(item: CalendarViewItem, now: Date): boolean {
+  // El origen liberado de una reprogramación conserva su fila y su borrador,
+  // pero ya no es una clase pendiente. El destino se evalúa por su nueva fecha.
+  if (item.occupiesSlot === false || item.hiddenByReplacement) return false;
   if (item.status !== "scheduled" && item.status !== "rescheduled") return false;
   // Una ocurrencia que NO es una clase real (virtual) sólo es registrable si sigue «programada». Si su excepción la REPROGRAMÓ, la clase vive en su clase de reemplazo (que aparece por su cuenta si
   // corresponde); el horario original ya no es una clase. Igual que la app anterior, que sólo contaba como clase las ocurrencias realmente «virtuales».
