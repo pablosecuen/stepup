@@ -22,7 +22,10 @@ const DAY_CLASSES: Record<DayLoad | "out", string> = {
   out: "border-border bg-paperDeep text-textMuted opacity-60",
 };
 
-const monthLabel = (month: string) => new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+const monthLabel = (month: string) => {
+  const label = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
 const shiftMonth = (month: string, delta: number) => {
   const date = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + delta, 1));
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -109,7 +112,7 @@ export function AvailabilityPicker({ date, time, duration, ignoreId, series, sel
         <Button variant="secondary" aria-label="Mes anterior" onClick={() => setDay(`${shiftMonth(month, -1)}-01`)}>
           <ChevronLeftIcon className="h-5 w-5" aria-hidden />
         </Button>
-        <p id={`${uid}-month`} role="status" aria-live="polite" className="text-[15px] font-semibold capitalize text-textPrimary">
+        <p id={`${uid}-month`} role="status" aria-live="polite" className="text-[15px] font-semibold text-textPrimary">
           {monthLabel(month)}
         </p>
         <Button variant="secondary" aria-label="Mes siguiente" onClick={() => setDay(`${shiftMonth(month, 1)}-01`)}>
