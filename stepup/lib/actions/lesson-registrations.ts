@@ -70,6 +70,9 @@ export async function startRegistrationAction(input: StartRegistrationActionInpu
     const ctx = await requireAuthenticatedDbContext();
     const calendarItem = await findCalendarItem(ctx, input.calendarLessonId, input.recurrenceId, input.occurrenceKey);
     if (!calendarItem) return { error: "No encontramos esa clase en el calendario." };
+    if (calendarItem.occupiesSlot === false || calendarItem.hiddenByReplacement) {
+      return { error: "Esta clase fue reprogramada o reemplazada. Registrá la clase en su nuevo horario." };
+    }
 
     const students = await listStudents(ctx);
     const participants = calendarItem.participantIds.map((id) => students.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
