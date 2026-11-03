@@ -1,7 +1,6 @@
 import { sessionSlotForInstant } from "./lesson-edit.ts";
 import type { SlotIgnore, SlotItem } from "./parity.ts";
-import { buildTimeSlots } from "../original-core/features/calendar/utils/calendarTimeSlots.ts";
-import { buildQuickPickOptions, formatTimeSlotLabel, TIME_SLOT_QUICK_PICK_STEP_MINUTES } from "../original-core/features/calendar/utils/timeSlotQuickPick.ts";
+import { buildQuickPickOptions, buildTimeSlots, formatTimeSlotLabel, TIME_SLOT_QUICK_PICK_STEP_MINUTES } from "./time-slot-quick-pick.ts";
 
 /**
  * Selector de horario del Calendario web — misma regla que la app original (`RescheduleTimeSlotGrid` + `useTimeSlotQuickPick`): la grilla principal va en pasos de 30 minutos

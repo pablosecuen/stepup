@@ -83,7 +83,7 @@ test("cableado: el detalle de la clase ofrece nombre, duración, restaurar y eli
   assert.match(actions, /export async function changeLessonDurationAction/);
   assert.match(actions, /formData\.set\("keepPattern", "true"\)/, "esta y las siguientes: el patrón y los alumnos son los del tramo vigente");
   assert.match(actions, /checkConflictsAndAvailability\(ctx, ref\.startAt, newEnd, ref\.viewItemId\)/, "la nueva duración se valida contra otras clases y bloqueos sin contar la propia clase");
-  assert.match(actions, /const patternUnchanged = keepPattern && !durationPatch;/, "sólo un cambio de nombre omite el chequeo de choques");
+  assert.match(actions, /const patternUnchanged = keepPattern && !durationPatch && !weeksPatch;/, "sólo un cambio de nombre omite el chequeo de choques");
   // Los nombres y niveles de los alumnos nunca se toman del navegador.
   assert.doesNotMatch(read("components/calendar/lesson-edit-dialog.tsx"), /studentName: item\.studentName|level: item\.level/);
 });

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
-import { decideTapAction, INITIAL_TAP_TRACKER_STATE, type TapTrackerState } from "@/lib/original-core/features/calendar/utils/timeSlotQuickPick";
+import { decideTapAction, INITIAL_TAP_TRACKER_STATE, type TapTrackerState } from "@/lib/calendar/time-slot-quick-pick";
 import { ALL_QUARTER_TIMES, isPrimarySlotTime, PRIMARY_SLOT_TIMES, primaryTimeFor, quickPickTimes } from "@/lib/calendar/time-slot-picker";
 
 export interface TimeSlotState {

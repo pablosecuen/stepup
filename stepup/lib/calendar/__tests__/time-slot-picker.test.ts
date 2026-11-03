@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { ALL_QUARTER_TIMES, buildSlotIgnore, classifyDay, isPrimarySlotTime, primaryTimeFor, PRIMARY_SLOT_TIMES, quickPickTimes } from "../time-slot-picker.ts";
-import { daySlots } from "../parity.ts";
+import { daySlots, type SlotItem } from "../parity.ts";
 import { decideTapAction, INITIAL_TAP_TRACKER_STATE } from "../../original-core/features/calendar/utils/timeSlotQuickPick.ts";
 import { localDateTimeToInstantIso } from "../timezone.ts";
 import type { TeacherAvailability } from "../availability.ts";
@@ -42,7 +42,7 @@ test("selector rápido de la app original: el inicio tocado y ese inicio + 15 mi
 });
 
 test("se evalúa la DURACIÓN completa: un inicio libre no alcanza si la clase termina sobre otra", () => {
-  const other = { id: "otra", start: at("2026-11-04", "19:00"), end: at("2026-11-04", "20:00"), status: "scheduled", studentName: "Otra", occupiesSlot: true } as never;
+  const other = { id: "otra", start: at("2026-11-04", "19:00"), end: at("2026-11-04", "20:00"), status: "scheduled", studentName: "Otra", occupiesSlot: true } as SlotItem;
   const slots = daySlots("2026-11-04", 90, [other], open);
   const by = (time: string) => slots.find((slot) => slot.time === time);
   assert.equal(by("17:45")?.available, false, "17:45 + 90 min termina 19:15 y pisa la clase de las 19:00");
@@ -60,17 +60,17 @@ test("un bloqueo de disponibilidad se identifica y se distingue de una clase ocu
 });
 
 test("al mover una clase no cuenta como ocupada ni ella ni (en «esta y las siguientes») su propia sesión de la serie; las demás clases y sesiones SÍ ocupan", () => {
-  const mk = (id: string, date: string, time: string, recurrenceId: string | null) => ({ id, start: at(date, time), end: new Date(Date.parse(at(date, time)) + 3_600_000).toISOString(), status: "scheduled", studentName: id, occupiesSlot: true, recurrenceId }) as never;
+  const mk = (id: string, date: string, time: string, recurrenceId: string | null) => ({ id, start: at(date, time), end: new Date(Date.parse(at(date, time)) + 3_600_000).toISOString(), status: "scheduled", studentName: id, occupiesSlot: true, recurrenceId }) as SlotItem;
   const own = mk("propia", "2026-11-02", "18:00", "serie"); // la clase que se mueve (lunes)
   const nextWeek = mk("siguiente", "2026-11-09", "18:00", "serie"); // misma sesión, la semana siguiente: la operación la reemplaza
   const sibling = mk("hermana", "2026-11-04", "18:00", "serie"); // OTRA sesión de la serie (miércoles): sigue ocupando
   const foreign = mk("ajena", "2026-11-06", "18:00", "otra-serie");
-  const ignore = buildSlotIgnore({ ignoreId: "propia", series: { lineage: ["serie"], fromInstant: own.start, originalStartIso: own.start, timeZone: TZ } });
+  const ignore = buildSlotIgnore({ ignoreId: "propia", series: { lineage: ["serie"], fromInstant: own.start, originalStartIso: own.start, timeZone: TZ } }) as (item: SlotItem) => boolean;
   assert.equal(ignore(own), true);
   assert.equal(ignore(nextWeek), true);
   assert.equal(ignore(sibling), false, "la otra sesión de la serie no se reemplaza");
   assert.equal(ignore(foreign), false, "otra serie siempre ocupa");
-  assert.equal(buildSlotIgnore({ ignoreId: "propia" })(nextWeek), false, "«solo esta clase» ignora únicamente la propia");
+  assert.equal((buildSlotIgnore({ ignoreId: "propia" }) as (item: SlotItem) => boolean)(nextWeek), false, "«solo esta clase» ignora únicamente la propia");
   const slots = daySlots("2026-11-04", 60, [own, nextWeek, sibling, foreign], open, ignore);
   assert.equal(slots.find((slot) => slot.time === "18:00")?.available, false, "el miércoles 18:00 lo ocupa la sesión hermana");
 });
@@ -95,4 +95,22 @@ test("mantener presionado NUNCA cambia la duración ni selecciona al soltar; hay
   assert.match(grid, /event\.key === "ContextMenu" \|\| \(event\.shiftKey && event\.key === "F10"\)/, "alternativa de teclado");
   assert.match(grid, /aria-disabled=\{!pickable\}/, "un horario no elegible sigue enfocable y anunciado");
   assert.match(grid, /\$\{time\}, \$\{status\}/, "el estado va escrito en la etiqueta accesible");
+});
+
+// Prueba DIFERENCIAL: el puerto de producción coincide con la copia de referencia del original (última versión de timeSlotQuickPick y calendarTimeSlots).
+import * as port from "../time-slot-quick-pick.ts";
+import * as original from "../../original-core/features/calendar/utils/timeSlotQuickPick.ts";
+import * as originalSlots from "../../original-core/features/calendar/utils/calendarTimeSlots.ts";
+
+test("diferencial contra el original: mismas constantes, grilla, opciones rápidas y decisión de toque", () => {
+  assert.equal(port.TIME_SLOT_QUICK_PICK_STEP_MINUTES, original.TIME_SLOT_QUICK_PICK_STEP_MINUTES);
+  assert.equal(port.TIME_SLOT_DOUBLE_TAP_WINDOW_MS, original.TIME_SLOT_DOUBLE_TAP_WINDOW_MS);
+  assert.deepEqual(port.buildTimeSlots(), originalSlots.buildTimeSlots());
+  for (const slot of port.buildTimeSlots()) {
+    assert.deepEqual(port.buildQuickPickOptions(slot.hour, slot.minute), original.buildQuickPickOptions(slot.hour, slot.minute));
+    for (const gap of [0, 100, 250, 251, 900]) {
+      const base = port.decideTapAction(port.INITIAL_TAP_TRACKER_STATE, slot, 1000).state;
+      assert.deepEqual(port.decideTapAction(base, slot, 1000 + gap), original.decideTapAction(base, slot, 1000 + gap));
+    }
+  }
 });

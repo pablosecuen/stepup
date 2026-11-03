@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { calendarSlotsAction } from "@/lib/actions/calendar-parity";
+import { guardNetwork } from "@/lib/actions/network-guard";
 import { daySlots, type SlotItem } from "@/lib/calendar/parity";
 import type { TeacherAvailability } from "@/lib/calendar/availability";
 import { buildSlotIgnore, classifyDay, DAY_LOAD_TEXT, type DayLoad } from "@/lib/calendar/time-slot-picker";
@@ -66,7 +67,7 @@ export function AvailabilityPicker({ date, time, duration, ignoreId, series, sel
   useEffect(() => {
     if (!open) return;
     let active = true;
-    calendarSlotsAction(month, recurrenceId)
+    guardNetwork(() => calendarSlotsAction(month, recurrenceId))
       .then((result) => {
         if (!active) return;
         if (result.error) setError(result.error);

@@ -164,7 +164,7 @@ export function SeriesStatusActions({
     setUpcoming(null);
     setUpcomingError(null);
     setChangeIndex(0);
-    void upcomingSeriesOccurrencesAction(ruleId).then((result) => {
+    void guardNetwork(() => upcomingSeriesOccurrencesAction(ruleId)).then((result) => {
       if (result.error) setUpcomingError(result.error);
       else setUpcoming(result.items ?? []);
     });
@@ -294,7 +294,7 @@ export function SeriesStatusActions({
           {upcoming && upcoming.length > 0 && (
             <>
               <Field label="Clase que querés cambiar" htmlFor={`change-occurrence-${ruleId}`}>
-                <select id={`change-occurrence-${ruleId}`} value={changeIndex} onChange={(event) => setChangeIndex(Number(event.target.value))} className="min-h-11 w-full rounded-md border-[1.5px] border-border bg-surface px-3 text-[15px]">
+                <select id={`change-occurrence-${ruleId}`} value={changeIndex} onChange={(event) => setChangeIndex(Number(event.target.value))} className="min-h-11 w-full rounded-md border-[1.5px] border-borderStrong bg-surface px-3 text-[15px]">
                   {upcoming.map((item, index) => (
                     <option key={item.id} value={index}>{`${formatCivilDayLabelShort(instantDateKey(item.start))} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}`}</option>
                   ))}
