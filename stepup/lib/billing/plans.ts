@@ -18,8 +18,9 @@ export type BillingCurrency = typeof BILLING_CURRENCY;
 /** Unidades de importe: 100 centavos = 1 peso. */
 export const MINOR_UNITS_PER_PESO = 100;
 
-export const PLAN_CODES = ["tf_monthly_ars_v1", "tf_quarterly_ars_v1", "tf_semiannual_ars_v1", "tf_annual_ars_v1"] as const;
+export const PLAN_CODES = ["tf_monthly_ars_v1", "tf_quarterly_ars_v1", "tf_semiannual_ars_v1", "tf_annual_ars_v1", "tf_monthly_ars_v2", "tf_quarterly_ars_v2", "tf_semiannual_ars_v2", "tf_annual_ars_v2"] as const;
 export type PlanCode = (typeof PLAN_CODES)[number];
+export const CURRENT_PLAN_CODES: readonly PlanCode[] = ["tf_monthly_ars_v2", "tf_quarterly_ars_v2", "tf_semiannual_ars_v2", "tf_annual_ars_v2"];
 
 /** Intervalos que admite el proveedor (Mobbex, `interval` de una suscripción dinámica): 1m, 3m, 6m y 1y. */
 export type ProviderInterval = "1m" | "3m" | "6m" | "1y";
@@ -84,6 +85,26 @@ const PLANS: Readonly<Record<PlanCode, BillingPlan>> = Object.freeze({
     active: true,
     priceVersion: 1,
   }),
+  tf_monthly_ars_v2: Object.freeze({
+    code: "tf_monthly_ars_v2", name: "Mensual", currency: BILLING_CURRENCY,
+    amountMinor: 2_590_000, interval: Object.freeze({ unit: "month", count: 1 }),
+    monthsOfAccess: 1, providerInterval: "1m", active: true, priceVersion: 2,
+  }),
+  tf_quarterly_ars_v2: Object.freeze({
+    code: "tf_quarterly_ars_v2", name: "Trimestral", currency: BILLING_CURRENCY,
+    amountMinor: 6_990_000, interval: Object.freeze({ unit: "month", count: 3 }),
+    monthsOfAccess: 3, providerInterval: "3m", active: true, priceVersion: 2,
+  }),
+  tf_semiannual_ars_v2: Object.freeze({
+    code: "tf_semiannual_ars_v2", name: "Semestral", currency: BILLING_CURRENCY,
+    amountMinor: 13_140_000, interval: Object.freeze({ unit: "month", count: 6 }),
+    monthsOfAccess: 6, providerInterval: "6m", active: true, priceVersion: 2,
+  }),
+  tf_annual_ars_v2: Object.freeze({
+    code: "tf_annual_ars_v2", name: "Anual", currency: BILLING_CURRENCY,
+    amountMinor: 23_880_000, interval: Object.freeze({ unit: "month", count: 12 }),
+    monthsOfAccess: 12, providerInterval: "1y", active: true, priceVersion: 2,
+  }),
 });
 
 export function isPlanCode(value: unknown): value is PlanCode {
@@ -97,7 +118,12 @@ export function getPlan(code: unknown): BillingPlan | null {
 
 /** Planes que se pueden contratar hoy, en orden de período creciente. */
 export function listActivePlans(): readonly BillingPlan[] {
-  return PLAN_CODES.map((code) => PLANS[code]).filter((plan) => plan.active);
+  return CURRENT_PLAN_CODES.map((code) => PLANS[code]).filter((plan) => plan.active);
+}
+
+/** Las versiones históricas se concilian, pero no se ofrecen para una nueva compra. */
+export function isOfferedPlan(code: unknown): code is PlanCode {
+  return isPlanCode(code) && CURRENT_PLAN_CODES.includes(code) && PLANS[code].active;
 }
 
 /** Vista que sale del servidor hacia la interfaz: precio ya resuelto, nada que la pantalla tenga que calcular o duplicar. */

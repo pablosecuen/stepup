@@ -3,13 +3,15 @@ import assert from "node:assert/strict";
 import { publicPricing } from "../public-pricing.ts";
 import { listPublicPlans } from "../plans.ts";
 
-test("precios públicos: el total es siempre el del catálogo, el diario es sólo una referencia", () => {
+test("precios públicos: mensual comparable, total del período y ahorro calculados desde el catálogo", () => {
   const plans = publicPricing();
   assert.deepEqual(plans.map(p => p.amountMinor), listPublicPlans().map(p => p.amountMinor));
-  assert.deepEqual(plans.map(p => p.dailyPesos), [830, 776.67, 743.89, 682.19]);
+  assert.deepEqual(plans.map(p => p.monthlyEquivalentPesos), [25900, 23300, 21900, 19900]);
+  assert.deepEqual(plans.map(p => p.savingPesos), [0, 7800, 24000, 72000]);
+  assert.deepEqual(plans.map(p => p.savingPercent), [0, 10, 15, 23]);
   const annual = plans.find(p => p.monthsOfAccess === 12)!;
-  assert.equal(annual.amountMinor, plans[0].amountMinor * 10, "12 meses por 10 es una oferta comprobable");
-  assert.equal(annual.annualSavingPesos, 49800);
-  assert.equal(annual.monthlyEquivalentPesos, 20750);
-  assert.ok(plans.filter(p => p.monthsOfAccess !== 12).every(p => p.annualSavingPesos === 0));
+  assert.ok(annual.amountMinor < plans[0].amountMinor * 10, "12 meses cuestan menos que 10 pagos mensuales");
+  assert.equal(annual.amountPesos, 238800);
+  assert.equal(annual.savingPesos, 72000);
+  assert.ok(plans.every(p => !("dailyPesos" in p)), "sin presentación por día");
 });

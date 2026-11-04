@@ -1,7 +1,7 @@
 import type { BillingFlags } from "./flags.ts";
 import { logBilling } from "./log.ts";
 import { nextCheckAt, projectStatus, type BillingSnapshot } from "./ledger.ts";
-import { getPlan } from "./plans.ts";
+import { getPlan, isOfferedPlan } from "./plans.ts";
 import type { ProviderAdapter } from "./provider.ts";
 import { billingErrorMessage, type BillingFailure } from "./safe-errors.ts";
 import { applyTrigger, canApplyTrigger, type BillingStatus } from "./state-machine.ts";
@@ -54,6 +54,7 @@ export function providerPlanOf(snapshot: Pick<BillingSnapshot, "providerPlanCode
 export function decidePlanChange(snapshot: BillingSnapshot, toPlanCode: unknown, now: Date): Decision {
   const target = getPlan(toPlanCode);
   if (!target || !target.active) return REJECT("plan_invalid");
+  if (!isOfferedPlan(target.code) && target.code !== snapshot.planCode && target.code !== snapshot.pendingPlanCode) return REJECT("plan_invalid");
   const current = projectStatus(snapshot, now);
   if (!canApplyTrigger(current, "plan_change_requested")) return REJECT("not_allowed");
   if (target.code === snapshot.pendingPlanCode) return { ok: true, kind: "noop" };
@@ -202,7 +203,7 @@ export async function startCheckout(
   const failure = (code: BillingFailure): StartCheckoutResult => ({ ok: false, failure: code, message: billingErrorMessage(code) });
   if (!deps.flags.enabled) return failure("billing_disabled");
   const plan = getPlan(input.planCode);
-  if (!plan || !plan.active) return failure("plan_invalid");
+  if (!plan || !isOfferedPlan(plan.code)) return failure("plan_invalid");
   let opened;
   try {
     const expiresAt = new Date(deps.now().getTime() + (deps.attemptTtlMinutes ?? 1_440) * 60_000).toISOString();

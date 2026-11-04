@@ -6,7 +6,7 @@ import { TextLink } from "@/components/auth/public-links";
  * Sólo la primera copia es un enlace enfocable y legible; el resto es relleno visual (`aria-hidden`, sin tabulación). Se pausa al
  * pasar el mouse o enfocar, y con «reducir movimiento» queda un solo mensaje quieto (ver landing-natural.css).
  *
- * Enlaza a los precios públicos. El ahorro anual sale del catálogo vigente: 12 meses por el precio de 10.
+ * Enlaza a los precios públicos. El anual vigente cuesta menos que diez pagos mensuales.
  * Alto fijado por el encargo (34 px escritorio, 30 px móvil): es la única excepción deliberada a los 44 px de los enlaces (el aviso
  * ocupa todo el ancho de cada mensaje; ver landing-natural.css).
  */
@@ -16,7 +16,7 @@ function Message({ ghost }: { ghost: boolean }) {
   return (
     <TextLink href="/planes" className="tf-announce-item" {...(ghost ? { tabIndex: -1, "aria-hidden": true } : {})}>
       <span>Próximamente</span>
-      <strong>12 meses por el precio de 10</strong>
+      <strong>12 meses por menos de lo que cuestan 10</strong>
       <span>al pagar el año completo</span>
       <b>Conocé el plan anual</b>
       <span aria-hidden="true">✦</span>
@@ -26,7 +26,7 @@ function Message({ ghost }: { ghost: boolean }) {
 
 export function AnnouncementBar() {
   return (
-    <aside aria-label="Anuncio: plan anual, 12 meses por el precio de 10" className="tf-announce">
+    <aside aria-label="Anuncio: plan anual, 12 meses por menos de lo que cuestan 10" className="tf-announce">
       <div className="tf-announce-track">
         <div className="tf-announce-group">
           {Array.from({ length: COPIES }, (_, index) => (

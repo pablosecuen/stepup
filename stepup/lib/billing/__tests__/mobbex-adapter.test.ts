@@ -133,6 +133,10 @@ test("cada plan se crea en el proveedor con SU intervalo (1m, 3m, 6m, 1y), el pr
     tf_quarterly_ars_v1: ["3m", "69900.00"],
     tf_semiannual_ars_v1: ["6m", "133900.00"],
     tf_annual_ars_v1: ["1y", "249000.00"],
+    tf_monthly_ars_v2: ["1m", "25900.00"],
+    tf_quarterly_ars_v2: ["3m", "69900.00"],
+    tf_semiannual_ars_v2: ["6m", "131400.00"],
+    tf_annual_ars_v2: ["1y", "238800.00"],
   };
   for (const plan of listActivePlans()) {
     const body = buildCreateSubscriptionRequest(plan, { returnUrl: "https://teacherflowapp.com/x", webhookUrl: null, test: false }).json as Record<string, unknown>;
@@ -146,7 +150,7 @@ test("cada plan se crea en el proveedor con SU intervalo (1m, 3m, 6m, 1y), el pr
     assert.equal("webhook" in body, false);
     assert.equal("installments" in body, false);
   }
-  assert.equal(PLAN_CODES.length, 4);
+  assert.equal(PLAN_CODES.length, 8);
 });
 
 test("crear el checkout: el suscriptor arranca MAÑANA (fecha civil de Argentina) y la redirección sólo se acepta si es HTTPS de mobbex.com", async () => {

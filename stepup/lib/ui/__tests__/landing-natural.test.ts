@@ -104,7 +104,7 @@ test("franja de anuncio: una sola, borde a borde, 34/30 px, amarillo y marrón, 
   assert.equal((PAGE.match(/<AnnouncementBar \/>/g) ?? []).length, 1);
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<SiteHeader />"), "arriba del encabezado");
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<main"), "fuera del contenido principal");
-  assert.match(BAR, /<strong>12 meses por el precio de 10<\/strong>/);
+  assert.match(BAR, /<strong>12 meses por menos de lo que cuestan 10<\/strong>/);
   assert.match(BAR, /<span>Próximamente<\/span>/, "la campaña no se anuncia como un precio contratado");
   assert.match(BAR, /<span>al pagar el año completo<\/span>/);
   assert.doesNotMatch(LANDING, /15 % OFF/, "el anuncio coincide con el precio anual vigente");
@@ -133,7 +133,7 @@ test("franja de anuncio: copias ocultas a lectores y sin tabulaciones duplicadas
   assert.match(BAR, /ghost \? \{ tabIndex: -1, "aria-hidden": true \}/);
   assert.match(BAR, /<Message key=\{index\} ghost=\{index > 0\} \/>/, "sólo la primera copia es enlace enfocable");
   assert.match(BAR, /<div className="tf-announce-group" aria-hidden="true">/);
-  assert.match(BAR, /aria-label="Anuncio: plan anual, 12 meses por el precio de 10"/);
+  assert.match(BAR, /aria-label="Anuncio: plan anual, 12 meses por menos de lo que cuestan 10"/);
   assert.match(BAR, /href="\/planes"/, "el destino muestra precios y períodos reales del catálogo");
   assert.match(BAR, /import \{ TextLink \} from "@\/components\/auth\/public-links"/, "enlace público estándar, no next/link directo");
   assert.doesNotMatch(BAR, /from "next\/link"/);

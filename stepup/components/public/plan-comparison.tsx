@@ -1,49 +1,51 @@
-"use client";
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/auth/public-links";
 import { formatMoney } from "@/lib/format/number-format";
+import { ListCascade } from "@/components/ui/list-cascade";
 
 interface PlanPresentation {
   code: string;
   name: string;
   monthsOfAccess: number;
   amountPesos: number;
-  dailyPesos: number;
   monthlyEquivalentPesos: number;
-  annualSavingPesos: number;
+  savingPesos: number;
+  savingPercent: number;
+  referenceMonthlyPesos: number;
 }
 
 export function PlanComparison({ plans }: { plans: readonly PlanPresentation[] }) {
-  const [selected, setSelected] = useState(plans.find(p => p.monthsOfAccess === 12)!.code);
-  const plan = plans.find(p => p.code === selected)!;
-  const annual = plan.monthsOfAccess === 12;
-  return (
-    <section aria-label="Comparar planes" className="mx-auto max-w-3xl">
-      <div role="group" aria-label="Período de suscripción" className="mb-6 flex flex-wrap justify-center gap-2">
-        {plans.map(option => <Button key={option.code} variant={selected === option.code ? "primary" : "secondary"} aria-pressed={selected === option.code} onClick={() => setSelected(option.code)}>{option.name}</Button>)}
-      </div>
-      <div className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-9">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-3xl">Plan {plan.name.toLowerCase()}</h2>
-          {annual && <span className="rounded-full bg-[#e9e1f4] px-4 py-2 text-sm font-semibold text-[#4d356b]">12 meses por el precio de 10</span>}
-        </div>
-        <p className="text-textSecondary">Precio total en pesos argentinos</p>
-        <p className="mt-1 font-display text-[clamp(2rem,7vw,3.5rem)] leading-tight tabular-nums">{formatMoney(plan.amountPesos)}</p>
-        <p className="mt-2 font-semibold">Un pago por {plan.monthsOfAccess === 1 ? "mes" : `${plan.monthsOfAccess} meses`} de acceso.</p>
-        <div className="my-6 rounded-xl bg-surface2 p-4">
-          <p className="text-lg font-semibold">Equivale a aprox. {formatMoney(plan.dailyPesos)} por día</p>
-          {plan.monthsOfAccess > 1 && <p className="mt-1 text-sm text-textSecondary">{formatMoney(plan.monthlyEquivalentPesos)} por mes como referencia. El pago es por el período completo.</p>}
-          {annual && <p className="mt-3 font-semibold text-[#4d356b]">Ahorrás {formatMoney(plan.annualSavingPesos)} frente a 12 pagos mensuales de {formatMoney(plans[0].amountPesos)}.</p>}
-        </div>
-        <ul className="mb-6 grid gap-2 text-textSecondary sm:grid-cols-2">
-          {["Gestión de alumnos", "Calendario y series", "Registro de clases y tareas", "Control de cobros", "Reportes y evidencias", "Resumen financiero"].map(feature => <li key={feature}>✓ {feature}</li>)}
-        </ul>
-        <p className="mb-4 text-sm text-textSecondary">Todos los planes incluyen las mismas funciones. La contratación online está en preparación: esta página no inicia suscripciones ni realiza cobros.</p>
-        <ButtonLink href="/crear-cuenta">Crear mi cuenta</ButtonLink>
-      </div>
-      <p className="mt-4 text-sm text-textSecondary">El equivalente diario es orientativo: usamos 30 días por mes y 365 para el anual. No es un cobro diario ni un pago en cuotas. El importe exigible es el total del período seleccionado.</p>
+  return <section aria-label="Comparar planes">
+    <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <ListCascade>
+      {plans.map(plan => {
+        const annual = plan.monthsOfAccess === 12;
+        return <article key={plan.code} data-tf-cascade-row aria-label={`Plan ${plan.name}`} className={`flex min-w-0 flex-col rounded-2xl border p-5 sm:p-6 ${annual ? "border-[#80639f] bg-[#eee6f7] shadow-card" : "border-border bg-surface"}`}>
+          <div className="mb-4 flex min-h-7 items-center justify-between gap-2">
+            <h2 className="font-display text-2xl">{plan.name}</h2>
+            {annual && <span className="rounded-full bg-[#4d356b] px-3 py-1 text-xs font-semibold text-white">Mejor precio</span>}
+          </div>
+          <p className="min-h-6 text-sm text-textSecondary">{annual ? <><span className="sr-only">Precio mensual de referencia: </span><s>{formatMoney(plan.referenceMonthlyPesos)}</s></> : plan.monthsOfAccess === 1 ? "Mes a mes, a tu ritmo" : `${plan.monthsOfAccess} meses de organización`}</p>
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-1 tabular-nums"><span className="font-display text-[clamp(2rem,3vw,2.625rem)] leading-tight">{formatMoney(plan.monthlyEquivalentPesos)}</span><span className="text-base text-textSecondary">/mes</span></p>
+          <p className="mt-4 text-sm leading-relaxed text-textSecondary sm:min-h-12">{plan.monthsOfAccess === 1 ? <>Cobro mensual de <strong className="text-textPrimary">{formatMoney(plan.amountPesos)}</strong>.</> : <>Un pago de <strong className="text-textPrimary">{formatMoney(plan.amountPesos)}</strong> cada {plan.monthsOfAccess} meses.</>}</p>
+          <div className="mt-4 border-t border-border pt-4 sm:min-h-[92px]">
+            {plan.savingPesos > 0 ? <><p className={`font-semibold ${annual ? "text-[#4d356b]" : "text-textPrimary"}`}>Ahorrás {formatMoney(plan.savingPesos)} · {plan.savingPercent} %</p><p className="mt-2 text-sm text-textSecondary">{annual ? "12 meses por menos de lo que cuestan 10." : "Frente a pagar mes a mes."}</p></> : <p className="text-sm text-textSecondary">Elegí el período que mejor acompañe tu forma de trabajar.</p>}
+          </div>
+          <ButtonLink href="/crear-cuenta" variant={annual ? "primary" : "secondary"} className="mt-6 self-start">Crear cuenta</ButtonLink>
+        </article>;
+      })}
+      </ListCascade>
+    </div>
+    <p className="mt-4 text-sm leading-relaxed text-textSecondary">Precios en pesos argentinos. El precio por mes permite comparar los planes; el cobro se realiza por el período completo indicado. Los porcentajes de ahorro están redondeados y se comparan con el plan mensual vigente.</p>
+    <section aria-labelledby="included-features" className="mt-9 rounded-2xl border border-border bg-surface p-5 sm:p-7">
+      <h2 id="included-features" className="font-display text-2xl">Todo TeacherFlow, en todos los planes.</h2>
+      <ul className="mt-5 grid gap-x-8 gap-y-3 text-textSecondary sm:grid-cols-2 lg:grid-cols-3">
+        {["Gestión de alumnos", "Calendario y series", "Registro de clases y tareas", "Control de cobros", "Reportes y evidencias", "Resumen financiero"].map(feature => <li key={feature} className="flex items-center gap-2"><span aria-hidden="true" className="text-[#4d356b]">✓</span>{feature}</li>)}
+      </ul>
     </section>
-  );
+    <p className="mt-5 text-sm text-textSecondary">La contratación online está en preparación. Crear una cuenta no inicia una suscripción ni realiza cobros.</p>
+    <section aria-label="Preguntas sobre los planes" className="mt-8 grid gap-3 sm:grid-cols-2">
+      <details className="self-start rounded-xl border border-border bg-surface p-4"><summary className="min-h-11 cursor-pointer content-center font-semibold">¿Cambia lo que incluye cada plan?</summary><p className="mt-3 text-sm leading-relaxed text-textSecondary">Todos incluyen las mismas funciones. Cambian la duración del período y el precio.</p></details>
+      <details className="self-start rounded-xl border border-border bg-surface p-4"><summary className="min-h-11 cursor-pointer content-center font-semibold">¿Se cobra el precio mensual o el total?</summary><p className="mt-3 text-sm leading-relaxed text-textSecondary">El total indicado en la tarjeta, en un pago por el período elegido. El plan anual de {formatMoney(plans.find(p => p.monthsOfAccess === 12)!.amountPesos)} cubre 12 meses y no se divide en cuotas mensuales.</p></details>
+    </section>
+  </section>;
 }

@@ -19,16 +19,16 @@ const PAID = { planCode: "tf_monthly_ars_v1", providerPlanCode: "tf_monthly_ars_
 
 const view = (overrides: Parameters<typeof snap>[0] = {}, caps = CAPS, now = NOW): BillingView => buildBillingView({ snapshot: snap(overrides), history: null, now, capabilities: caps, available: true });
 
-test("los cuatro planes: $24.900 mensual, $69.900 cada 3 meses, $133.900 cada 6 meses y $249.000 anual, con el ahorro EXACTO frente al mensual", () => {
+test("los cuatro planes: $25.900 mensual, $69.900 cada 3 meses, $131.400 cada 6 meses y $238.800 anual, con el ahorro EXACTO frente al mensual", () => {
   const options = buildPlanOptions();
   assert.deepEqual(plainDeep(options.map((o) => [o.name, o.price, o.cadence])), [
-    ["Mensual", "$ 24.900", "por mes"],
+    ["Mensual", "$ 25.900", "por mes"],
     ["Trimestral", "$ 69.900", "cada 3 meses"],
-    ["Semestral", "$ 133.900", "cada 6 meses"],
-    ["Anual", "$ 249.000", "por año"],
+    ["Semestral", "$ 131.400", "cada 6 meses"],
+    ["Anual", "$ 238.800", "por año"],
   ]);
-  assert.deepEqual(plainDeep(options.map((o) => o.saving)), [null, "Ahorrás $ 4.800 frente al plan mensual", "Ahorrás $ 15.500 frente al plan mensual", "Ahorrás $ 49.800 frente al plan mensual"]);
-  assert.deepEqual(plainDeep(options.map((o) => o.perMonth)), [null, "$ 23.300 por mes", "unos $ 22.317 por mes", "$ 20.750 por mes"]);
+  assert.deepEqual(plainDeep(options.map((o) => o.saving)), [null, "Ahorrás $ 7.800 frente al plan mensual", "Ahorrás $ 24.000 frente al plan mensual", "Ahorrás $ 72.000 frente al plan mensual"]);
+  assert.deepEqual(plainDeep(options.map((o) => o.perMonth)), [null, "$ 23.300 por mes", "$ 21.900 por mes", "$ 19.900 por mes"]);
   // El ahorro sale del catálogo en centavos enteros: 3×24.900 − 69.900 = 4.800, etc.
   const monthly = listActivePlans()[0];
   for (const plan of listActivePlans().slice(1)) assert.equal(monthly.amountMinor * plan.monthsOfAccess - plan.amountMinor > 0, true);
