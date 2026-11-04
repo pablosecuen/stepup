@@ -7,16 +7,16 @@
 - Destacar el ahorro solamente en el anual. Se usa «12 meses por el precio de 10», ahorro $49.800 respecto de doce pagos mensuales ($298.800); reemplaza el anuncio incoherente de 15 %.
 - Precio completo y período visibles. Referencia diaria secundaria: 30 días por mes y 365 por año. Nunca modifica el total del checkout.
 
-## Preparado en código, sin publicar
+## Páginas públicas preparadas para publicación
 
 - `/planes`, pública, selector de los cuatro períodos y mismos precios que el catálogo servidor.
 - `/terminos-y-condiciones`, `/politica-de-privacidad` y `/contacto`, con plantilla común, identificación del titular y enlaces en el pie.
-- Correo y domicilio en una única configuración, `lib/business/public-profile.ts`. Las páginas legales y sus enlaces no se habilitan hasta confirmar los datos de contacto. La bandera de revisión de la integración de pagos no se cambia.
+- Correo y domicilio en una única configuración, `lib/business/public-profile.ts`. Las páginas legales y sus enlaces quedan habilitados con el contacto corregido. La bandera de revisión de la integración de pagos no se cambia.
 - Las páginas dicen que la contratación está en preparación. No se incorpora un checkout ficticio ni se activa la integración anterior de Mobbex.
 
-## Falta confirmar
+## Contacto corregido
 
-El titular recordó `teachflowapk@gmail.com`, sin certeza. La búsqueda en documentación y los turnos revisados de los chats previos no produjo confirmación independiente. Pendiente confirmar ese correo y el domicilio que se publicará: Pellegrini 3603, Rosario, Santa Fe, Argentina, informado en el correo de Rebill. `contactConfirmed` permanece `false`.
+La captura aportada por el titular confirma `techflowapk@gmail.com`, sin la «a» de la primera transcripción. Se utiliza el domicilio declarado en el alta de Rebill: Pellegrini 3603, Rosario, Santa Fe, Argentina. `contactConfirmed` queda `true`.
 
 ## Documentación y activación externas
 

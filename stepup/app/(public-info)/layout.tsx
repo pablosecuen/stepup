@@ -8,7 +8,7 @@ export default function PublicInfoLayout({ children }: { children: ReactNode }) 
   return <div className="flex min-h-screen flex-col">
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4">
-        <Link href="/" aria-label="TeacherFlow, inicio"><BrandMark /></Link>
+        <Link href="/" aria-label="TeacherFlow, inicio" className="inline-flex min-h-11 items-center rounded-md focus-visible:outline focus-visible:outline-2"><BrandMark /></Link>
         <nav aria-label="Navegación pública" className="flex flex-wrap items-center gap-3"><TextLink href="/planes">Planes</TextLink><ButtonLink href="/login" variant="secondary">Iniciar sesión</ButtonLink></nav>
       </div>
     </header>

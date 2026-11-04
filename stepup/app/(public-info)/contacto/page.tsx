@@ -17,6 +17,6 @@ export default function ContactPage() {
       <a className="tf-motion-link inline-flex min-h-11 items-center rounded-full border border-borderStrong px-5 py-2 font-semibold" href={`mailto:${PUBLIC_BUSINESS.email}?subject=Solicitud%20de%20baja%20de%20TeacherFlow`}>Solicitar baja</a>
       <a className="tf-motion-link inline-flex min-h-11 items-center rounded-full border border-borderStrong px-5 py-2 font-semibold" href={`mailto:${PUBLIC_BUSINESS.email}?subject=Arrepentimiento%20de%20contrataci%C3%B3n%20TeacherFlow`}>Solicitar arrepentimiento</a>
     </div>
-    <p className="mt-4 text-sm text-textSecondary">Estos enlaces abren tu aplicación de correo. La solicitud se envía cuando completás y enviás el mensaje; tocar el enlace no cancela ni devuelve un pago automáticamente.</p>
+    <p className="mt-4 text-sm text-textSecondary">Estos enlaces abren un mensaje nuevo en tu servicio de correo. La solicitud se envía cuando completás y enviás el mensaje; tocar el enlace no cancela ni devuelve un pago automáticamente.</p>
   </article>;
 }

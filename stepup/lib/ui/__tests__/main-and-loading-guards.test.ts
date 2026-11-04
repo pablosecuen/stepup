@@ -31,6 +31,7 @@ const PRIVATE_PAGES = sources("app/(app)").filter((file) => /\/(page|loading|err
 // «no encontrado») y las páginas/estados que NO están dentro de él (públicas, de autenticación, errores y 404 de la raíz).
 const MAIN_OWNERS = [
   "app/(app)/layout.tsx",
+  "app/(public-info)/layout.tsx",
   "app/global-error.tsx",
   "app/iniciando-sesion/page.tsx",
   "app/page.tsx",
