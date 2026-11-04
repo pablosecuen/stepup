@@ -8,6 +8,7 @@ const LINKS = [
   { href: "#alumnos", label: "Alumnos" },
   { href: "#cobros", label: "Cobros" },
   { href: "#seguridad", label: "Seguridad" },
+  { href: "/planes", label: "Planes" },
 ] as const;
 
 /** Encabezado fijo de la landing: anclas a cada escena (scroll suave con «sin reducir movimiento») y los dos accesos. */

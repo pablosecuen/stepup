@@ -37,6 +37,8 @@ const importsOf = (file: string): string[] => [...read(file).matchAll(BILLING_IM
 const moduleOf = (specifier: string): string => specifier.replace(/^.*lib\/billing\//, "").replace(/\.ts$/, "");
 
 const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modules: ReadonlySet<string> }> = [
+  // Página pública de precios: sólo proyección del catálogo, sin runtime ni acciones de cobro.
+  { match: /^app\/\(public-info\)\/planes\/page\.tsx$/, modules: new Set(["public-pricing"]) },
   { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },

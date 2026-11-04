@@ -4,6 +4,7 @@ import { Closing, CalendarDetail, FinanceDetail, Hero, HowItWorks, ProductIndex,
 import { RevealController } from "@/components/landing/reveal-controller";
 import { SiteHeader } from "@/components/landing/site-header";
 import { BrandMark } from "@/components/ui/brand";
+import { PublicFooterLinks } from "@/components/public/public-footer";
 import "@/components/landing/landing-natural.css";
 
 // Tipografía de la landing: DM Serif Display para títulos y DM Sans para la interfaz. Se declaran acá, sólo para esta página, así la
@@ -37,6 +38,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-[1240px] flex-col items-center gap-3">
           <BrandMark size="sm" />
           <p>TeacherFlow — para profesoras y profesores independientes.</p>
+          <PublicFooterLinks />
         </div>
       </footer>
     </div>
