@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setRecurrenceStatusAction, editFutureRecurrenceAction, changeParticipantsAction, endSeriesFromTodayAction, type FormState } from "@/lib/actions/calendar";
 import { Dialog } from "@/components/ui/dialog";
 import { SeriesSwapPanel, type SwapOption } from "@/components/calendar/series-swap-panel";
 import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel";
+import { SeriesActionsMenu, type SeriesMenuGroup } from "@/components/calendar/series-actions-menu";
+import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
 import { upcomingSeriesOccurrencesAction, type UpcomingSeriesOccurrence } from "@/lib/actions/schedule-change";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
@@ -44,11 +46,14 @@ export function SeriesStatusActions({
   seriesLabel,
   scheduleLabel,
   swapOptions = [],
+  training = null,
 }: {
   /** Nombre y horario de LA serie (para decir en la confirmación exactamente qué se quita). */
   seriesLabel: string;
   scheduleLabel: string;
   swapOptions?: SwapOption[];
+  /** Sólo un entrenamiento: su acuerdo de cobro (la cuota se configura o edita desde «Acciones»). */
+  training?: { agreementId: string | null } | null;
   ruleId: string;
   status: RecurrenceRuleStatus;
   weeks: RecurrenceWeek[];
@@ -73,6 +78,8 @@ export function SeriesStatusActions({
   const [upcomingError, setUpcomingError] = useState<string | null>(null);
   const [changeIndex, setChangeIndex] = useState(0);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
   const initialCycle = (weeks.length > 0 ? weeks.length : 1) as 1 | 2 | 3 | 4;
   const [cycleLengthWeeks, setCycleLengthWeeks] = useState<1 | 2 | 3 | 4>(initialCycle);
   const [weekCycles, setWeekCycles] = useState<WeekRows[]>(() => defaultWeekCycles(initialCycle, weeks));
@@ -150,17 +157,33 @@ export function SeriesStatusActions({
         setError(result.error);
         return;
       }
-      setConfirmingEnd(false);
+      closeAll();
       router.refresh();
     });
   }
 
-  function openChange() {
+  /** Cierra cualquier formulario sin guardar, lo deja como estaba y devuelve el foco al control «Acciones» (la opción que lo abrió ya no existe). La lista no se mueve: nada crece dentro de la tarjeta. */
+  function closeAll() {
+    setChangeOpen(false);
+    setSwapOpen(false);
     setEditingFuture(false);
     setEditingParticipants(false);
-    setSwapOpen(false);
-    setChangeOpen((value) => !value);
-    if (changeOpen) return;
+    setConfirmingEnd(false);
+    setBillingOpen(false);
+    setOverlapWarning(null);
+    setReplaceWarning(null);
+    setReplaceConfirmed(false);
+    setCycleLengthWeeks(initialCycle);
+    setWeekCycles(defaultWeekCycles(initialCycle, weeks));
+    setSelectedParticipantIds(new Set(participantIds));
+    setSelectedPrimaryId(primaryStudentId ?? "");
+    setFutureDate(today);
+    setParticipantsDate(today);
+    window.requestAnimationFrame(() => actionsButtonRef.current?.focus({ preventScroll: true }));
+  }
+
+  function openChange() {
+    setChangeOpen(true);
     setUpcoming(null);
     setUpcomingError(null);
     setChangeIndex(0);
@@ -186,7 +209,7 @@ export function SeriesStatusActions({
         else setError(result.error);
         return;
       }
-      setEditingFuture(false);
+      closeAll();
       router.refresh();
     });
   }
@@ -205,7 +228,7 @@ export function SeriesStatusActions({
         setError(result.error);
         return;
       }
-      setEditingParticipants(false);
+      closeAll();
       router.refresh();
     });
   }
@@ -213,109 +236,90 @@ export function SeriesStatusActions({
   const eligibleStudents = students.filter((s) => s.status !== "archivado" || selectedParticipantIds.has(s.id));
   const pickableStudents = eligibleStudents.map((student) => ({ id: student.id, name: student.name, status: student.status, level: student.levels.join(" · ") }));
 
+  const menuGroups: SeriesMenuGroup[] = [
+    {
+      key: "programacion",
+      heading: "Programación",
+      items: [
+        ...(status !== "ended" ? [{ key: "change", label: "Cambiar horario", onSelect: openChange }] : []),
+        ...(status === "active" && swapOptions.length >= 2 && swapOptions.some((option) => option.id === ruleId) ? [{ key: "swap", label: "Intercambiar horarios", onSelect: () => setSwapOpen(true) }] : []),
+      ],
+    },
+    {
+      key: "miembros",
+      heading: "Miembros y configuración",
+      items: [
+        ...(status !== "ended" ? [{ key: "members", label: "Administrar miembros", onSelect: () => setEditingParticipants(true) }] : []),
+        ...(status !== "ended" ? [{ key: "future", label: "Editar futuras", onSelect: () => setEditingFuture(true) }] : []),
+        ...(training ? [{ key: "billing", label: training.agreementId ? "Editar cuota" : "Configurar cuota", onSelect: () => setBillingOpen(true) }] : []),
+      ],
+    },
+    {
+      key: "estado",
+      heading: "Estado",
+      items: [
+        ...(status === "active" ? [{ key: "pause", label: "Pausar", onSelect: () => { actionsButtonRef.current?.focus({ preventScroll: true }); applyStatus("paused"); }, disabled: pending }] : []),
+        ...(status === "paused" ? [{ key: "resume", label: "Reanudar", onSelect: () => { actionsButtonRef.current?.focus({ preventScroll: true }); applyStatus("active"); }, disabled: pending }] : []),
+      ],
+    },
+    {
+      key: "peligro",
+      heading: null,
+      items: status !== "ended" ? [{ key: "delete", label: "Eliminar serie", destructive: true, onSelect: () => setConfirmingEnd(true) }] : [],
+    },
+  ];
+  const dialogTitle = (action: string) => `${action} · ${seriesLabel}`;
+  const hasMenu = menuGroups.some((group) => group.items.length > 0);
+
   return (
-    <div className="mt-3 flex flex-col gap-3 border-t-[1.5px] border-border pt-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {status === "active" && (
-          <Button variant="secondary" disabled={pending} onClick={() => applyStatus("paused")}>
-            Pausar
-          </Button>
-        )}
-        {status === "paused" && (
-          <Button variant="secondary" disabled={pending} onClick={() => applyStatus("active")}>
-            Reanudar
-          </Button>
-        )}
-        {status !== "ended" && (
-          <Button variant="secondary" aria-expanded={changeOpen} onClick={openChange}>
-            {changeOpen ? "Cerrar" : "Cambiar horario"}
-          </Button>
-        )}
-        {status !== "ended" && (
-          <Button
-            variant="secondary"
-            aria-expanded={editingFuture}
-            onClick={() => {
-              setEditingParticipants(false);
-              setSwapOpen(false);
-              setChangeOpen(false);
-              setEditingFuture((v) => !v);
-            }}
-          >
-            {editingFuture ? "Cerrar" : "Editar futuras"}
-          </Button>
-        )}
-        {status !== "ended" && (
-          <Button
-            variant="secondary"
-            aria-expanded={editingParticipants}
-            onClick={() => {
-              setEditingFuture(false);
-              setSwapOpen(false);
-              setChangeOpen(false);
-              setEditingParticipants((v) => !v);
-            }}
-          >
-            {editingParticipants ? "Cerrar" : "Modificar participantes"}
-          </Button>
-        )}
-        {status === "active" && swapOptions.length >= 2 && swapOptions.some((option) => option.id === ruleId) && (
-          <Button
-            variant="secondary"
-            aria-expanded={swapOpen}
-            onClick={() => {
-              setEditingFuture(false);
-              setEditingParticipants(false);
-              setChangeOpen(false);
-              setSwapOpen((v) => !v);
-            }}
-          >
-            {swapOpen ? "Cerrar" : "Intercambiar horarios"}
-          </Button>
-        )}
-        {status !== "ended" && (
-          <Button variant="dangerOutline" disabled={pending} onClick={() => setConfirmingEnd(true)} aria-haspopup="dialog" className="sm:ml-auto">
-            Eliminar serie
-          </Button>
-        )}
-      </div>
+    <div className="shrink-0">
+      {hasMenu && <SeriesActionsMenu seriesLabel={seriesLabel} groups={menuGroups} buttonRef={actionsButtonRef} />}
 
-      {error && <FormErrorBox message={error} />}
-
-      {changeOpen && (
-        <div className="flex flex-col gap-3 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
-          <div>
-            <h3 className="font-display text-card font-semibold">Cambiar horario</h3>
-            <p className="mt-0.5 text-[13.5px] text-textMuted">Mové una clase (o esta y las siguientes) a un horario libre. No hace falta otra serie: el intercambio con otra serie está aparte, en «Intercambiar horarios».</p>
-          </div>
-          {upcomingError && <FormErrorBox message={upcomingError} />}
-          {!upcoming && !upcomingError && <p role="status">Buscando las próximas clases…</p>}
-          {upcoming && upcoming.length === 0 && <Notice tone="info">Esta serie no tiene clases próximas para cambiar.</Notice>}
-          {upcoming && upcoming.length > 0 && (
-            <>
-              <Field label="Clase que querés cambiar" htmlFor={`change-occurrence-${ruleId}`}>
-                <select id={`change-occurrence-${ruleId}`} value={changeIndex} onChange={(event) => setChangeIndex(Number(event.target.value))} className="min-h-11 w-full rounded-md border-[1.5px] border-borderStrong bg-surface px-3 text-[15px]">
-                  {upcoming.map((item, index) => (
-                    <option key={item.id} value={index}>{`${formatCivilDayLabelShort(instantDateKey(item.start))} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}`}</option>
-                  ))}
-                </select>
-              </Field>
-              <ChangeSchedulePanel key={upcoming[changeIndex].id} occurrence={upcoming[changeIndex]} initialScope="series" onCancel={() => setChangeOpen(false)} onDone={() => { setChangeOpen(false); router.refresh(); }} />
-            </>
-          )}
+      {error && (
+        <div className="mt-2 max-w-[260px]">
+          <FormErrorBox message={error} />
         </div>
       )}
 
-      {swapOpen && <SeriesSwapPanel options={swapOptions} fixedId={ruleId} onClose={() => setSwapOpen(false)} />}
+      {changeOpen && (
+        <Dialog title={dialogTitle("Cambiar horario")} size="lg" onClose={closeAll}>
+
+            <div>
+              <p className="mt-0.5 text-[13.5px] text-textMuted">Mové una clase (o esta y las siguientes) a un horario libre. No hace falta otra serie: el intercambio con otra serie está aparte, en «Intercambiar horarios».</p>
+            </div>
+            {upcomingError && <FormErrorBox message={upcomingError} />}
+            {!upcoming && !upcomingError && <p role="status">Buscando las próximas clases…</p>}
+            {upcoming && upcoming.length === 0 && <Notice tone="info">Esta serie no tiene clases próximas para cambiar.</Notice>}
+            {upcoming && upcoming.length > 0 && (
+              <>
+                <Field label="Clase que querés cambiar" htmlFor={`change-occurrence-${ruleId}`}>
+                  <select id={`change-occurrence-${ruleId}`} value={changeIndex} onChange={(event) => setChangeIndex(Number(event.target.value))} className="min-h-11 w-full rounded-md border-[1.5px] border-borderStrong bg-surface px-3 text-[15px]">
+                    {upcoming.map((item, index) => (
+                      <option key={item.id} value={index}>{`${formatCivilDayLabelShort(instantDateKey(item.start))} · ${instantTimeLabel(item.start)}–${instantTimeLabel(item.end)}`}</option>
+                    ))}
+                  </select>
+                </Field>
+                <ChangeSchedulePanel key={upcoming[changeIndex].id} occurrence={upcoming[changeIndex]} initialScope="series" onCancel={closeAll} onDone={() => { closeAll(); router.refresh(); }} />
+              </>
+            )}
+
+        </Dialog>
+      )}
+
+      {swapOpen && (
+        <Dialog title={dialogTitle("Intercambiar horarios")} size="lg" onClose={closeAll}>
+          <SeriesSwapPanel options={swapOptions} fixedId={ruleId} onClose={closeAll} />
+        </Dialog>
+      )}
 
       {confirmingEnd && (
         <Dialog
           title="Eliminar serie"
-          onClose={() => setConfirmingEnd(false)}
+          onClose={() => closeAll()}
           busy={pending}
           footer={
             <>
-              <Button variant="secondary" onClick={() => setConfirmingEnd(false)} disabled={pending}>
+              <Button variant="secondary" onClick={() => closeAll()} disabled={pending}>
                 Volver
               </Button>
               <Button variant="danger" onClick={confirmEndSeries} busy={pending}>
@@ -338,122 +342,129 @@ export function SeriesStatusActions({
         </Dialog>
       )}
 
+
       {editingFuture && (
-        <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
-          <div>
-            <h3 className="font-display text-card font-semibold">Dividir: «esta y las siguientes»</h3>
-            <p className="mt-0.5 text-[13.5px] text-textMuted">El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
-          </div>
-          <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
-            <div className="flex flex-wrap items-center gap-2">
-              <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0 flex-1" />
-              <Button variant="secondary" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
-                Hoy
+        <Dialog title={dialogTitle("Editar futuras")} size="lg" onClose={closeAll}>
+          <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4">
+            <p className="text-[13.5px] text-textMuted">Dividir: «esta y las siguientes». El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
+            <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
+              <div className="flex flex-wrap items-center gap-2">
+                <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0 flex-1" />
+                <Button variant="secondary" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
+                  Hoy
+                </Button>
+              </div>
+            </Field>
+            <p role="status" aria-live="polite" className="text-[14px] font-[650] text-textPrimary">
+              {firstNewClass ? `Primera clase con el nuevo horario: ${firstNewClass}.` : futureDate ? "Con ese patrón no hay clases en los próximos 60 días desde esa fecha." : "Elegí la fecha desde la que rige el nuevo patrón."}
+            </p>
+            <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
+            <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
+            {replaceWarning && (
+              <Notice tone="warn" title="Este cambio reemplaza cambios ya programados">
+                <p className="[overflow-wrap:anywhere]">{replaceWarning}</p>
+                <p className="mt-1.5">Si confirmás, esos cambios futuros dejan de regir y el nuevo patrón los reemplaza desde la fecha elegida. Las clases pasadas no se tocan.</p>
+                <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={(event) => {
+                      const form = (event.currentTarget as HTMLElement).closest("form");
+                      if (!form) return;
+                      setReplaceConfirmed(true);
+                      submitEditFuture(new FormData(form), true);
+                    }}
+                  >
+                    Confirmar y reemplazar
+                  </Button>
+                  <Button variant="ghost" onClick={() => setReplaceWarning(null)}>
+                    Cambiar la fecha
+                  </Button>
+                </div>
+              </Notice>
+            )}
+            {overlapWarning && (
+              <Notice tone="warn" title="El nuevo horario se superpone con otra clase o está bloqueado">
+                <p className="[overflow-wrap:anywhere]">{overlapWarning}</p>
+                <p className="mt-1.5">No se puede dejar dos clases superpuestas: elegí otro horario libre. Si querés intercambiar horarios con otra serie, usá «Intercambiar horarios», que cambia las dos a la vez.</p>
+                <div className="mt-2.5">
+                  <Button variant="ghost" onClick={() => setOverlapWarning(null)}>
+                    Cambiar el horario
+                  </Button>
+                </div>
+              </Notice>
+            )}
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <Button type="submit" variant="primary" busy={pending}>
+                {pending ? "Guardando..." : "Confirmar desde esa fecha"}
+              </Button>
+              <Button variant="ghost" onClick={closeAll}>
+                Volver
               </Button>
             </div>
-          </Field>
-          <p role="status" aria-live="polite" className="text-[14px] font-[650] text-textPrimary">
-            {firstNewClass ? `Primera clase con el nuevo horario: ${firstNewClass}.` : futureDate ? "Con ese patrón no hay clases en los próximos 60 días desde esa fecha." : "Elegí la fecha desde la que rige el nuevo patrón."}
-          </p>
-          <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
-          <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
-          {replaceWarning && (
-            <Notice tone="warn" title="Este cambio reemplaza cambios ya programados">
-              <p className="[overflow-wrap:anywhere]">{replaceWarning}</p>
-              <p className="mt-1.5">Si confirmás, esos cambios futuros dejan de regir y el nuevo patrón los reemplaza desde la fecha elegida. Las clases pasadas no se tocan.</p>
-              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  variant="secondary"
-                  disabled={pending}
-                  onClick={(event) => {
-                    const form = (event.currentTarget as HTMLElement).closest("form");
-                    if (!form) return;
-                    setReplaceConfirmed(true);
-                    submitEditFuture(new FormData(form), true);
-                  }}
-                >
-                  Confirmar y reemplazar
-                </Button>
-                <Button variant="ghost" onClick={() => setReplaceWarning(null)}>
-                  Cambiar la fecha
-                </Button>
-              </div>
-            </Notice>
-          )}
-          {overlapWarning && (
-            <Notice tone="warn" title="El nuevo horario se superpone con otra clase o está bloqueado">
-              <p className="[overflow-wrap:anywhere]">{overlapWarning}</p>
-              <p className="mt-1.5">No se puede dejar dos clases superpuestas: elegí otro horario libre. Si querés intercambiar horarios con otra serie, usá «Intercambiar horarios», que cambia las dos a la vez.</p>
-              <div className="mt-2.5">
-                <Button variant="ghost" onClick={() => setOverlapWarning(null)}>
-                  Cambiar el horario
-                </Button>
-              </div>
-            </Notice>
-          )}
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            <Button type="submit" variant="primary" busy={pending}>
-              {pending ? "Guardando..." : "Confirmar desde esa fecha"}
-            </Button>
-            <Button variant="ghost" onClick={() => setEditingFuture(false)}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
+          </form>
+
+        </Dialog>
       )}
 
       {editingParticipants && (
-        <form onSubmit={(event) => submitWithoutReset(event, submitChangeParticipants)} className="flex flex-col gap-4 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
-          <h3 className="font-display text-card font-semibold">Modificar participantes</h3>
-          <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
-            <div className="flex flex-wrap items-center gap-2">
-              <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0 flex-1" />
-              <Button variant="secondary" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
-                Hoy
+        <Dialog title={dialogTitle("Administrar miembros")} size="lg" onClose={closeAll}>
+          <form onSubmit={(event) => submitWithoutReset(event, submitChangeParticipants)} className="flex flex-col gap-4">
+            <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
+              <div className="flex flex-wrap items-center gap-2">
+                <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0 flex-1" />
+                <Button variant="secondary" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
+                  Hoy
+                </Button>
+              </div>
+            </Field>
+            <fieldset className="min-w-0">
+              <legend className="text-sm font-[650] text-textSecondary">Alumnos *</legend>
+              <div className="mt-2">
+                <StudentPicker students={pickableStudents} selectedIds={selectedParticipantIds} onToggle={toggleParticipant} />
+              </div>
+            </fieldset>
+            {selectedParticipantIds.size >= 2 && (
+              <fieldset className="min-w-0">
+                <legend className="text-sm font-[650] text-textSecondary">Alumno principal *</legend>
+                <div className={`${choiceGroupClass} mt-2`}>
+                  {eligibleStudents
+                    .filter((student) => selectedParticipantIds.has(student.id))
+                    .map((student) => (
+                      <label key={student.id} className={choiceRowClass}>
+                        <input
+                          type="radio"
+                          name={`primaryStudentIdChoice-${ruleId}`}
+                          checked={selectedPrimaryId === student.id}
+                          onChange={() => setSelectedPrimaryId(student.id)}
+                          className={checkClass}
+                        />
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
+                      </label>
+                    ))}
+                </div>
+                {!selectedPrimaryId && <p className="mt-1.5 text-[13px] font-semibold text-bad">Elegí quién es el alumno principal.</p>}
+              </fieldset>
+            )}
+            <FormInfoBox>
+              Las clases ya pasadas o ya registradas conservan sus alumnos de siempre. Las clases entre hoy y esa fecha que todavía no se
+              registraron se guardan primero con el grupo actual — nunca se reinterpreta el pasado.
+            </FormInfoBox>
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <Button type="submit" variant="primary" busy={pending} disabled={selectedParticipantIds.size === 0 || !selectedPrimaryId}>
+                {pending ? "Guardando..." : "Confirmar desde esa fecha"}
+              </Button>
+              <Button variant="ghost" onClick={closeAll}>
+                Volver
               </Button>
             </div>
-          </Field>
-          <fieldset className="min-w-0">
-            <legend className="text-sm font-[650] text-textSecondary">Alumnos *</legend>
-            <div className="mt-2">
-              <StudentPicker students={pickableStudents} selectedIds={selectedParticipantIds} onToggle={toggleParticipant} />
-            </div>
-          </fieldset>
-          {selectedParticipantIds.size >= 2 && (
-            <fieldset className="min-w-0">
-              <legend className="text-sm font-[650] text-textSecondary">Alumno principal *</legend>
-              <div className={`${choiceGroupClass} mt-2`}>
-                {eligibleStudents
-                  .filter((student) => selectedParticipantIds.has(student.id))
-                  .map((student) => (
-                    <label key={student.id} className={choiceRowClass}>
-                      <input
-                        type="radio"
-                        name={`primaryStudentIdChoice-${ruleId}`}
-                        checked={selectedPrimaryId === student.id}
-                        onChange={() => setSelectedPrimaryId(student.id)}
-                        className={checkClass}
-                      />
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{student.name}</span>
-                    </label>
-                  ))}
-              </div>
-              {!selectedPrimaryId && <p className="mt-1.5 text-[13px] font-semibold text-bad">Elegí quién es el alumno principal.</p>}
-            </fieldset>
-          )}
-          <FormInfoBox>
-            Las clases ya pasadas o ya registradas conservan sus alumnos de siempre. Las clases entre hoy y esa fecha que todavía no se
-            registraron se guardan primero con el grupo actual — nunca se reinterpreta el pasado.
-          </FormInfoBox>
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            <Button type="submit" variant="primary" busy={pending} disabled={selectedParticipantIds.size === 0 || !selectedPrimaryId}>
-              {pending ? "Guardando..." : "Confirmar desde esa fecha"}
-            </Button>
-            <Button variant="ghost" onClick={() => setEditingParticipants(false)}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
+          </form>
+
+        </Dialog>
+      )}
+
+      {training && (
+        <TrainingBillingConfigButton recurrenceRuleId={ruleId} agreementId={training.agreementId} seriesLabel={seriesLabel} open={billingOpen} onOpenChange={(next) => { if (next) setBillingOpen(true); else closeAll(); }} />
       )}
     </div>
   );

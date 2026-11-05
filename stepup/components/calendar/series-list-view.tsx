@@ -11,7 +11,6 @@ import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { SeriesStatusActions } from "@/app/(app)/calendario/series/series-status-actions";
 import { ScrollToLastSeries } from "@/components/calendar/scroll-to-last-series";
-import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
 import type { SwapOption } from "@/components/calendar/series-swap-panel";
 
 const WEEKDAY_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
@@ -81,18 +80,19 @@ export function SeriesCard({
 
   return (
     <Card className={highlighted ? "ring-2 ring-ink ring-offset-2" : undefined}>
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0">
-          <p className="font-display text-[20px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{rule.classTitle || participantNames}</p>
-          {rule.classTitle && <p className="mt-0.5 text-[14px] text-textMuted [overflow-wrap:anywhere]">{participantNames}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p title={rule.classTitle || participantNames} className="line-clamp-2 font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{rule.classTitle || participantNames}</p>
+          {rule.classTitle && <p title={participantNames} className="mt-0.5 line-clamp-1 text-[14px] text-textMuted [overflow-wrap:anywhere]">{participantNames}</p>}
         </div>
-        <Badge>{ACTIVITY_KIND_LABEL[rule.activityKind]}</Badge>
+        <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} training={rule.activityKind === "training" ? { agreementId: rule.trainingBillingAgreementId } : null} />
       </div>
-      <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-textSecondary">
-        <span className="[overflow-wrap:anywhere]">
+      <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-textSecondary">
+        <span title={`${sinceLabel}${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} className="line-clamp-2 [overflow-wrap:anywhere]">
           {sinceLabel}
           {scheduleLabel} · {MODALITY_LABEL[rule.modality]}
         </span>
+        {rule.activityKind !== "class" && <Badge>{ACTIVITY_KIND_LABEL[rule.activityKind]}</Badge>}
         <Badge tone={badge.tone} dot>
           {badge.label}
         </Badge>
@@ -107,12 +107,6 @@ export function SeriesCard({
           Tramo anterior: {scheduleOf(segment.weeks)} · {segment.endDate ? `hasta ${formatCivilDayMonth(segment.endDate)}` : "sin fecha de fin"} · {namesOf(segment.participantIds)}
         </p>
       ))}
-      <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} />
-      {rule.activityKind === "training" && (
-        <div className="mt-3">
-          <TrainingBillingConfigButton recurrenceRuleId={rule.id} agreementId={rule.trainingBillingAgreementId} seriesLabel={rule.classTitle || participantNames} />
-        </div>
-      )}
     </Card>
   );
 }

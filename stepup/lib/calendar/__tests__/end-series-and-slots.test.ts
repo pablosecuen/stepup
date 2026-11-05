@@ -33,16 +33,16 @@ test("un espacio libre abre «Nueva clase» en ese día y hora en punto, con la 
   assert.equal(slotAriaLabel("lun 26/10", 14), "Agregar clase el lun 26/10 a las 14:00");
 });
 
-test("cableado de Series: botón «Eliminar serie» con confirmación que dice el alcance; el intercambio vive dentro del mismo recuadro de acciones", () => {
+test("cableado de Series: «Eliminar serie» (separada, al final del menú «Acciones») con confirmación que dice el alcance; el intercambio se abre desde el mismo menú", () => {
   const actions = read("app/(app)/calendario/series/series-status-actions.tsx");
-  assert.match(actions, /Eliminar serie\n/);
+  assert.match(actions, /label: "Eliminar serie", destructive: true/);
   assert.doesNotMatch(actions, /Esta y todas las series|Quitar esta serie/, "el nombre definitivo es «Eliminar serie»");
   assert.match(actions, /Se elimina de la agenda esta serie desde hoy, \{formatCivilDayLabel\(today\)\}, incluidas sus continuaciones futuras/);
   assert.doesNotMatch(actions, />\s*Finalizar\s*</);
   assert.match(actions, /endSeriesFromTodayAction\(ruleId\)/);
   assert.match(actions, /Sólo se elimina ESTA serie: las demás series de tu cuenta/);
   assert.match(actions, /Se conservan las clases ya dictadas o registradas, sus cobros, pagos y archivos adjuntos/);
-  assert.match(actions, /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{ruleId\}/);
+  assert.match(actions, /<SeriesSwapPanel options=\{swapOptions\} fixedId=\{ruleId\} onClose=\{closeAll\} \/>/);
   assert.match(actions, /Intercambiar horarios/);
   assert.doesNotMatch(read("components/calendar/series-list-view.tsx"), /<SeriesSwapPanel/);
   assert.doesNotMatch(read("app/(app)/calendario/series/[id]/page.tsx"), /<SeriesSwapPanel/);

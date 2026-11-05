@@ -15,7 +15,7 @@ test("«Cambiar horario» se ofrece desde el detalle de la clase y desde su seri
   assert.match(modal, /initialScope="single"\s+singleClassOnly/, "desde el detalle sólo cambia esta clase");
   assert.doesNotMatch(modal, /Reprogramar esta clase|Ver vista previa/, "el flujo viejo de fecha/hora sueltas ya no existe");
   const series = read("app/(app)/calendario/series/series-status-actions.tsx");
-  assert.match(series, /\{changeOpen \? "Cerrar" : "Cambiar horario"\}/);
+  assert.match(series, /key: "change", label: "Cambiar horario", onSelect: openChange/);
   assert.match(series, /upcomingSeriesOccurrencesAction\(ruleId\)/);
   assert.match(series, /Intercambiar horarios/, "el intercambio sigue siendo una acción separada");
   assert.match(series, /<SeriesSwapPanel/);
