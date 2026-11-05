@@ -39,18 +39,22 @@ const clockPlus = (time: string, minutes: number) => {
 export function ChangeSchedulePanel({
   occurrence,
   initialScope = "single",
+  singleClassOnly = false,
   onCancel,
   onDone,
 }: {
   occurrence: ChangeScheduleOccurrence;
   initialScope?: Scope;
+  /** El acceso «Reprogramar» del detalle nunca modifica la serie. */
+  singleClassOnly?: boolean;
   onCancel: () => void;
   onDone: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const isSeries = !!occurrence.recurrenceId;
-  const [scope, setScope] = useState<Scope>(isSeries ? initialScope : "single");
+  const isSeries = !!occurrence.recurrenceId && !singleClassOnly;
+  const [selectedScope, setScope] = useState<Scope>(isSeries ? initialScope : "single");
+  const scope = singleClassOnly ? "single" : selectedScope;
   const originalDate = instantDateKey(occurrence.start);
   const originalTime = instantTimeLabel(occurrence.start);
   const duration = Math.round((Date.parse(occurrence.end) - Date.parse(occurrence.start)) / 60_000);

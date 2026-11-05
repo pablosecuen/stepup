@@ -66,11 +66,13 @@ test("la migración de acciones de clase es de invocador, con search_path vacío
   assert.doesNotMatch(sql, /security definer/i);
 });
 
-test("cableado: el detalle de la clase ofrece nombre, duración, restaurar y eliminar, y cada paso corre en el servidor con guardNetwork y sin doble envío", () => {
+test("el detalle simplificado no ofrece las acciones retiradas; el editor existente conserva sus protecciones de servidor", () => {
   const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const modal = read("components/calendar/real-lesson-detail-modal.tsx");
-  for (const label of ["Editar nombre de la clase", "Cambiar duración", "Restaurar esta clase", "Eliminar esta y las siguientes", "Eliminar clase cancelada"]) assert.match(modal, new RegExp(label), label);
-  assert.match(modal, /if \(editMode\) return <LessonEditDialog/);
+  for (const label of ["Editar nombre de la clase", "Cambiar duración", "Restaurar esta clase", "Eliminar esta y las siguientes", "Eliminar clase cancelada", "Volver a la fecha original", "Cambiar tipo de actividad"]) assert.doesNotMatch(modal, new RegExp(label), label);
+  for (const label of ["Ver alumno", "Reprogramar", "Administrar miembros", "Cancelar esta clase", "Administrar serie", "Más opciones"]) assert.match(modal, new RegExp(label), label);
+  assert.match(modal, /<details[\s\S]*?<summary[\s\S]*?Más opciones[\s\S]*?Administrar serie[\s\S]*?<\/details>/, "serie cerrada por defecto en el desplegable");
+  assert.match(modal, /singleClassOnly/, "reprogramar queda limitado a una clase");
   const dialog = read("components/calendar/lesson-edit-dialog.tsx");
   for (const action of ["editLessonTitleAction", "changeLessonDurationAction", "restoreOccurrenceAction", "deleteCancelledLessonAction", "deleteSeriesFromOccurrenceAction"]) assert.match(dialog, new RegExp(String.raw`guardNetwork\(\(\) => ${action}\(`), action);
   assert.match(dialog, /if \(inFlight\.current \|\| pending\) return;/, "sin doble envío");

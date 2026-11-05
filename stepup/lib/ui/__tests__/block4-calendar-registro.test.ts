@@ -74,12 +74,12 @@ test("Tarjetas: hora, título, modalidad y estado se dicen con texto (nunca sól
 test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día en cada paso, separa «Cancelar esta clase» y conserva las acciones y el foco entre pasos", () => {
   const modal = code("components/calendar/real-lesson-detail-modal.tsx");
   assert.match(modal, /<Dialog title=\{dialogTitle\}/);
-  for (const step of ["Cambiar horario", "Cancelar clase"]) assert.ok(modal.includes(`${step} · \${lessonTitle}`), step);
+  for (const step of ["Reprogramar", "Cancelar clase"]) assert.ok(modal.includes(`${step} · \${lessonTitle}`), step);
   assert.match(modal, /<MetaChip>\{dateLabel\}<\/MetaChip>\s*<MetaChip>\{timeLabel\}<\/MetaChip>/, "día y hora siempre visibles");
   assert.match(modal, /cancelOccurrenceAction\(\{\s*lessonId: item\.materializedLessonId,/);
   assert.match(read("components/calendar/change-schedule-panel.tsx"), /rescheduleWithAvailabilityAction\(\{ id: occurrence\.id, operationId, originalStart: occurrence\.start/);
   assert.match(code("lib/actions/reschedule-parity.ts"), /Date\.parse\(start\)\+Date\.parse\(item\.end\)-Date\.parse\(item\.start\)/, "la reprogramación conserva la duración real resuelta en servidor");
-  assert.match(modal, /<section className="border-t-\[1\.5px\] border-border pt-3">\s*<Button variant="dangerOutline" block onClick=\{\(\) => setConfirmingCancel\(true\)\}>/, "cancelar queda separado, al final");
+  assert.match(modal, /<Button variant="dangerOutline" block onClick=\{\(\) => setConfirmingCancel\(true\)\}>/, "cancelar sigue siendo una acción roja separada con confirmación");
   assert.match(modal, /<Button variant="danger" onClick=\{handleCancel\} busy=\{pending\}>/);
   assert.equal([...modal.matchAll(/data-autofocus/g)].length >= 1, true, "el paso de cancelar lleva el foco; el panel de «Cambiar horario» lleva el suyo");
   assert.match(read("components/calendar/change-schedule-panel.tsx"), /data-autofocus/);

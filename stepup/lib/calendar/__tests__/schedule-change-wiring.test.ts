@@ -11,7 +11,8 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\
 test("«Cambiar horario» se ofrece desde el detalle de la clase y desde su serie, aparte del intercambio atómico", () => {
   const modal = read("components/calendar/real-lesson-detail-modal.tsx");
   assert.match(modal, /<ChangeSchedulePanel/);
-  assert.match(modal, /Cambiar horario\n/, "botón visible en el detalle");
+  assert.match(modal, /Reprogramar<span/, "botón visible en el detalle");
+  assert.match(modal, /initialScope="single"\s+singleClassOnly/, "desde el detalle sólo cambia esta clase");
   assert.doesNotMatch(modal, /Reprogramar esta clase|Ver vista previa/, "el flujo viejo de fecha/hora sueltas ya no existe");
   const series = read("app/(app)/calendario/series/series-status-actions.tsx");
   assert.match(series, /\{changeOpen \? "Cerrar" : "Cambiar horario"\}/);
@@ -23,6 +24,8 @@ test("«Cambiar horario» se ofrece desde el detalle de la clase y desde su seri
 test("el panel distingue «Solo esta clase» de «Esta y las siguientes», muestra el destino y cancelar no guarda nada", () => {
   const panel = read("components/calendar/change-schedule-panel.tsx");
   assert.match(panel, /Solo esta clase/);
+  assert.match(panel, /const isSeries = !!occurrence\.recurrenceId && !singleClassOnly/);
+  assert.match(panel, /const scope = singleClassOnly \? "single" : selectedScope/);
   assert.match(panel, /Esta y las siguientes/);
   assert.match(panel, /Quedará así/);
   assert.match(panel, /la duración no cambia/);

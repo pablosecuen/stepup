@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon, ArrowRightIcon, ArrowUturnLeftIcon, ClipboardDocumentCheckIcon, ClockIcon, PencilIcon, PencilSquareIcon, TrashIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { editRegistrationHref } from "@/lib/registro/return-path";
 import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
@@ -13,10 +13,8 @@ import { formatMinutes } from "@/lib/format/number-format";
 import { Button, PrivateButtonLink } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Notice } from "@/components/ui/notice";
-import { LessonEditDialog, type LessonEditMode } from "@/components/calendar/lesson-edit-dialog";
 import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
 import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel";
-import { ActivityDialog } from "@/components/calendar/activity-dialog";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -44,10 +42,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [error, setError] = useState<string | null>(null);
   const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
-  // Nombre, duración, restaurar y eliminar: pasos propios (`LessonEditDialog`) que vuelven a las acciones con «Volver».
-  const [editMode, setEditMode] = useState<LessonEditMode | null>(null);
   const [participantsOpen, setParticipantsOpen] = useState(false);
-  const [activityOpen,setActivityOpen]=useState(false);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
   const [calendarPath, setCalendarPath] = useState<string | null>(null);
@@ -111,15 +106,10 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
     });
   }
 
-  const canRestore = !!item.materializedLessonId && !!item.recurrenceId && (item.status === "cancelled" || item.status === "rescheduled");
-  const canDeleteCancelled = isCancelled && !!item.materializedLessonId;
-
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
-  if (activityOpen) return <ActivityDialog item={item} onClose={onClose} />;
-  if (editMode) return <LessonEditDialog item={item} mode={editMode} onBack={() => setEditMode(null)} onDone={onClose} />;
 
   const step: "actions" | "reschedule" | "cancel" = reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
-  const dialogTitle = step === "reschedule" ? `Cambiar horario · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : lessonTitle;
+  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : lessonTitle;
 
   const footer =
     step === "reschedule" ? undefined : step === "cancel" ? (
@@ -161,6 +151,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <ChangeSchedulePanel
             occurrence={{ id: item.id, start: item.start, end: item.end, recurrenceId: item.recurrenceId, title: item.title, studentName: item.studentName, participantNames }}
             initialScope="single"
+            singleClassOnly
             onCancel={() => setReschedulingOpen(false)}
             onDone={onClose}
           />
@@ -176,9 +167,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <>
             {item.studentId && (
               <section>
-                <h3 className="text-label font-bold uppercase text-textMuted">{participantNames.length > 1 ? "Alumnos" : "Alumno"}</h3>
-                <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" block className="mt-2 !justify-between">
-                  <span className="min-w-0 text-left [overflow-wrap:anywhere]">{item.studentName || "Ver perfil"}</span>
+                <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" className="!justify-between">
+                  Ver alumno
                   <ArrowRightIcon className="h-4 w-4 shrink-0" aria-hidden />
                 </PrivateButtonLink>
                 {otherParticipantNames.length > 0 && (
@@ -212,74 +202,50 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                   Registrar esta clase
                 </PrivateButtonLink>
               )}
-              {canReuseSlot && (
-                <PrivateButtonLink
-                  href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
-                  variant="secondary"
-                  block
-                >
-                  <UserPlusIcon className="h-5 w-5" aria-hidden />
-                  Reemplazar con otro alumno
-                </PrivateButtonLink>
-              )}
-              {canEdit && !isPast && (
-                <Button variant="secondary" block onClick={() => setReschedulingOpen(true)}>
+              {canEdit && (
+                <Button variant="primary" block onClick={() => setReschedulingOpen(true)}>
                   <ArrowPathIcon className="h-5 w-5" aria-hidden />
-                  Cambiar horario
+                  <span>Reprogramar<span className="block text-xs font-normal">Solo esta clase</span></span>
                 </Button>
               )}
-              {item.recurrenceId && (
-                <PrivateButtonLink href={seriesDetailHref(item.recurrenceId, calendarPath)} variant="secondary" block>
-                  Administrar esta serie
-                  <ArrowRightIcon className="h-4 w-4" aria-hidden />
-                </PrivateButtonLink>
+              {canEdit && (
+                <Button variant="secondary" block onClick={() => setParticipantsOpen(true)}>
+                  <UserPlusIcon className="h-5 w-5" aria-hidden />
+                  Administrar miembros
+                </Button>
               )}
-            </section>
-
-            {(canEdit || canRestore || canDeleteCancelled) && (
-              <section aria-label="Más acciones" className="flex flex-col gap-2 border-t-[1.5px] border-border pt-3">
-                {canEdit && <Button variant="secondary" block onClick={() => setParticipantsOpen(true)}><UserPlusIcon className="h-5 w-5" aria-hidden />Modificar participantes de esta clase</Button>}
-                {canEdit&&!isPast&&<Button variant="secondary" block onClick={()=>setActivityOpen(true)}>Cambiar tipo de actividad</Button>}
-                {canEdit && (
-                  <Button variant="secondary" block onClick={() => setEditMode("title")}>
-                    <PencilIcon className="h-5 w-5" aria-hidden />
-                    Editar nombre de la clase
-                  </Button>
-                )}
-                {canEdit && (
-                  <Button variant="secondary" block onClick={() => setEditMode("duration")}>
-                    <ClockIcon className="h-5 w-5" aria-hidden />
-                    Cambiar duración
-                  </Button>
-                )}
-                {canRestore && (
-                  <Button variant="secondary" block onClick={() => setEditMode("restore")}>
-                    <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
-                    {item.status === "rescheduled" ? "Volver a la fecha original" : "Restaurar esta clase"}
-                  </Button>
-                )}
-                {canEdit && item.recurrenceId && (
-                  <Button variant="dangerOutline" block onClick={() => setEditMode("delete-series")}>
-                    <TrashIcon className="h-5 w-5" aria-hidden />
-                    Eliminar esta y las siguientes
-                  </Button>
-                )}
-                {canDeleteCancelled && (
-                  <Button variant="dangerOutline" block onClick={() => setEditMode("delete")}>
-                    <TrashIcon className="h-5 w-5" aria-hidden />
-                    Eliminar clase cancelada
-                  </Button>
-                )}
-              </section>
-            )}
-
-            {canEdit && !isCancelled && (
-              <section className="border-t-[1.5px] border-border pt-3">
+              {canEdit && !isCancelled && (
                 <Button variant="dangerOutline" block onClick={() => setConfirmingCancel(true)}>
                   <XCircleIcon className="h-5 w-5" aria-hidden />
                   Cancelar esta clase
                 </Button>
-              </section>
+              )}
+            </section>
+
+            {(item.recurrenceId || canReuseSlot) && (
+              <details className="group border-t-[1.5px] border-border pt-1">
+                <summary className="tf-motion-button flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md px-2 text-sm font-semibold text-textSecondary [&::-webkit-details-marker]:hidden">
+                  Más opciones
+                  <ChevronDownIcon className="h-4 w-4 group-open:rotate-180" aria-hidden />
+                </summary>
+                <div className="flex flex-col items-start gap-2 pb-1 pt-2">
+                  {item.recurrenceId && (
+                    <PrivateButtonLink href={seriesDetailHref(item.recurrenceId, calendarPath)} variant="secondary">
+                      Administrar serie
+                      <ArrowRightIcon className="h-4 w-4" aria-hidden />
+                    </PrivateButtonLink>
+                  )}
+                  {canReuseSlot && (
+                    <PrivateButtonLink
+                      href={`/calendario/nueva?freedByLessonId=${item.materializedLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
+                      variant="secondary"
+                    >
+                      <UserPlusIcon className="h-5 w-5" aria-hidden />
+                      Reemplazar con otro alumno
+                    </PrivateButtonLink>
+                  )}
+                </div>
+              </details>
             )}
           </>
         )}
