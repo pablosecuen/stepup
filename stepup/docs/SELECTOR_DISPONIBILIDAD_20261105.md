@@ -17,10 +17,10 @@ Componente real con datos sintéticos en navegador aislado, a 320, 375, 390, 430
 
 Capturas y scripts de revisión en `output/review-20261105/`, fuera del repositorio. La ruta temporal de prueba se eliminó. No se usó la cuenta real ni se guardaron datos. No equivale a probar físicamente un iPhone.
 
-## Detalle grupal: solo propuestas
+## Detalle grupal
 
-Se prepararon tres propuestas interactivas para revisión: Lista compacta, Miembros desplegables y Avatares y nombres. No se modificó `real-lesson-detail-modal.tsx`. La elección del diseño sigue pendiente.
+Se prepararon tres propuestas interactivas para revisión: Lista compacta, Miembros desplegables y Avatares y nombres. El usuario eligió la segunda; su implementación posterior y la integración de Series se documentan en `INTEGRACION_SERIES_MIEMBROS_20261105.md`.
 
 ## Integración
 
-Este bloque no modifica las tarjetas, páginas ni acciones de Series que tiene asignadas Claude. Publicar la integración conjunta después de revisar su commit; no publicar este bloque por separado.
+Este bloque se integró con la entrega de Claude `4d159a7`, conservando ambos historiales. La publicación conjunta incluye el selector, la ayuda, Series y el detalle grupal elegido.

@@ -80,7 +80,9 @@ export function SeriesActionsMenu({ seriesLabel, groups, buttonRef }: { seriesLa
     const index = items.indexOf(document.activeElement as HTMLElement);
     const focusAt = (next: number) => {
       event.preventDefault();
-      items[(next + items.length) % items.length]?.focus({ preventScroll: true });
+      const target = items[(next + items.length) % items.length];
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     };
     if (event.key === "Escape") {
       event.preventDefault();

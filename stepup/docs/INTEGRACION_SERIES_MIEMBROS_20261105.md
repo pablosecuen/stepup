@@ -18,7 +18,7 @@
 
 Con 26 series sintéticas, 375/390/430/1366 px, se verificaron tarjetas compactas, nombres largos, menú jerarquizado, apertura de Cambiar horario y devolución del foco al cerrar. El menú conservó la cuota de entrenamiento como opción contextual.
 
-Se encontró un defecto al reducir la altura a 420 px: el menú se abría con su parte superior a -142 px. Se corrigió limitando su alto al espacio disponible y montándolo en el documento, para evitar el recorte y los contenedores transformados. Repetida la prueba: límite superior 8 px, con desplazamiento dentro del menú.
+Se encontró un defecto al reducir la altura a 420 px: el menú se abría con su parte superior a -142 px. Se corrigió limitando su alto al espacio disponible y montándolo en el documento, para evitar el recorte y los contenedores transformados. Repetida la prueba: límite superior 8 px, con desplazamiento dentro del menú. La navegación por flechas, Inicio y Fin lleva a la vista la opción enfocada mediante desplazamiento cercano, sin mover innecesariamente la lista de Series.
 
 El detalle grupal se verificó en esos cuatro anchos: miembros cerrados inicialmente, tres accesos con identificadores distintos al desplegar, sin desborde horizontal y cierre por Escape. Se conservaron las transiciones de nombres mediante los atributos compartidos de la navegación.
 
