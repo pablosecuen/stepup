@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export interface SeriesMenuItem {
@@ -28,7 +29,7 @@ const MENU_HEIGHT_ESTIMATE = 360;
  */
 export function SeriesActionsMenu({ seriesLabel, groups, buttonRef }: { seriesLabel: string; groups: SeriesMenuGroup[]; buttonRef: RefObject<HTMLButtonElement | null> }) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const [position, setPosition] = useState<{ top?: number; bottom?: number; right: number; maxHeight: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -64,7 +65,12 @@ export function SeriesActionsMenu({ seriesLabel, groups, buttonRef }: { seriesLa
     const rect = buttonRef.current?.getBoundingClientRect();
     if (rect) {
       const right = Math.max(8, window.innerWidth - rect.right);
-      setPosition(window.innerHeight - rect.bottom >= MENU_HEIGHT_ESTIMATE ? { top: rect.bottom + 4, right } : { bottom: window.innerHeight - rect.top + 4, right });
+      const below = Math.max(0, window.innerHeight - rect.bottom - 12);
+      const above = Math.max(0, rect.top - 12);
+      const openBelow = below >= MENU_HEIGHT_ESTIMATE || below >= above;
+      setPosition(openBelow
+        ? { top: rect.bottom + 4, right, maxHeight: Math.max(44, below) }
+        : { bottom: window.innerHeight - rect.top + 4, right, maxHeight: Math.max(44, above) });
     }
     setOpen(true);
   }
@@ -109,7 +115,7 @@ export function SeriesActionsMenu({ seriesLabel, groups, buttonRef }: { seriesLa
         Acciones
         <ChevronDownIcon className={`h-4 w-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
-      {open && position && (
+      {open && position && createPortal(
         <div
           ref={menuRef}
           id={menuId}
@@ -131,7 +137,7 @@ export function SeriesActionsMenu({ seriesLabel, groups, buttonRef }: { seriesLa
               ))}
             </div>
           ))}
-        </div>
+        </div>, document.body
       )}
     </div>
   );

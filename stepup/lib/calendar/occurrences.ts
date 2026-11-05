@@ -26,6 +26,8 @@ export interface CalendarViewItem {
    * así que una clase compartida parecía de un único alumno. Sólo alumnos conocidos; ausente = usar `studentName`.
    */
   participantNames?: string[];
+  /** Identidad y nombre resueltos juntos: nunca se emparejan ids con una lista de nombres filtrada. */
+  participantProfiles?: { id: string; name: string }[];
   studentName: string;
   level: string;
   lessonType: CalendarLessonType;
@@ -48,16 +50,20 @@ export interface CalendarViewItem {
 
 /** Nombres de los participantes, el principal primero; sin repetir y sólo de alumnos conocidos. */
 export function resolveParticipantNames(primaryStudentId: string | null, participantIds: readonly string[], students: ReadonlyMap<string, { name: string }>): string[] {
+  return resolveParticipantProfiles(primaryStudentId, participantIds, students).map((student) => student.name);
+}
+
+export function resolveParticipantProfiles(primaryStudentId: string | null, participantIds: readonly string[], students: ReadonlyMap<string, { name: string }>): { id: string; name: string }[] {
   const ordered = primaryStudentId ? [primaryStudentId, ...participantIds.filter((id) => id !== primaryStudentId)] : [...participantIds];
   const seen = new Set<string>();
-  const names: string[] = [];
+  const profiles: { id: string; name: string }[] = [];
   for (const id of ordered) {
     if (seen.has(id)) continue;
     seen.add(id);
     const student = students.get(id);
-    if (student) names.push(student.name);
+    if (student) profiles.push({ id, name: student.name });
   }
-  return names;
+  return profiles;
 }
 
 /** Forma mínima real de una fila de `calendar_lessons` para el merge. */
@@ -151,6 +157,7 @@ export function buildCalendarViewForRange(input: {
         studentId: occurrence.studentId,
         participantIds: occurrence.participantIds,
         participantNames: resolveParticipantNames(label.primaryStudentId, occurrence.participantIds, students),
+        participantProfiles: resolveParticipantProfiles(label.primaryStudentId, occurrence.participantIds, students),
         studentName: label.studentName,
         level: label.level,
         lessonType: occurrence.participantIds.length > 1 ? "group" : "individual",
@@ -183,6 +190,7 @@ export function buildCalendarViewForRange(input: {
       studentId: lesson.primaryStudentId,
       participantIds: lesson.participantIds,
       participantNames: resolveParticipantNames(lesson.primaryStudentId, lesson.participantIds, students),
+      participantProfiles: resolveParticipantProfiles(lesson.primaryStudentId, lesson.participantIds, students),
       studentName: lesson.studentName,
       level: lesson.level,
       lessonType: lesson.lessonType,

@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Notice } from "@/components/ui/notice";
 import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
 import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel";
+import { LessonMemberSummary } from "@/components/calendar/lesson-member-summary";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -77,7 +78,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const lessonTitle = item.title?.trim() || item.studentName || "Serie sin alumnos";
   // Todos los alumnos de la clase (el principal primero): `studentName` es sólo el del principal, y una clase compartida parecía de uno solo.
   const participantNames = item.participantNames && item.participantNames.length > 0 ? item.participantNames : item.studentName ? [item.studentName] : [];
-  const otherParticipantNames = participantNames.slice(item.studentName && participantNames[0] === item.studentName ? 1 : 0);
+  const members = item.participantProfiles ?? (item.studentId && item.studentName ? [{ id: item.studentId, name: item.studentName }] : []);
 
   function handleCancel() {
     setError(null);
@@ -122,15 +123,20 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
         </Button>
       </>
     ) : (
-      <Button variant="secondary" onClick={onClose}>
+      <Button variant="secondary" onClick={onClose} className="self-end">
         Cerrar
       </Button>
     );
 
   return (
-    <Dialog title={dialogTitle} onClose={onClose} size="md" footer={footer} busy={pending}>
+    <Dialog title={dialogTitle} onClose={onClose} size={step === "actions" ? "sm" : "md"} footer={footer} busy={pending}>
       <div ref={bodyRef} className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap gap-1.5">
+        {step === "actions" ? (
+          <div className="space-y-1">
+            <p className="text-[14px] text-textSecondary">{dateLabel} · {timeLabel}–{instantTimeLabel(item.end)} · {MODALITY_LABELS[item.modality]}</p>
+            <p className="text-xs text-textMuted">{item.isRecurring ? "Serie recurrente" : "Clase suelta"} · {lessonStatusLabel(item)} · {formatMinutes(durationMinutes)}{item.activityKind === "training" ? " · Entrenamiento" : ""}</p>
+          </div>
+        ) : <div className="flex flex-wrap gap-1.5">
           <MetaChip>{dateLabel}</MetaChip>
           <MetaChip>{timeLabel}</MetaChip>
           <MetaChip>{formatMinutes(durationMinutes)}</MetaChip>
@@ -139,7 +145,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <MetaChip>{lessonStatusLabel(item)}</MetaChip>
           {item.activityKind === "training" && <MetaChip>Entrenamiento</MetaChip>}
           {!item.isMaterialized && <MetaChip>Ocurrencia virtual</MetaChip>}
-        </div>
+        </div>}
 
         <p role="status" aria-live="polite" className="sr-only">
           {pending ? "Guardando el cambio…" : ""}
@@ -165,23 +171,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
 
         {step === "actions" && (
           <>
-            {item.studentId && (
-              <section>
-                <PrivateButtonLink href={`/alumnos/${item.studentId}`} variant="secondary" className="!justify-between">
-                  Ver alumno
-                  <ArrowRightIcon className="h-4 w-4 shrink-0" aria-hidden />
-                </PrivateButtonLink>
-                {otherParticipantNames.length > 0 && (
-                  <ul aria-label="Otros alumnos de la clase" className="mt-2 flex flex-col gap-1.5">
-                    {otherParticipantNames.map((name, index) => (
-                      <li key={`${name}-${index}`} className="rounded-md border-[1.5px] border-border bg-surface2 px-3.5 py-2 text-[15px] font-[650] text-textPrimary [overflow-wrap:anywhere]">
-                        {name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
+            <LessonMemberSummary members={members} />
 
             {item.status === "completed" && item.materializedLessonId && (
               // Como la app original: una clase registrada muestra «Clase registrada» y «Editar registro» (corrige el registro existente; no inicia uno nuevo, no abre el perfil ni la programación de la clase).
@@ -195,7 +185,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
               </section>
             )}
 
-            <section className="flex flex-col gap-2">
+            <section className="flex flex-col gap-2 [&>button]:max-w-none">
               {isPast && item.status !== "cancelled" && item.status !== "completed" && (
                 <PrivateButtonLink href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"} variant="primary" block>
                   <ClipboardDocumentCheckIcon className="h-5 w-5" aria-hidden />

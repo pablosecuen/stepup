@@ -70,7 +70,7 @@ test("el detalle simplificado no ofrece las acciones retiradas; el editor existe
   const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const modal = read("components/calendar/real-lesson-detail-modal.tsx");
   for (const label of ["Editar nombre de la clase", "Cambiar duración", "Restaurar esta clase", "Eliminar esta y las siguientes", "Eliminar clase cancelada", "Volver a la fecha original", "Cambiar tipo de actividad"]) assert.doesNotMatch(modal, new RegExp(label), label);
-  for (const label of ["Ver alumno", "Reprogramar", "Administrar miembros", "Cancelar esta clase", "Administrar serie", "Más opciones"]) assert.match(modal, new RegExp(label), label);
+  for (const label of ["Ver alumno", "Reprogramar", "Administrar miembros", "Cancelar esta clase", "Administrar serie", "Más opciones"]) assert.match(modal + read("components/calendar/lesson-member-summary.tsx"), new RegExp(label), label);
   assert.match(modal, /<details[\s\S]*?<summary[\s\S]*?Más opciones[\s\S]*?Administrar serie[\s\S]*?<\/details>/, "serie cerrada por defecto en el desplegable");
   assert.match(modal, /singleClassOnly/, "reprogramar queda limitado a una clase");
   const dialog = read("components/calendar/lesson-edit-dialog.tsx");

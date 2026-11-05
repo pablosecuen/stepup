@@ -231,7 +231,7 @@ test("el diálogo de la clase: Escape, foco atrapado, foco inicial, devolución 
   assert.match(hook, /document\.body\.style\.overflow = previousOverflow/);
   const modal = code("components/calendar/real-lesson-detail-modal.tsx");
   const dialog = code("components/ui/dialog.tsx");
-  assert.match(modal, /<Dialog title=\{dialogTitle\} onClose=\{onClose\} size="md" footer=\{footer\} busy=\{pending\}>/, "el detalle es el Dialog del sistema (foco atrapado, Escape, devolución del foco)");
+  assert.match(modal, /<Dialog title=\{dialogTitle\} onClose=\{onClose\} size=\{step === "actions" \? "sm" : "md"\} footer=\{footer\} busy=\{pending\}>/, "el detalle compacto es el Dialog del sistema (foco atrapado, Escape, devolución del foco)");
   assert.match(dialog, /useDialogA11y\(requestClose\)/);
   assert.match(dialog, /role="dialog"[\s\S]{0,80}aria-modal="true"[\s\S]{0,80}aria-labelledby=\{titleId\}/);
   assert.match(dialog, /tabIndex=\{-1\}/);

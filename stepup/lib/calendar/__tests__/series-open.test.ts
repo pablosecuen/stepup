@@ -85,7 +85,8 @@ test("cableado: «Administrar esta serie» abre la serie exacta por su id (no el
   const modal = read("components/calendar/real-lesson-detail-modal.tsx");
   assert.match(modal, /href=\{seriesDetailHref\(item\.recurrenceId, calendarPath\)\}/);
   assert.doesNotMatch(modal, /href="\/calendario\/series"/, "ya no manda al listado general");
-  assert.match(modal, /aria-label="Otros alumnos de la clase"/);
+  assert.match(modal, /<LessonMemberSummary members=\{members\}/);
+  assert.match(read("components/calendar/lesson-member-summary.tsx"), /aria-label="Alumnos de esta clase"/);
   const page = read("app/(app)/calendario/series/[id]/page.tsx");
   assert.match(page, /parseSeriesId\(rawId\)/);
   assert.match(page, /findManageableForRule\(/);

@@ -46,6 +46,9 @@ test("el menú es accesible (teclado y tacto, foco visible, estado expandido) y 
   assert.match(menu, /window\.addEventListener\("scroll", closeOnScroll, true\)/, "al desplazar la lista se cierra");
   assert.match(menu, /if \(!menuRef\.current\?\.contains\(event\.target as Node\)\) setOpen\(false\)/, "el desplazamiento del propio menú no lo cierra");
   assert.match(menu, /fixed z-50/, "posición fija: la lista con scroll no lo recorta");
+  assert.match(menu, /createPortal\(/, "no hereda el recorte ni las transformaciones de la tarjeta");
+  assert.match(menu, /maxHeight: Math\.max\(44, below\)/);
+  assert.match(menu, /maxHeight: Math\.max\(44, above\)/, "en pantallas bajas el menú se desplaza dentro del espacio disponible");
   assert.match(menu, /item\.destructive \? "text-bad hover:bg-badSoft"/);
 });
 
