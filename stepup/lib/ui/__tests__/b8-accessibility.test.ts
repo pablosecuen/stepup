@@ -238,7 +238,7 @@ test("el diálogo de la clase: Escape, foco atrapado, foco inicial, devolución 
   assert.match(dialog, /aria-busy=\{busy \|\| undefined\}/);
   assert.match(modal, /dialogTitle = step === "reschedule" \? `Reprogramar · \$\{lessonTitle\}`/, "cada paso nombra la clase");
   assert.match(modal, /role="status" aria-live="polite"/);
-  assert.match(read("components/calendar/availability-picker.tsx"), /aria-label="Mes anterior"/, "el selector de fecha y hora tiene nombres accesibles");
+  assert.match(read("components/calendar/availability-month.tsx"), /aria-label="Mes anterior"/, "el selector de fecha y hora tiene nombres accesibles");
   assert.match(modal, /\[reschedulingOpen, confirmingCancel\]/, "el foco acompaña cada paso");
 });
 

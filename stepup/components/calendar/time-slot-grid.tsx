@@ -60,7 +60,6 @@ export function TimeSlotGrid({ slots, value, onSelect, selectableUnavailable = f
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13.5px] text-textSecondary">Tocá un horario para elegirlo. Mantené presionado (o tocá dos veces) para ver el :15 siguiente.</p>
         <Button variant="secondary" aria-pressed={showQuarters} onClick={() => { setShowQuarters((value) => !value); setAnchor(null); }}>
           {showQuarters ? "Ocultar :15 y :45" : "Mostrar :15 y :45"}
         </Button>
