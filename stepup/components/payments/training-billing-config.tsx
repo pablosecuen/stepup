@@ -31,10 +31,16 @@ import { DialogContext } from "@/components/payments/dialog-context";
  * Presentación: un diálogo (hoja inferior en móvil) que nombra la serie (`seriesLabel`, que ya tiene la lista de Series);
  * la lógica (previsualizar → confirmar, clave de operación, mes de vigencia) no cambió.
  */
-export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, seriesLabel }: { recurrenceRuleId: string; agreementId: string | null; seriesLabel?: string }) {
+export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, seriesLabel, open: controlledOpen, onOpenChange }: { recurrenceRuleId: string; agreementId: string | null; seriesLabel?: string; /** Modo controlado (lo abre el menú «Acciones» de la serie): sin botón propio. */ open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const router = useRouter();
   const feeId = useId();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next);
+    else setOwnOpen(next);
+  };
   const [monthlyFee, setMonthlyFee] = useState("");
   const [plan, setPlan] = useState<TrainingBillingConfigurationPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,9 +119,11 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        {agreementId ? "Editar cuota" : "Configurar cuota"}
-      </Button>
+      {!controlled && (
+        <Button variant="secondary" onClick={() => setOpen(true)} aria-haspopup="dialog">
+          {agreementId ? "Editar cuota" : "Configurar cuota"}
+        </Button>
+      )}
 
       {open && (
         <Dialog
