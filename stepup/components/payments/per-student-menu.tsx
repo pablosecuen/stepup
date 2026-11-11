@@ -7,7 +7,9 @@ import PrivateLink from "@/components/nav/private-link";
 export interface PerStudentMenuItem {
   key: string;
   label: string;
-  href: string;
+  /** Destino (enlace). Una opción sin destino abre algo en esta misma pantalla con `onSelect` (p. ej. el diálogo de la cuota). */
+  href?: string;
+  onSelect?: () => void;
 }
 
 /**
@@ -79,14 +81,27 @@ export function PerStudentMenu({ studentId, label, items }: { studentId: string;
           <ul>
             {items.map((item) => (
               <li key={item.key}>
-                <PrivateLink
-                  href={item.href}
-                  data-per-student-link={studentId}
-                  onClick={() => setOpen(false)}
-                  className="flex min-h-11 items-center rounded-md px-3 text-[15px] font-[650] text-textPrimary hover:bg-paperDeep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-                >
-                  {item.label}
-                </PrivateLink>
+                {item.href ? (
+                  <PrivateLink
+                    href={item.href}
+                    data-per-student-link={studentId}
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-11 items-center rounded-md px-3 text-[15px] font-[650] text-textPrimary hover:bg-paperDeep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                  >
+                    {item.label}
+                  </PrivateLink>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      item.onSelect?.();
+                    }}
+                    className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-[15px] font-[650] text-textPrimary hover:bg-paperDeep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                  >
+                    {item.label}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

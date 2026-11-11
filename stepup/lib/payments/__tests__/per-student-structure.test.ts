@@ -27,12 +27,14 @@ test("la página sólo LEE: ni Server Actions, ni el generador de cobros, ni esc
   assert.doesNotMatch(builder, /supabase|fetch\(|await |async |from "@\/lib\/(actions|db)/, "el cálculo es puro");
 });
 
-test("no hay un segundo mecanismo de edición de tarifas: el menú «⋯» lleva al circuito existente y la vista no importa acciones", () => {
+test("no hay un segundo mecanismo de edición de tarifas: «Editar plan» lleva a la ficha, «Editar cuota» abre el diálogo EXISTENTE de la cuota de ESE entrenamiento y la vista no importa acciones", () => {
   const view = code(VIEW);
-  assert.doesNotMatch(view, /@\/lib\/actions\/|changeBillingPlanAction|changeMonthlyAmountAction|editTrainingBillingFee|BillingPlanCard|TrainingBillingConfigButton|<Dialog|useTransition/);
+  assert.doesNotMatch(view, /@\/lib\/actions\/|changeBillingPlanAction|changeMonthlyAmountAction|editTrainingBillingFee|BillingPlanCard|<Dialog|useTransition/);
+  assert.match(view, /<TrainingBillingConfigButton[\s\S]*agreementId=\{trainingEdit\.agreementId\}[\s\S]*open\n/, "el componente de siempre, en modo controlado, con el acuerdo elegido");
   assert.ok(view.includes("/cobros/alumnos/${studentId}?tab=cobros"), "Ver detalle: la ficha de cobros del alumno");
   assert.ok(view.includes("#plan-${studentId}"), "Editar plan: la tarjeta «Plan de cobro» de esa ficha");
-  assert.ok(view.includes('href: "/calendario/series"'), "Editar cuota de entrenamiento: donde ya vive (Series)");
+  assert.ok(!view.includes('"/calendario/series"'), "Editar cuota ya no termina en la lista general de Series");
+  assert.match(view, /const fee = trainingFeeContext\(concept\);/, "cada concepto de entrenamiento usa SU acuerdo");
   assert.ok(code("components/students/profile/billing-plan-card.tsx").includes("id={`plan-${studentId}`}"), "el ancla existe en la ficha");
   const menu = code("components/payments/per-student-menu.tsx");
   assert.ok(menu.includes("aria-label={`Acciones de ${label}`}"));

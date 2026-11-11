@@ -387,6 +387,19 @@ export function ratePeriodShort(rate: ConceptRate): string {
 }
 
 /** Etiqueta breve de un concepto cuando el alumno tiene más de uno. Con dos acuerdos de entrenamiento se distingue por el nombre de la serie. */
+/** El acuerdo de cobro (cuota mensual) de un concepto de entrenamiento, o `null` si no es un entrenamiento o sus cobros no tienen acuerdo vinculado. Cada entrenamiento tiene el suyo: nunca se mezcla con el plan del alumno ni con otro grupo. */
+export function trainingAgreementIdOf(concept: Pick<PerStudentConcept, "key" | "kind">): string | null {
+  const prefix = "training:";
+  if (concept.kind !== "training" || !concept.key.startsWith(prefix) || concept.key === "training:sin-acuerdo") return null;
+  return concept.key.slice(prefix.length);
+}
+
+/** Lo que el diálogo de «Editar cuota» muestra de UN entrenamiento: su acuerdo, la cuota vigente y, si ya hay un cambio programado, cuál y desde cuándo. */
+export function trainingFeeContext(concept: PerStudentConcept): { agreementId: string; currentFee: number | null; upcoming: { amount: number; effectiveFrom: string } | null } | null {
+  const agreementId = trainingAgreementIdOf(concept);
+  return agreementId ? { agreementId, currentFee: concept.rate?.amount ?? null, upcoming: concept.upcomingRate } : null;
+}
+
 export function conceptShortLabel(concept: PerStudentConcept, trainingCount: number): string {
   if (concept.kind === "training") return trainingCount > 1 && concept.seriesName ? `Entrenamiento · ${concept.seriesName}` : "Entrenamiento";
   if (concept.kind === "previous_plan") return "Plan anterior";

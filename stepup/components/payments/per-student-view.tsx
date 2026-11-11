@@ -11,6 +11,7 @@ import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { PaymentsSectionNav } from "@/components/payments/payments-section-nav";
 import { PerStudentMenu, type PerStudentMenuItem } from "@/components/payments/per-student-menu";
+import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
 import {
   PER_STUDENT_AMOUNT_GRID_CLASS,
   PER_STUDENT_COLGROUP,
@@ -42,6 +43,7 @@ import {
   cobroDisplayForConcept,
   cobroDisplayForRow,
   conceptShortLabel,
+  trainingFeeContext,
   queryPerStudentRows,
   ratePeriodShort,
   type CobroDisplay,
@@ -115,18 +117,29 @@ function DateCell({ paidAt }: { paidAt: string | null }) {
 }
 
 /** Las opciones de edición de UN concepto: su plan de cobro o la cuota de su entrenamiento (un plan anterior ya no se edita). */
-function conceptItems(row: PerStudentRow, concept: PerStudentConcept): PerStudentMenuItem[] {
+function conceptItems(row: PerStudentRow, concept: PerStudentConcept, onEditTraining: (edit: TrainingFeeEdit) => void, trainingCount: number): PerStudentMenuItem[] {
   if (concept.kind === "plan") return [{ key: "plan", label: "Editar plan", href: editPlanHref(row.studentId) }];
-  if (concept.kind === "training") return [{ key: "training", label: "Editar cuota", href: "/calendario/series" }];
+  const fee = trainingFeeContext(concept);
+  // «Editar cuota» abre la cuota de ESTE entrenamiento (su acuerdo) aquí mismo: la lista, la búsqueda, los filtros y la posición no se mueven.
+  if (fee) return [{ key: "training", label: "Editar cuota", onSelect: () => onEditTraining({ ...fee, studentName: row.name, conceptLabel: conceptShortLabel(concept, trainingCount) }) }];
   return [];
 }
 
+/** Qué cuota se está editando: el acuerdo del entrenamiento elegido y el contexto que se muestra en el diálogo. */
+interface TrainingFeeEdit {
+  agreementId: string;
+  studentName: string;
+  conceptLabel: string;
+  currentFee: number | null;
+  upcoming: { amount: number; effectiveFrom: string } | null;
+}
+
 /** Una fila cerrada por alumno, siempre con la misma estructura (nombre · fecha de pago · cobro). El desplegable abre sus conceptos en subfilas con las mismas columnas. */
-function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boolean; onToggle: () => void }) {
+function StudentGroup({ row, open, onToggle, onEditTraining }: { row: PerStudentRow; open: boolean; onToggle: () => void; onEditTraining: (edit: TrainingFeeEdit) => void }) {
   const trainingCount = row.concepts.filter((concept) => concept.kind === "training").length;
   const groupId = `conceptos-${row.studentId}`;
   const detail: PerStudentMenuItem = { key: "detail", label: "Ver detalle", href: detailHref(row.studentId) };
-  const mainItems: PerStudentMenuItem[] = row.concepts.length === 1 ? [detail, ...conceptItems(row, row.concepts[0])] : [detail];
+  const mainItems: PerStudentMenuItem[] = row.concepts.length === 1 ? [detail, ...conceptItems(row, row.concepts[0], onEditTraining, trainingCount)] : [detail];
   return (
     <tbody id={groupId} className={PER_STUDENT_GROUP_CLASS} data-student-row={row.studentId} data-open={open ? "true" : "false"}>
       <tr data-tf-cascade-row className={PER_STUDENT_ROW_CLASS}>
@@ -167,7 +180,7 @@ function StudentGroup({ row, open, onToggle }: { row: PerStudentRow; open: boole
       {open &&
         row.concepts.map((concept) => {
           const tag = conceptShortLabel(concept, trainingCount);
-          const items = conceptItems(row, concept);
+          const items = conceptItems(row, concept, onEditTraining, trainingCount);
           return (
             <tr key={concept.key} className={`${PER_STUDENT_ROW_CLASS} bg-surface2/60`}>
               <th scope="row" className={`${PER_STUDENT_TD_CLASS} text-left font-normal`}>
@@ -197,6 +210,7 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
   const [plan, setPlan] = useState(initialQuery.plan);
   const [sort, setSort] = useState(initialQuery.sort);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const [trainingEdit, setTrainingEdit] = useState<TrainingFeeEdit | null>(null);
   const pendingScrollY = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const appliedHref = useRef(buildPerStudentHref(initialQuery));
@@ -392,13 +406,25 @@ export function PerStudentView({ rows, initialQuery }: { rows: PerStudentRow[]; 
                   </tr>
                 </thead>
                 {visible.map((row) => (
-                  <StudentGroup key={row.studentId} row={row} open={expanded.has(row.studentId)} onToggle={() => toggle(row.studentId)} />
+                  <StudentGroup key={row.studentId} row={row} open={expanded.has(row.studentId)} onToggle={() => toggle(row.studentId)} onEditTraining={setTrainingEdit} />
                 ))}
               </table>
             </div>
             </ListCascade>
           )}
         </>
+      )}
+      {trainingEdit && (
+        <TrainingBillingConfigButton
+          recurrenceRuleId={trainingEdit.agreementId}
+          agreementId={trainingEdit.agreementId}
+          seriesLabel={`${trainingEdit.studentName} · ${trainingEdit.conceptLabel}`}
+          contextLines={[trainingEdit.currentFee !== null ? `Cuota mensual actual: ${formatMoney(trainingEdit.currentFee)}` : null, trainingEdit.upcoming ? `Ya programada: ${formatMoney(trainingEdit.upcoming.amount)} desde ${trainingEdit.upcoming.effectiveFrom.slice(5, 7)}/${trainingEdit.upcoming.effectiveFrom.slice(0, 4)}` : null, "La cuota es de este entrenamiento y vale para todos sus integrantes; no cambia el plan de clases individuales ni otros entrenamientos."]}
+          open
+          onOpenChange={(next) => {
+            if (!next) setTrainingEdit(null);
+          }}
+        />
       )}
     </div>
   );

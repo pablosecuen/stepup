@@ -1,8 +1,12 @@
-import { BanknotesIcon, CalendarDaysIcon, ClockIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
+"use client";
+
+import { useId, useMemo, useRef, useState } from "react";
+import { BanknotesIcon, CalendarDaysIcon, ClockIcon, ExclamationCircleIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import PrivateLink from "@/components/nav/private-link";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { linkClass } from "@/components/ui/button";
+import { Field, TextInput } from "@/components/ui/field";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { COLLECTIONS_HEADER_CLASS, COLLECTIONS_ROW_CLASS, COLLECTIONS_TABLE_CLASS } from "@/components/payments/collections-layout";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -13,6 +17,7 @@ import { CHARGE_TYPE_LABEL } from "@/lib/payments/labels";
 import type { CollectionsCenterEntry } from "@/lib/payments/collections-center";
 import { formatCivilDate } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
+import { matchesStudentSearch } from "@/lib/students/search";
 
 /** Estado de una obligación: texto + ícono + tono (nunca sólo color). Los textos y el criterio no cambiaron. */
 function collectionStatus(entry: CollectionsCenterEntry): { text: string; tone: BadgeTone; icon: typeof ClockIcon } {
@@ -31,15 +36,22 @@ function collectionStatus(entry: CollectionsCenterEntry): { text: string; tone: 
  * importe original, saldo y estado. «Registrar pago» y «Anular cobro» son los diálogos reales de `ChargeActions`.
  */
 export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[] }) {
+  const uid = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+  // Búsqueda mientras se escribe, sin Enter ni «Aplicar»: el mismo motor que Alumnos (partes del nombre, mayúsculas, tildes y aproximaciones) sobre TODAS las obligaciones ya cargadas,
+  // y es una cuenta síncrona sobre ese listado (no hay respuestas tardías que pisen una búsqueda más nueva). Al borrar vuelve la lista completa.
+  const query = text.trim();
+  const visible = useMemo(() => (query === "" ? entries : entries.filter((entry) => matchesStudentSearch(entry.studentName, query))), [entries, query]);
+  const summary =
+    query === ""
+      ? `${entries.length} obligaci${entries.length === 1 ? "ón" : "ones"} pendiente${entries.length === 1 ? "" : "s"}`
+      : `${visible.length} de ${entries.length} obligaci${entries.length === 1 ? "ón" : "ones"} pendiente${entries.length === 1 ? "" : "s"}`;
   return (
     <div className={PAGE_WIDTH.wide}>
       <PageHeader
         title="Cobros"
-        subtitle={
-          <>
-            {entries.length} obligaci{entries.length === 1 ? "ón" : "ones"} pendiente{entries.length === 1 ? "" : "s"}.
-          </>
-        }
+        subtitle={<>{summary}.</>}
       />
       <PaymentsSectionNav current="collections" />
 
@@ -48,6 +60,60 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
           <EmptyState icon={BanknotesIcon} message="No hay cobros pendientes." />
         </div>
       ) : (
+        <>
+        <form role="search" aria-label="Buscar alumno entre los cobros pendientes" onSubmit={(event) => event.preventDefault()} className="mt-5 max-w-[360px]">
+          <Field label="Buscar alumno" htmlFor={`${uid}-q`}>
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-textMuted" aria-hidden />
+              <TextInput
+                ref={inputRef}
+                id={`${uid}-q`}
+                type="search"
+                value={text}
+                onChange={(event) => setText(event.target.value.slice(0, 80))}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && text !== "") {
+                    event.preventDefault();
+                    setText("");
+                  }
+                }}
+                placeholder="Nombre del alumno…"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                enterKeyHint="search"
+                aria-describedby={`${uid}-status`}
+                className="block pl-11 pr-11 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {text !== "" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setText("");
+                    inputRef.current?.focus();
+                  }}
+                  aria-label="Borrar búsqueda"
+                  className="absolute right-0.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-textMuted transition-colors hover:text-textPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                >
+                  <XMarkIcon className="h-5 w-5" aria-hidden />
+                </button>
+              )}
+            </div>
+          </Field>
+        </form>
+        <p id={`${uid}-status`} role="status" aria-live="polite" className="mt-2 text-[13px] text-textMuted">
+          {query === "" ? "Escribí para buscar por nombre." : visible.length === 0 ? "Ningún alumno coincide con la búsqueda." : `${visible.length} obligaci${visible.length === 1 ? "ón" : "ones"} encontrada${visible.length === 1 ? "" : "s"}.`}
+        </p>
+        {visible.length === 0 ? (
+          <div className="mt-3 flex flex-col items-start gap-3">
+            <div className="w-full">
+              <ErrorState message="Ningún alumno coincide con la búsqueda." />
+            </div>
+            <button type="button" className={linkClass()} onClick={() => setText("")}>
+              Limpiar búsqueda
+            </button>
+          </div>
+        ) : (
         <div className={COLLECTIONS_TABLE_CLASS}>
           <div aria-hidden className={COLLECTIONS_HEADER_CLASS}>
             <span>Alumno</span>
@@ -58,7 +124,7 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
             <span className="w-[272px]" />
           </div>
           <ul className="flex flex-col gap-3 nav:gap-0">
-            {entries.map((entry) => {
+            {visible.map((entry) => {
               const status = collectionStatus(entry);
               const concept = CHARGE_TYPE_LABEL[entry.chargeType] ?? entry.chargeType;
               const StatusIcon = status.icon;
@@ -122,6 +188,8 @@ export function CollectionsView({ entries }: { entries: CollectionsCenterEntry[]
             })}
           </ul>
         </div>
+        )}
+        </>
       )}
     </div>
   );

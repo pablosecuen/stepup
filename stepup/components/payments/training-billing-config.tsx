@@ -31,7 +31,7 @@ import { DialogContext } from "@/components/payments/dialog-context";
  * Presentación: un diálogo (hoja inferior en móvil) que nombra la serie (`seriesLabel`, que ya tiene la lista de Series);
  * la lógica (previsualizar → confirmar, clave de operación, mes de vigencia) no cambió.
  */
-export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, seriesLabel, open: controlledOpen, onOpenChange }: { recurrenceRuleId: string; agreementId: string | null; seriesLabel?: string; /** Modo controlado (lo abre el menú «Acciones» de la serie): sin botón propio. */ open?: boolean; onOpenChange?: (open: boolean) => void }) {
+export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, seriesLabel, contextLines = [], open: controlledOpen, onOpenChange }: { recurrenceRuleId: string; agreementId: string | null; seriesLabel?: string; /** Datos que ya tiene quien lo abre (p. ej. la cuota actual) para mostrarlos en el diálogo. */ contextLines?: Array<string | null>; /** Modo controlado (lo abre el menú «Acciones» de la serie): sin botón propio. */ open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const router = useRouter();
   const feeId = useId();
   const [ownOpen, setOwnOpen] = useState(false);
@@ -162,7 +162,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
             )
           }
         >
-          <DialogContext title={seriesLabel} lines={[]} />
+          <DialogContext title={seriesLabel} lines={contextLines} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label={agreementId ? "Nueva cuota mensual (vigente desde el próximo período)" : "Cuota mensual"} htmlFor={feeId}>
             <TextInput

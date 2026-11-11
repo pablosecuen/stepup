@@ -63,8 +63,11 @@ test("Cobros: sólo muestra lo que ya carga (alumno, concepto, vencimiento, impo
   assert.match(view, /de \{formatMoney\(entry\.originalAmount\)\} · ya pagó \{formatMoney\(entry\.paidAmount\)\}/);
   assert.match(view, /<ChargeActions\s+chargeId=\{entry\.chargeId\}\s+studentId=\{entry\.studentId\}\s+balance=\{entry\.balance\}\s+compact/);
   assert.match(view, /studentName: entry\.studentName,\s*concept,\s*dueDate: entry\.dueDate,\s*originalAmount: entry\.originalAmount,/, "los diálogos conservan el contexto del Bloque 3");
-  // Nada del prototipo que hoy no existe: ni resumen por estado, ni filtros, ni «Detalle del cobro».
-  assert.doesNotMatch(view, /Detalle|Todos \(|Vencidos \(|filtro|Filter|useState/i);
+  // Nada del prototipo que hoy no existe: ni resumen por estado, ni filtros por estado, ni «Detalle del cobro». Sí hay buscador por alumno (motor compartido de Alumnos, mientras se escribe, sin «Aplicar»).
+  assert.doesNotMatch(view, /Detalle|Todos \(|Vencidos \(|Filtrar|<SelectInput/);
+  assert.match(view, /matchesStudentSearch\(entry\.studentName, query\)/);
+  assert.match(view, /type="search"/);
+  assert.doesNotMatch(view, /Aplicar/, "se busca mientras se escribe");
   assert.match(view, /<EmptyState icon=\{BanknotesIcon\} message="No hay cobros pendientes\." \/>/);
   assert.match(view, /message="No pudimos cargar Cobros\."/);
 });
