@@ -70,6 +70,20 @@
 }
 
 @media (max-width: 819px) {
+  /* Hide the visual scrollbars only; native finger, wheel and keyboard scrolling remain available. */
+  html:has([data-tf-navigation]), body:has([data-tf-navigation]), [data-tf-navigation], [data-tf-navigation] * {
+    scrollbar-width: none;
+  }
+  html:has([data-tf-navigation])::-webkit-scrollbar,
+  body:has([data-tf-navigation])::-webkit-scrollbar,
+  [data-tf-navigation]::-webkit-scrollbar,
+  [data-tf-navigation] *::-webkit-scrollbar { display: none; }
+  /* Keep fixed shell chrome out of the scrolling page's old/new transition snapshots. */
+  [data-tf-bottom-nav] { view-transition-name: tf-mobile-navigation; }
+  [data-tf-top-bar] { view-transition-name: tf-mobile-header; }
+  ::view-transition-group(tf-mobile-navigation), ::view-transition-group(tf-mobile-header) { animation: none; }
+  ::view-transition-old(tf-mobile-navigation), ::view-transition-old(tf-mobile-header) { display: none; }
+  ::view-transition-new(tf-mobile-navigation), ::view-transition-new(tf-mobile-header) { animation: none; }
   [data-tf-navigation="menu"] { --tf-m-nav: 0px; }
   [data-tf-navigation="menu"] [data-tf-bottom-nav] { display: none; }
 }

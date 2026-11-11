@@ -34,7 +34,7 @@ export function ShortBar({
 }) {
   const colors = resolveLessonColors(lesson);
   const { height, hitTop, hitHeight, blockOffset } = positioned;
-  const showNumber = planned.number !== null && planned.barWidth >= 12;
+  const showNumber = planned.number !== null && planned.barWidth >= 10;
   const tipId = `calendar-tip-${positioned.item.id}`;
   const show = (target: HTMLElement) => {
     const rect = target.getBoundingClientRect();
@@ -111,17 +111,35 @@ export function ShortLabel({
           {planned.number}
         </span>
       )}
-      <span className="shrink-0 font-semibold tf-num" style={{ color: secondary, fontSize: LABEL_FONT_PX - 1 }}>
-        {timeText}
-      </span>
-      {stateText && (
+      {!label.text && timeText && (
+        <span className="shrink-0 font-semibold tf-num" style={{ color: secondary, fontSize: LABEL_FONT_PX - 1 }}>
+          {timeText}
+        </span>
+      )}
+      {!label.text && stateText && (
         <span className="shrink-0 font-extrabold" style={{ color: text, fontSize: LABEL_FONT_PX - 1 }}>
           {stateText}
         </span>
       )}
-      <span className="min-w-0 truncate font-bold" style={{ color: text, textDecorationLine: strike ? "line-through" : "none" }}>
-        {title}
-      </span>
+      {label.text ? (
+        // Teléfono: líneas de palabras completas ya partidas por el planificador (`mobile-short-labels.ts`); lo recortado lleva «…» y nada se parte por letras.
+        <span className="flex min-w-0 flex-col whitespace-nowrap" style={{ lineHeight: `${label.text.lineHeightPx}px` }}>
+          {label.text.state && (
+            <span className="font-extrabold" style={{ color: text, fontSize: label.text.fontPx - 1 }}>
+              {label.text.state}
+            </span>
+          )}
+          {label.text.lines.map((line, index) => (
+            <span key={index} className="font-bold" style={{ color: text, fontSize: label.text!.fontPx, textDecorationLine: strike ? "line-through" : "none" }}>
+              {line}
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="min-w-0 truncate font-bold" style={{ color: text, textDecorationLine: strike ? "line-through" : "none" }}>
+          {title}
+        </span>
+      )}
     </div>
   );
 }

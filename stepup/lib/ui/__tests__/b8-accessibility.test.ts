@@ -118,9 +118,14 @@ test("objetivos táctiles de 44 px: regla global para campos, botones, resúmene
   assert.match(css, /button:not\(\[data-grid-event\]\),\s*summary\s*\{\s*min-height: 2\.75rem;/);
   assert.match(css, /button:not\(\[data-grid-event\]\)\s*\{\s*min-width: 2\.75rem;/);
   assert.match(css, /label:has\(> input\[type="checkbox"\]\),\s*label:has\(> input\[type="radio"\]\)\s*\{\s*min-height: 2\.75rem;/);
-  // La única excepción es el bloque de la grilla horaria (su alto es la duración de la clase): la tarjeta y la barra exacta de las clases cortas.
+  // La única excepción es el bloque de la grilla horaria (su alto es la duración de la clase): la tarjeta de escritorio, la del teléfono y la barra exacta de las clases cortas.
   const exempt = sources(["app", "components"]).filter((f) => /data-grid-event/.test(read(f)));
-  assert.deepEqual(exempt, ["components/calendar/real-lesson-card.tsx", "components/calendar/real-short-label.tsx"]);
+  assert.deepEqual(exempt, ["components/calendar/mobile-calendar-card.tsx", "components/calendar/real-lesson-card.tsx", "components/calendar/real-short-label.tsx"]);
+  // La tarjeta del teléfono usa el MISMO mecanismo de zona táctil que la de escritorio (`hitTop`/`hitHeight` de `layoutDayItems`: 44 px cuando hay lugar): nunca una zona más baja por su cuenta.
+  for (const file of ["components/calendar/mobile-calendar-card.tsx", "components/calendar/real-lesson-card.tsx", "components/calendar/real-short-label.tsx"]) {
+    const source = read(file);
+    assert.match(source, /style=\{\{ top: hitTop, height: hitHeight|top: hitTop,\s*height: hitHeight/, `${file}: la zona táctil sale de la geometría compartida`);
+  }
 });
 
 test("todo enlace de texto o botón del área privada y pública declara 44 px de alto (salvo los de la lista)", () => {

@@ -130,10 +130,10 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
 
   return (
     <Dialog title={dialogTitle} onClose={onClose} size={step === "actions" ? "sm" : "md"} footer={footer} busy={pending}>
-      <div ref={bodyRef} className="flex flex-col gap-3.5">
+      <div ref={bodyRef} className="flex min-w-0 flex-col gap-3.5">
         {step === "actions" ? (
-          <div className="space-y-1">
-            <p className="text-[14px] text-textSecondary">{dateLabel} · {timeLabel}–{instantTimeLabel(item.end)} · {MODALITY_LABELS[item.modality]}</p>
+          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
+            <p className="flex flex-wrap gap-x-2 gap-y-1 text-[14px] text-textSecondary"><span>{dateLabel}</span><span>{timeLabel}–{instantTimeLabel(item.end)}</span><span>{MODALITY_LABELS[item.modality]}</span></p>
             <p className="text-xs text-textMuted">{item.isRecurring ? "Serie recurrente" : "Clase suelta"} · {lessonStatusLabel(item)} · {formatMinutes(durationMinutes)}{item.activityKind === "training" ? " · Entrenamiento" : ""}</p>
           </div>
         ) : <div className="flex flex-wrap gap-1.5">
@@ -185,7 +185,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
               </section>
             )}
 
-            <section className="flex flex-col gap-2 [&>button]:max-w-none">
+            <section data-lesson-actions className="flex flex-col gap-2 [&>button]:min-h-[52px] [&>button]:max-w-none [&>a]:min-h-[52px] [&>a]:max-w-none">
               {isPast && item.status !== "cancelled" && item.status !== "completed" && (
                 <PrivateButtonLink href={item.materializedLessonId ? `/registro/${item.materializedLessonId}` : "/registro"} variant="primary" block>
                   <ClipboardDocumentCheckIcon className="h-5 w-5" aria-hidden />
@@ -193,7 +193,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 </PrivateButtonLink>
               )}
               {canEdit && (
-                <Button variant="primary" block onClick={() => setReschedulingOpen(true)}>
+                <Button variant={isPast && item.status !== "cancelled" && item.status !== "completed" ? "secondary" : "primary"} block onClick={() => setReschedulingOpen(true)}>
                   <ArrowPathIcon className="h-5 w-5" aria-hidden />
                   <span>Reprogramar<span className="block text-xs font-normal">Solo esta clase</span></span>
                 </Button>

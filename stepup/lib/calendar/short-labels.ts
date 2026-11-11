@@ -42,6 +42,18 @@ export interface PlannedLabel {
   firstWordFits: boolean;
   /** Cuánto se movió el rótulo respecto del centro de su barra (px, + hacia abajo). */
   offsetPx: number;
+  /** Teléfono: el texto ya partido en palabras completas (ver `mobile-short-labels.ts`); en escritorio no existe y el rótulo es de una línea. */
+  text?: MobileLabelText;
+}
+
+/** Texto de un rótulo del teléfono: estado en su propia línea, nombre en líneas de palabras completas (o iniciales si no hay ancho). */
+export interface MobileLabelText {
+  state: string | null;
+  lines: string[];
+  fontPx: number;
+  lineHeightPx: number;
+  /** Se escribieron las iniciales porque ni la primera palabra entraba. */
+  abbreviated: boolean;
 }
 
 export interface PlannedItem {

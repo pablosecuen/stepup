@@ -348,9 +348,9 @@ export function SeriesStatusActions({
           <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4">
             <p className="text-[13.5px] text-textMuted">Dividir: «esta y las siguientes». El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
             <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
-              <div className="flex flex-wrap items-center gap-2">
-                <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0 flex-1" />
-                <Button variant="secondary" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
+              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0" />
+                <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
                   Hoy
                 </Button>
               </div>
@@ -411,9 +411,9 @@ export function SeriesStatusActions({
         <Dialog title={dialogTitle("Administrar miembros")} size="lg" onClose={closeAll}>
           <form onSubmit={(event) => submitWithoutReset(event, submitChangeParticipants)} className="flex flex-col gap-4">
             <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
-              <div className="flex flex-wrap items-center gap-2">
-                <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0 flex-1" />
-                <Button variant="secondary" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
+              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0" />
+                <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
                   Hoy
                 </Button>
               </div>
