@@ -36,6 +36,23 @@ export function lessonMinutes(facts: Pick<RegisteredLessonFacts, "actualDuration
   return facts.actualDurationMinutes ?? facts.scheduledDurationMinutes;
 }
 
+/**
+ * Igual que `lessonMinutes`, pero distingue «sin dato» de una clase de 0 minutos: duración real, o la programada si es mayor que 0; si no hay ninguna, `null`. Es la única regla de duración que
+ * comparten Inicio («enseñadas este mes») y Resumen financiero («Horas dictadas»). PURO.
+ */
+export function lessonMinutesOrNull(facts: Pick<RegisteredLessonFacts, "actualDurationMinutes" | "scheduledDurationMinutes">): number | null {
+  if (facts.actualDurationMinutes !== null && facts.actualDurationMinutes > 0) return facts.actualDurationMinutes;
+  return facts.scheduledDurationMinutes > 0 ? facts.scheduledDurationMinutes : null;
+}
+
+/**
+ * Minutos de las clases DICTADAS (una entrada por registro, nunca por participante; una reprogramada, cancelada, ausencia o feriado sin excepción no es dictada) cuya fecha civil cae en el rango
+ * (incluidos ambos extremos, zona de Argentina). `null` = clase dictada sin ninguna duración conocida. Es el mismo filtro que usa `buildAnnualActivitySummary`: Inicio y Resumen financiero salen de acá. PURO.
+ */
+export function heldMinutesInRange(lessons: readonly RegisteredLessonFacts[], range: { rangeStart: string; rangeEnd: string }): Array<number | null> {
+  return lessons.filter((lesson) => lesson.dateKey >= range.rangeStart && lesson.dateKey <= range.rangeEnd && isClassHeld(lesson)).map((lesson) => lessonMinutesOrNull(lesson));
+}
+
 export interface RegistrationRowForFacts {
   id: string;
   calendar_lesson_id: string | null;
@@ -75,7 +92,8 @@ export function toRegisteredLessonFacts(
   extras: { studentIds: string[]; billedAmountByStudent: Record<string, number> | null; occurrenceKey: string | null }
 ): RegisteredLessonFacts {
   const scheduledMinutes = row.scheduled_duration_minutes ?? diffMinutes(row.scheduled_start_at, row.scheduled_end_at) ?? 0;
-  const actualMinutes = row.actual_duration_minutes ?? diffMinutes(row.actual_started_at, row.actual_ended_at);
+  // Una duración real de 0 (o negativa) no es un dato: se cae al inicio y fin reales, igual que `resolveClassMinutes` de Inicio.
+  const actualMinutes = (row.actual_duration_minutes !== null && Number(row.actual_duration_minutes) > 0 ? Number(row.actual_duration_minutes) : null) ?? diffMinutes(row.actual_started_at, row.actual_ended_at);
   return {
     id: row.id,
     calendarLessonId: row.calendar_lesson_id,

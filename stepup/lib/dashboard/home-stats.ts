@@ -1,6 +1,7 @@
 import { addDaysToDateKey, startOfIsoWeek } from "../payments/dates.ts";
-import { instantDateKey } from "../calendar/civil-calendar.ts";
 import { calculateAverageGrade } from "../lessons/grades.ts";
+import { heldMinutesInRange, isClassHeld, toRegisteredLessonFacts, type RegistrationRowForFacts } from "../reports/registered-lessons.ts";
+import { withoutExcludedRegistrations } from "../data-exclusion/exclusion.ts";
 
 export interface HomeStats {
   activeStudents: number;
@@ -11,37 +12,34 @@ export interface HomeStats {
   averageGrade: number | null;
 }
 
-/** Los tiempos de un registro de clase dictada: la duración real guardada (sólo la traen los traslados y la corrección de sesión) y los instantes real y programado. */
-export interface RegisteredClassTimes {
-  actualDurationMinutes: number | null;
-  actualStartedAt: string | null;
-  actualEndedAt: string | null;
-  scheduledStartAt: string | null;
-  scheduledEndAt: string | null;
+/** Lo que Inicio lee de la base para sus indicadores de clases dictadas: los registros FINALIZADOS de la cuenta, sus alumnos y la nota general de cada uno. */
+export interface HomeStatsRawInputs {
+  registrations: ReadonlyArray<RegistrationRowForFacts>;
+  roster: ReadonlyArray<{ lesson_registration_id: string; student_id: string }>;
+  /** Cada nota general real (una por evaluación; una clase grupal puede tener varias). */
+  grades: ReadonlyArray<{ registrationId: string; grade: number }>;
 }
 
-const minutesBetween = (startIso: string | null, endIso: string | null): number | null => {
-  if (!startIso || !endIso) return null;
-  const minutes = Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60_000);
-  return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
-};
-
-/**
- * Cuánto duró UNA clase dictada (una sola vez, sea individual, grupal o entrenamiento: nunca se multiplica por participante). Orden: la duración real guardada, la diferencia entre el
- * inicio y el fin reales (lo que escribe el registro de la web al finalizar) y, si no hay, la programada. Si ninguna existe devuelve `null` («sin dato»), nunca 0.
- * Es la misma resolución que usa el reporte del alumno. PURO.
- */
-export function resolveClassMinutes(times: RegisteredClassTimes): number | null {
-  if (times.actualDurationMinutes !== null && Number.isFinite(times.actualDurationMinutes) && times.actualDurationMinutes > 0) return times.actualDurationMinutes;
-  return minutesBetween(times.actualStartedAt, times.actualEndedAt) ?? minutesBetween(times.scheduledStartAt, times.scheduledEndAt);
+/** Último día (AAAA-MM-DD) de un mes `AAAA-MM`. */
+function lastDayOfMonth(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  return `${monthKey}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, "0")}`;
 }
 
 /**
- * Los minutos de las clases dictadas de UN mes civil de Argentina (`monthKey` AAAA-MM), una entrada por clase. El día de cada clase es el del instante en que se dictó: el inicio real, o el
- * programado, o el de alta. Una clase que termina cerca de medianoche cuenta en el mes de su inicio. `null` = clase dictada sin ninguna duración conocida. PURO.
+ * Los minutos de las clases dictadas de UN mes civil de Argentina (`monthKey` AAAA-MM) y las notas de las clases dictadas, con EXACTAMENTE las mismas reglas que «Horas dictadas» del Resumen
+ * financiero (`buildAnnualActivitySummary`): clase dictada = resultado «clase dictada» (o feriado con excepción), una entrada por registro (una grupal NO se multiplica por alumno), la clase
+ * reprogramada, cancelada o con ausencia no cuenta, el día es el de la clase (programado, o real, o de alta) en la zona de Argentina, y la duración es la real, el inicio y fin reales o la
+ * programada (`lessonMinutesOrNull`). Los alumnos de prueba confirmados quedan fuera, igual que en el Resumen. `null` en una entrada = clase dictada sin ninguna duración conocida. PURO.
  */
-export function monthMinutesOf(rows: ReadonlyArray<RegisteredClassTimes & { createdAt: string }>, monthKey: string): Array<number | null> {
-  return rows.filter((row) => instantDateKey(row.actualStartedAt ?? row.scheduledStartAt ?? row.createdAt).slice(0, 7) === monthKey).map((row) => resolveClassMinutes(row));
+export function homeStatsInputsFrom(raw: HomeStatsRawInputs, monthKey: string, excludedStudentIds: ReadonlySet<string> = new Set()): { monthMinutes: Array<number | null>; grades: number[] } {
+  const studentsByRegistration = new Map<string, string[]>();
+  raw.roster.forEach((entry) => studentsByRegistration.set(entry.lesson_registration_id, [...(studentsByRegistration.get(entry.lesson_registration_id) ?? []), entry.student_id]));
+  const visible = withoutExcludedRegistrations(raw.registrations, studentsByRegistration, excludedStudentIds);
+  const facts = visible.map((row) => toRegisteredLessonFacts(row, { studentIds: studentsByRegistration.get(row.id) ?? [], billedAmountByStudent: null, occurrenceKey: null }));
+  const monthMinutes = heldMinutesInRange(facts, { rangeStart: `${monthKey}-01`, rangeEnd: lastDayOfMonth(monthKey) });
+  const heldIds = new Set(facts.filter((fact) => isClassHeld(fact)).map((fact) => fact.id));
+  return { monthMinutes, grades: raw.grades.filter((entry) => heldIds.has(entry.registrationId) && Number.isFinite(entry.grade)).map((entry) => entry.grade) };
 }
 
 /** Semana de Inicio: de lunes a domingo, con los días civiles de Argentina (mismo criterio de semana que el original). Devuelve el lunes y el lunes siguiente (fin exclusivo). */
@@ -52,7 +50,7 @@ export function weekBounds(todayDateKey: string): { startKey: string; endExclusi
 
 /**
  * Indicadores de Inicio — puerto de `buildDashboardData` (original): alumnos activos; clases de la semana sin contar las canceladas; horas enseñadas este mes (clases dictadas que cuentan como
- * clase, una vez cada una, suma de su duración resuelta con `resolveClassMinutes`, redondeada a 1 decimal); promedio de evaluaciones (todas las notas generales reales, un 0 o la ausencia de nota nunca cuenta).
+ * clase, una vez cada una, suma de su duración resuelta con `lessonMinutesOrNull`, redondeada a 1 decimal); promedio de evaluaciones (todas las notas generales reales, un 0 o la ausencia de nota nunca cuenta).
  */
 export function buildHomeStats(input: {
   activeStudents: number;

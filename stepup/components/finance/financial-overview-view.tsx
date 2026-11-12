@@ -31,11 +31,6 @@ function formatSlot(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-/** Horas enteras para los totales (igual que la app: 345,5 → 346 h). */
-function formatWholeHours(hours: number): string {
-  return `${formatCount(Math.round(hours))} h`;
-}
-
 const CARD = CARD_CLASS;
 
 /** Fila de una distribución: etiqueta, valor en texto y una barra proporcional (decorativa: el valor ya está escrito). */
@@ -156,9 +151,9 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
         </h2>
         <div className="mt-4 grid grid-cols-2 gap-3 nav:grid-cols-4">
           <Stat label="Clases dictadas" value={data.activity.heldLessonCount} />
-          <Stat label="Horas dictadas" value={formatWholeHours(data.activity.heldHours)} />
-          <Stat label="Horas reprogramadas" value={formatWholeHours(data.activity.rescheduledHours)} />
-          <Stat label="Horas canceladas" value={formatWholeHours(data.activity.cancelledHours)} />
+          <Stat label="Horas dictadas" value={formatHours(data.activity.heldHours)} />
+          <Stat label="Horas reprogramadas" value={formatHours(data.activity.rescheduledHours)} />
+          <Stat label="Horas canceladas" value={formatHours(data.activity.cancelledHours)} />
         </div>
       </section>
 
@@ -195,9 +190,9 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
           Resumen anual {data.year}
         </h2>
         <div className="mt-4 grid max-w-[650px] grid-cols-3 gap-2 nav:gap-3">
-          <Stat label="Horas dictadas" value={formatWholeHours(data.annualActivity.heldHours)} />
-          <Stat label="Horas reprogramadas" value={formatWholeHours(data.annualActivity.rescheduledHours)} />
-          <Stat label="Horas canceladas" value={formatWholeHours(data.annualActivity.cancelledHours)} />
+          <Stat label="Horas dictadas" value={formatHours(data.annualActivity.heldHours)} />
+          <Stat label="Horas reprogramadas" value={formatHours(data.annualActivity.rescheduledHours)} />
+          <Stat label="Horas canceladas" value={formatHours(data.annualActivity.cancelledHours)} />
         </div>
         <h3 className="mt-5 text-[14px] font-[650] text-textMuted">Modalidad más utilizada</h3>
         {data.modality.breakdown.every((entry) => entry.hours <= 0) ? (
@@ -208,7 +203,7 @@ export function FinancialOverviewView({ data, preset }: { data: FinancialOvervie
               <ShareRow
                 key={entry.modality}
                 label={`${MODALITY_LABEL[entry.modality]}${data.modality.mostUsed.includes(entry.modality) ? " · Más utilizada" : ""}`}
-                value={`${formatPercent(Math.round(entry.percent))} · ${formatWholeHours(entry.hours)} · ${formatCount(entry.lessonCount)} clase(s)`}
+                value={`${formatPercent(Math.round(entry.percent))} · ${formatHours(entry.hours)} · ${formatCount(entry.lessonCount)} clase(s)`}
                 percent={entry.percent}
               />
             ))}

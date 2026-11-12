@@ -35,7 +35,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
   const [paidAt, setPaidAt] = useState(() => todayInArgentina());
   const [notes, setNotes] = useState("");
   const [voidReason, setVoidReason] = useState("");
-  const { operationId, clear: clearOperationId } = useDraftOperationId(`teacherflow:cobros:pago:${chargeId}`);
+  const { operationId, rotate: rotateOperationId } = useDraftOperationId(`teacherflow:cobros:pago:${chargeId}`);
 
   function close() {
     setError(null);
@@ -69,7 +69,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
         setError(result.error);
         return;
       }
-      clearOperationId();
+      rotateOperationId(); // el componente sigue montado: la próxima operación sobre el mismo cobro/serie necesita su PROPIA clave (con la vieja el servidor la toma por un reintento y no escribe nada)
       setMode("idle");
       router.refresh();
     });

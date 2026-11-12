@@ -1,37 +1,32 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { readTable, readTableByIds } from "@/lib/db/read";
-import { monthMinutesOf } from "@/lib/dashboard/home-stats";
+import { isClassHeld, toRegisteredLessonFacts, type RegistrationRowForFacts } from "@/lib/reports/registered-lessons";
+import type { HomeStatsRawInputs } from "@/lib/dashboard/home-stats";
 
-interface RegistrationRow {
-  id: string;
-  scheduled_start_at: string | null;
-  scheduled_end_at: string | null;
-  actual_started_at: string | null;
-  actual_ended_at: string | null;
-  created_at: string;
-  actual_duration_minutes: number | null;
-}
+/** Las mismas columnas que lee el Resumen financiero para sus «Horas dictadas»: así las dos pantallas parten de los mismos hechos. */
+const REGISTRATION_COLUMNS =
+  "id, calendar_lesson_id, source_event_type, outcome, holiday_exception, is_billable, scheduled_start_at, scheduled_end_at, actual_started_at, actual_ended_at, scheduled_duration_minutes, actual_duration_minutes, modality, billed_amount, created_at";
 
 /**
- * Lo que necesitan los indicadores de Inicio de las clases dictadas (finalizadas y que cuentan como clase): la duración de las de este mes y todas las notas generales reales.
- * Sólo lecturas. `monthKey` es AAAA-MM (mes civil de Argentina); el día de cada clase es el del instante en que se dictó (real, o programado, o de alta), en hora de Argentina. Una reprogramada no cuenta
- * (su registro no «cuenta como clase»); la clase nueva se cuenta una sola vez. La duración sale de `resolveClassMinutes`: la real guardada, el inicio y fin reales (lo que escribe la web) o la programada.
+ * Lo que necesitan los indicadores de Inicio de las clases dictadas: los registros FINALIZADOS de la cuenta (un registro en curso todavía no es un resultado), sus alumnos y la nota general real de las
+ * clases dictadas. Sólo lecturas. La regla de qué cuenta como clase dictada, en qué mes y cuánto duró NO vive acá: es `homeStatsInputsFrom` (puro, compartido con el Resumen financiero), que se aplica
+ * después de leer, cuando también se conocen los alumnos de prueba excluidos. Si una lectura falla, el error sube y Inicio muestra «Sin datos» (nunca un 0).
  */
-export async function loadHomeStatsInputs(ctx: AuthenticatedDbContext, monthKey: string): Promise<{ monthMinutes: Array<number | null>; grades: number[] }> {
-  const held = await readTable<RegistrationRow>(ctx.supabase, "lesson_registrations", {
-    columns: "id, scheduled_start_at, scheduled_end_at, actual_started_at, actual_ended_at, created_at, actual_duration_minutes",
-    filter: (query) => query.eq("owner_id", ctx.ownerId).eq("status", "completed").eq("counts_as_class", true),
-  });
-  const monthMinutes = monthMinutesOf(
-    held.map((row) => ({ actualDurationMinutes: row.actual_duration_minutes === null ? null : Number(row.actual_duration_minutes), actualStartedAt: row.actual_started_at, actualEndedAt: row.actual_ended_at, scheduledStartAt: row.scheduled_start_at, scheduledEndAt: row.scheduled_end_at, createdAt: row.created_at })),
-    monthKey
-  );
-  const evaluations = await readTableByIds<{ id: string; general_grade: number | null }>(ctx.supabase, "lesson_registration_evaluations", {
-    columns: "id, general_grade",
+export async function loadHomeStatsRaw(ctx: AuthenticatedDbContext): Promise<HomeStatsRawInputs> {
+  const [registrations, roster] = await Promise.all([
+    readTable<RegistrationRowForFacts>(ctx.supabase, "lesson_registrations", { columns: REGISTRATION_COLUMNS, filter: (query) => query.eq("owner_id", ctx.ownerId).eq("status", "completed") }),
+    readTable<{ lesson_registration_id: string; student_id: string }>(ctx.supabase, "lesson_registration_students", { columns: "id, lesson_registration_id, student_id", filter: (query) => query.eq("owner_id", ctx.ownerId) }),
+  ]);
+  const heldIds = registrations
+    .filter((row) => isClassHeld(toRegisteredLessonFacts(row, { studentIds: [], billedAmountByStudent: null, occurrenceKey: null })))
+    .map((row) => row.id);
+  const evaluations = await readTableByIds<{ id: string; lesson_registration_id: string; general_grade: number | null }>(ctx.supabase, "lesson_registration_evaluations", {
+    columns: "id, lesson_registration_id, general_grade",
     matchColumn: "lesson_registration_id",
-    ids: held.map((row) => row.id),
+    ids: heldIds,
     filter: (query) => query.eq("owner_id", ctx.ownerId).not("general_grade", "is", null),
   });
-  return { monthMinutes, grades: evaluations.map((row) => Number(row.general_grade)) };
+  // Una clase grupal tiene una evaluación por alumno: cada nota general real cuenta (promedio de TODAS las notas).
+  return { registrations, roster, grades: evaluations.map((row) => ({ registrationId: row.lesson_registration_id, grade: Number(row.general_grade) })) };
 }

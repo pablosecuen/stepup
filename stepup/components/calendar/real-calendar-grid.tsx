@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveGridScroll, restoreGridScroll } from "@/lib/calendar/grid-scroll";
+import { saveGridScroll, restoreGridScroll, restoredLeft } from "@/lib/calendar/grid-scroll";
 import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
@@ -71,11 +71,15 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   // Al volver de «Nueva clase» (Cancelar o guardar) la grilla recupera su desplazamiento, una sola vez, cuando ya tiene su alto definitivo.
   const scrollRestoredRef = useRef(false);
   const restoredPositionRef = useRef(false);
+  // Última posición horizontal REAL de la usuaria (no la que el navegador recorta mientras las columnas se reacomodan tras cambiar el ancho de la ventana).
+  const userLeftRef = useRef(0);
+  const resizePendingRef = useRef(false);
   useEffect(() => {
     if (scrollRestoredRef.current || !fit) return;
     scrollRestoredRef.current = true;
     const scroller = scrollerRef.current;
     restoredPositionRef.current = restoreGridScroll(`${window.location.pathname}${window.location.search}`, scroller);
+    if (restoredPositionRef.current && scroller) userLeftRef.current = scroller.scrollLeft; // la posición devuelta es la «real» (el evento de desplazamiento llega después)
   }, [fit]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -210,7 +214,23 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
     if (!scroller || !isExpanded) return;
     if (restoredPositionRef.current) { restoredPositionRef.current = false; return; }
     scroller.scrollLeft = 0;
+    userLeftRef.current = 0;
   }, [dayKeys[0], isExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al ensancharse la ventana, las columnas se reacomodan un cuadro DESPUÉS de que el navegador recortó el desplazamiento al máximo viejo: se vuelve a la última posición real (acotada al máximo actual).
+  const expandedTotalPx = expandedColumns?.totalPx ?? null;
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || expandedTotalPx === null) return;
+    resizePendingRef.current = false; // el recorte del navegador (si lo hubo) ya se despachó antes de que las columnas se reacomodaran
+    const target = restoredLeft(userLeftRef.current, scroller.scrollWidth, scroller.clientWidth);
+    if (Math.abs(scroller.scrollLeft - target) > 1) scroller.scrollLeft = target;
+  }, [expandedTotalPx]);
+  // Un cambio de ancho de la ventana marca que el PRÓXIMO evento de desplazamiento puede ser el recorte del navegador y no el dedo.
+  useEffect(() => {
+    const onResize = () => { resizePendingRef.current = true; };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   return (
     <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
@@ -219,6 +239,11 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
         <div
           ref={scrollerRef}
           data-calendar-scroller
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            if (resizePendingRef.current) { resizePendingRef.current = false; return; }
+            userLeftRef.current = element.scrollLeft;
+          }}
           data-scrolls={scrollsVertically ? "true" : "false"}
           className={`absolute inset-x-0 top-0 max-h-full ${!isWeek ? "nav:mx-auto nav:max-w-[760px]" : ""} ${expandedColumns ? "overflow-x-auto" : "overflow-x-hidden"} rounded-none border-x-0 border-y-[1.5px] border-border bg-surface shadow-none nav:rounded-lg nav:border-[1.5px] nav:shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}
         >

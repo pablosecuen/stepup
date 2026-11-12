@@ -5,8 +5,8 @@ import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons"
 import { listRegistrationProgressForCalendarLessonIds } from "@/lib/repositories/lesson-registrations";
 import { loadLegacyRegisteredOccurrenceKeys } from "@/lib/repositories/legacy-registered-occurrences";
 import { listOpenChargeBalances } from "@/lib/repositories/payments";
-import { loadHomeStatsInputs } from "@/lib/repositories/home-stats-inputs";
-import { buildHomeStats, weekBounds, type HomeStats } from "@/lib/dashboard/home-stats";
+import { loadHomeStatsRaw } from "@/lib/repositories/home-stats-inputs";
+import { buildHomeStats, homeStatsInputsFrom, weekBounds, type HomeStats } from "@/lib/dashboard/home-stats";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
 import { withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
@@ -104,7 +104,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
   const dayStart = new Date(dayStartIso);
   // Información complementaria (horas del mes y promedio): arranca a la vez que las demás lecturas; si no se puede leer, esas dos cifras dicen «Sin datos» y el resto de Inicio sigue igual.
-  const statsInputsPromise = loadHomeStatsInputs(ctx, todayDateKey.slice(0, 7)).catch(() => null);
+  const statsRawPromise = loadHomeStatsRaw(ctx).catch(() => null);
   const [calendarBase, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
     listCalendarLessonsInRange(ctx, dayStart.toISOString(), dayEndExclusive.toISOString()),
@@ -112,8 +112,10 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
     listCalendarLessonsInRange(ctx, pendingLookbackStart.toISOString(), now.toISOString()),
     listOpenChargeBalances(ctx),
   ]);
-  const statsInputs = await statsInputsPromise;
+  const statsRaw = await statsRawPromise;
   const { rules: allRules, students, exceptions, excludedStudentIds } = calendarBase;
+  // Mismas reglas que «Horas dictadas» del Resumen financiero (mes civil de Argentina, alumnos de prueba excluidos); una lectura fallida queda en null → «Sin datos».
+  const statsInputs = statsRaw ? homeStatsInputsFrom(statsRaw, todayDateKey.slice(0, 7), excludedStudentIds) : null;
   // Datos de prueba confirmados (R16): fuera de la agenda, los pendientes y las clases vacías; con la lista vacía no cambia nada.
   const rules = withoutExcludedRules(allRules, excludedStudentIds);
   const horizonLessons = withoutExcludedLessons(allHorizonLessons, excludedStudentIds);

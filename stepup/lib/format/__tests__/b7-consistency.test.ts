@@ -131,7 +131,9 @@ test("horas, notas y duraciones salen del formateador único en el perfil, Repor
   assert.doesNotMatch(reportes, /function monthLabel/);
   const financiero = code("components/finance/financial-overview-view.tsx");
   assert.match(financiero, /formatHours\(entry\.occupiedHours\)/);
-  assert.match(financiero, /formatCount\(Math\.round\(hours\)\)/, "las horas enteras salen del formateador único de cantidades");
+  // 12/11/2026: «Horas dictadas» del Resumen y «enseñadas este mes» de Inicio salen del MISMO formateador (1 decimal); redondear a horas enteras mostraba «2 h» frente a «1,8 h» para las mismas clases.
+  assert.match(financiero, /formatHours\(data\.activity\.heldHours\)/, "las horas dictadas salen del formateador único de horas");
+  assert.doesNotMatch(financiero, /formatCount\(Math\.round\(hours\)\)/, "ya no hay un redondeo a horas enteras propio de esta pantalla");
   assert.doesNotMatch(financiero, /Math\.round\(\(minutes \/ 60\) \* 10\) \/ 10/);
 });
 

@@ -45,7 +45,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
   const [plan, setPlan] = useState<TrainingBillingConfigurationPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const { operationId, clear: clearOperationId } = useDraftOperationId(`teacherflow:cuota-entrenamiento:${recurrenceRuleId}`);
+  const { operationId, rotate: rotateOperationId } = useDraftOperationId(`teacherflow:cuota-entrenamiento:${recurrenceRuleId}`);
 
   function preview() {
     setError(null);
@@ -78,7 +78,7 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
         setError(result.error);
         return;
       }
-      clearOperationId();
+      rotateOperationId(); // el componente sigue montado: la próxima operación sobre el mismo cobro/serie necesita su PROPIA clave (con la vieja el servidor la toma por un reintento y no escribe nada)
       setOpen(false);
       setPlan(null);
       router.refresh();

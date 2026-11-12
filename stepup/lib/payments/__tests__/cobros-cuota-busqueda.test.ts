@@ -86,6 +86,6 @@ test("migración 20261111100000: el plan JSON null se resuelve de forma explíci
 });
 
 test("Inicio: «0 h enseñadas» salía de leer sólo actual_duration_minutes; la web guarda inicio y fin reales", () => {
-  assert.match(read("lib/dashboard/home-stats.ts"), /export function resolveClassMinutes\(/);
+  assert.match(read("lib/reports/registered-lessons.ts"), /export function lessonMinutesOrNull\(/);
   assert.match(read("lib/repositories/home-stats-inputs.ts"), /actual_started_at, actual_ended_at/);
 });
