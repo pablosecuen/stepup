@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveGridScroll, restoreGridScroll, restoredLeft } from "@/lib/calendar/grid-scroll";
+import { saveGridScroll, restoreGridScroll, restoredLeft, isUserScroll } from "@/lib/calendar/grid-scroll";
 import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
@@ -73,7 +73,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   const restoredPositionRef = useRef(false);
   // Última posición horizontal REAL de la usuaria (no la que el navegador recorta mientras las columnas se reacomodan tras cambiar el ancho de la ventana).
   const userLeftRef = useRef(0);
-  const resizePendingRef = useRef(false);
+  const gestureAtRef = useRef(Number.NEGATIVE_INFINITY);
   useEffect(() => {
     if (scrollRestoredRef.current || !fit) return;
     scrollRestoredRef.current = true;
@@ -221,16 +221,10 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller || expandedTotalPx === null) return;
-    resizePendingRef.current = false; // el recorte del navegador (si lo hubo) ya se despachó antes de que las columnas se reacomodaran
     const target = restoredLeft(userLeftRef.current, scroller.scrollWidth, scroller.clientWidth);
     if (Math.abs(scroller.scrollLeft - target) > 1) scroller.scrollLeft = target;
   }, [expandedTotalPx]);
-  // Un cambio de ancho de la ventana marca que el PRÓXIMO evento de desplazamiento puede ser el recorte del navegador y no el dedo.
-  useEffect(() => {
-    const onResize = () => { resizePendingRef.current = true; };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const noteGesture = () => { gestureAtRef.current = performance.now(); };
 
   return (
     <div ref={wrapRef} className="flex min-h-0 flex-1 flex-col">
@@ -239,10 +233,17 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
         <div
           ref={scrollerRef}
           data-calendar-scroller
+          onTouchStart={noteGesture}
+          onTouchMove={noteGesture}
+          onTouchEnd={noteGesture}
+          onWheel={noteGesture}
+          onPointerDown={noteGesture}
+          onKeyDown={noteGesture}
+          onFocus={noteGesture}
           onScroll={(event) => {
             const element = event.currentTarget;
-            if (resizePendingRef.current) { resizePendingRef.current = false; return; }
-            userLeftRef.current = element.scrollLeft;
+            // Sólo cuenta como «la posición de la usuaria» un desplazamiento que sigue a un gesto suyo (dedo, rueda, teclado, foco; la inercia dura un rato): el recorte del navegador al cambiar el ancho no.
+            if (isUserScroll(performance.now(), gestureAtRef.current)) userLeftRef.current = element.scrollLeft;
           }}
           data-scrolls={scrollsVertically ? "true" : "false"}
           className={`absolute inset-x-0 top-0 max-h-full ${!isWeek ? "nav:mx-auto nav:max-w-[760px]" : ""} ${expandedColumns ? "overflow-x-auto" : "overflow-x-hidden"} rounded-none border-x-0 border-y-[1.5px] border-border bg-surface shadow-none nav:rounded-lg nav:border-[1.5px] nav:shadow-card ${scrollsVertically ? "overflow-y-auto" : "overflow-y-hidden"}`}

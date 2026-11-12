@@ -5,9 +5,15 @@
 
 /**
  * Desplazamiento horizontal al cambiar el ancho de la ventana (girar el teléfono, redimensionar). Al ensancharse, durante un cuadro la grilla conserva las columnas angostas: el navegador recorta
- * `scrollLeft` al nuevo máximo (más chico) y dispara un `scroll` que NO es del dedo. Ese primer evento tras un `resize` no se toma como la posición de la usuaria; cuando las columnas terminan de
- * acomodarse se vuelve a la última posición real, acotada al máximo actual (`restoredLeft`). PURO.
+ * `scrollLeft` al nuevo máximo (más chico) y dispara un `scroll` que NO es del dedo. Sólo un desplazamiento que sigue a un gesto de la usuaria (`isUserScroll`: dedo, rueda, teclado o foco, con un margen
+ * para la inercia) se toma como su posición; cuando las columnas terminan de acomodarse se vuelve a esa última posición real, acotada al máximo actual (`restoredLeft`). El criterio no depende del orden
+ * en que el navegador despacha `resize`, `scroll` y los observadores. PURO.
  */
+export const USER_SCROLL_MOMENTUM_MS = 1500;
+
+export function isUserScroll(nowMs: number, lastGestureAtMs: number): boolean {
+  return nowMs - lastGestureAtMs <= USER_SCROLL_MOMENTUM_MS;
+}
 
 export function restoredLeft(userLeft: number, scrollWidth: number, clientWidth: number): number {
   return Math.max(0, Math.min(Math.round(userLeft), Math.max(0, scrollWidth - clientWidth)));
