@@ -68,6 +68,8 @@ export interface PositionedItem {
   /** Carril (0 = el primero) y cantidad de carriles del grupo de clases que se tocan. */
   lane: number;
   laneCount: number;
+  /** Índice (en el orden del día) de la primera clase de su grupo de clases que se tocan: dos clases con el mismo `group` comparten carriles. */
+  group: number;
 }
 
 /** Agrupa las tarjetas por su día civil (clave YYYY-MM-DD en la zona del calendario). */
@@ -113,7 +115,7 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
     const height = endMs - startMs >= 30 * 60_000 ? Math.max(MIN_TEXT_HEIGHT_PX, exactHeight) : exactHeight;
     const displayTop = Math.max(0, Math.min(top, gridBottomPx - height));
     // `laneBottom`: hasta dónde llega la clase en el tiempo (el bloque real, sin el piso de lectura): dos clases consecutivas nunca se reparten carriles por ese píxel de más.
-    return { item, top, height, displayTop, laneBottom: displayTop + exactHeight, hitTop: displayTop, hitHeight: height, blockOffset: 0, lane: 0, laneCount: 1 };
+    return { item, top, height, displayTop, laneBottom: displayTop + exactHeight, hitTop: displayTop, hitHeight: height, blockOffset: 0, lane: 0, laneCount: 1, group: 0 };
   });
 
   // Carriles por grupos de BLOQUES que se superponen. El recorrido es por inicio creciente (el orden de `sorted` lo conserva).
@@ -121,7 +123,10 @@ export function layoutDayItems(items: CalendarViewItem[], hourHeightPx: number =
   let groupEnd = -Infinity;
   let groupStart = 0;
   const closeGroup = (end: number) => {
-    for (let k = groupStart; k < end; k++) boxes[k].laneCount = laneEnds.length;
+    for (let k = groupStart; k < end; k++) {
+      boxes[k].laneCount = laneEnds.length;
+      boxes[k].group = groupStart;
+    }
   };
   boxes.forEach((box, index) => {
     if (box.displayTop >= groupEnd) {

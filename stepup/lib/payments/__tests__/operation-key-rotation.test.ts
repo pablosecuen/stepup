@@ -6,6 +6,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { resolveDraftOperationId, rotateDraftOperationId, clearDraftOperationId } from "../../lessons/draft-operation-id-storage.ts";
+import { OPERATION_CONFLICT_PREFIX, isOperationConflict } from "../operation-conflict.ts";
+import { domainErrorMessage } from "../../errors/domain-error-message.ts";
+import { NETWORK_ERROR_MESSAGE } from "../../actions/network-guard.ts";
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(`../../../${rel}`, import.meta.url)), "utf8").replace(/\r\n/g, "\n");
 
@@ -40,4 +43,35 @@ test("los errores conservan la clave para el reintento (sólo una respuesta exit
   const source = read("components/payments/charge-actions.tsx");
   const submit = source.slice(source.indexOf("function submitPayment"), source.indexOf("function submitVoid"));
   assert.ok(submit.indexOf("if (result.error)") < submit.indexOf("rotateOperationId()"), "primero se descarta el error, después se rota");
+});
+
+// 12/11/2026 (tarea 4): protección del servidor. Misma clave + mismo contenido = reintento; misma clave + otros datos = error claro (migración 20261112100000, probada en Postgres real con
+// supabase/tests/postgres/register_payment_operation_guard.cjs: 20/20 con la migración, 14/20 sin ella).
+test("el rechazo del servidor por clave con otros datos llega a la persona con su texto y la pantalla lo reconoce", () => {
+  const sql = read("supabase/migrations/20261112100000_register_payment_operation_guard.sql");
+  assert.ok(sql.includes(`'${OPERATION_CONFLICT_PREFIX}`), "la migración usa el texto que reconoce la pantalla");
+  assert.match(sql, /using errcode = '22023'/);
+  assert.match(sql, /set search_path = ''/, "conserva el search_path fijo");
+  assert.match(sql, /on conflict \(owner_id, operation_id\) where operation_id is not null do nothing/, "la idempotencia sigue siendo atómica por clave");
+  for (const field of ["student_id", "amount", "method", "paid_at", "notes", "replaces_payment_id"]) assert.match(sql, new RegExp(`v_payment\\.${field} is distinct from`), field);
+  assert.match(sql, /pa\.charge_id = v_charge_id/, "en modo cobro único también compara el cobro");
+  assert.match(sql, /grant execute on function public\.register_payment\(jsonb\) to authenticated;/);
+  assert.doesNotMatch(read("supabase/migrations/20260925100000_payments_engine.sql"), /ya se registró con otros datos/, "la migración histórica no se editó");
+  const message = `${OPERATION_CONFLICT_PREFIX} (otro importe, cobro o fecha). Revisá los pagos del alumno antes de intentarlo de nuevo.`;
+  assert.equal(domainErrorMessage({ code: "22023", message }), message, "el texto no se oculta detrás del genérico");
+  assert.equal(isOperationConflict(message), true);
+  assert.equal(isOperationConflict(NETWORK_ERROR_MESSAGE), false, "un fallo de red NO es un conflicto: conserva la clave");
+  assert.equal(isOperationConflict("El importe supera el saldo pendiente de este cobro."), false, "una validación tampoco");
+});
+
+test("sólo el conflicto rota la clave tras un error; red y validaciones la conservan para reintentar la misma operación", () => {
+  for (const file of ["components/payments/charge-actions.tsx", "components/registro/class-payment-prompt.tsx"]) {
+    const source = read(file);
+    assert.match(source, /isOperationConflict\(result\.error\)/, file);
+  }
+  const charge = read("components/payments/charge-actions.tsx");
+  const submit = charge.slice(charge.indexOf("function submitPayment"), charge.indexOf("function submitVoid"));
+  const errorBranch = submit.slice(submit.indexOf("if (result.error)"), submit.indexOf("rotateOperationId();", submit.indexOf("isOperationConflict")) + 120);
+  assert.match(errorBranch, /isOperationConflict\(result\.error\)\) \{\n\s+rotateOperationId\(\);\n\s+router\.refresh\(\);/);
+  assert.equal((submit.match(/rotateOperationId\(\)/g) ?? []).length, 2, "una vez ante el conflicto y una tras el éxito");
 });

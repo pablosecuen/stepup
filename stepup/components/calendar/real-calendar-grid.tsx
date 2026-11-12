@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { saveGridScroll, restoreGridScroll, restoredLeft, isUserScroll } from "@/lib/calendar/grid-scroll";
 import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
@@ -32,6 +32,8 @@ import { mobileCalendarHourFit } from "@/lib/calendar/mobile-density";
 import { mobileDayHeading, mobileFiveDayTracks } from "@/lib/calendar/mobile-viewport";
 import { planMobileDay } from "@/lib/calendar/mobile-short-labels";
 import { MobileCalendarCard } from "./mobile-calendar-card";
+import { GroupMark, GroupSheet } from "./simultaneous-group";
+import { badgeFitsBelow, groupAriaLabel, simultaneousGroups, type SimultaneousGroup } from "@/lib/calendar/simultaneous-groups";
 
 interface RealCalendarGridProps {
   dayKeys: string[]; // 7 claves civiles YYYY-MM-DD (semana) o 1 (día) — nunca Date
@@ -63,6 +65,9 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
   const [areaWidthPx, setAreaWidthPx] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [tip, setTip] = useState<CardTip | null>(null);
+  // Teléfono, semana: grupo de clases simultáneas abierto (lista compacta) y el grupo al que se vuelve al cerrar el detalle de una de sus clases.
+  const [openGroup, setOpenGroup] = useState<SimultaneousGroup | null>(null);
+  const groupReturnRef = useRef<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -293,6 +298,10 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                 // Teléfono: el nombre entra dentro del bloque o pasa a barra + rótulo de palabras completas (`mobile-short-labels.ts`); escritorio conserva su sistema de siempre.
                 const mobilePlan = isMobile ? planMobileDay(positioned, labelSources, dayColumnPx, gridHeightPx, !isWeek) : null;
                 const labelPlan: DayLabelPlan | null = mobilePlan ? mobilePlan.labelPlan : planShortLabels(positioned, labelSources, dayColumnPx, gridHeightPx);
+                // Teléfono, semana: las clases simultáneas se agrupan (un solo control con lista); las de abajo quedan inertes (sin toque ni foco) para no superponer controles.
+                const groups = isMobile && isWeek ? simultaneousGroups(dayKey, positioned, lessonTitle) : [];
+                const groupedIds = new Set(groups.flatMap((group) => group.members.map((member) => member.id)));
+                const inertIfGrouped = (id: string, key: string, node: ReactNode) => (groupedIds.has(id) ? <div key={key} style={{ display: "contents" }} inert>{node}</div> : node);
 
                 return (
                   <div key={dayKey} className={`relative z-0 min-w-0 border-l border-border ${today ? "bg-accent/[0.04]" : ""}`} style={hourGridlinesStyle}>
@@ -325,9 +334,9 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                     {positioned.map((positionedItem) => {
                       const planned = labelPlan?.items.get(positionedItem.item.id);
                       const mobileText = mobilePlan?.cards.get(positionedItem.item.id);
-                      if (mobileText && !planned) return <MobileCalendarCard key={positionedItem.item.id} positioned={positionedItem} text={mobileText} dayView={!isWeek} {...stateOf(positionedItem.item)} onSelect={() => setSelected(positionedItem.item)} onTip={setTip} describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined} />;
+                      if (mobileText && !planned) return inertIfGrouped(positionedItem.item.id, positionedItem.item.id, <MobileCalendarCard key={positionedItem.item.id} positioned={positionedItem} text={mobileText} dayView={!isWeek} {...stateOf(positionedItem.item)} onSelect={() => setSelected(positionedItem.item)} onTip={setTip} describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined} />);
                       if (!planned) {
-                        return (
+                        return inertIfGrouped(positionedItem.item.id, positionedItem.item.id, (
                           <RealLessonCard
                             key={positionedItem.item.id}
                             positioned={positionedItem}
@@ -340,13 +349,13 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                             onTip={setTip}
                             describedBy={tip?.id === `calendar-tip-${positionedItem.item.id}` ? TIP_ID : undefined}
                           />
-                        );
+                        ));
                       }
                       const item = positionedItem.item;
                       const facts = stateOf(item);
                       const source = labelSources.get(item.id)!;
                       const minutes = Math.round((new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000);
-                      return (
+                      return inertIfGrouped(item.id, item.id, (
                         <ShortBar
                           key={item.id}
                           positioned={positionedItem}
@@ -358,7 +367,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                           onTip={setTip}
                           describedBy={tip?.id === `calendar-tip-${item.id}` ? TIP_ID : undefined}
                         />
-                      );
+                      ));
                     })}
                     {labelPlan &&
                       positioned.map((positionedItem) => {
@@ -367,8 +376,11 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                         const item = positionedItem.item;
                         const facts = stateOf(item);
                         const source = labelSources.get(item.id)!;
-                        return <ShortLabel key={`label-${item.id}`} planned={planned} lesson={{ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement }} title={source.title} timeText={source.timeText} stateText={source.stateText} strike={item.status === "cancelled"} onSelect={() => setSelected(item)} />;
+                        return inertIfGrouped(item.id, `label-${item.id}`, <ShortLabel key={`label-${item.id}`} planned={planned} lesson={{ status: item.status, modality: item.modality, isElapsed: facts.isElapsed, isActiveReplacement: facts.isActiveReplacement }} title={source.title} timeText={source.timeText} stateText={source.stateText} strike={item.status === "cancelled"} onSelect={() => setSelected(item)} />);
                       })}
+                    {groups.map((group) => (
+                      <GroupMark key={group.key} group={group} title={groupAriaLabel(group, lessonTitle)} showCount={badgeFitsBelow(group, positioned)} onOpen={setOpenGroup} />
+                    ))}
                   </div>
                 );
               })}
@@ -422,6 +434,20 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
         </div>
       )}
 
+      {openGroup && (
+        <GroupSheet
+          group={openGroup}
+          titleOf={lessonTitle}
+          timeRange={`${instantTimeLabel(openGroup.startIso)} a ${instantTimeLabel(openGroup.endIso)}`}
+          onPick={(item) => {
+            groupReturnRef.current = openGroup.key;
+            setOpenGroup(null);
+            setSelected(item);
+          }}
+          onClose={() => setOpenGroup(null)}
+        />
+      )}
+
       {selected && (
         // Un enlace del detalle (Registrar, Editar registro, Series, Nueva clase) deja la grilla: se guarda su desplazamiento (vertical y horizontal) para recuperarlo al volver.
         <div
@@ -437,6 +463,10 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
             onClose={() => {
               setSelected(null);
               setStartInReschedule(false);
+              // Si venía de la lista de un grupo, el foco vuelve a la marca de ese grupo (la grilla no se movió: misma semana, vista y desplazamiento).
+              const returnKey = groupReturnRef.current;
+              groupReturnRef.current = null;
+              if (returnKey) window.setTimeout(() => [...document.querySelectorAll<HTMLElement>("[data-group-mark]")].find((el) => el.getAttribute("data-group-mark") === returnKey)?.focus(), 0);
             }}
           />
         </div>

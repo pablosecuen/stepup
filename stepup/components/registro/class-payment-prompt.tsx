@@ -5,6 +5,7 @@ import { ArrowRightCircleIcon, CalendarDaysIcon, ChartPieIcon, CheckCircleIcon, 
 import { listRegistrationPaymentPromptsAction, registerPaymentAction } from "@/lib/actions/payments";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { isOperationConflict } from "@/lib/payments/operation-conflict";
 import { formatCivilDate, todayInArgentina } from "@/lib/format/date-format";
 import { formatMoney } from "@/lib/format/number-format";
 import { formatMoneyForInput } from "@/lib/format/money-input";
@@ -71,7 +72,7 @@ function PromptStep({
   const [paidAt, setPaidAt] = useState(today);
   const [live, setLive] = useState({ paid: item.paid, balance: item.balance });
   const [refreshing, setRefreshing] = useState(false);
-  const { operationId, clear } = useDraftOperationId(`teacherflow:registro:cobro:${item.chargeId}`);
+  const { operationId, clear, rotate } = useDraftOperationId(`teacherflow:registro:cobro:${item.chargeId}`);
   const settled = live.balance <= 0;
 
   async function refreshBalance() {
@@ -121,6 +122,11 @@ function PromptStep({
         if (result.error) {
           // La clase ya está guardada y el cobro intacto: se puede reintentar (misma clave de operación, sin duplicar) o volver y elegir «Registrar después».
           setError(result.error);
+          // Misma clave con otros datos: ese pago ya existe; la próxima vez va con clave nueva y se recarga el saldo mostrado.
+          if (isOperationConflict(result.error)) {
+            rotate();
+            void refreshBalance();
+          }
           return;
         }
         clear();

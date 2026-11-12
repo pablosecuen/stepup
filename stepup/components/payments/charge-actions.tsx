@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registerPaymentAction, voidChargeAction } from "@/lib/actions/payments";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { useDraftOperationId } from "@/lib/lessons/use-draft-operation-id";
+import { isOperationConflict } from "@/lib/payments/operation-conflict";
 import { todayInArgentina } from "@/lib/format/date-format";
 import { formatMoneyForInput, parseMoneyInput } from "@/lib/format/money-input";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,11 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
       }));
       if (result.error) {
         setError(result.error);
+        // Misma clave con otros datos: el pago anterior YA existe. Se rota la clave (no queda trabado) y se recargan los datos para que se vea ese pago; no se reenvía solo.
+        if (isOperationConflict(result.error)) {
+          rotateOperationId();
+          router.refresh();
+        }
         return;
       }
       rotateOperationId(); // el componente sigue montado: la próxima operación sobre el mismo cobro/serie necesita su PROPIA clave (con la vieja el servidor la toma por un reintento y no escribe nada)

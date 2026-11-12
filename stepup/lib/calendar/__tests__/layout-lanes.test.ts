@@ -198,8 +198,9 @@ test("cableado: la grilla dibuja TODAS las clases posicionadas (sin filtros) y c
   const grid = read("components/calendar/real-calendar-grid.tsx");
   // Cada clase posicionada se dibuja siempre: como tarjeta (`RealLessonCard`) o, si es corta, como barra exacta (el botón accesible, en el mismo orden estable) con su rótulo; ninguna se filtra.
   assert.match(grid, /positioned\.map\(\(positionedItem\) => \{\s*const planned = labelPlan\?\.items\.get\(positionedItem\.item\.id\);/, "se recorre cada clase posicionada sin filtrar");
-  assert.match(grid, /const mobileText = mobilePlan\?\.cards\.get\(positionedItem\.item\.id\);\s*if \(mobileText && !planned\) return <MobileCalendarCard key=\{positionedItem\.item\.id\}/, "una tarjeta móvil por clase cuyo nombre entra en su bloque, en el mismo orden estable; las demás, barra + rótulo");
-  assert.match(grid, /if \(!planned\) \{\s*return \(\s*<RealLessonCard\s+key=\{positionedItem\.item\.id\}/, "la tarjeta de escritorio conserva su recorrido");
+  assert.match(grid, /const mobileText = mobilePlan\?\.cards\.get\(positionedItem\.item\.id\);\s*if \(mobileText && !planned\) return inertIfGrouped\(positionedItem\.item\.id, positionedItem\.item\.id, <MobileCalendarCard key=\{positionedItem\.item\.id\}/, "una tarjeta móvil por clase cuyo nombre entra en su bloque, en el mismo orden estable; las demás, barra + rótulo");
+  assert.match(grid, /if \(!planned\) \{\s*return inertIfGrouped\(positionedItem\.item\.id, positionedItem\.item\.id, \(\s*<RealLessonCard\s+key=\{positionedItem\.item\.id\}/, "la tarjeta de escritorio conserva su recorrido");
+  // 12/11/2026: en el teléfono, las clases de un grupo de simultáneas se envuelven en `inertIfGrouped` (el grupo es el único control); fuera de un grupo se dibujan igual que antes.
   assert.match(grid, /<ShortBar\s+key=\{item\.id\}/, "la clase corta conserva su botón (la barra) en el mismo orden");
   assert.match(grid, /<ShortLabel key=\{`label-\$\{item\.id\}`\}/, "y su rótulo con nombre, hora y estado");
   assert.doesNotMatch(grid, /dayColumnMinWidth|LANE_MIN_WIDTH_PX|minWidth/, "los carriles no ensanchan la columna");
