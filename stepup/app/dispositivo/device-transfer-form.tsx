@@ -52,13 +52,13 @@ export function DeviceTransferForm({ mode, next, devices = [] }: { mode: DeviceT
             {pending ? "Autorizando este dispositivo…" : "Un momento…"}
           </p>
         ) : (
-          <Button type="submit" variant="primary" size="lg" block busy={pending} disabled={signingOut}>
+          <Button type="submit" variant="primary" size="lg" block className="!max-w-none" busy={pending} disabled={signingOut}>
             {pending ? "Autorizando…" : "Usar TeacherFlow en este dispositivo"}
           </Button>
         )}
       </form>
       {mode !== "claim" && (
-        <Button variant="secondary" size="lg" block onClick={cancel} busy={signingOut} disabled={pending}>
+        <Button variant="secondary" size="lg" block className="!max-w-none" onClick={cancel} busy={signingOut} disabled={pending}>
           {mode === "confirm-transfer" ? "Cancelar" : "Cerrar sesión"}
         </Button>
       )}
@@ -66,7 +66,7 @@ export function DeviceTransferForm({ mode, next, devices = [] }: { mode: DeviceT
         <a href={`/dispositivo?next=${encodeURIComponent(next)}`} className="min-h-11 text-center underline">Actualizar dispositivos</a>
       )}
       {mode === "claim" && state.error && (
-        <Button variant="secondary" size="lg" block onClick={() => formRef.current?.requestSubmit()} disabled={pending}>
+        <Button variant="secondary" size="lg" block className="!max-w-none" onClick={() => formRef.current?.requestSubmit()} disabled={pending}>
           Reintentar
         </Button>
       )}

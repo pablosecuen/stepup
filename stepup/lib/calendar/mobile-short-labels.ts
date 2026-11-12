@@ -35,8 +35,8 @@ interface Profile {
   cardSizes: ReadonlyArray<{ fontPx: number; lineHeightPx: number }>;
   /** Relleno horizontal total del bloque (bordes + relleno) que no es texto. */
   cardChromePx: number;
-  labelFontPx: number;
-  labelLineHeightPx: number;
+  /** Tamaños de letra del rótulo, de mayor a menor: se baja de escalón sólo si la palabra más larga no entra (nunca por debajo de 10 px). */
+  labelSizes: ReadonlyArray<{ fontPx: number; lineHeightPx: number }>;
   chainBarPx: number;
   laneBarPx: number;
   areaShare: number;
@@ -45,15 +45,16 @@ interface Profile {
   maxCardWidthPx: number;
 }
 
-const WEEK: Profile = { cardSizes: [{ fontPx: 12, lineHeightPx: 13 }, { fontPx: 11, lineHeightPx: 12 }], cardChromePx: 6, labelFontPx: 11, labelLineHeightPx: 12, chainBarPx: 9, laneBarPx: 11, areaShare: 0.5, maxLabelLines: 3, maxCardWidthPx: Infinity };
-const DAY: Profile = { cardSizes: [{ fontPx: 16, lineHeightPx: 19 }], cardChromePx: 18, labelFontPx: 14, labelLineHeightPx: 16, chainBarPx: 14, laneBarPx: 14, areaShare: 0.45, maxLabelLines: 2, maxCardWidthPx: 244 };
+const WEEK: Profile = { cardSizes: [{ fontPx: 12, lineHeightPx: 13 }, { fontPx: 11, lineHeightPx: 12 }], cardChromePx: 6, labelSizes: [{ fontPx: 11, lineHeightPx: 12 }, { fontPx: 10, lineHeightPx: 11 }], chainBarPx: 6, laneBarPx: 8, areaShare: 0.5, maxLabelLines: 3, maxCardWidthPx: Infinity };
+const DAY: Profile = { cardSizes: [{ fontPx: 16, lineHeightPx: 19 }], cardChromePx: 18, labelSizes: [{ fontPx: 14, lineHeightPx: 16 }], chainBarPx: 14, laneBarPx: 14, areaShare: 0.45, maxLabelLines: 2, maxCardWidthPx: 244 };
 
 /** La estimación de ancho es aproximada: se deja un margen para que una palabra que «entra» no se corte en pantalla. */
 const MARGIN = 1.05;
 const widthOf = (text: string, fontPx: number) => estimateBoldTextWidthPx(text, fontPx) * MARGIN;
-const GAP_PX = 4;
-const LABEL_CHROME_PX = 8;
-const CHIP_PX = 15;
+/** Rótulo del teléfono: borde 2 px + relleno 3 px + 1 px a la derecha; el número de asociación mide 10 px más 2 px de separación. */
+const GAP_PX = 3;
+const LABEL_CHROME_PX = 6;
+const CHIP_PX = 12;
 const ELLIPSIS = "…";
 
 const wordsOf = (text: string): string[] => text.trim().split(/\s+/).filter((word) => word !== "");
@@ -180,23 +181,37 @@ export function placeVariableLabels(ideal: readonly number[], heights: readonly 
 }
 
 function labelTextFor(source: LabelSource, textWidthPx: number, numbered: boolean, profile: Profile): MobileLabelText {
-  const { labelFontPx: font, labelLineHeightPx: lineHeight, maxLabelLines } = profile;
+  const { maxLabelLines } = profile;
   const available = textWidthPx - (numbered ? CHIP_PX : 0);
-  const state = source.stateText && widthOf(source.stateText, font - 1) <= textWidthPx - (numbered ? CHIP_PX : 0) ? source.stateText : null;
   const first = wordsOf(source.title)[0] ?? source.title;
+  // Primero el escalón más grande en el que la palabra más larga del nombre entra entera: el nombre se parte en palabras, nunca por letras.
+  const longest = wordsOf(source.title).reduce((best, word) => (widthOf(word, profile.labelSizes[0].fontPx) > widthOf(best, profile.labelSizes[0].fontPx) ? word : best), first);
+  const size = profile.labelSizes.find(({ fontPx }) => widthOf(longest, fontPx) <= available) ?? profile.labelSizes.find(({ fontPx }) => widthOf(first, fontPx) <= available) ?? profile.labelSizes[profile.labelSizes.length - 1];
+  const { fontPx: font, lineHeightPx: lineHeight } = size;
+  const state = source.stateText && widthOf(source.stateText, font - 1) <= textWidthPx - (numbered ? CHIP_PX : 0) ? source.stateText : null;
   let lines: string[];
   let abbreviated = false;
   if (widthOf(first, font) <= available) lines = wrapWords(source.title, available, font, maxLabelLines).lines;
   else if (!numbered) lines = [ellipsize(first, Math.max(available, 12), font)];
   else {
-    // Grupo simultáneo sin ancho para el nombre: iniciales («FT») o sólo el número; el nombre completo queda en el detalle, en la vista Día y en el nombre accesible.
+    // Grupo simultáneo sin ancho para el nombre (límite físico, ver docs): el comienzo de la primera palabra con «…» si quedan al menos tres letras, si no las iniciales («FT») o sólo el número.
+    // El nombre completo queda en el detalle y en la vista Día; es un caso abierto que se informa, no una solución.
+    const prefix = available > 0 ? ellipsize(first, available, font) : "";
     const short = initials(source.title);
-    if (short && widthOf(short, font) <= available) {
+    if (Array.from(prefix).length - 1 >= 3 && widthOf(prefix, font) <= available) lines = [prefix];
+    else if (short && widthOf(short, font) <= available) {
       lines = [short];
       abbreviated = true;
     } else lines = [];
   }
   return { state, lines, fontPx: font, lineHeightPx: lineHeight, abbreviated };
+}
+
+/** Sólo iniciales (o el número, si ni así entran) con la misma letra y estado que el texto original. */
+function initialsText(source: LabelSource, textWidthPx: number, like: MobileLabelText): MobileLabelText {
+  const short = initials(source.title);
+  const fits = short !== "" && widthOf(short, like.fontPx) <= textWidthPx - CHIP_PX;
+  return { ...like, lines: fits ? [short] : [], abbreviated: fits };
 }
 
 export function planMobileDay(positioned: readonly PositionedItem[], sources: ReadonlyMap<string, LabelSource>, colWidthPx: number, gridHeightPx: number, dayView: boolean): MobileDayPlan {
@@ -220,13 +235,15 @@ export function planMobileDay(positioned: readonly PositionedItem[], sources: Re
   }
   if (labeled.length === 0) return { labelPlan: null, cards };
 
-  const wantedArea = Math.max(...labeled.map(({ cluster }) => (cluster.laneCount > 1 ? cluster.laneCount * profile.laneBarPx : profile.chainBarPx)));
-  const areaPx = Math.min(wantedArea, Math.floor(colWidthPx * profile.areaShare));
-  const labelX = areaPx + GAP_PX;
-  const labelW = Math.max(20, colWidthPx - labelX - 2);
-  const textW = labelW - LABEL_CHROME_PX;
+  // Cada grupo tiene SU geometría: un grupo de tres simultáneas en el día no le quita ancho al rótulo de una clase sola o de un grupo de dos.
+  const geometryOf = (simultaneous: boolean, laneCount: number) => {
+    const areaPx = Math.min(simultaneous ? laneCount * profile.laneBarPx : profile.chainBarPx, Math.floor(colWidthPx * profile.areaShare));
+    const labelX = areaPx + GAP_PX;
+    const labelW = Math.max(20, colWidthPx - labelX - 1);
+    return { areaPx, labelX, labelW, textW: labelW - LABEL_CHROME_PX };
+  };
 
-  type Entry = { p: PositionedItem; cluster: Cluster; number: number | null; text: MobileLabelText; height: number; ideal: number };
+  type Entry = { p: PositionedItem; cluster: Cluster; number: number | null; text: MobileLabelText; height: number; ideal: number; areaPx: number; labelX: number; labelW: number };
   // `extra`: clases que sí entraban en su bloque pero estorban a un rótulo (no hay forma de acomodarlo sin taparlas): pasan también a barra + rótulo. Sólo se agregan si hace falta; nunca se oculta ni se tapa una clase.
   const solve = (extra: ReadonlySet<string>) => {
     const entries: Entry[] = [];
@@ -236,11 +253,19 @@ export function planMobileDay(positioned: readonly PositionedItem[], sources: Re
       const group = [...members, ...standalone];
       if (group.length === 0) continue;
       const simultaneous = cluster.laneCount > 1;
+      const geometry = geometryOf(simultaneous, cluster.laneCount);
       const ordered = [...group].sort((a, b) => a.top - b.top || a.lane - b.lane);
+      const texts = ordered.map((p) => labelTextFor(sources.get(p.item.id)!, geometry.textW, simultaneous, profile));
+      // Un grupo se lee parejo: si alguno sólo puede mostrar iniciales (o el número), los que no entran enteros también las muestran; los que sí entran completos conservan su nombre.
+      if (simultaneous && texts.some((text) => text.abbreviated || text.lines.length === 0)) {
+        texts.forEach((text, i) => {
+          if (text.lines.some((line) => line.endsWith(ELLIPSIS))) texts[i] = initialsText(sources.get(ordered[i].item.id)!, geometry.textW, text);
+        });
+      }
       const sized = ordered.map((p, index) => {
-        const text = labelTextFor(sources.get(p.item.id)!, textW, simultaneous, profile);
+        const text = texts[index];
         const lines = Math.max(1, text.lines.length + (text.state ? 1 : 0));
-        return { p, text, height: lines * profile.labelLineHeightPx + 1, index };
+        return { p, text, height: lines * text.lineHeightPx + 1, index };
       });
       const barsTop = Math.min(...ordered.map((p) => p.top));
       const barsBottom = Math.max(...ordered.map((p) => p.top + p.height));
@@ -249,16 +274,18 @@ export function planMobileDay(positioned: readonly PositionedItem[], sources: Re
         // Una clase sola o consecutiva: el rótulo centrado en su barra. Un grupo simultáneo: los rótulos apilados y centrados sobre el conjunto de sus barras.
         const ideal = simultaneous ? stackY : entry.p.top + entry.p.height / 2 - entry.height / 2;
         stackY += entry.height;
-        entries.push({ p: entry.p, cluster, number: simultaneous ? entry.index + 1 : null, text: entry.text, height: entry.height, ideal: Math.max(0, ideal) });
+        entries.push({ p: entry.p, cluster, number: simultaneous ? entry.index + 1 : null, text: entry.text, height: entry.height, ideal: Math.max(0, ideal), areaPx: geometry.areaPx, labelX: geometry.labelX, labelW: geometry.labelW });
       }
     }
     entries.sort((a, b) => a.ideal - b.ideal || a.p.top - b.p.top);
     const labeledIds = new Set(entries.map((entry) => entry.p.item.id));
-    const blocking = positioned.filter((p) => !labeledIds.has(p.item.id) && ((p.lane + 1) / p.laneCount) * colWidthPx > labelX);
-    const obstacles = blocking.map((p) => [p.top, p.top + p.height] as const);
+    // Lo que estorba a un rótulo depende de dónde empieza ESE rótulo (su propia columna de texto).
+    const blockersOf = (labelX: number) => positioned.filter((p) => !labeledIds.has(p.item.id) && ((p.lane + 1) / p.laneCount) * colWidthPx > labelX);
+    const blocking = [...new Set(entries.flatMap((entry) => blockersOf(entry.labelX)))];
     const ideals = entries.map((entry) => entry.ideal);
     const heights = entries.map((entry) => entry.height);
-    return { entries, blocking, ys: placeVariableLabels(ideals, heights, entries.map(() => obstacles), gridHeightPx), ideals, heights };
+    const forbidden = entries.map((entry) => blockersOf(entry.labelX).map((p) => [p.top, p.top + p.height] as const));
+    return { entries, blocking, ys: placeVariableLabels(ideals, heights, forbidden, gridHeightPx), ideals, heights };
   };
 
   const extra = new Set<string>();
@@ -274,15 +301,16 @@ export function planMobileDay(positioned: readonly PositionedItem[], sources: Re
   const narrowed = new Map<string, number>();
   const items = new Map<string, PlannedItem>();
   entries.forEach((entry, i) => {
-    const laneW = entry.cluster.laneCount > 1 ? areaPx / entry.cluster.laneCount : areaPx;
+    const laneW = entry.cluster.laneCount > 1 ? entry.areaPx / entry.cluster.laneCount : entry.areaPx;
     items.set(entry.p.item.id, {
       id: entry.p.item.id,
       barLeft: 1 + (entry.cluster.laneCount > 1 ? entry.p.lane * laneW : 0),
       barWidth: Math.max(4, laneW - 1),
       number: entry.number,
       transformedLong: entry.cluster.laneCount > 1 && fits.get(entry.p.item.id) !== null || extra.has(entry.p.item.id),
-      label: { x: labelX, y: ys[i], width: labelW, height: entry.height, fullNameFits: !entry.text.abbreviated && !entry.text.lines.some((line) => line.endsWith(ELLIPSIS)) && entry.text.lines.length > 0, firstWordFits: !entry.text.abbreviated && entry.text.lines.length > 0, offsetPx: ys[i] - entry.ideal, text: entry.text },
+      label: { x: entry.labelX, y: ys[i], width: entry.labelW, height: entry.height, fullNameFits: !entry.text.abbreviated && !entry.text.lines.some((line) => line.endsWith(ELLIPSIS)) && entry.text.lines.length > 0, firstWordFits: !entry.text.abbreviated && entry.text.lines.length > 0, offsetPx: ys[i] - entry.ideal, text: entry.text },
     });
   });
-  return { labelPlan: { areaPx, labelX, labelW, items, narrowed }, cards };
+  const widest = entries.reduce((best, entry) => (entry.areaPx > best.areaPx ? entry : best), entries[0]);
+  return { labelPlan: { areaPx: widest.areaPx, labelX: widest.labelX, labelW: widest.labelW, items, narrowed }, cards };
 }

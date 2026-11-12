@@ -116,3 +116,50 @@ test("ninguna clase queda sin dibujar ni sin zona táctil, en cualquier mezcla",
     assert.ok(p.hitHeight >= p.height);
   }
 });
+
+test("una clase sola o consecutiva con una palabra larga («Valentina», «Alejandro») la escribe ENTERA en 375, 390 y 430 px, sin «…»", () => {
+  for (const width of [68, 71, 79]) {
+    for (const name of ["Valentina", "Alejandro", "Florencia"]) {
+      for (const minutes of [5, 10, 15, 30]) {
+        const item = lesson("10:00", minutes, `${name} Pons`);
+        const planned = plan([item], width).labelPlan!.items.get(item.id)!;
+        assert.equal(planned.label.text!.lines[0], name, `${name} ${minutes} min a ${width}px`);
+        assert.ok(planned.label.text!.fontPx >= 10, "nunca menos de 10 px");
+        assert.ok(!planned.label.text!.lines.slice(0, 1).some((line) => line.endsWith("…")));
+      }
+    }
+  }
+  // Cadena de cuatro clases cortas de nombres largos: ninguna primera palabra queda recortada a 71 px.
+  const chain = [lesson("10:00", 15, "Valentina Pons"), lesson("10:15", 15, "Camila Quince"), lesson("10:30", 15, "Sofía Ramírez"), lesson("10:45", 15, "Guadalupe Díaz")];
+  const { labelPlan } = plan(chain, 71);
+  for (const [index, first] of ["Valentina", "Camila", "Sofía", "Guadalupe"].entries()) assert.equal(labelPlan!.items.get(chain[index].id)!.label.text!.lines[0], first);
+});
+
+test("cada grupo tiene su propia geometría: un grupo de tres simultáneas no le quita ancho a otro grupo ni a una clase sola del mismo día", () => {
+  const three = [lesson("16:00", 30, "Irene Campos"), lesson("16:00", 30, "Julian Vera"), lesson("16:00", 30, "Karen Luna")];
+  const pair = [lesson("13:00", 60, "PET A", { title: "PET A", participantIds: ["a", "b", "c"], lessonType: "group" }), lesson("13:30", 15, "Hugo Mena")];
+  const solo = lesson("09:00", 15, "Camila Quince");
+  const day = plan([...three, ...pair, solo], 68);
+  const aloneInDay = plan(pair, 68);
+  const labelWidth = (result: ReturnType<typeof plan>, id: string) => result.labelPlan!.items.get(id)!.label.width;
+  assert.ok(labelWidth(day, pair[0].id) > labelWidth(day, three[0].id), "el grupo de dos tiene rótulo más ancho que el de tres");
+  assert.equal(labelWidth(day, pair[0].id), labelWidth(aloneInDay, pair[0].id), "su ancho no depende de otros grupos del día");
+  assert.deepEqual(day.labelPlan!.items.get(pair[0].id)!.label.text!.lines, ["PET", "A"], "«PET A» entero, sin cantidad de alumnos");
+  assert.deepEqual(day.labelPlan!.items.get(solo.id)!.label.text!.lines, ["Camila", "Quince"]);
+});
+
+test("en un grupo simultáneo el recurso se aplica parejo: si alguno sólo puede mostrar iniciales, los que no entran enteros también", () => {
+  const items = [lesson("16:00", 30, "Irene Campos"), lesson("16:00", 30, "Julian Vera"), lesson("16:00", 30, "Karen Luna")];
+  const texts = items.map((item) => plan(items, 68).labelPlan!.items.get(item.id)!.label.text!);
+  assert.ok(texts.every((text) => text.abbreviated && text.lines.length === 1 && text.lines[0].length === 2), "tres pares de iniciales, ninguno mezclado con un recorte");
+  assert.deepEqual(texts.map((text) => text.lines[0]), ["IC", "JV", "KL"]);
+});
+
+test("límite físico medido: ancho mínimo de columna para que la primera palabra entre entera junto a sus barras (documentado en docs/CALENDARIO_MOVIL_20261111.md)", () => {
+  // 2 carriles + número: «Camila» necesita ≈ 74 px y «Valentina» ≈ 87 px; la Semana del teléfono da 68–79 px. No se afirma lo contrario.
+  const camila = [lesson("11:00", 30, "Camila Quince"), lesson("11:00", 30, "Ana Pons")];
+  assert.ok(plan(camila, 79).labelPlan!.items.get(camila[0].id)!.label.text!.lines[0] === "Camila");
+  assert.ok(plan(camila, 68).labelPlan!.items.get(camila[0].id)!.label.fullNameFits === false);
+  const valentina = [lesson("11:00", 30, "Valentina Pons"), lesson("11:00", 30, "Ana Pons")];
+  for (const width of [68, 71, 79]) assert.equal(plan(valentina, width).labelPlan!.items.get(valentina[0].id)!.label.fullNameFits, false, `Valentina + otra simultánea no cabe a ${width}px`);
+});

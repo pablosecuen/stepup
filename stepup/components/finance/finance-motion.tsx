@@ -25,16 +25,17 @@ export function FinanceMotion({ children, className, signature = "" }: { childre
       animations.push(animation); groups.set(target,animations);
     });
     const unfinished = new Set<Element>();
+    if (typeof IntersectionObserver === "undefined") { groups.forEach(animations => animations.forEach(animation => animation.cancel())); return; }
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (!entry.isIntersecting || entry.intersectionRatio < .35 || seen.get(entry.target) === signature) return;
+        if (!entry.isIntersecting || seen.get(entry.target) === signature) return;
         observer.unobserve(entry.target);
         seen.set(entry.target,signature); unfinished.add(entry.target);
         const animations = groups.get(entry.target) ?? [];
         animations.forEach(animation => animation.play());
         Promise.allSettled(animations.map(animation => animation.finished)).then(() => unfinished.delete(entry.target));
       });
-    }, { threshold:.35, rootMargin:"-64px 0px -12% 0px" });
+    }, { threshold:0 }); // un píxel visible alcanza: un gráfico pegado al borde inferior no queda aplastado
     groups.forEach((_,target) => observer.observe(target));
     const stop = () => { observer.disconnect(); groups.forEach(animations => animations.forEach(animation => animation.cancel())); };
     reduce.addEventListener("change",stop);

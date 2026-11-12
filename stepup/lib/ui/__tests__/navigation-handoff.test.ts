@@ -44,9 +44,10 @@ test("el cambio de gráfico tiene un solo relevo, sin reiniciar la entrada de lo
   const marks=read("components/finance/finance-motion.tsx");
   assert.match(marks,/useLayoutEffect/);
   assert.match(marks,/mark\.closest\("svg"\) \?\? mark\.closest\("ul"\)/,"se observa el gráfico real, no toda la tarjeta");
-  assert.match(marks,/entry\.intersectionRatio < \.35/);
+  assert.doesNotMatch(marks,/intersectionRatio/,"un píxel visible alcanza: un gráfico pegado al borde inferior no queda aplastado");
   assert.match(marks,/seen\.get\(entry\.target\) === signature/);
-  assert.match(marks,/rootMargin:\s*"-64px 0px -12% 0px"/);
+  assert.doesNotMatch(marks,/rootMargin/);
+  assert.match(marks,/threshold:\s*0/);
   assert.match(marks,/animation\.pause\(\); animation\.currentTime = 0/,"las marcas esperan sin consumirse fuera de pantalla");
   assert.match(marks,/animations\.forEach\(animation => animation\.play\(\)\)/,"sólo el observador pone el gráfico en marcha");
 });

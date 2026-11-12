@@ -34,7 +34,8 @@ export function ShortBar({
 }) {
   const colors = resolveLessonColors(lesson);
   const { height, hitTop, hitHeight, blockOffset } = positioned;
-  const showNumber = planned.number !== null && planned.barWidth >= 10;
+  // Escritorio: barras de 13 px (número de 9 px). Teléfono: barras de 7 px, número de 8 px.
+  const showNumber = planned.number !== null && planned.barWidth >= 7;
   const tipId = `calendar-tip-${positioned.item.id}`;
   const show = (target: HTMLElement) => {
     const rect = target.getBoundingClientRect();
@@ -67,7 +68,7 @@ export function ShortBar({
         style={{ top: blockOffset, height, boxSizing: "border-box", backgroundColor: colors.bg, borderColor: colors.border }}
       >
         {showNumber && (
-          <span className="text-[9px] font-extrabold leading-none" style={{ color: colors.textPrimary ?? CARD_TEXT_COLORS.primary }}>
+          <span className="font-extrabold leading-none" style={{ fontSize: planned.barWidth >= 10 ? 9 : 8, color: colors.textPrimary ?? CARD_TEXT_COLORS.primary }}>
             {planned.number}
           </span>
         )}
@@ -103,11 +104,11 @@ export function ShortLabel({
       aria-hidden="true"
       onClick={onSelect}
       data-short-label={planned.id}
-      className="absolute flex min-w-0 cursor-pointer items-center gap-1 overflow-hidden rounded-[3px] border-l-[3px] pl-1 pr-0.5 text-left"
+      className={`absolute flex min-w-0 cursor-pointer items-center overflow-hidden rounded-[3px] text-left ${label.text ? "gap-[2px] border-l-2 pl-[3px] pr-px" : "gap-1 border-l-[3px] pl-1 pr-0.5"}`}
       style={{ left: label.x, top: label.y, width: label.width, height: label.height, backgroundColor: colors.bg, borderColor: colors.border, fontSize: LABEL_FONT_PX, lineHeight: `${label.height}px` }}
     >
       {planned.number !== null && (
-        <span className="inline-flex h-[11px] min-w-[11px] shrink-0 items-center justify-center rounded-[3px] text-[9px] font-extrabold leading-none" style={{ border: `1px solid ${colors.border}`, color: text }}>
+        <span className={`inline-flex shrink-0 items-center justify-center rounded-[3px] font-extrabold leading-none ${label.text ? "h-[10px] min-w-[10px] text-[8px]" : "h-[11px] min-w-[11px] text-[9px]"}`} style={{ border: `1px solid ${colors.border}`, color: text }}>
           {planned.number}
         </span>
       )}
