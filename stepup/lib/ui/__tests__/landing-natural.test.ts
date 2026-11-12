@@ -105,7 +105,7 @@ test("franja de anuncio: una sola, borde a borde, 34/30 px, amarillo y marrón, 
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<SiteHeader />"), "arriba del encabezado");
   assert.ok(PAGE.indexOf("<AnnouncementBar />") < PAGE.indexOf("<main"), "fuera del contenido principal");
   assert.match(BAR, /<strong>12 meses por menos de lo que cuestan 10<\/strong>/);
-  assert.match(BAR, /<span>Próximamente<\/span>/, "la campaña no se anuncia como un precio contratado");
+  assert.doesNotMatch(BAR, /próximamente/i, "los planes ya están disponibles");
   assert.match(BAR, /<span>al pagar el año completo<\/span>/);
   assert.doesNotMatch(LANDING, /15 % OFF/, "el anuncio coincide con el precio anual vigente");
   assert.doesNotMatch(BAR, /max-w|WRAP|rounded|px-4|mx-auto/, "sin ancho máximo, márgenes ni esquinas redondeadas");

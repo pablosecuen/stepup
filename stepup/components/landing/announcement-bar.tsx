@@ -15,7 +15,6 @@ const COPIES = 9; // cada grupo mide ≥ 2.000 px aun en móvil y ≈ 3.800 px e
 function Message({ ghost }: { ghost: boolean }) {
   return (
     <TextLink href="/planes" className="tf-announce-item" {...(ghost ? { tabIndex: -1, "aria-hidden": true } : {})}>
-      <span>Próximamente</span>
       <strong>12 meses por menos de lo que cuestan 10</strong>
       <span>al pagar el año completo</span>
       <b>Conocé el plan anual</b>

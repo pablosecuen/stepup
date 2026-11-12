@@ -1,5 +1,6 @@
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { AnnouncementBar } from "@/components/landing/announcement-bar";
+import { PlanSummary } from "@/components/landing/plan-summary";
 import { Closing, CalendarDetail, FinanceDetail, Hero, HowItWorks, ProductIndex, SceneAgenda, SceneCollections, SceneStudents, Security, StudentsDetail, TourSection } from "@/components/landing/sections";
 import { RevealController } from "@/components/landing/reveal-controller";
 import { SiteHeader } from "@/components/landing/site-header";
@@ -32,6 +33,7 @@ export default function HomePage() {
         <HowItWorks />
         <Security />
         <Closing />
+        <PlanSummary />
       </main>
 
       <footer className="tf-footer border-t-[1.5px] border-border px-5 py-8 text-center text-sm text-textMuted nav:px-10">
