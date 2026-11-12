@@ -72,7 +72,8 @@ export function CalendarView({
         items={items}
         weekHref={buildHref({ view: "week", week: weekStartKey })}
         dayHref={buildHref({ view: "day", day: dayKey })}
-        newClassHref="/calendario/nueva"
+        newClassHref={`/calendario/nueva?volver=${encodeURIComponent(buildHref({ view, week: weekStartKey, day: dayKey }))}`}
+        returnPath={buildHref({ view, week: weekStartKey, day: dayKey })}
         rescheduleItemId={rescheduleItemId}
         dayHrefs={Object.fromEntries(dayKeys.map((day) => [day, buildHref({ view: "day", day })]))}
       />

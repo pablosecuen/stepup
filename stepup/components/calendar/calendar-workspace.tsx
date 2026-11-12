@@ -6,6 +6,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { PrivateButtonLink, linkClass } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { visibleCalendarItems, type CalendarViewItem } from "@/lib/calendar/occurrences";
+import { saveGridScroll } from "@/lib/calendar/grid-scroll";
 import { DEFAULT_CALENDAR_DENSITY, readStoredCalendarDensity, writeStoredCalendarDensity, type CalendarDensityKey } from "@/lib/calendar/density";
 import { CalendarDensityPicker } from "./calendar-density-picker";
 import { CalendarViewSwitch } from "./calendar-view-switch";
@@ -19,6 +20,8 @@ interface CalendarWorkspaceProps {
   weekHref: string;
   dayHref: string;
   newClassHref: string;
+  /** La semana o el día que se está viendo: a esa vista vuelve «Nueva clase» (Cancelar o guardar) y ahí se restituye el desplazamiento de la grilla. */
+  returnPath: string;
   /** Clase cuyo flujo de reprogramar se abre directo al entrar (resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
   dayHrefs?: Record<string, string>;
@@ -30,7 +33,7 @@ interface CalendarWorkspaceProps {
  * Semana · Día al centro y «Nueva clase» a la derecha. En móvil se apilan (Semana · Día y «Nueva clase»; sin Densidad, que allá no
  * cambia nada). La densidad se guarda sólo en el `localStorage` de este navegador.
  */
-export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, rescheduleItemId, dayHrefs }: CalendarWorkspaceProps) {
+export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, returnPath, rescheduleItemId, dayHrefs }: CalendarWorkspaceProps) {
   // La densidad por defecto al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
   const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
   // Si el ancho efectivo no alcanza para la grilla, se usa la agenda por día (la de móvil) y Densidad no cambiaría nada: se oculta.
@@ -57,6 +60,9 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
     }
   }
 
+  // Salir hacia «Nueva clase» desde los botones de la fila: se guarda la posición de la grilla para recuperarla al volver (igual que al tocar un espacio libre).
+  const rememberGrid = () => saveGridScroll(returnPath, document.querySelector<HTMLElement>("[data-calendar-scroller]"));
+
   return (
     <div className="mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 nav:grid-cols-[1fr_auto_1fr] nav:gap-4 nav:px-0">
@@ -67,7 +73,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
           <CalendarViewSwitch view={view} weekHref={weekHref} dayHref={dayHref} />
         </div>
         <div className="nav:justify-self-end">
-          <PrivateButtonLink href={newClassHref} variant="accent" className="w-full nav:w-auto">
+          <PrivateButtonLink href={newClassHref} variant="accent" className="w-full nav:w-auto" onClick={rememberGrid}>
             <PlusIcon className="h-5 w-5" aria-hidden />
             Nueva clase
           </PrivateButtonLink>
@@ -78,7 +84,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
         <div className="mt-3 px-3 nav:px-0">
           <Notice tone="info">
             {view === "week" ? "No hay clases esta semana." : "No hay clases este día."}{" "}
-            <PrivateLink href={newClassHref} className={linkClass()}>
+            <PrivateLink href={newClassHref} className={linkClass()} onClick={rememberGrid}>
               Programar una clase
             </PrivateLink>
           </Notice>

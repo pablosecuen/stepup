@@ -157,7 +157,10 @@ test("fila de controles: Densidad · Semana/Día · Nueva clase en tres columnas
   assert.match(workspace, /nav:justify-self-center[\s\S]*<CalendarViewSwitch/);
   assert.match(workspace, /nav:justify-self-end[\s\S]*<PrivateButtonLink href=\{newClassHref\} variant="accent"/);
   assert.match(workspace, /Nueva clase/);
-  assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref="\/calendario\/nueva"/, "misma ruta de Nueva clase");
+  // 12/11/2026: «Nueva clase» de la fila lleva `volver` (la semana o el día que se ve) y guarda el desplazamiento de la grilla; antes Cancelar caía en el Calendario de hoy, arriba.
+  assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref=\{`\/calendario\/nueva\?volver=\$\{encodeURIComponent\(buildHref\(\{ view, week: weekStartKey, day: dayKey \}\)\)\}`\}/, "misma ruta de Nueva clase, con su vista de origen");
+  assert.match(workspace, /saveGridScroll\(returnPath, document\.querySelector<HTMLElement>\("\[data-calendar-scroller\]"\)\)/, "recuerda la posición de la grilla al salir");
+  assert.match(workspace, /className="w-full nav:w-auto" onClick=\{rememberGrid\}/);
   assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} dayHrefs=\{dayHrefs\} \/>/, "la grilla comparte datos y enlaces de navegación diaria");
   assert.match(workspace, /readStoredCalendarDensity\(storage\)/);
   assert.match(workspace, /writeStoredCalendarDensity\(window\.localStorage, next\)/);
