@@ -27,6 +27,17 @@ export async function prepareAccountDeletion(deps: CommandDeps, ownerId: string)
   } catch {
     return blocked("billing_unavailable"); // sin poder ver la suscripción no se puede garantizar que no se vuelva a cobrar
   }
+  // Rebill crea el suscriptor con el primer cobro: una cuenta que pagó hace instantes puede no tenerlo vinculado todavía. Antes de dar por «nada que cancelar» se concilia a pedido;
+  // si hacía falta y el proveedor no respondió, NO se elimina (podría quedar una suscripción cobrando sin dueña).
+  if (snapshot && !snapshot.providerSubscriberUid && deps.provider.bindsSubscriberOnPayment === true && deps.reconcileOwner) {
+    const outcome = await deps.reconcileOwner(ownerId).catch(() => "failed" as const);
+    if (outcome === "failed") return blocked("deletion_unconfirmed");
+    try {
+      snapshot = (await deps.store.loadSubscriptions([ownerId])).get(ownerId);
+    } catch {
+      return blocked("billing_unavailable");
+    }
+  }
   if (!snapshot?.providerSubscriberUid) return { ok: true };
 
   const first = await cancelSubscription(deps, ownerId);

@@ -28,7 +28,7 @@ const { resolveBillingAccess } = await importLib("billing/access.ts");
 const { localDateTimeToInstantIso } = await importLib("calendar/timezone.ts");
 
 const ar = (date, hour = 0, minute = 0) => localDateTimeToInstantIso({ date, hour, minute, timeZone: "America/Argentina/Buenos_Aires" });
-const MONTHLY = plansLib.getPlan("tf_monthly_ars_v1");
+const MONTHLY = plansLib.getPlan("tf_monthly_ars_v2");
 const FLAGS = { enabled: true, enforcement: false };
 const ENFORCING = { enabled: true, enforcement: true }; // sólo para PREGUNTAR al resolutor de acceso; ninguna ruta lo usa
 
@@ -91,7 +91,7 @@ try {
     executionUid: `exe_${acct.owner.slice(-4)}_${n}`,
     subscriberUid: acct.subscriberUid,
     subscriberReference: acct.ref,
-    planReference: "tf_monthly_ars_v1",
+    planReference: "tf_monthly_ars_v2",
     outcome: "approved",
     statusCode: "200",
     amountMinor: MONTHLY.amountMinor,
@@ -103,7 +103,7 @@ try {
   });
 
   // ============================================================================================== propietaria B: referencia que NO debe cambiar
-  const checkoutFor = async (owner, key, planCode = "tf_monthly_ars_v1") => {
+  const checkoutFor = async (owner, key, planCode = "tf_monthly_ars_v2") => {
     const snapshot = await store.ensureAccount(owner);
     const result = await startCheckout(cmd(), { ownerId: owner, planCode, idempotencyKey: key, returnUrl: "https://app.example.test/facturacion/resultado", customer: { email: `${owner.slice(-3)}@example.test`, name: "Persona De Prueba", identification: "27345678901" } });
     return { result, ref: snapshot.providerReference };
@@ -153,7 +153,7 @@ try {
     assert.ok(provider.calls.getOperation > lookups, "se consultó al proveedor de forma autenticada");
     const row = await sub(A);
     assert.equal(row.status, "active");
-    assert.equal(row.plan_code, "tf_monthly_ars_v1");
+    assert.equal(row.plan_code, "tf_monthly_ars_v2");
     periodEnd1 = iso(row.current_period_end);
     assert.equal(periodEnd1, ar("2026-11-14"));
     assert.equal(await count("select count(*)::int n from public.billing_periods where owner_id = $1", [A]), 1);

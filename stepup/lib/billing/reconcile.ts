@@ -1,5 +1,5 @@
 import type { ExecutionFact } from "./ledger.ts";
-import { validateAgainstCatalog, type PlanCode } from "./plans.ts";
+import { getPlan, validateAgainstCatalog, type PlanCode } from "./plans.ts";
 import type { ProviderOperation } from "./provider.ts";
 
 /**
@@ -36,6 +36,8 @@ export interface SubscriberRecord {
   readonly ownerId: string;
   readonly subscriberReference: string;
   readonly subscriberUid: string | null;
+  /** Pagos ya conciliados de esta cuenta que coinciden con los consultados (sólo cuando se resolvió por id de pago). */
+  readonly paymentIds?: readonly string[];
   /** Planes que ESTA cuenta puede cobrar hoy: el vigente, el programado y el del intento de pago abierto. */
   readonly acceptablePlans: readonly PlanCode[];
 }
@@ -52,6 +54,17 @@ export interface ReconcileContext {
   readonly records: ReadonlyMap<string, SubscriberRecord>;
   /** En Production sólo cuentan operaciones reales (moneda ARS, no de prueba). */
   readonly expectLive: boolean;
+  /**
+   * El proveedor crea el suscriptor con el primer cobro (Rebill): un uid distinto del guardado NO es una anomalía cuando la operación trae NUESTRA referencia (la cuenta volvió
+   * a suscribirse o es su primer cobro); el vínculo se actualiza al conciliar. Sin nuestra referencia explícita, un uid distinto sigue siendo `subscriber_mismatch`.
+   */
+  readonly allowRebind?: boolean;
+}
+
+function inferPlanByAmount(acceptable: readonly PlanCode[], amountMinor: number | null): PlanCode | null {
+  if (amountMinor === null) return null;
+  const matches = [...new Set(acceptable)].filter((code) => getPlan(code)?.amountMinor === amountMinor);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function reconcileOperation(operation: ProviderOperation, context: ReconcileContext): Reconciliation {
@@ -67,7 +80,8 @@ export function reconcileOperation(operation: ProviderOperation, context: Reconc
   if (!record) return anomaly("unknown_reference", null);
   const ownerId = record.ownerId;
 
-  if (record.subscriberUid && operation.subscriberUid && record.subscriberUid !== operation.subscriberUid) return anomaly("subscriber_mismatch", ownerId);
+  const rebinding = context.allowRebind === true && operation.subscriberReference !== null && operation.subscriberReference === record.subscriberReference;
+  if (record.subscriberUid && operation.subscriberUid && record.subscriberUid !== operation.subscriberUid && !rebinding) return anomaly("subscriber_mismatch", ownerId);
   const executionUid = operation.executionUid ?? context.hintedExecutionUid;
   if (context.hintedExecutionUid && operation.executionUid && context.hintedExecutionUid !== operation.executionUid) return anomaly("missing_execution", ownerId);
   if (!executionUid) return anomaly("missing_execution", ownerId);
@@ -76,7 +90,10 @@ export function reconcileOperation(operation: ProviderOperation, context: Reconc
   if (operation.outcome === "refunded" && operation.refundScope !== "full") return anomaly("refund_review", ownerId);
   if (operation.outcome === "other") return { kind: "ignore", reason: "unsupported_status" };
 
-  const validation = validateAgainstCatalog({ planCode: operation.planReference, amountMinor: operation.amountMinor, currency: operation.currency });
+  // Un cobro SIN suscripción todavía (el primer intento de pago con Rebill, aprobado antes de que exista la suscripción, o rechazado) no dice a qué plan corresponde: se infiere SÓLO
+  // cuando trae NUESTRA referencia y el importe coincide con exactamente uno de los planes que esa cuenta puede cobrar hoy. Luego la validación contra el catálogo es la de siempre.
+  const inferred = operation.planReference === null && rebinding ? inferPlanByAmount(record.acceptablePlans, operation.amountMinor) : null;
+  const validation = validateAgainstCatalog({ planCode: operation.planReference ?? inferred, amountMinor: operation.amountMinor, currency: operation.currency });
   if (!validation.ok) {
     const map = { unknown_plan: "unknown_plan", inactive_plan: "inactive_plan", currency_mismatch: "currency_mismatch", amount_mismatch: "amount_mismatch" } as const;
     return anomaly(map[validation.reason], ownerId);

@@ -26,6 +26,13 @@ export function normalizeIdentification(value: unknown): string | null {
   return /^[0-9]{7,8}$/.test(digits) || /^[0-9]{11}$/.test(digits) ? digits : null;
 }
 
+/** Proveedores que no piden nombre ni documento acá (Rebill): sólo el correo de la sesión, que viaja para prellenar el pago. */
+export function parseEmailOnlyCustomer(email: string | null | undefined): ParsedCustomer {
+  const cleanEmail = typeof email === "string" ? email.trim() : "";
+  if (!cleanEmail || cleanEmail.length > 254 || !cleanEmail.includes("@")) return { ok: false, field: "name", message: "No pudimos determinar el correo de tu cuenta. Volvé a iniciar sesión e intentá de nuevo." };
+  return { ok: true, customer: { email: cleanEmail } };
+}
+
 export function parseCheckoutCustomer(input: { readonly name: unknown; readonly identification: unknown }, email: string | null | undefined): ParsedCustomer {
   const name = typeof input.name === "string" ? input.name.trim().replace(/\s+/g, " ") : "";
   if (name.length < 3 || name.length > 80 || !NAME_PATTERN.test(name)) return { ok: false, field: "name", message: CUSTOMER_MESSAGES.name };

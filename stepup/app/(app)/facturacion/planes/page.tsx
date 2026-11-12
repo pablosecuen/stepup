@@ -1,17 +1,34 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { BackLink, PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { PlanPicker } from "@/components/billing/plan-picker";
 import { BillingRules } from "@/components/billing/billing-rules";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { loadBillingPageData } from "@/lib/billing/page-data";
+import { PLAN_INTENT_COOKIE } from "@/lib/plan-intent";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Planes · TeacherFlow" };
 
-export default async function PlanesPage({ searchParams }: { searchParams: Promise<{ escenario?: string | string[] }> }) {
-  const data = await loadBillingPageData(await searchParams);
+function firstOf(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function PlanesPage({ searchParams }: { searchParams: Promise<{ escenario?: string | string[]; plan?: string | string[] }> }) {
+  const params = await searchParams;
+  const data = await loadBillingPageData(params);
   if (!data) notFound();
+  // El plan elegido en la página pública (por la dirección o por la cookie de intención que sobrevive al registro y la confirmación del correo): sólo cuenta si es uno del catálogo vigente.
+  let requestedPlan = firstOf(params.plan) ?? null;
+  if (!requestedPlan) {
+    try {
+      requestedPlan = (await cookies()).get(PLAN_INTENT_COOKIE)?.value ?? null;
+    } catch {
+      requestedPlan = null;
+    }
+  }
+  const initialPlan = data.options.find((option) => option.code === requestedPlan)?.code ?? null;
   const { view } = data;
   const canSubscribe = view.actions.subscribe;
   const canChange = view.actions.changePlan;
@@ -30,6 +47,8 @@ export default async function PlanesPage({ searchParams }: { searchParams: Promi
             currentPlanCode={canChange ? (view.plan?.code ?? null) : null}
             grandfathered={view.state === "grandfathered"}
             demo={data.demo}
+            askIdentity={data.askIdentity}
+            initialPlan={initialPlan}
           />
         ) : (
           <Notice tone="info" title={view.state === "unavailable" ? "No pudimos consultar tu suscripción" : "No hace falta elegir un plan ahora"}>

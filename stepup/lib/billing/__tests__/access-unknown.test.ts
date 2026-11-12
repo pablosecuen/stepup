@@ -172,6 +172,14 @@ test("comprobante: un estado fuera del catálogo firmado correctamente igual se 
 
 // --- Requisitos de activación ------------------------------------------------------------------------------------------------
 
+test("requisitos de activación con Rebill: exigen clave, ambiente, secreto de avisos y una dirección de pago por plan vigente (sólo nombres, nunca valores)", () => {
+  const empty = checkBillingReadiness({}, { enabled: true, enforcement: false }, { realProvider: true, provider: "rebill" });
+  for (const name of ["REBILL_API_KEY", "REBILL_WEBHOOK_SECRET", "REBILL_ENVIRONMENT", "REBILL_CHECKOUT_URL_TF_MONTHLY_ARS_V2", "REBILL_CHECKOUT_URL_TF_QUARTERLY_ARS_V2", "REBILL_CHECKOUT_URL_TF_SEMIANNUAL_ARS_V2", "REBILL_CHECKOUT_URL_TF_ANNUAL_ARS_V2"]) assert.ok(empty.missing.some((item) => item.startsWith(name)), name);
+  assert.ok(!empty.missing.some((item) => item.startsWith("MOBBEX")), "con Rebill no se exigen credenciales de Mobbex");
+  const secret = "sk_test_valor-que-no-debe-aparecer-" + "x".repeat(30);
+  assert.ok(!JSON.stringify(checkBillingReadiness({ REBILL_API_KEY: secret, REBILL_ENVIRONMENT: "otro" }, { enabled: true, enforcement: false }, { realProvider: true, provider: "rebill" })).includes(secret));
+});
+
 test("requisitos de activación: lista sólo NOMBRES de variables faltantes, nunca valores", () => {
   const empty = checkBillingReadiness({}, { enabled: true, enforcement: true }, { realProvider: true });
   assert.equal(empty.ready, false);

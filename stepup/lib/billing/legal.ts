@@ -60,10 +60,11 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
   },
   {
     id: "privacidad",
-    title: "Tu DNI o CUIT/CUIL",
+    title: "Tus datos personales y de pago",
     paragraphs: [
-      "Te lo pedimos una sola vez, al contratar, porque el servicio de cobro lo exige para registrar la suscripción. Viaja directo de nuestro servidor al servicio de cobro.",
-      "TeacherFlow no lo guarda: no queda en la base de datos, en registros, en direcciones web, en mensajes de error ni en analítica, y se borra de la pantalla apenas continuás.",
+      "Los datos de tu tarjeta, tu nombre y tu documento (DNI o CUIT/CUIL), si el servicio de cobro los pide, los cargás una sola vez en el sitio seguro del servicio de cobro, al contratar. A TeacherFlow sólo le llega el correo de tu cuenta, que se usa para prellenar el pago.",
+      "TeacherFlow no guarda tu tarjeta, tu nombre ni tu documento: no quedan en la base de datos, en registros, en direcciones web, en mensajes de error ni en analítica.",
+      "El servicio de cobro puede enviarte por su cuenta los comprobantes y avisos de cada cobro al correo que uses al contratar.",
       "Al eliminar tu cuenta conservamos 10 años, por obligación de conservación de documentación fiscal, un registro mínimo y seudonimizado de cada operación (referencia, fecha, importe, moneda, estado y comprobante), sin tu documento ni datos de tarjeta.",
     ],
   },
@@ -71,7 +72,7 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
     id: "pago",
     title: "Cómo se procesa el pago",
     paragraphs: [
-      "El pago lo procesa un servicio de cobro externo (Mobbex), en su sitio seguro. TeacherFlow nunca ve ni guarda los datos de tu tarjeta.",
+      "El pago lo procesa un servicio de cobro externo (Rebill), en su sitio seguro. TeacherFlow nunca ve ni guarda los datos de tu tarjeta.",
       "Los avisos que el servicio de cobro nos envía se tratan como simples señales: antes de cambiar tu acceso, consultamos el estado real del pago de forma autenticada. Volver desde el sitio de pago, por sí solo, tampoco activa nada.",
     ],
   },

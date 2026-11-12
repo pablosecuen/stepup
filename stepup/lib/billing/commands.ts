@@ -75,6 +75,11 @@ export interface CommandDeps {
   readonly provider: ProviderAdapter;
   readonly flags: BillingFlags;
   readonly now: () => Date;
+  /**
+   * Sólo para proveedores que vinculan el suscriptor con el primer cobro (Rebill): concilia a pedido los cobros recientes de la cuenta para descubrir un suscriptor que todavía
+   * no está vinculado. La eliminación de cuenta lo usa para no dejar una suscripción cobrando sin dueña.
+   */
+  readonly reconcileOwner?: (ownerId: string) => Promise<"done" | "skipped" | "failed">;
 }
 
 export type CommandResult = { readonly ok: true; readonly changed: boolean } | { readonly ok: false; readonly failure: BillingFailure; readonly message: string };
@@ -137,7 +142,8 @@ export async function reactivateSubscription(deps: CommandDeps, ownerId: string)
   return run(deps, ownerId, decideReactivate, async (snapshot) => {
     const planCode = providerPlanOf(snapshot);
     if (!snapshot.providerSubscriberUid || !planCode) return null;
-    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode });
+    // `resumeAt`: el próximo cobro corresponde al fin del período ya pagado (Rebill lo exige al reanudar; Mobbex lo ignora).
+    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode, resumeAt: snapshot.currentPeriodEnd });
     return result.ok ? null : result.error.retryable ? "provider_unavailable" : "provider_rejected";
   });
 }

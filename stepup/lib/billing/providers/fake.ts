@@ -13,6 +13,7 @@ type FakeMethod = "createCheckout" | "getOperation" | "listOperations" | "getSub
 
 export class FakeProviderAdapter implements ProviderAdapter {
   readonly name = "fake" as const;
+  readonly requiresCustomerIdentity = true as const;
   readonly capabilities = { changePlan: true, paymentMethodUpdate: true } as const;
   readonly calls: Record<FakeMethod, number> = { createCheckout: 0, getOperation: 0, listOperations: 0, getSubscriber: 0, getPaymentMethodUpdateUrl: 0, cancelSubscriber: 0, reactivateSubscriber: 0, changePlan: 0 };
   readonly operations = new Map<string, ProviderOperation>();
@@ -23,7 +24,7 @@ export class FakeProviderAdapter implements ProviderAdapter {
   readonly planCalls: Array<{ method: "cancelSubscriber" | "reactivateSubscriber" | "getSubscriber" | "getPaymentMethodUpdateUrl"; subscriberUid: string; planCode: PlanCode }> = [];
   readonly planChanges: Array<{ subscriberUid: string; fromPlanCode: PlanCode; toPlanCode: PlanCode }> = [];
   /** Datos del cliente recibidos en `createCheckout`, SÓLO para que las pruebas comprueben que nunca se guardan ni se registran. */
-  readonly receivedCustomers: Array<{ email: string; name: string; identification: string }> = [];
+  readonly receivedCustomers: Array<{ email: string; name?: string; identification?: string }> = [];
   private failures: Array<{ method: FakeMethod; kind: ProviderErrorKind; remaining: number }> = [];
 
   /** Los próximos `times` llamados de `method` fallan con `kind` (caída, timeout, rechazo, respuesta inválida…). */

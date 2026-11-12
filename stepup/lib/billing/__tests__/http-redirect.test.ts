@@ -68,14 +68,15 @@ test("el resultado de una acción: éxito sin error; error con su mensaje; una f
   for (const weird of [null, undefined, 1, "ok", {}, { ok: false }, { ok: "true" }, { ok: 1 }]) assert.match(String(actionError(weird)), /No pudimos completar la acción/, String(weird));
 });
 
-test("el adaptador falso SÓLO existe fuera de Production; los escenarios de demostración sólo en el servidor de desarrollo local con el falso", () => {
-  assert.equal(resolveProviderChoice({}), "mobbex");
+test("el adaptador falso SÓLO existe fuera de Production; Rebill es el proveedor vigente y Mobbex sólo si se pide explícitamente; los escenarios de demostración sólo en el servidor de desarrollo local con el falso", () => {
+  assert.equal(resolveProviderChoice({}), "rebill");
+  assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "rebill" }), "rebill");
   assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "mobbex" }), "mobbex");
   assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "fake" }), "fake");
   assert.equal(resolveProviderChoice({ BILLING_PROVIDER: " FAKE " }), "fake");
   assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "fake", VERCEL_ENV: "preview" }), "fake");
-  assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "fake", VERCEL_ENV: "production" }), "mobbex", "en Production nunca el falso, aunque se pida");
-  assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "otro" }), "mobbex");
+  assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "fake", VERCEL_ENV: "production" }), "rebill", "en Production nunca el falso, aunque se pida");
+  assert.equal(resolveProviderChoice({ BILLING_PROVIDER: "otro" }), "rebill");
   assert.equal(demoScenariosAllowed({ NODE_ENV: "development", BILLING_PROVIDER: "fake" }), true);
   for (const env of [{ NODE_ENV: "production", BILLING_PROVIDER: "fake" }, { NODE_ENV: "development" }, { NODE_ENV: "development", BILLING_PROVIDER: "fake", VERCEL_ENV: "preview" }, { NODE_ENV: "development", BILLING_PROVIDER: "mobbex" }, {}]) assert.equal(demoScenariosAllowed(env), false, JSON.stringify(env));
 });

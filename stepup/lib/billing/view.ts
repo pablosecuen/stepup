@@ -20,6 +20,7 @@ export type BillingViewState =
   | "grandfathered"
   | "none"
   | "processing"
+  | "payment_rejected"
   | "active"
   | "renewing"
   | "grace"
@@ -159,13 +160,26 @@ export function buildBillingView(input: ViewInput): BillingView {
         actions: { ...NO_ACTIONS, subscribe: true },
       };
     case "pending":
+      // Proveedor que crea el suscriptor con el primer cobro (Rebill): sin cobro aprobado no hay suscriptor; un rechazo reciente se dice con todas las letras (con texto, nunca sólo color).
+      if (!hasSubscriber && recentRejection(input.history, now)) {
+        return {
+          ...base,
+          state: "payment_rejected",
+          badge: { tone: "warn", label: "Pago rechazado" },
+          headline: "No se aprobó tu pago",
+          body: "El servicio de cobro no aprobó el pago, así que no se hizo ningún cobro y tu suscripción no se activó. Podés volver a elegir un plan e intentar con otra tarjeta u otro medio de pago.",
+          facts: [],
+          notices: chargebackNotice ? [chargebackNotice] : [],
+          actions: { ...NO_ACTIONS, subscribe: true },
+        };
+      }
       if (hasSubscriber) {
         return {
           ...base,
           state: "processing",
           badge: { tone: "info", label: "Confirmando pago" },
           headline: "Estamos confirmando tu pago",
-          body: "Cuando el servicio de cobro nos confirme el pago, tu suscripción se activa sola. El primer cobro está programado para el día siguiente a la contratación y puede demorar unos minutos en reflejarse acá.",
+          body: "Cuando el servicio de cobro nos confirme el pago, tu suscripción se activa sola. Puede demorar unos minutos en reflejarse acá.",
           facts: [],
           notices: chargebackNotice ? [chargebackNotice] : [],
           actions: { ...NO_ACTIONS, subscribe: true, cancel: true },
@@ -268,6 +282,13 @@ export function buildBillingView(input: ViewInput): BillingView {
         actions: { ...NO_ACTIONS, subscribe: true },
       };
   }
+}
+
+/** ¿El último cobro registrado fue rechazado en las últimas 24 horas? (primer pago de una contratación que no se aprobó). */
+function recentRejection(history: BillingHistory | null, now: Date): boolean {
+  if (!history || history.charges.length === 0) return false;
+  const last = [...history.charges].sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))[0];
+  return last.outcome === "rejected" && now.getTime() - Date.parse(last.occurredAt) < 24 * 3_600_000;
 }
 
 const OUTCOME_TAGS = {

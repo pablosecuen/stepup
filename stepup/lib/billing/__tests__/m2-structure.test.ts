@@ -93,13 +93,15 @@ test("receptor de avisos: POST/GET/… delegan en una sola función; sin autenti
   assert.doesNotMatch(route, /signature|hmac|secret|x-mobbex|authorization/i, "ningún mecanismo de firma inventado");
   const whole = code("lib/billing/webhook-ingest.ts");
   const ingest = whole.slice(whole.indexOf("export async function ingestNotice"));
-  const order = ["deps.flags.enabled", 'request.method !== "POST"', "deps.limiter.check", "415", "MAX_BODY_BYTES", "request.readBody", "parseNotice"].map((needle) => ingest.indexOf(needle));
+  const order = ["deps.flags.enabled", 'request.method !== "POST"', "deps.limiter.check", "415", "MAX_BODY_BYTES", "request.readBody", "deps.adapter.verifyNotice", "parseNotice"].map((needle) => ingest.indexOf(needle));
   assert.ok(order.every((index) => index >= 0), String(order));
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "orden: interruptor → método → frecuencia → tipo → tamaño → lectura → análisis");
-  assert.doesNotMatch(ingest, /verifyWebhook|signature/i);
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "orden: interruptor → método → frecuencia → tipo → tamaño → lectura → firma (sólo si el proveedor la documenta) → análisis");
+  // La recepción no implementa ninguna firma propia: sólo delega en la verificación que documenta el proveedor (Rebill); Mobbex no tiene (ver su adaptador).
+  assert.doesNotMatch(ingest, /verifyWebhook|createHmac|timingSafeEqual/i);
+  assert.doesNotMatch(code("lib/billing/providers/mobbex.ts"), /verifyNotice|createHmac/);
 });
 
-test("trabajos programados: exigen el secreto con comparación en tiempo constante, aceptan GET (cron de la plataforma) y POST, y NO están declarados en la configuración de Vercel (los cron se declaran al activar)", () => {
+test("trabajos programados: exigen el secreto con comparación en tiempo constante, aceptan GET (cron de la plataforma) y POST, y se declaran en vercel.json SÓLO como los dos trabajos de facturación (inertes con el interruptor apagado)", () => {
   for (const file of ROUTES.slice(1)) {
     const source = code(file);
     assert.match(source, /bearerMatches\(request\.headers\.get\("authorization"\), process\.env\.CRON_SECRET\)/, file);
@@ -107,16 +109,18 @@ test("trabajos programados: exigen el secreto con comparación en tiempo constan
     assert.match(source, /export const POST = handle;/);
     assert.ok(source.indexOf("401") > source.indexOf("404"), `${file}: apagado → 404 antes que 401`);
   }
-  // `vercel.json` PUEDE existir (hoy fija las Vercel Functions en São Paulo), pero no habilita rutas, cron ni capacidades de facturación.
+  // `vercel.json` fija las Vercel Functions en São Paulo y declara los DOS cron de facturación (con `BILLING_ENABLED` apagado ambas rutas responden 404 aunque el secreto sea
+  // correcto; la plataforma envía `Authorization: Bearer <CRON_SECRET>` cuando esa variable existe). No habilita nada más: ni rutas, ni reescrituras, ni variables.
   assert.ok(existsSync(join(ROOT, "vercel.json")), "vercel.json existe legítimamente para fijar la región de las funciones");
   const vercelRaw = read("vercel.json");
   const vercel = JSON.parse(vercelRaw) as Record<string, unknown>;
   assert.deepEqual(vercel.regions, ["gru1"], "la región sigue siendo sólo gru1");
-  assert.deepEqual(Object.keys(vercel).sort(), ["$schema", "regions"], "sólo el esquema y la región: nada más se configura desde este archivo");
-  for (const key of ["crons", "rewrites", "redirects", "headers", "routes", "functions", "env", "build", "builds", "cleanUrls"]) {
-    assert.equal(vercel[key], undefined, `vercel.json no declara «${key}»: no habilita rutas, cron ni capacidades de facturación`);
+  assert.deepEqual(Object.keys(vercel).sort(), ["$schema", "crons", "regions"], "sólo el esquema, la región y los cron de facturación");
+  assert.deepEqual((vercel.crons as Array<{ path: string }>).map((cron) => cron.path).sort(), ["/api/billing/cron/process", "/api/billing/cron/reconcile"]);
+  for (const key of ["rewrites", "redirects", "headers", "routes", "functions", "env", "build", "builds", "cleanUrls"]) {
+    assert.equal(vercel[key], undefined, `vercel.json no declara «${key}»`);
   }
-  assert.doesNotMatch(vercelRaw, /billing|facturaci|webhook|mobbex|\/api\//i, "vercel.json no menciona rutas ni capacidades de facturación");
+  assert.doesNotMatch(vercelRaw, /webhook|mobbex|rebill|secret/i, "vercel.json no menciona avisos, proveedores ni secretos");
   // Ningún secreto ni credencial en la configuración versionada.
   // (El ejemplo de cron es documentación inactiva: nombra la variable CRON_SECRET en un comentario pero no contiene ningún valor.)
   for (const file of ["vercel.json", "next.config.mjs", "package.json", ".vercelignore"]) {
@@ -177,8 +181,8 @@ test("las variables nuevas son sólo del servidor y están documentadas APAGADAS
   const example = read(".env.example");
   assert.match(example, /^BILLING_ENABLED=false$/m);
   assert.match(example, /^BILLING_ENFORCEMENT_ENABLED=false$/m);
-  assert.match(example, /^BILLING_PROVIDER=mobbex$/m);
-  for (const name of ["CRON_SECRET", "BILLING_STATE_COOKIE_SECRET", "BILLING_GRANDFATHER_CUTOFF", "MOBBEX_VALIDATED_CAPABILITIES"]) {
+  assert.match(example, /^BILLING_PROVIDER=rebill$/m);
+  for (const name of ["CRON_SECRET", "BILLING_STATE_COOKIE_SECRET", "BILLING_GRANDFATHER_CUTOFF", "MOBBEX_VALIDATED_CAPABILITIES", "REBILL_API_KEY", "REBILL_ENVIRONMENT", "REBILL_WEBHOOK_SECRET", "REBILL_VALIDATED_CAPABILITIES", "REBILL_PLAN_ID_TF_ANNUAL_ARS_V2", "REBILL_CHECKOUT_URL_TF_ANNUAL_ARS_V2"]) {
     assert.match(example, new RegExp(`^# ${name}=$`, "m"), `${name} sólo comentada y vacía`);
     assert.doesNotMatch(example, new RegExp(`^${name}=`, "m"), name);
   }

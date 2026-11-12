@@ -4,9 +4,9 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getSiteOrigin } from "@/lib/auth/site-url";
-import { getBillingRuntime } from "@/lib/billing/runtime";
+import { getBillingRuntime, reconcileOwnerNow } from "@/lib/billing/runtime";
 import { cancelSubscription, changePlan, reactivateSubscription, startCheckout, updatePaymentMethod, type CommandDeps } from "@/lib/billing/commands";
-import { parseCheckoutCustomer, type CustomerField } from "@/lib/billing/customer";
+import { parseCheckoutCustomer, parseEmailOnlyCustomer, type CustomerField } from "@/lib/billing/customer";
 import { FixedWindowLimiter } from "@/lib/billing/rate-limit";
 import { billingErrorMessage } from "@/lib/billing/safe-errors";
 import { logBilling } from "@/lib/billing/log";
@@ -55,7 +55,8 @@ export interface StartCheckoutInput {
 export async function startCheckoutAction(input: StartCheckoutInput): Promise<BillingActionResult> {
   const ready = await context();
   if (isResult(ready)) return ready;
-  const parsed = parseCheckoutCustomer({ name: input?.name, identification: input?.identification }, ready.email);
+  // Rebill pide nombre y documento en su propio sitio de pago: acá sólo viaja el correo de la sesión.
+  const parsed = ready.deps.provider.requiresCustomerIdentity === false ? parseEmailOnlyCustomer(ready.email) : parseCheckoutCustomer({ name: input?.name, identification: input?.identification }, ready.email);
   if (!parsed.ok) return { ok: false, error: parsed.message, field: parsed.field };
   let returnUrl: string;
   try {
@@ -113,6 +114,7 @@ export async function requestConfirmationAction(): Promise<BillingActionResult> 
   } catch {
     logBilling("action", "prioritize_failed", { provider: ready.deps.provider.name }, "warn");
   }
+  await reconcileOwnerNow(getBillingRuntime(), ready.ownerId);
   revalidatePath("/facturacion");
   return { ok: true };
 }

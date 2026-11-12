@@ -23,7 +23,9 @@ test("el vórtice parte de dos mitades y no tiene singularidades en el centro ni
 test("el aviso de bienvenida sólo se emite después de credenciales válidas y no cambia el destino de acceso", () => {
   const action = read("lib/auth/actions.ts").split("export async function signInAction")[1].split("export interface SignUpFormState")[0];
   assert.ok(action.indexOf("if (!result.ok) return") < action.indexOf("set(LOGIN_MOTION_COOKIE"));
-  assert.ok(action.indexOf("set(LOGIN_MOTION_COOKIE") < action.indexOf("redirect(sanitizeNextPath(nextParam))"));
+  assert.ok(action.indexOf("set(LOGIN_MOTION_COOKIE") < action.indexOf("redirect(await signInDestination(nextParam))"));
+  // El destino sigue saneado: la ruta pedida pasa SIEMPRE por sanitizeNextPath; sólo sin ruta pedida y con la cookie de intención de plan válida se va a la contratación.
+  assert.match(action, /async function signInDestination\(nextParam: string\)[\s\S]*return sanitizeNextPath\(nextParam\);[\s\S]*planIntentDestination\(intent\)/);
   const layout = read("app/(app)/layout.tsx");
   assert.ok(layout.indexOf('access.kind !== "authorized"') < layout.indexOf("<LoginWelcome"), "la animación no sustituye los permisos del dispositivo");
   const welcome = read("components/auth/login-welcome.tsx");

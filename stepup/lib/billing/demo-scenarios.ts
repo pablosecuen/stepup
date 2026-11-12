@@ -67,6 +67,8 @@ export const DEMO_SCENARIOS: Readonly<Record<string, DemoScenario>> = {
   none: { snapshot: snapshot({ providerSubscriberUid: null }), history: { periods: [], charges: [] }, available: true },
   grandfathered: { snapshot: snapshot({ status: "grandfathered", grandfathered: true, providerSubscriberUid: null }), history: { periods: [], charges: [] }, available: true },
   processing: { snapshot: snapshot({ providerPlanCode: ANNUAL }), history: { periods: [], charges: [] }, available: true },
+  // Primer pago rechazado (proveedor que crea el suscriptor con el primer cobro aprobado): sin suscriptor y con un rechazo reciente.
+  rejected: { snapshot: snapshot({ providerSubscriberUid: null }), history: { periods: [], charges: [{ outcome: "rejected", planCode: ANNUAL, amountMinor: 24_900_000, dueAt: ar("2026-10-20", 11), occurredAt: ar("2026-10-20", 11) }] }, available: true },
   active: { snapshot: snapshot({ status: "active", ...PAID, nextCheckAt: ar("2026-11-01") }), history: HISTORY, available: true },
   "active-annual": {
     snapshot: snapshot({ status: "active", planCode: ANNUAL, providerPlanCode: ANNUAL, currentPeriodStart: ar("2026-03-01"), currentPeriodEnd: ar("2027-03-01"), graceEndsAt: ar("2027-03-07"), pendingPlanCode: MONTHLY }),

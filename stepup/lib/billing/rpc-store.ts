@@ -3,7 +3,7 @@ import { isPlanCode, type PlanCode } from "./plans.ts";
 import type { WebhookEventType } from "./provider.ts";
 import type { SubscriberRecord } from "./reconcile.ts";
 import { BILLING_STATUSES, type BillingStatus } from "./state-machine.ts";
-import type { BillingHistory, BillingStore, HistoryCharge, CheckoutAttempt, CommitBatch, CommitResult, DuePage, IngestRow, OpenCheckoutResult, PollResult, QueueStats, StoredEvent } from "./store.ts";
+import type { BillingHistory, BillingStore, HistoryCharge, CheckoutAttempt, CommitBatch, CommitResult, DuePage, IngestRow, OpenCheckoutResult, PollResult, QueueStats, StoredEvent, SubscriberBinding } from "./store.ts";
 import type { NoticeHint } from "./provider.ts";
 
 /**
@@ -15,6 +15,7 @@ export type RpcName =
   | "billing_ensure_account"
   | "billing_get_subscriptions"
   | "billing_resolve_subscribers"
+  | "billing_bind_subscribers"
   | "billing_owner_executions"
   | "billing_due_subscriptions"
   | "billing_ingest_webhook_events"
@@ -38,6 +39,7 @@ export const RPC_SHAPES: Readonly<Record<RpcName, "scalar" | "row" | "rows">> = 
   billing_ensure_account: "row",
   billing_get_subscriptions: "rows",
   billing_resolve_subscribers: "rows",
+  billing_bind_subscribers: "rows",
   billing_owner_executions: "rows",
   billing_due_subscriptions: "rows",
   billing_ingest_webhook_events: "scalar",
@@ -199,17 +201,30 @@ export class RpcBillingStore implements BillingStore {
     });
   }
 
-  async resolveSubscribers(keys: { references: readonly string[]; uids: readonly string[] }): Promise<SubscriberRecord[]> {
+  async resolveSubscribers(keys: { references: readonly string[]; uids: readonly string[]; paymentIds?: readonly string[] }): Promise<SubscriberRecord[]> {
     const out = new Map<string, SubscriberRecord>();
     const references = chunk(keys.references, 500);
     const uids = chunk(keys.uids, 500);
-    for (let index = 0; index < Math.max(references.length, uids.length); index += 1) {
-      for (const row of rows(await this.rpc("billing_resolve_subscribers", { p_refs: references[index] ?? [], p_uids: uids[index] ?? [] }))) {
+    const paymentIds = chunk(keys.paymentIds ?? [], 500);
+    for (let index = 0; index < Math.max(references.length, uids.length, paymentIds.length); index += 1) {
+      for (const row of rows(await this.rpc("billing_resolve_subscribers", { p_refs: references[index] ?? [], p_uids: uids[index] ?? [], p_payment_ids: paymentIds[index] ?? [] }))) {
         const plans = Array.isArray(row.acceptable_plans) ? row.acceptable_plans.filter(isPlanCode) : [];
-        out.set(str(row.owner_id), { ownerId: str(row.owner_id), subscriberReference: str(row.provider_reference), subscriberUid: typeof row.provider_subscriber_uid === "string" ? row.provider_subscriber_uid : null, acceptablePlans: plans });
+        const matched = Array.isArray(row.payment_ids) ? row.payment_ids.filter((value): value is string => typeof value === "string") : [];
+        const owner = str(row.owner_id);
+        const previous = out.get(owner);
+        out.set(owner, { ownerId: owner, subscriberReference: str(row.provider_reference), subscriberUid: typeof row.provider_subscriber_uid === "string" ? row.provider_subscriber_uid : null, acceptablePlans: plans, paymentIds: [...new Set([...(previous?.paymentIds ?? []), ...matched])] });
       }
     }
     return [...out.values()];
+  }
+
+  async bindSubscribers(bindings: readonly SubscriberBinding[]): Promise<Array<{ ownerId: string; previousUid: string | null; bound: boolean }>> {
+    const out: Array<{ ownerId: string; previousUid: string | null; bound: boolean }> = [];
+    for (const part of chunk(bindings, 200)) {
+      const result = rows(await this.rpc("billing_bind_subscribers", { p_items: part.map((item) => ({ owner_id: item.ownerId, subscriber_uid: item.subscriberUid, plan_code: item.planCode })) }));
+      for (const row of result) out.push({ ownerId: str(row.owner_id), previousUid: typeof row.previous_uid === "string" ? row.previous_uid : null, bound: row.bound === true });
+    }
+    return out;
   }
 
   async loadSubscriptions(ownerIds: readonly string[]): Promise<Map<string, BillingSnapshot>> {

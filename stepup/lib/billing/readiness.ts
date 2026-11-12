@@ -1,4 +1,5 @@
 import type { BillingFlags } from "./flags.ts";
+import { CURRENT_PLAN_CODES } from "./plans.ts";
 import { isLegalReviewed } from "./legal.ts";
 import { resolveSupportContact } from "./support.ts";
 
@@ -16,14 +17,23 @@ function present(env: Readonly<Record<string, string | undefined>>, name: string
   return typeof env[name] === "string" && env[name]!.trim().length > 0;
 }
 
-export function checkBillingReadiness(env: Readonly<Record<string, string | undefined>>, flags: BillingFlags, options: { readonly realProvider: boolean }): Readiness {
+/** Una dirección de pago de Rebill por cada plan vigente del catálogo (ver providers/rebill.ts). */
+const REBILL_CHECKOUT_VARIABLES = CURRENT_PLAN_CODES.map((code) => `REBILL_CHECKOUT_URL_${code.toUpperCase()}`);
+
+export function checkBillingReadiness(env: Readonly<Record<string, string | undefined>>, flags: BillingFlags, options: { readonly realProvider: boolean; readonly provider?: "rebill" | "mobbex" }): Readiness {
   const missing: string[] = [];
   if (!present(env, "SUPABASE_SERVICE_ROLE_KEY")) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (!present(env, "CRON_SECRET") || env.CRON_SECRET!.trim().length < 32) missing.push("CRON_SECRET (mínimo 32 caracteres)");
   if (!resolveSupportContact(env)) missing.push("BILLING_SUPPORT_EMAIL (correo de soporte válido; lo define TeacherFlow)");
   if (!isLegalReviewed(env)) missing.push("BILLING_LEGAL_REVIEWED=true (sólo después de que asesoría legal revise lib/billing/legal.ts)");
   if (options.realProvider) {
-    for (const name of ["MOBBEX_API_KEY", "MOBBEX_ACCESS_TOKEN"]) if (!present(env, name)) missing.push(name);
+    if (options.provider === "rebill") {
+      for (const name of ["REBILL_API_KEY", "REBILL_WEBHOOK_SECRET", ...REBILL_CHECKOUT_VARIABLES]) if (!present(env, name)) missing.push(name);
+      const environment = env.REBILL_ENVIRONMENT?.trim().toLowerCase();
+      if (environment !== "sandbox" && environment !== "production") missing.push("REBILL_ENVIRONMENT (sandbox o production)");
+    } else {
+      for (const name of ["MOBBEX_API_KEY", "MOBBEX_ACCESS_TOKEN"]) if (!present(env, name)) missing.push(name);
+    }
   }
   if (flags.enforcement) {
     const cutoff = env.BILLING_GRANDFATHER_CUTOFF ? Date.parse(env.BILLING_GRANDFATHER_CUTOFF) : Number.NaN;

@@ -13,7 +13,8 @@ interface PlanPresentation {
   referenceMonthlyPesos: number;
 }
 
-export function PlanComparison({ plans }: { plans: readonly PlanPresentation[] }) {
+/** `contractingOpen`: la contratación online está habilitada (facturación encendida). Sólo entonces se ofrece «Contratar»; si no, queda «Crear cuenta» y el aviso de preparación. */
+export function PlanComparison({ plans, contractingOpen = false }: { plans: readonly PlanPresentation[]; contractingOpen?: boolean }) {
   return <section aria-label="Comparar planes">
     <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <ListCascade>
@@ -30,7 +31,9 @@ export function PlanComparison({ plans }: { plans: readonly PlanPresentation[] }
           <div className="mt-4 border-t border-border pt-4 sm:min-h-[92px]">
             {plan.savingPesos > 0 ? <><p className={`font-semibold ${annual ? "text-[#4d356b]" : "text-textPrimary"}`}>Ahorrás {formatMoney(plan.savingPesos)} · {plan.savingPercent} %</p><p className="mt-2 text-sm text-textSecondary">{annual ? "12 meses por menos de lo que cuestan 10." : "Frente a pagar mes a mes."}</p></> : <p className="text-sm text-textSecondary">Elegí el período que mejor acompañe tu forma de trabajar.</p>}
           </div>
-          <ButtonLink href="/crear-cuenta" variant={annual ? "primary" : "secondary"} className="mt-6 self-start">Crear cuenta</ButtonLink>
+          {contractingOpen
+            ? <ButtonLink href={`/contratar?plan=${encodeURIComponent(plan.code)}`} prefetch={false} variant={annual ? "primary" : "secondary"} className="mt-6 self-start" aria-label={`Contratar el plan ${plan.name}`}>Contratar</ButtonLink>
+            : <ButtonLink href="/crear-cuenta" variant={annual ? "primary" : "secondary"} className="mt-6 self-start">Crear cuenta</ButtonLink>}
         </article>;
       })}
       </ListCascade>
@@ -42,7 +45,9 @@ export function PlanComparison({ plans }: { plans: readonly PlanPresentation[] }
         {["Gestión de alumnos", "Calendario y series", "Registro de clases y tareas", "Control de cobros", "Reportes y evidencias", "Resumen financiero"].map(feature => <li key={feature} className="flex items-center gap-2"><span aria-hidden="true" className="text-[#4d356b]">✓</span>{feature}</li>)}
       </ul>
     </section>
-    <p className="mt-5 text-sm text-textSecondary">La contratación online está en preparación. Crear una cuenta no inicia una suscripción ni realiza cobros.</p>
+    {contractingOpen
+      ? <p className="mt-5 text-sm leading-relaxed text-textSecondary">Para contratar necesitás una cuenta de TeacherFlow: si todavía no la tenés, la creás en el momento y volvés a tu plan. Antes de pagar vas a ver el total, el período y la renovación; el pago se hace en el sitio seguro del servicio de cobro. Cancelás cuando quieras y conservás el acceso hasta el final del período pagado.</p>
+      : <p className="mt-5 text-sm text-textSecondary">La contratación online está en preparación. Crear una cuenta no inicia una suscripción ni realiza cobros.</p>}
     <section aria-label="Preguntas sobre los planes" className="mt-8 grid gap-3 sm:grid-cols-2">
       <details className="self-start rounded-xl border border-border bg-surface p-4"><summary className="min-h-11 cursor-pointer content-center font-semibold">¿Cambia lo que incluye cada plan?</summary><p className="mt-3 text-sm leading-relaxed text-textSecondary">Todos incluyen las mismas funciones. Cambian la duración del período y el precio.</p></details>
       <details className="self-start rounded-xl border border-border bg-surface p-4"><summary className="min-h-11 cursor-pointer content-center font-semibold">¿Se cobra el precio mensual o el total?</summary><p className="mt-3 text-sm leading-relaxed text-textSecondary">El total indicado en la tarjeta, en un pago por el período elegido. El plan anual de {formatMoney(plans.find(p => p.monthsOfAccess === 12)!.amountPesos)} cubre 12 meses y no se divide en cuotas mensuales.</p></details>

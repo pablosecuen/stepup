@@ -19,9 +19,13 @@ import type { PlanOptionView } from "@/lib/billing/view";
 
 export type PickerMode = "subscribe" | "change";
 
-export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo }: { options: readonly PlanOptionView[]; mode: PickerMode; currentPlanCode: string | null; grandfathered: boolean; demo: boolean }) {
+function renewalPhrase(months: number): string {
+  return months === 1 ? "todos los meses" : months === 12 ? "todos los años" : `cada ${months} meses`;
+}
+
+export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo, askIdentity, initialPlan }: { options: readonly PlanOptionView[]; mode: PickerMode; currentPlanCode: string | null; grandfathered: boolean; demo: boolean; askIdentity: boolean; initialPlan?: string | null }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<string>(options.find((option) => option.code !== currentPlanCode)?.code ?? options[0]?.code ?? "");
+  const [selected, setSelected] = useState<string>(options.find((option) => option.code === initialPlan && option.code !== currentPlanCode)?.code ?? options.find((option) => option.code !== currentPlanCode)?.code ?? options[0]?.code ?? "");
   const [name, setName] = useState("");
   const [identification, setIdentification] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +65,8 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
     });
   }
 
-  const canSubmit = selected !== "" && selected !== currentPlanCode && (mode === "change" || (name.trim().length >= 3 && identification.trim().length >= 7));
+  const chosen = options.find((option) => option.code === selected) ?? null;
+  const canSubmit = selected !== "" && selected !== currentPlanCode && (mode === "change" || !askIdentity || (name.trim().length >= 3 && identification.trim().length >= 7));
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,7 +113,38 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
         </Notice>
       )}
 
-      {mode === "subscribe" ? (
+      {mode === "subscribe" && !askIdentity && chosen && (
+        <section aria-labelledby="resumen-cobro" className="rounded-lg border-[1.5px] border-border bg-surface p-4 nav:p-5">
+          <h2 id="resumen-cobro" className="font-display text-[22px] font-semibold tracking-tight text-textPrimary">
+            Antes de pagar
+          </h2>
+          <dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-3">
+            <div>
+              <dt className="text-[13px] font-medium text-textMuted">Plan</dt>
+              <dd className="mt-0.5 text-[15px] font-[650] text-textPrimary">{chosen.name}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-textMuted">Total a pagar ahora</dt>
+              <dd className="mt-0.5 text-[15px] font-[650] text-textPrimary">{chosen.price}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-textMuted">Renovación automática</dt>
+              <dd className="mt-0.5 text-[15px] font-[650] text-textPrimary">
+                {chosen.price} {renewalPhrase(chosen.months)}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 flex gap-2 text-[13.5px] leading-relaxed text-textMuted">
+            <LockClosedIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>La tarjeta, tu nombre y tu documento los cargás en el sitio seguro del servicio de cobro (Rebill). TeacherFlow no los ve ni los guarda. Volver de ese sitio no activa nada por sí solo: tu suscripción se activa cuando el pago queda confirmado.</span>
+          </p>
+          <PrivateLink href="/facturacion/condiciones" className={linkClass()}>
+            Leer las condiciones de la suscripción
+          </PrivateLink>
+        </section>
+      )}
+
+      {mode === "subscribe" && askIdentity ? (
         <section aria-labelledby="datos-pago" className="rounded-lg border-[1.5px] border-border bg-surface p-4 nav:p-5">
           <h2 id="datos-pago" className="font-display text-[22px] font-semibold tracking-tight text-textPrimary">
             Tus datos para el cobro
@@ -143,11 +179,11 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
             Leer las condiciones de la suscripción
           </PrivateLink>
         </section>
-      ) : (
+      ) : mode === "change" ? (
         <Notice tone="info" title="Cuándo se aplica">
           El cambio rige desde tu próxima renovación, sin prorrateo ni crédito: hasta entonces seguís con tu plan actual.
         </Notice>
-      )}
+      ) : null}
 
       {error && field === null && <FormErrorBox message={error} />}
 

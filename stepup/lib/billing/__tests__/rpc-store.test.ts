@@ -96,6 +96,6 @@ test("un resultado inesperado de la base (no es arreglo, estado desconocido) fal
 });
 
 test("todas las funciones SQL tienen forma declarada y sólo p / p_rows / p_items viajan como JSON", () => {
-  assert.equal(Object.keys(RPC_SHAPES).length, 20);
+  assert.equal(Object.keys(RPC_SHAPES).length, 21);
   assert.deepEqual([...RPC_JSON_ARGS].sort(), ["p", "p_items", "p_rows"]);
 });

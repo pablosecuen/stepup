@@ -203,7 +203,8 @@ test("cableado: el proxy protege lo que lista isPrivatePath y conserva ruta y co
   const safe = code("lib/auth/safe-redirect.ts");
   assert.match(safe, /const ALLOWED_NEXT_PREFIXES = PRIVATE_ROUTE_PREFIXES;/, "una sola lista");
   assert.equal((safe.match(/"\/resumen-financiero"/g) ?? []).length, 1);
-  assert.match(code("lib/auth/actions.ts"), /redirect\(sanitizeNextPath\(nextParam\)\)/);
+  assert.match(code("lib/auth/actions.ts"), /redirect\(await signInDestination\(nextParam\)\)/);
+  assert.match(code("lib/auth/actions.ts"), /if \(!intent\) return sanitizeNextPath\(nextParam\);/, "la ruta pedida siempre pasa por el saneamiento");
   assert.match(code("app/login/page.tsx"), /const next = sanitizeNextPath\(rawNext\);/);
   assert.match(code("app/(app)/layout.tsx"), /resolvePrivateAreaAccess\(\{ configured, hasSession, pathname: "\/inicio" \}\)/, "la segunda capa del layout se conserva");
   assert.match(code("lib/auth/recovery-session.ts"), /const next = sanitizeNextPath\(input\.next\);/);

@@ -6,6 +6,7 @@ import { LOGIN_MOTION_COOKIE, LOGIN_MOTION_MAX_AGE_SECONDS } from "@/lib/ui/logi
 import { createSupabaseAuthAdapter } from "@/lib/auth/supabase-auth-adapter";
 import { canSubmitSignIn, canSubmitSignUp, canSubmitForgotPassword, canSubmitNewPassword } from "@/lib/auth/validation";
 import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
+import { PLAN_INTENT_COOKIE, parsePlanIntent, planIntentDestination } from "@/lib/plan-intent";
 import { AUTH_ERROR_MESSAGES } from "@/lib/auth/error-messages";
 import { abandonRecovery, confirmAuthLink, savePassword, verifyEmailCode, type RecoveryDeps } from "@/lib/auth/recovery-session";
 import { clearRecoveryMarker, hasValidRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery-cookie";
@@ -50,7 +51,19 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
   await clearRecoveryMarker();
   // No credentials or authorization state: a one-shot presentation cue after confirmed success only.
   (await cookies()).set(LOGIN_MOTION_COOKIE, "1", { path: "/", maxAge: LOGIN_MOTION_MAX_AGE_SECONDS, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
-  redirect(sanitizeNextPath(nextParam));
+  redirect(await signInDestination(nextParam));
+}
+
+/**
+ * A dónde sigue una sesión recién iniciada: la ruta pedida (saneada) o, si venía de elegir un plan en la página pública y no pidió otra ruta, la contratación de ese plan (la
+ * cookie de intención se usa una sola vez). Se llama SÓLO después de un inicio de sesión exitoso.
+ */
+async function signInDestination(nextParam: string): Promise<string> {
+  const jar = await cookies();
+  const intent = nextParam ? null : parsePlanIntent(jar.get(PLAN_INTENT_COOKIE)?.value);
+  if (!intent) return sanitizeNextPath(nextParam);
+  jar.delete(PLAN_INTENT_COOKIE);
+  return planIntentDestination(intent);
 }
 
 export interface SignUpFormState extends AuthFormState {

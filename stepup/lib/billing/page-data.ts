@@ -1,5 +1,5 @@
 import "server-only";
-import { getBillingRuntime } from "./runtime";
+import { getBillingRuntime, reconcileOwnerNow } from "./runtime";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { demoScenariosAllowed } from "./provider-selection";
 import { DEMO_NOW, demoScenario } from "./demo-scenarios";
@@ -18,6 +18,8 @@ export interface BillingPageData {
   readonly view: BillingView;
   readonly options: readonly PlanOptionView[];
   readonly capabilities: ProviderCapabilities;
+  /** ¿Se piden nombre y documento antes de pasar al pago? Rebill los pide en su propio sitio seguro: ahí no. */
+  readonly askIdentity: boolean;
   /** Pantalla de demostración local: nada de lo que se haga acá toca datos reales. */
   readonly demo: boolean;
   /** ¿Puede elegir un plan y pasar al pago? (alta o re-alta). */
@@ -36,6 +38,8 @@ export async function requestPriorityPoll(): Promise<void> {
   try {
     const { ownerId } = await requireAuthenticatedDbContext();
     await runtime.store.prioritizePolls([ownerId]);
+    // Sin suscriptor todavía (Rebill: se conoce con el primer cobro aprobado): se consulta al proveedor por los pagos recientes. Acotado por frecuencia; no activa nada por sí solo.
+    await reconcileOwnerNow(runtime, ownerId);
   } catch {
     // sin detalles: el sondeo periódico recupera igual
   }
@@ -46,22 +50,23 @@ export async function loadBillingPageData(searchParams?: { escenario?: string | 
   if (!runtime.flags.enabled) return null;
   const options = buildPlanOptions();
   const capabilities = runtime.provider.capabilities;
+  const askIdentity = runtime.provider.requiresCustomerIdentity !== false;
 
   const requested = Array.isArray(searchParams?.escenario) ? searchParams?.escenario[0] : searchParams?.escenario;
   const scenario = demoScenariosAllowed(process.env) ? demoScenario(requested) : null;
   if (scenario) {
     const view = buildBillingView({ snapshot: scenario.snapshot, history: scenario.history, now: DEMO_NOW, capabilities, available: scenario.available });
-    return { view, options, capabilities, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
+    return { view, options, capabilities, askIdentity, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
   }
 
-  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, demo: false, canCheckout: false, support: resolveSupportContact(process.env) });
+  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, askIdentity, demo: false, canCheckout: false, support: resolveSupportContact(process.env) });
   if (!runtime.store) return unavailable();
   try {
     const { ownerId } = await requireAuthenticatedDbContext();
     const snapshot = await runtime.store.ensureAccount(ownerId);
     const history = await runtime.store.getHistory(ownerId, 24);
     const view = buildBillingView({ snapshot, history, now: runtime.now(), capabilities, available: true });
-    return { view, options, capabilities, demo: false, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
+    return { view, options, capabilities, askIdentity, demo: false, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
   } catch {
     return unavailable();
   }

@@ -38,11 +38,16 @@ const moduleOf = (specifier: string): string => specifier.replace(/^.*lib\/billi
 
 const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modules: ReadonlySet<string> }> = [
   // Página pública de precios: sólo proyección del catálogo, sin runtime ni acciones de cobro.
-  { match: /^app\/\(public-info\)\/planes\/page\.tsx$/, modules: new Set(["public-pricing"]) },
+  { match: /^app\/\(public-info\)\/planes\/page\.tsx$/, modules: new Set(["public-pricing", "flags"]) },
+  // «Contratar» (pública): sólo lee el interruptor y recuerda el código del plan; no crea ningún pago.
+  { match: /^app\/contratar\/route\.ts$/, modules: new Set(["flags"]) },
+  { match: /^components\/landing\/plan-summary\.tsx$/, modules: new Set(["public-pricing"]) },
   { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["flags"]) },
   { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },
   { match: /^app\/\(app\)\/facturacion\/condiciones\/page\.tsx$/, modules: new Set(["page-data", "legal"]) },
+  // Recepción de Rebill: además concilia el lote en segundo plano apenas responde (`after`), con la misma función que usa el trabajo programado.
+  { match: /^app\/api\/billing\/webhooks\/rebill\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "processor", "log"]) },
   { match: /^app\/api\/billing\/.+\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "jobs", "log"]) },
   { match: /^components\/billing\/[a-z-]+\.tsx$/, modules: new Set(["view", "redirect", "@/lib/actions/billing"]) },
 ];

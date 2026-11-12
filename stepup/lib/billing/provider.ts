@@ -101,12 +101,15 @@ export interface ProviderSubscriberState {
   readonly executionsReadable: boolean;
 }
 
-/** Datos de la persona que el proveedor exige para crear el suscriptor. Sólo viajan al proveedor: NUNCA se guardan ni se registran. */
+/**
+ * Datos de la persona que el proveedor exige para crear el suscriptor. Sólo viajan al proveedor: NUNCA se guardan ni se registran. Mobbex exige nombre y documento;
+ * Rebill los pide en su propio sitio de pago (a TeacherFlow sólo le llega el correo de la sesión, para precargarlo).
+ */
 export interface ProviderCustomer {
   readonly email: string;
-  readonly name: string;
-  /** Documento (DNI/CUIT): lo exige la API del proveedor. Nunca se persiste, no entra en registros ni en mensajes de error. */
-  readonly identification: string;
+  readonly name?: string;
+  /** Documento (DNI/CUIT): lo exige la API de Mobbex. Nunca se persiste, no entra en registros ni en mensajes de error. */
+  readonly identification?: string;
 }
 
 export interface CheckoutRequest {
@@ -142,9 +145,22 @@ export interface ProviderCapabilities {
   readonly paymentMethodUpdate: boolean;
 }
 
+/** Proveedores de cobro conocidos. `mobbex` queda sólo para identificar operaciones históricas y como adaptador explícito; `rebill` es el vigente; `fake` sólo existe fuera de Production. */
+export type ProviderName = "fake" | "mobbex" | "rebill";
+
 export interface ProviderAdapter {
-  readonly name: "fake" | "mobbex";
+  readonly name: ProviderName;
   readonly capabilities: ProviderCapabilities;
+  /**
+   * `true` si el suscriptor NO existe todavía al abrir el checkout y se conoce recién con el primer cobro aprobado (Rebill): ese cobro, identificado por NUESTRA referencia
+   * opaca, vincula el uid del proveedor a la cuenta. Con `false` (Mobbex) el uid ya se guardó al abrir el checkout y un uid distinto es una anomalía.
+   */
+  readonly bindsSubscriberOnPayment?: boolean;
+  /**
+   * `false` si el proveedor NO necesita nombre ni documento de la persona para abrir el pago (Rebill: los pide en su propio sitio seguro). Por defecto se piden (Mobbex y el
+   * adaptador falso) y viajan sólo de servidor a proveedor, sin guardarse.
+   */
+  readonly requiresCustomerIdentity?: boolean;
   createCheckout(request: CheckoutRequest): Promise<ProviderResult<CheckoutResponse>>;
   /** Consulta AUTENTICADA de una operación: es la fuente de verdad con la que se concilia cualquier aviso. */
   getOperation(providerPaymentId: string): Promise<ProviderResult<ProviderOperation>>;
@@ -155,10 +171,19 @@ export interface ProviderAdapter {
   /** Dónde la persona actualiza su medio de pago (siempre un destino HTTPS del proveedor). */
   getPaymentMethodUpdateUrl(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<{ readonly redirectUrl: string }>>;
   cancelSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<{ readonly canceled: true }>>;
-  /** Reanuda el cobro de un suscriptor suspendido (reactivar una cancelación antes de que termine el período pagado). */
-  reactivateSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<{ readonly reactivated: true }>>;
+  /**
+   * Reanuda el cobro de un suscriptor suspendido (reactivar una cancelación antes de que termine el período pagado). `resumeAt`: fecha civil (AAAA-MM-DD)
+   * del próximo cobro que corresponde (el fin del período pagado); un proveedor que la exige (Rebill) la usa y uno que no (Mobbex) la ignora.
+   */
+  reactivateSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode; readonly resumeAt?: string | null }): Promise<ProviderResult<{ readonly reactivated: true }>>;
   /** Mueve al suscriptor a la suscripción de otro plan (el cambio se programa para el próximo período). */
   changePlan(input: { readonly subscriberUid: string; readonly fromPlanCode: PlanCode; readonly toPlanCode: PlanCode }): Promise<ProviderResult<{ readonly changed: true }>>;
-  /** Reduce un aviso a su pista mínima. NO lo autentica ni decide nada con su contenido. */
+  /** Reduce un aviso a su pista mínima. NO decide nada con su contenido. */
   parseNotice(input: { readonly rawBody: string; readonly contentType: string | undefined; readonly now: Date }): NoticeParse;
+  /**
+   * Autenticidad del aviso, si el proveedor documenta una firma (Rebill: HMAC-SHA256 del cuerpo crudo). Se comprueba ANTES de guardar nada: un aviso sin
+   * firma válida se rechaza. Es una barrera adicional, no una confirmación: aun firmado, el aviso sigue siendo una señal y el estado sale de la consulta
+   * autenticada. Si el adaptador no la define, no hay nada que verificar (Mobbex no documenta ninguna).
+   */
+  verifyNotice?(input: { readonly rawBody: string; readonly signature: string | undefined }): boolean;
 }

@@ -103,7 +103,7 @@ export function buildCreateSubscriptionRequest(plan: BillingPlan, options: { ret
 }
 
 /** Alta del suscriptor: `POST /p/subscriptions/{uid}/subscriber`. `startDate` debe ser al menos 1 día posterior a hoy. */
-export function buildCreateSubscriberRequest(input: { subscriptionUid: string; reference: string; customer: CheckoutRequest["customer"]; startDateKey: string; test: boolean; /** Vencimiento del enlace de carga del medio de pago (ms desde 1970). */ expiresAtMs?: number }): MobbexRequest {
+export function buildCreateSubscriberRequest(input: { subscriptionUid: string; reference: string; customer: { email: string; name: string; identification: string }; startDateKey: string; test: boolean; /** Vencimiento del enlace de carga del medio de pago (ms desde 1970). */ expiresAtMs?: number }): MobbexRequest {
   const [year, month, day] = input.startDateKey.split("-").map(Number);
   return {
     method: "POST",
@@ -204,6 +204,7 @@ export function parseStatusQuery(json: unknown, fallbackOccurredAt: string): Pro
 
 export class MobbexAdapter implements ProviderAdapter {
   readonly name = "mobbex" as const;
+  readonly requiresCustomerIdentity = true as const;
 
   private readonly config: MobbexConfig | null;
   readonly capabilities: ProviderCapabilities;
@@ -253,8 +254,9 @@ export class MobbexAdapter implements ProviderAdapter {
     const plan = getPlan(request.plan.code);
     const subscriptionUid = plan ? config.subscriptionUids[plan.code] : undefined;
     if (!plan || !plan.active || !subscriptionUid) return providerFail("not_configured");
+    if (!request.customer.name || !request.customer.identification) return providerFail("rejected"); // Mobbex exige nombre y documento
     const startDateKey = addDaysToDateKey(civilDayOf(config.now().toISOString()), 1);
-    const result = await this.send(buildCreateSubscriberRequest({ subscriptionUid, reference: request.subscriberReference, customer: request.customer, startDateKey, test: config.sandbox, expiresAtMs: config.now().getTime() + 24 * 3_600_000 }));
+    const result = await this.send(buildCreateSubscriberRequest({ subscriptionUid, reference: request.subscriberReference, customer: { email: request.customer.email, name: request.customer.name, identification: request.customer.identification }, startDateKey, test: config.sandbox, expiresAtMs: config.now().getTime() + 24 * 3_600_000 }));
     if (!result.ok) return result;
     const parsed = parseSubscriberCreated(result.data);
     if (!parsed) return providerFail("invalid_response");

@@ -1,6 +1,6 @@
 /**
  * Redirecciones y resultados de acciones del lado del cliente — PURO. Una redirección hacia el sitio de pago sólo se sigue si el
- * destino es HTTPS de `mobbex.com` (o una ruta interna del propio sitio): cualquier otro valor —un redirect manipulado, un dominio
+ * destino es HTTPS de `mobbex.com` o `pay.rebill.com` (o una ruta interna del propio sitio): cualquier otro valor —un redirect manipulado, un dominio
  * parecido, un esquema `javascript:`— se descarta y la persona se queda donde está.
  */
 export function safeProviderRedirect(value: unknown, siteOrigin: string): string | null {
@@ -19,7 +19,7 @@ export function safeProviderRedirect(value: unknown, siteOrigin: string): string
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || url.port) return null;
-    if (url.hostname === "mobbex.com" || url.hostname.endsWith(".mobbex.com")) return url.toString();
+    if (url.hostname === "mobbex.com" || url.hostname.endsWith(".mobbex.com") || url.hostname === "pay.rebill.com") return url.toString();
     return null;
   } catch {
     return null;

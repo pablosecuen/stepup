@@ -1,10 +1,10 @@
 import { buildCoverage, finalOutcomes, nextCheckAt, reduceSnapshot, type BillingSnapshot, type ExecutionFact } from "./ledger.ts";
 import { logBilling } from "./log.ts";
-import { getPlan, type PlanCode } from "./plans.ts";
+import { CURRENT_PLAN_CODES, getPlan, isPlanCode, type PlanCode } from "./plans.ts";
 import { pollDelayMs, withJitter } from "./poll-policy.ts";
 import type { NoticeHint, ProviderAdapter, ProviderOperation, ProviderResult, ProviderSubscriberState } from "./provider.ts";
 import { reconcileOperation, type AnomalyKind, type Reconciliation, type SubscriberRecord } from "./reconcile.ts";
-import type { BillingStore, ChangeRow, CommitBatch, EventOutcome, ExecutionRow, PeriodRow, PollResult, ReconciliationRow, StoredEvent, SubscriptionWrite, VoidedPeriod } from "./store.ts";
+import type { BillingStore, ChangeRow, CommitBatch, EventOutcome, ExecutionRow, PeriodRow, PollResult, ReconciliationRow, StoredEvent, SubscriberBinding, SubscriptionWrite, VoidedPeriod } from "./store.ts";
 
 /**
  * Procesamiento diferido de la facturación. Todo el trabajo pesado ocurre FUERA del pedido del proveedor: el aviso sólo se reduce
@@ -83,10 +83,68 @@ interface Accumulator {
   readonly changes: ChangeRow[];
   /** Correcciones al estado guardado que salieron de una consulta autenticada al proveedor (p. ej. cancelación hecha allá). */
   readonly patches: Map<string, Partial<BillingSnapshot>>;
+  /** Suscriptores del proveedor que el primer cobro aprobado reveló (Rebill): se vinculan a la cuenta DESPUÉS de escribir los cobros. */
+  readonly bindings: Map<string, SubscriberBinding>;
+  /** Suscriptores de más que el MISMO lote reveló para una misma cuenta (dos pagos, dos pestañas): se pausan en el proveedor para que no sigan cobrando. */
+  readonly duplicates: SubscriberBinding[];
 }
 
 function newAccumulator(): Accumulator {
-  return { facts: new Map(), reconciliations: [], dedupe: new Set(), changes: [], patches: new Map() };
+  return { facts: new Map(), reconciliations: [], dedupe: new Set(), changes: [], patches: new Map(), bindings: new Map(), duplicates: [] };
+}
+
+/**
+ * Proveedor que crea el suscriptor con el primer cobro (Rebill): un cobro APROBADO conciliado por nuestra referencia vincula el uid del proveedor a la cuenta y fija el
+ * plan de esa suscripción allá (con el que se la consulta, pausa o reanuda). Un pago rechazado, pendiente o devuelto nunca vincula nada.
+ */
+function collectBinding(acc: Accumulator, provider: ProviderAdapter, operation: ProviderOperation, reconciled: Reconciliation, record: SubscriberRecord | undefined): void {
+  if (provider.bindsSubscriberOnPayment !== true || reconciled.kind !== "fact" || operation.outcome !== "approved" || !operation.subscriberUid || !record) return;
+  if (record.subscriberUid === operation.subscriberUid) return;
+  const existing = acc.bindings.get(reconciled.ownerId);
+  if (existing && existing.subscriberUid !== operation.subscriberUid) acc.duplicates.push(existing); // gana el último; el otro deja de cobrar
+  acc.bindings.set(reconciled.ownerId, { ownerId: reconciled.ownerId, subscriberUid: operation.subscriberUid, planCode: reconciled.fact.planCode });
+  acc.patches.set(reconciled.ownerId, { ...acc.patches.get(reconciled.ownerId), providerPlanCode: reconciled.fact.planCode });
+}
+
+/**
+ * Un aviso con un suscriptor del proveedor que todavía no está vinculado a ninguna cuenta (Rebill crea la suscripción después del primer cobro y puede avisar de ella, o de su
+ * primera renovación, antes de que el cobro inicial se haya conciliado): se consulta AUTENTICADAMENTE esa suscripción y, si sus pagos traen NUESTRA referencia opaca (un solo
+ * dueño), se vincula a esa cuenta. Sin esa referencia, el aviso sigue siendo ajeno. Devuelve la cuenta con el uid que tendrá una vez aplicado el vínculo.
+ */
+async function adoptSubscriber(deps: Pick<ProcessorDeps, "store" | "provider">, acc: Accumulator, subscriberUid: string): Promise<SubscriberRecord | null> {
+  const state = await deps.provider.getSubscriber({ subscriberUid, planCode: CURRENT_PLAN_CODES[0] });
+  if (!state.ok) return null;
+  const references = unique(state.data.operations.map((operation) => operation.subscriberReference).filter((value): value is string => !!value));
+  if (references.length !== 1) return null;
+  const [record] = await deps.store.resolveSubscribers({ references, uids: [] });
+  if (!record) return null;
+  const planReference = state.data.operations.map((operation) => operation.planReference).find((value): value is string => !!value && isPlanCode(value));
+  if (planReference && isPlanCode(planReference)) acc.bindings.set(record.ownerId, { ownerId: record.ownerId, subscriberUid, planCode: planReference });
+  return { ...record, subscriberUid };
+}
+
+/**
+ * Aplica los vínculos (después del commit: la escritura de cobros usa control optimista de versión y el vínculo también la incrementa). Si la cuenta ya tenía OTRO
+ * suscriptor (volvió a contratar: dos pestañas, dos pagos), el anterior se pausa en el proveedor para que no siga cobrando y queda una revisión abierta (probablemente haya
+ * que devolver uno de los dos pagos).
+ */
+async function applyBindings(deps: Pick<ProcessorDeps, "store" | "provider">, acc: Accumulator): Promise<number> {
+  if (acc.bindings.size === 0) return 0;
+  const results = await deps.store.bindSubscribers([...acc.bindings.values()]);
+  const review: ReconciliationRow[] = [];
+  for (const duplicate of acc.duplicates) {
+    await deps.provider.cancelSubscriber({ subscriberUid: duplicate.subscriberUid, planCode: duplicate.planCode }).catch(() => undefined);
+    review.push({ kind: "subscriber_mismatch", ownerId: duplicate.ownerId, dedupeKey: `duplicate:${duplicate.ownerId}:${duplicate.subscriberUid}`, detail: { provider: deps.provider.name } });
+  }
+  for (const result of results) {
+    if (!result.bound || !result.previousUid) continue;
+    const binding = acc.bindings.get(result.ownerId);
+    if (!binding) continue;
+    await deps.provider.cancelSubscriber({ subscriberUid: result.previousUid, planCode: binding.planCode }).catch(() => undefined);
+    review.push({ kind: "subscriber_mismatch", ownerId: result.ownerId, dedupeKey: `rebound:${result.ownerId}:${binding.subscriberUid}`, detail: { provider: deps.provider.name } });
+  }
+  if (review.length > 0) await deps.store.commitBatch({ executions: [], periods: [], subscriptions: [], reconciliations: review, events: [] });
+  return results.filter((result) => result.bound).length;
 }
 
 function addAnomaly(acc: Accumulator, kind: AnomalyKind, ownerId: string | null, dedupeKey: string, detail: ReconciliationRow["detail"]): void {
@@ -207,14 +265,18 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
   //    se descarta acá, SIN consultar al proveedor (un atacante no puede forzar consultas con identificadores inventados).
   const references = unique(events.map((event) => event.hint.subscriberReference).filter((value): value is string => !!value));
   const uids = unique(events.map((event) => event.hint.subscriberUid).filter((value): value is string => !!value));
-  const records = references.length > 0 || uids.length > 0 ? await deps.store.resolveSubscribers({ references, uids }) : [];
+  // Un aviso que sólo trae el id del pago (p. ej. una devolución) se resuelve por los cobros que ya se concilaron.
+  const paymentIds = unique(events.filter((event) => event.eventType === "subscription:execution").map((event) => event.hint.providerPaymentId).filter((value): value is string => !!value));
+  const records = references.length > 0 || uids.length > 0 || paymentIds.length > 0 ? await deps.store.resolveSubscribers({ references, uids, paymentIds }) : [];
   const byRef = new Map(records.map((record) => [record.subscriberReference, record] as const));
   const byUid = new Map(records.filter((record) => record.subscriberUid).map((record) => [record.subscriberUid as string, record] as const));
+  const byPayment = new Map(records.flatMap((record) => (record.paymentIds ?? []).map((paymentId) => [paymentId, record] as const)));
   const ownerOf = (hint: NoticeHint): { record: SubscriberRecord | null; conflict: boolean } => {
     const byReference = hint.subscriberReference ? byRef.get(hint.subscriberReference) : undefined;
     const byUidMatch = hint.subscriberUid ? byUid.get(hint.subscriberUid) : undefined;
+    const byPaymentMatch = hint.providerPaymentId ? byPayment.get(hint.providerPaymentId) : undefined;
     if (byReference && byUidMatch && byReference.ownerId !== byUidMatch.ownerId) return { record: null, conflict: true };
-    return { record: byReference ?? byUidMatch ?? null, conflict: false };
+    return { record: byReference ?? byUidMatch ?? byPaymentMatch ?? null, conflict: false };
   };
 
   const acc = newAccumulator();
@@ -222,8 +284,16 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
   const toPrioritize = new Set<string>();
   const lookups: Array<{ event: StoredEvent; record: SubscriberRecord; paymentId: string }> = [];
 
+  const adopted = new Map<string, SubscriberRecord | null>();
   for (const event of events) {
-    const { record, conflict } = ownerOf(event.hint);
+    const owned = ownerOf(event.hint);
+    const conflict = owned.conflict;
+    let record = owned.record;
+    if (!record && !conflict && event.hint.subscriberUid && deps.provider.bindsSubscriberOnPayment === true) {
+      const uid = event.hint.subscriberUid;
+      if (!adopted.has(uid)) adopted.set(uid, await adoptSubscriber(deps, acc, uid));
+      record = adopted.get(uid) ?? null;
+    }
     if (conflict) {
       addAnomaly(acc, "owner_mismatch", null, `owner_mismatch:notice:${hourBucket(now)}`, {});
       outcomes.push({ event, status: "ignored", result: "anomaly:owner_mismatch", ownerId: null, delay: 0 });
@@ -250,9 +320,9 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
   }
 
   // 2) Un pago distinto se consulta UNA vez por lote, con concurrencia acotada. La consulta autenticada es la ÚNICA fuente del dinero.
-  const paymentIds = unique(lookups.map((item) => item.paymentId));
+  const lookupIds = unique(lookups.map((item) => item.paymentId));
   const pulled = new Map<string, ProviderResult<ProviderOperation>>();
-  await mapWithConcurrency(paymentIds, deps.providerConcurrency ?? DEFAULTS.providerConcurrency, async (id) => {
+  await mapWithConcurrency(lookupIds,deps.providerConcurrency ?? DEFAULTS.providerConcurrency, async (id) => {
     stats.providerCalls += 1;
     pulled.set(id, await deps.provider.getOperation(id));
   });
@@ -275,7 +345,8 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
       }
       continue;
     }
-    const reconciled = reconcileOperation(result.data, { hintedReference: record.subscriberReference, hintedExecutionUid: event.hint.executionUid, records: byRef, expectLive: deps.expectLive });
+    const reconciled = reconcileOperation(result.data, { hintedReference: record.subscriberReference, hintedExecutionUid: event.hint.executionUid, records: byRef, expectLive: deps.expectLive, allowRebind: deps.provider.bindsSubscriberOnPayment === true });
+    collectBinding(acc, deps.provider, result.data, reconciled, byRef.get(record.subscriberReference));
     const text = applyReconciliation(acc, reconciled, deps.provider.name, paymentId);
     outcomes.push({ event, status: reconciled.kind === "fact" ? "processed" : "ignored", result: text, ownerId: reconciled.kind === "fact" ? reconciled.ownerId : "ownerId" in reconciled ? reconciled.ownerId : record.ownerId, delay: 0 });
   }
@@ -284,6 +355,7 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
   const plans = await planOwners(deps, acc, [...acc.facts.keys()], now);
   const eventOutcomes: EventOutcome[] = outcomes.map((item) => ({ id: item.event.id, ownerId: item.ownerId, status: item.status, result: item.result, retryDelaySeconds: item.delay }));
   const commit = await deps.store.commitBatch(toCommit(plans, acc, eventOutcomes));
+  await applyBindings(deps, acc);
   if (toPrioritize.size > 0) await deps.store.prioritizePolls([...toPrioritize]);
 
   for (const item of outcomes) {
@@ -504,14 +576,18 @@ const PROVIDER_SWEEP_OVERLAP_MS = 10 * 60 * 1000;
  * terminó bien; ante una caída del proveedor no se pierde nada (se reintenta desde el mismo punto, con superposición de 10 minutos;
  * los cobros repetidos son idempotentes). Con un proveedor que no admite el listado (`unsupported`) no hace nada.
  */
-export async function runProviderSweep(deps: ProcessorDeps, options: { maxPages?: number } = {}): Promise<ProviderSweepStats> {
+export async function runProviderSweep(deps: ProcessorDeps, options: { maxPages?: number; sinceMs?: number; advanceCursor?: boolean } = {}): Promise<ProviderSweepStats> {
   const stats: ProviderSweepStats = { pages: 0, operations: 0, facts: 0, anomalies: 0, skipped: false };
   const startedAt = deps.now();
   const cursor = await deps.store.getSweepCursor(PROVIDER_SWEEP_CURSOR);
-  const since = new Date((cursor ? Date.parse(cursor) : startedAt.getTime() - 24 * 3_600_000) - PROVIDER_SWEEP_OVERLAP_MS).toISOString();
+  // `sinceMs` (consulta a pedido, p. ej. al volver del pago): una ventana fija hacia atrás, sin tocar el cursor del barrido periódico.
+  const since = options.sinceMs !== undefined
+    ? new Date(startedAt.getTime() - options.sinceMs).toISOString()
+    : new Date((cursor ? Date.parse(cursor) : startedAt.getTime() - 24 * 3_600_000) - PROVIDER_SWEEP_OVERLAP_MS).toISOString();
   const acc = newAccumulator();
   const operations: ProviderOperation[] = [];
   let page = 0;
+  let complete = false;
   for (let guard = 0; guard < (options.maxPages ?? 200); guard += 1) {
     const result = await deps.provider.listOperations({ updatedFromIso: since, page, limit: 50 });
     if (!result.ok) {
@@ -520,23 +596,33 @@ export async function runProviderSweep(deps: ProcessorDeps, options: { maxPages?
     }
     stats.pages += 1;
     operations.push(...result.data.operations);
-    if (result.data.nextPage === null) break;
+    if (result.data.nextPage === null) {
+      complete = true;
+      break;
+    }
     page = result.data.nextPage;
   }
   stats.operations = operations.length;
   const references = unique(operations.map((operation) => operation.subscriberReference).filter((ref): ref is string => !!ref));
   const uids = unique(operations.map((operation) => operation.subscriberUid).filter((uid): uid is string => !!uid));
-  const records = references.length > 0 || uids.length > 0 ? await deps.store.resolveSubscribers({ references, uids }) : [];
+  // Un pago sin referencia ni suscripción identificables (p. ej. una devolución) se asigna por los cobros ya conciliados.
+  const paymentIds = unique(operations.filter((operation) => !operation.subscriberReference && !operation.subscriberUid).map((operation) => operation.providerPaymentId));
+  const records = references.length > 0 || uids.length > 0 || paymentIds.length > 0 ? await deps.store.resolveSubscribers({ references, uids, paymentIds }) : [];
   const byRef = new Map(records.map((record) => [record.subscriberReference, record] as const));
   const byUid = new Map(records.filter((record) => record.subscriberUid).map((record) => [record.subscriberUid as string, record] as const));
+  const byPayment = new Map(records.flatMap((record) => (record.paymentIds ?? []).map((paymentId) => [paymentId, record] as const)));
   for (const operation of operations) {
-    const record = (operation.subscriberReference ? byRef.get(operation.subscriberReference) : undefined) ?? (operation.subscriberUid ? byUid.get(operation.subscriberUid) : undefined);
-    const text = applyReconciliation(acc, reconcileOperation(operation, { hintedReference: record?.subscriberReference ?? null, hintedExecutionUid: null, records: byRef, expectLive: deps.expectLive }), deps.provider.name, operation.providerPaymentId);
+    const record = (operation.subscriberReference ? byRef.get(operation.subscriberReference) : undefined) ?? (operation.subscriberUid ? byUid.get(operation.subscriberUid) : undefined) ?? byPayment.get(operation.providerPaymentId);
+    const reconciled = reconcileOperation(operation, { hintedReference: record?.subscriberReference ?? null, hintedExecutionUid: null, records: byRef, expectLive: deps.expectLive, allowRebind: deps.provider.bindsSubscriberOnPayment === true });
+    collectBinding(acc, deps.provider, operation, reconciled, record);
+    const text = applyReconciliation(acc, reconciled, deps.provider.name, operation.providerPaymentId);
     if (text === "fact") stats.facts += 1;
     else if (text.startsWith("anomaly:")) stats.anomalies += 1;
   }
   const plans = await planOwners(deps, acc, [...acc.facts.keys()], deps.now());
   await deps.store.commitBatch(toCommit(plans, acc, []));
-  await deps.store.setSweepCursor(PROVIDER_SWEEP_CURSOR, startedAt.toISOString());
+  await applyBindings(deps, acc);
+  // El cursor sólo avanza si se recorrieron TODAS las páginas (si el tope de páginas cortó el barrido, lo que falta se retoma desde el mismo punto).
+  if (complete && options.advanceCursor !== false && options.sinceMs === undefined) await deps.store.setSweepCursor(PROVIDER_SWEEP_CURSOR, startedAt.toISOString());
   return stats;
 }

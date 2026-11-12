@@ -10,6 +10,8 @@ import type { BillingStore, IngestRow } from "./store.ts";
  *  - con la facturación apagada responde 404 como si la ruta no existiera, sin leer el cuerpo ni guardar nada;
  *  - sólo POST (`405` con `Allow: POST`), sólo `Content-Type` esperado (`415`), cuerpo pequeño (`413` ANTES de interpretarlo),
  *    límite de frecuencia por cliente y global (`429`);
+ *  - si el proveedor documenta una firma (Rebill: HMAC-SHA256 del cuerpo crudo), se verifica ANTES de guardar nada: sin firma válida, `401` y no queda
+ *    registro. Es una barrera adicional contra el ruido y la suplantación, no una confirmación: aun firmado, el aviso sigue siendo una señal;
  *  - el cuerpo se reduce a una pista mínima (identificadores): ningún estado, importe ni plan se toma de él. No hay forma de que un
  *    aviso falso active nada: lo único que produce es una consulta autenticada posterior;
  *  - RESPUESTA UNIFORME: un aviso bien formado recibe siempre `200 {"ok":true}`, exista o no la referencia, esté repetido o no.
@@ -34,10 +36,12 @@ export interface IngestRequest {
   readonly readBody: (maxBytes: number) => Promise<string | "too_large">;
   /** Identidad del cliente para el límite de frecuencia (ya anonimizada: nunca una IP en claro). */
   readonly clientKey: string;
+  /** Firma del aviso (encabezado del proveedor), si vino. */
+  readonly signature?: string;
 }
 
 export interface IngestResponse {
-  readonly status: 200 | 400 | 404 | 405 | 413 | 415 | 429 | 503;
+  readonly status: 200 | 400 | 401 | 404 | 405 | 413 | 415 | 429 | 503;
   readonly body: { readonly ok: boolean };
   readonly headers?: Readonly<Record<string, string>>;
 }
@@ -63,6 +67,11 @@ export async function ingestNotice(deps: IngestDeps, request: IngestRequest): Pr
 
   const rawBody = await request.readBody(MAX_BODY_BYTES);
   if (rawBody === "too_large") return { status: 413, body: { ok: false } };
+
+  if (deps.adapter.verifyNotice && !deps.adapter.verifyNotice({ rawBody, signature: request.signature })) {
+    logBilling("notice", "bad_signature", { provider: deps.adapter.name }, "warn");
+    return { status: 401, body: { ok: false } };
+  }
 
   const parsed = deps.adapter.parseNotice({ rawBody, contentType: request.contentType, now: deps.now() });
   if (!parsed.ok) {

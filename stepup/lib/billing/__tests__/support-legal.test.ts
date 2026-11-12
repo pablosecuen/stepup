@@ -35,7 +35,7 @@ test("el código no trae ningún correo ni dominio de soporte escrito: sólo la 
 
 test("los textos legales cubren lo pedido, están marcados como borrador y todo «A DEFINIR» figura en la lista de pendientes", () => {
   const text = LEGAL_SECTIONS.flatMap((section) => [section.title, ...section.paragraphs]).join("\n");
-  for (const topic of ["renueva", "Cancelación", "rechazado", "Devoluciones", "DNI o CUIT", "procesa el pago"]) assert.match(text, new RegExp(topic), topic);
+  for (const topic of ["renueva", "Cancelación", "rechazado", "Devoluciones", "datos personales y de pago", "procesa el pago"]) assert.match(text, new RegExp(topic), topic);
   assert.ok(text.includes("5 días corridos") && text.includes("00:00 del sexto día"), "la gracia coincide con la decisión 8");
   assert.ok(text.includes("10 años") && text.includes("seudonimizado"), "la retención fiscal coincide con la decisión 5");
   assert.match(LEGAL_DRAFT_NOTICE, /Borrador pendiente de revisión legal/);

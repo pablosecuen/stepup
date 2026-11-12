@@ -3,8 +3,10 @@ import { readBillingFlags, type BillingFlags } from "./flags.ts";
 import { createNoticeLimiter, type RateLimiter } from "./rate-limit.ts";
 import { FakeProviderAdapter } from "./providers/fake.ts";
 import { createMobbexAdapter } from "./providers/mobbex.ts";
+import { createRebillAdapter } from "./providers/rebill.ts";
 import type { ProviderAdapter } from "./provider.ts";
-import { resolveProviderChoice } from "./provider-selection.ts";
+import { expectsLiveOperations, resolveProviderChoice } from "./provider-selection.ts";
+import { confirmOwnerPayment, type ConfirmOutcome } from "./confirm.ts";
 import type { ProcessorDeps } from "./processor.ts";
 import { createBillingStore } from "./supabase-store.ts";
 import type { BillingStore } from "./store.ts";
@@ -39,7 +41,7 @@ export function getBillingRuntime(): BillingRuntime {
   noticeLimiter ??= createNoticeLimiter();
   cached = {
     flags: readBillingFlags(env),
-    provider: choice === "fake" ? fakeAdapter : createMobbexAdapter(env),
+    provider: choice === "fake" ? fakeAdapter : choice === "mobbex" ? createMobbexAdapter(env) : createRebillAdapter(env),
     store: createBillingStore(env),
     limiter: noticeLimiter,
     now: () => new Date(),
@@ -47,8 +49,13 @@ export function getBillingRuntime(): BillingRuntime {
   return cached;
 }
 
+/** Concilia a pedido los cobros recientes de UNA cuenta sin suscriptor vinculado (ver confirm.ts): al volver del pago y antes de eliminar una cuenta. */
+export async function reconcileOwnerNow(runtime: BillingRuntime, ownerId: string, options: { readonly force?: boolean } = {}): Promise<ConfirmOutcome> {
+  return confirmOwnerPayment(processorDeps(runtime, `owner-${Date.now().toString(36)}`), ownerId, options);
+}
+
 /** Dependencias del procesamiento. `expectLive`: en Production sólo cuentan operaciones reales (con el adaptador falso, todas valen). */
 export function processorDeps(runtime: BillingRuntime, worker: string): ProcessorDeps | null {
   if (!runtime.store) return null;
-  return { store: runtime.store, provider: runtime.provider, now: runtime.now, expectLive: runtime.provider.name === "mobbex" && process.env.MOBBEX_SANDBOX?.trim().toLowerCase() !== "true", worker };
+  return { store: runtime.store, provider: runtime.provider, now: runtime.now, expectLive: expectsLiveOperations(runtime.provider.name, process.env), worker };
 }

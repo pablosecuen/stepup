@@ -56,6 +56,10 @@ export class MemoryStore implements BillingStore {
     this.record("resolveSubscribers");
     return [];
   }
+  async bindSubscribers(): Promise<Array<{ ownerId: string; previousUid: string | null; bound: boolean }>> {
+    this.record("bindSubscribers");
+    return [];
+  }
   async claimPolls(): Promise<string[]> {
     this.record("claimPolls");
     return [];

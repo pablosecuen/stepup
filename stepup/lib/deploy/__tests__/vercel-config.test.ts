@@ -12,10 +12,11 @@ import { join } from "node:path";
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
 
-test("vercel.json fija UNA sola región, gru1, y no agrega nada más (sin otras regiones, funciones, cron ni reescrituras)", () => {
+test("vercel.json fija UNA sola región, gru1, y declara sólo los dos cron de facturación (sin otras regiones, funciones ni reescrituras)", () => {
   const config = JSON.parse(read("vercel.json"));
   assert.deepEqual(config.regions, ["gru1"]);
-  assert.deepEqual(Object.keys(config).sort(), ["$schema", "regions"], "sólo el esquema oficial y la región");
+  assert.deepEqual(Object.keys(config).sort(), ["$schema", "crons", "regions"], "sólo el esquema oficial, la región y los cron de facturación");
+  assert.deepEqual(config.crons.map((cron: { path: string }) => cron.path).sort(), ["/api/billing/cron/process", "/api/billing/cron/reconcile"]);
   assert.equal(config.$schema, "https://openapi.vercel.sh/vercel.json");
   assert.ok(Array.isArray(config.regions) && config.regions.length === 1, "una región: ni varias ni conmutación por error");
   assert.ok(config.regions.every((region: unknown) => typeof region === "string" && /^[a-z]{3}\d$/.test(region as string)));
@@ -26,8 +27,8 @@ test("la configuración previa sigue presente: cabeceras de seguridad y sin X-Po
   assert.match(next, /poweredByHeader: false/);
   assert.match(next, /buildSecurityHeaders\(\{ captchaOrigin: captchaOriginFromEnv\(\), storageOrigin: storageOriginFromEnv\(\) \}\)/);
   assert.match(next, /source: "\/:path\*"/);
-  // No hay cron activo (la facturación está apagada): el ejemplo sigue siendo sólo documentación y NO es vercel.json.
-  assert.equal(JSON.parse(read("vercel.json")).crons, undefined);
+  // Los cron de facturación están declarados pero son inertes con el interruptor apagado (las rutas responden 404): ver lib/billing/__tests__/m2-structure.test.ts.
+  assert.equal(JSON.parse(read("vercel.json")).crons.length, 2);
   assert.equal(existsSync(join(ROOT, "docs/billing/vercel-cron.example.json")), true);
   assert.deepEqual(JSON.parse(read("docs/billing/vercel-cron.example.json")).crons.map((cron: { path: string }) => cron.path), ["/api/billing/cron/process", "/api/billing/cron/reconcile"]);
   // El despliegue por CLI no puede dejar afuera la configuración.

@@ -1,6 +1,6 @@
 import type { BillingSnapshot, ExecutionFact, ExecutionOutcome } from "./ledger.ts";
 import type { BillingPlan, PlanCode } from "./plans.ts";
-import type { NoticeHint, WebhookEventType } from "./provider.ts";
+import type { NoticeHint, ProviderName, WebhookEventType } from "./provider.ts";
 import type { AnomalyKind, SubscriberRecord } from "./reconcile.ts";
 
 /**
@@ -12,7 +12,7 @@ import type { AnomalyKind, SubscriberRecord } from "./reconcile.ts";
 
 export interface IngestRow {
   readonly dedupKey: string;
-  readonly provider: "mobbex" | "fake";
+  readonly provider: ProviderName;
   readonly eventType: WebhookEventType;
   readonly payloadHash: string;
   /** Sólo la pista mínima (identificadores): nunca estado, importe ni plan. */
@@ -29,7 +29,7 @@ export interface StoredEvent {
 
 export interface ExecutionRow {
   readonly ownerId: string;
-  readonly provider: "mobbex" | "fake";
+  readonly provider: ProviderName;
   readonly executionUid: string;
   readonly providerPaymentId: string | null;
   readonly outcome: ExecutionOutcome;
@@ -42,7 +42,7 @@ export interface ExecutionRow {
 
 export interface PeriodRow {
   readonly ownerId: string;
-  readonly provider: "mobbex" | "fake";
+  readonly provider: ProviderName;
   readonly executionUid: string;
   readonly planCode: PlanCode;
   readonly priceVersion: number;
@@ -55,7 +55,7 @@ export interface PeriodRow {
 /** Un período pagado que dejó de valer (devolución total o contracargo): se conserva en el historial pero ya no respalda el estado. */
 export interface VoidedPeriod {
   readonly ownerId: string;
-  readonly provider: "mobbex" | "fake";
+  readonly provider: ProviderName;
   readonly executionUid: string;
 }
 
@@ -92,10 +92,16 @@ export interface ChangeRow {
   readonly idempotencyKey: string;
 }
 
+export interface SubscriberBinding {
+  readonly ownerId: string;
+  readonly subscriberUid: string;
+  readonly planCode: PlanCode;
+}
+
 export interface CheckoutAttemptInput {
   readonly ownerId: string;
   readonly plan: BillingPlan;
-  readonly provider: "mobbex" | "fake";
+  readonly provider: ProviderName;
   readonly idempotencyKey: string;
   readonly expiresAt: string;
 }
@@ -192,8 +198,16 @@ export interface BillingStore {
   ensureAccount(ownerId: string): Promise<BillingSnapshot>;
   ingestEvents(rows: readonly IngestRow[]): Promise<{ inserted: number; duplicates: number }>;
   claimEvents(input: { limit: number; leaseSeconds: number; worker: string; maxAttempts: number }): Promise<StoredEvent[]>;
-  /** Propietarias de las referencias y/o uids del proveedor dados (una consulta por lote). */
-  resolveSubscribers(keys: { readonly references: readonly string[]; readonly uids: readonly string[] }): Promise<SubscriberRecord[]>;
+  /**
+   * Propietarias de las referencias, uids del proveedor y/o pagos ya conocidos (`paymentIds`: un aviso de un pago que ya se concilió una vez, p. ej. una devolución,
+   * sólo trae el id del pago). Una consulta por lote.
+   */
+  resolveSubscribers(keys: { readonly references: readonly string[]; readonly uids: readonly string[]; readonly paymentIds?: readonly string[] }): Promise<SubscriberRecord[]>;
+  /**
+   * Vincula el suscriptor del proveedor a la cuenta cuando el primer cobro aprobado lo revela (Rebill crea la suscripción DESPUÉS del pago, no al abrir el checkout).
+   * Devuelve el uid anterior si lo reemplaza (la cuenta volvió a suscribirse): hay que dar de baja allá la suscripción vieja. Repetirlo con el mismo uid no cambia nada.
+   */
+  bindSubscribers(bindings: readonly SubscriberBinding[]): Promise<ReadonlyArray<{ readonly ownerId: string; readonly previousUid: string | null; readonly bound: boolean }>>;
   loadSubscriptions(ownerIds: readonly string[]): Promise<Map<string, BillingSnapshot>>;
   loadExecutions(ownerIds: readonly string[], perOwner: number): Promise<Map<string, ExecutionFact[]>>;
   commitBatch(batch: CommitBatch): Promise<CommitResult>;
