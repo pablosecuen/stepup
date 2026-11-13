@@ -60,7 +60,8 @@ export function CancelledHistory({ className }: { className: string }) {
 
   return (
     <>
-      <button type="button" className={className} onClick={openHistory} aria-haspopup="dialog">
+      {/* Una regla global fija 44 px de alto a todo <button> en pantallas táctiles: en el teléfono la ficha mide 36 px como sus vecinas (la zona de toque sigue siendo de 44 px por el pseudo-elemento). */}
+      <button type="button" className={`${className} max-[819px]:!min-h-0`} onClick={openHistory} aria-haspopup="dialog">
         <ArchiveBoxIcon className="h-3.5 w-3.5 nav:h-4 nav:w-4" aria-hidden />
         Canceladas
       </button>
