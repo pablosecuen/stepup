@@ -23,10 +23,11 @@ export interface LessonTimingCandidate {
   end: string;
   status?: string;
   occupiesSlot?: boolean;
+  hiddenByReplacement?: boolean;
 }
 
 export function classifyLessonTiming(candidate: LessonTimingCandidate, now: Date): LessonTimingStatus {
-  if (candidate.occupiesSlot === false) return "excluded";
+  if (candidate.occupiesSlot === false || candidate.hiddenByReplacement) return "excluded";
   if (candidate.status !== undefined && !(ACTIVE_LESSON_STATUSES as readonly string[]).includes(candidate.status)) {
     return "excluded";
   }

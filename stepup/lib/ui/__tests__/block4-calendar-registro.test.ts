@@ -83,7 +83,7 @@ test("Detalle de la clase: es el Dialog del sistema, nombra la clase y el día e
   assert.match(modal, /<Button variant="danger" onClick=\{handleCancel\} busy=\{pending\}>/);
   assert.equal([...modal.matchAll(/data-autofocus/g)].length >= 1, true, "el paso de cancelar lleva el foco; el panel de «Cambiar horario» lleva el suyo");
   assert.match(read("components/calendar/change-schedule-panel.tsx"), /data-autofocus/);
-  assert.match(modal, /\[reschedulingOpen, confirmingCancel\]/);
+  assert.match(modal, /\[reschedulingOpen, confirmingCancel, cancelledLessonId\]/);
 });
 
 test("Nueva clase / serie: conserva la clave de idempotencia por borrador, el eco de valores y la rotación; una única acción principal y Cancelar de poco peso", () => {

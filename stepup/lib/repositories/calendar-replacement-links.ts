@@ -1,7 +1,7 @@
 import "server-only";
 import type { AuthenticatedDbContext } from "@/lib/db/server-context";
 import { readTable, readTableByIds } from "@/lib/db/read";
-import type { CalendarReplacementLinks } from "@/lib/calendar/replacement-visibility";
+import { buildCalendarReplacementLinks, type CalendarReplacementLinks } from "@/lib/calendar/replacement-visibility";
 
 export async function listCalendarReplacementLinks(ctx: AuthenticatedDbContext): Promise<CalendarReplacementLinks> {
   const [lessons, series] = await Promise.all([
@@ -18,12 +18,5 @@ export async function listCalendarReplacementLinks(ctx: AuthenticatedDbContext):
     columns: "id,status,recurrence_original_start", matchColumn: "id", ids: lessons.map(l=>l.replacement_lesson_id),
     filter: q => q.eq("owner_id",ctx.ownerId),
   });
-  const byId = new Map(replacements.map(r=>[r.id,r]));
-  return {
-    lessons: lessons.map(l=>{const replacement=byId.get(l.replacement_lesson_id);return {
-      originalLessonId:l.original_lesson_id,replacementLessonId:l.replacement_lesson_id,kind:l.kind,
-      replacementActive:!!replacement && replacement.status!=="cancelled" && !(replacement.status==="rescheduled" && replacement.recurrence_original_start===null),
-    };}),
-    series:series.map(l=>({originalLessonId:l.original_lesson_id,replacementRuleId:l.replacement_rule_id,replacedRuleIds:l.replaced_rule_ids,effectiveDate:l.effective_date})),
-  };
+  return buildCalendarReplacementLinks({ lessons, series, replacementLessons: replacements });
 }

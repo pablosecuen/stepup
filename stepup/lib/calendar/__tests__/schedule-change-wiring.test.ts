@@ -49,7 +49,7 @@ test("el servidor recalcula el patrón y valida siempre: ningún «guardar igual
   const series = read("app/(app)/calendario/series/series-status-actions.tsx");
   assert.doesNotMatch(series, /Guardar igual \(queda superpuesto\)|guardalo igual|allowOverlap/);
   const single = read("lib/actions/reschedule-parity.ts");
-  assert.match(single, /i\.id!==item\.id&&i\.status!=='cancelled'&&i\.occupiesSlot!==false&&i\.start<end&&i\.end>start/, "la propia clase no cuenta, las demás sí, con la duración completa");
+  assert.match(single, /i\.id!==item\.id&&occupiesAgendaSlot\(i\)&&i\.start<end&&i\.end>start/, "la propia clase no cuenta, las demás sí (sólo las de la agenda operativa), con la duración completa");
 });
 
 test("los controles financieros cerrados se ajustan a su contenido (ni ancho completo ni mínimos) y el desplegado conserva su espacio", () => {

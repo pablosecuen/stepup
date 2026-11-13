@@ -244,7 +244,7 @@ test("el diálogo de la clase: Escape, foco atrapado, foco inicial, devolución 
   assert.match(modal, /dialogTitle = step === "reschedule" \? `Reprogramar · \$\{lessonTitle\}`/, "cada paso nombra la clase");
   assert.match(modal, /role="status" aria-live="polite"/);
   assert.match(read("components/calendar/availability-month.tsx"), /aria-label="Mes anterior"/, "el selector de fecha y hora tiene nombres accesibles");
-  assert.match(modal, /\[reschedulingOpen, confirmingCancel\]/, "el foco acompaña cada paso");
+  assert.match(modal, /\[reschedulingOpen, confirmingCancel, cancelledLessonId\]/, "el foco acompaña cada paso (también el paso posterior a cancelar)");
 });
 
 test("«Cerrar sesión» y el acceso a Configuración son un botón y un enlace nativos: Enter y Espacio funcionan, 44 px y foco visible", () => {

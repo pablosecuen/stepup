@@ -1,6 +1,7 @@
 import { evaluateAvailability, type TeacherAvailability } from './availability.ts';
 import { localDateTimeToInstantIso } from './timezone.ts';
 import type { CalendarViewItem } from './occurrences.ts';
+import { occupiesAgendaSlot } from './agenda.ts';
 export function calendarEditPayload(item:CalendarViewItem, students:{id:string;name:string;levels:string[]}[]){
  const byId=new Map(students.map(s=>[s.id,s]));
  const ids=[...new Set([...(item.studentId?[item.studentId]:[]),...item.participantIds])];
@@ -17,7 +18,7 @@ export function daySlots(date:string,duration:number,items:SlotItem[],availabili
   const minutes=8*60+i*15;
   const start=localDateTimeToInstantIso({date,hour:Math.floor(minutes/60),minute:minutes%60,timeZone:availability.timezone});
   const end=new Date(Date.parse(start)+duration*60000).toISOString();
-  const occupied=items.filter(item=>!ignored(item)&&item.status!=='cancelled'&&item.occupiesSlot!==false&&item.start<end&&item.end>start);
+  const occupied=items.filter(item=>!ignored(item)&&occupiesAgendaSlot(item)&&item.start<end&&item.end>start);
   const evaluation=evaluateAvailability(start,end,availability);
   return {time:`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`,start,end,available:occupied.length===0&&evaluation.isAvailable,occupied:occupied.map(i=>i.studentName),blocked:evaluation.label};
  });

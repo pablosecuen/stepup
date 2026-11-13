@@ -12,6 +12,7 @@ test("a replaced cancellation disappears; an unrelated simultaneous class is pre
   const all=[item("old",{status:"cancelled"}),item("new"),item("unrelated")];
   const result=applyReplacementVisibility(all,{lessons:[{originalLessonId:"old",replacementLessonId:"new",kind:"replaced",replacementActive:true}],series:[]});
   assert.deepEqual(visibleCalendarItems(result).map(i=>i.id),["new","unrelated"]);
+  assert.equal(result[0].hiddenByReplacement,true,"the replaced original is marked, not deleted");
   assert.equal(all[0].hiddenByReplacement,undefined,"input history is not mutated");
 });
 test("a moved original disappears even when the destination is outside the displayed week",()=>{
@@ -19,15 +20,18 @@ test("a moved original disappears even when the destination is outside the displ
   assert.deepEqual(visibleCalendarItems(result),[]);
   assert.deepEqual(visibleCalendarItems([item("released",{occupiesSlot:false})]),[]);
 });
-test("a cancelled replacement does not hide an unrelated original cancellation",()=>{
+test("a cancelled replacement link does not mark the original as replaced; a cancelled class leaves the operative agenda by its own status",()=>{
   const result=applyReplacementVisibility([item("old",{status:"cancelled"})],{lessons:[{originalLessonId:"old",replacementLessonId:"new",kind:"replaced",replacementActive:false}],series:[]});
-  assert.equal(visibleCalendarItems(result).length,1);
+  assert.equal(result[0].hiddenByReplacement,undefined,"no active replacement: the original is not flagged as replaced");
+  assert.equal(visibleCalendarItems(result).length,0,"but a cancelled class is never part of the operative agenda");
 });
 test("whole-series replacement hides only unregistered cancellations from its effective date, preserving completed history",()=>{
   const all=[item("anchor",{status:"cancelled",recurrenceId:"old-rule"}),item("future",{status:"cancelled",recurrenceId:"old-rule",start:"2026-11-07T11:00:00Z"}),
     item("history",{status:"completed",recurrenceId:"old-rule"}),item("draft",{recurrenceId:"old-rule"}),item("other",{status:"cancelled",recurrenceId:"other-rule"})];
   const result=applyReplacementVisibility(all,{lessons:[],series:[{originalLessonId:"anchor",replacementRuleId:"new-rule",replacedRuleIds:["old-rule"],effectiveDate:"2026-10-31"}]});
-  assert.deepEqual(visibleCalendarItems(result).map(i=>i.id),["history","draft","other"]);
+  assert.deepEqual(visibleCalendarItems(result).map(i=>i.id),["history","draft"],"the other series' cancellation is cancelled history, not agenda");
+  assert.equal(result.find(i=>i.id==="other")?.hiddenByReplacement,undefined,"and it is not flagged as replaced by this operation");
+  assert.deepEqual(result.filter(i=>i.hiddenByReplacement).map(i=>i.id),["anchor","future"]);
 });
 test("series family follows predecessor links, never student identity; cycles terminate",()=>{
   const family=replacementSeriesFamilyIds([{id:"a",supersedesRecurrenceId:null},{id:"b",supersedesRecurrenceId:"a"},{id:"c",supersedesRecurrenceId:"b"},{id:"other",supersedesRecurrenceId:null}],"b");

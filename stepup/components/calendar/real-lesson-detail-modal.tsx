@@ -7,7 +7,7 @@ import { seriesDetailHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { lessonStatusLabel, MODALITY_LABELS } from "@/lib/calendar-theme";
-import { cancelOccurrenceAction } from "@/lib/actions/calendar";
+import { cancelOccurrenceAction, restoreOccurrenceAction } from "@/lib/actions/calendar";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { formatMinutes } from "@/lib/format/number-format";
 import { Button, PrivateButtonLink } from "@/components/ui/button";
@@ -43,6 +43,9 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [error, setError] = useState<string | null>(null);
   const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // Id de la clase recién cancelada: la cancelación la saca de la agenda, así que acá se ofrece (una vez) reemplazarla con otro alumno o deshacer.
+  const [cancelledLessonId, setCancelledLessonId] = useState<string | null>(null);
+  const [restoreNeedsConfirm, setRestoreNeedsConfirm] = useState(false);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   // La semana o el día desde el que se abrió la clase: «Editar registro» vuelve ahí al guardar.
@@ -57,7 +60,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
     if (!dialog) return;
     const target = dialog.querySelector<HTMLElement>("[data-autofocus]");
     (target ?? dialog).focus();
-  }, [reschedulingOpen, confirmingCancel]);
+  }, [reschedulingOpen, confirmingCancel, cancelledLessonId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -103,17 +106,42 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
         return;
       }
       router.refresh();
+      if (result.cancelledLessonId) {
+        setConfirmingCancel(false);
+        setCancelledLessonId(result.cancelledLessonId);
+        return;
+      }
+      onClose();
+    });
+  }
+
+  function handleUndoCancel(confirmOverlap: boolean) {
+    if (!cancelledLessonId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await guardNetwork(() => restoreOccurrenceAction({ lessonId: cancelledLessonId, confirmOverlap }));
+      if (result.error) {
+        setError(result.error);
+        setRestoreNeedsConfirm(result.conflict === true);
+        return;
+      }
+      router.refresh();
       onClose();
     });
   }
 
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
 
-  const step: "actions" | "reschedule" | "cancel" = reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
-  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : lessonTitle;
+  const step: "actions" | "reschedule" | "cancel" | "cancelled" = cancelledLessonId ? "cancelled" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
+  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : step === "cancelled" ? `Clase cancelada · ${lessonTitle}` : lessonTitle;
+  const isFutureSlot = now !== null && start.getTime() > now;
 
   const footer =
-    step === "reschedule" ? undefined : step === "cancel" ? (
+    step === "reschedule" ? undefined : step === "cancelled" ? (
+      <Button variant="primary" onClick={onClose} className="self-end" data-autofocus>
+        Listo
+      </Button>
+    ) : step === "cancel" ? (
       <>
         <Button variant="secondary" onClick={() => setConfirmingCancel(false)} data-autofocus>
           Volver
@@ -167,6 +195,28 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           <Notice tone="bad" role="alert">
             ¿Cancelar esta clase? Esta acción queda registrada y es visible para la profesora.
           </Notice>
+        )}
+
+        {step === "cancelled" && cancelledLessonId && (
+          <section aria-label="Clase cancelada" className="flex flex-col gap-2.5">
+            <Notice tone="ok" role="status">
+              La clase se canceló y ya no figura en la agenda. Su historial, registros y cobros se conservan.
+            </Notice>
+            {isFutureSlot && (
+              <PrivateButtonLink
+                href={`/calendario/nueva?freedByLessonId=${cancelledLessonId}&date=${startDateKey}&hour=${Math.floor(startMinutesOfDay / 60)}&minute=${startMinutesOfDay % 60}&duration=${durationMinutes}&modality=${item.modality}`}
+                variant="secondary"
+                block
+              >
+                <UserPlusIcon className="h-5 w-5" aria-hidden />
+                Reemplazar con otro alumno
+              </PrivateButtonLink>
+            )}
+            <Button variant="secondary" block busy={pending} onClick={() => handleUndoCancel(restoreNeedsConfirm)}>
+              <ArrowPathIcon className="h-5 w-5" aria-hidden />
+              {restoreNeedsConfirm ? "Restaurar igual" : "Deshacer la cancelación"}
+            </Button>
+          </section>
         )}
 
         {step === "actions" && (

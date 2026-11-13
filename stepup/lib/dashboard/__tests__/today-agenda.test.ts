@@ -72,7 +72,7 @@ test("nunca mezcla otros días aunque el cargador los entregue (mañana, ayer, s
   assert.equal(out[0].item.id, items[1].id);
 });
 
-test("estados reales: canceladas, reprogramadas, completadas, transcurridas, en curso y próximas se conservan (nada se oculta por su estado)", () => {
+test("estados reales: completadas, reprogramadas, transcurridas, en curso y próximas se conservan; una CANCELADA sale de la agenda del día", () => {
   const items = [
     lesson("08:00", 60, { status: "completed" }),
     lesson("09:30", 60, { status: "cancelled" }),
@@ -81,20 +81,20 @@ test("estados reales: canceladas, reprogramadas, completadas, transcurridas, en 
     lesson("15:00", 60),
   ];
   const out = buildTodayAgenda(items, at("12:30"), TODAY);
-  assert.equal(out.length, 5, "las cinco están, también la cancelada");
-  assert.deepEqual(out.map((e) => [e.item.status, e.timing]), [["completed", "finished"], ["cancelled", "finished"], ["rescheduled", "finished"], ["scheduled", "in_progress"], ["scheduled", "upcoming"]]);
+  assert.equal(out.length, 4, "quedan cuatro: la cancelada ya no está en la agenda");
+  assert.deepEqual(out.map((e) => [e.item.status, e.timing]), [["completed", "finished"], ["rescheduled", "finished"], ["scheduled", "in_progress"], ["scheduled", "upcoming"]]);
   // límites del reloj (mitad abierta): en el instante exacto del inicio está en curso y en el del final ya terminó
   assert.equal(buildTodayAgenda([lesson("12:00", 60)], at("12:00"), TODAY)[0].timing, "in_progress");
   assert.equal(buildTodayAgenda([lesson("12:00", 60)], at("13:00"), TODAY)[0].timing, "finished");
   assert.equal(buildTodayAgenda([lesson("12:00", 60)], at("11:59"), TODAY)[0].timing, "upcoming");
 });
 
-test("la agenda válida del Calendario: una cancelada con reemplazo activo se oculta y se ve sólo el reemplazo; la cancelada sola se muestra", () => {
+test("la agenda válida del Calendario: una cancelada (con o sin reemplazo) no figura; con reemplazo activo se ve sólo el reemplazo", () => {
   const original = lesson("11:00", 60, { status: "cancelled", id: "orig" });
   const replacement = lesson("11:00", 60, { id: "repl", freedByLessonId: "orig" });
   const alone = lesson("16:00", 60, { status: "cancelled", id: "alone" });
   const out = buildTodayAgenda([original, replacement, alone], at("08:00"), TODAY);
-  assert.deepEqual(ids(out), ["repl", "alone"]);
+  assert.deepEqual(ids(out), ["repl"]);
 });
 
 test("no modifica la entrada y es determinista (mismos datos, mismo resultado)", () => {

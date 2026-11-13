@@ -6,6 +6,7 @@ import { DEFAULT_BUDGET_DISTRIBUTION, DEFAULT_SAVINGS_GOAL, type BudgetDistribut
 import { buildAnnualBudgetPlan, type AnnualBudgetPlan } from "@/lib/payments/annual-budget-plan";
 import { buildMonthlyCollectedSeries, chartMonthsForRange, collectedCentsByMonth, type MonthlyCollectedPoint } from "@/lib/reports/monthly-collected";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
+import { resolveAgendaItems } from "@/lib/calendar/agenda";
 import { listCalendarLessonsInRange } from "@/lib/repositories/calendar-lessons";
 import { localDateKeyInTimeZone, ARGENTINA_TIME_ZONE } from "@/lib/payments/dates";
 import { readTable } from "@/lib/db/read";
@@ -96,8 +97,10 @@ export async function loadFinancialOverviewData(ctx: AuthenticatedDbContext, pre
     getBudgetDistributionSettings(ctx).catch(() => null),
   ]);
 
-  const periodItems = composeCalendarView(calendarBase, periodLessons, new Date(periodInstants.startIso), new Date(periodInstants.endIso));
-  const demandItems = composeCalendarView(calendarBase, demandLessons, new Date(demandInstants.startIso), new Date(demandInstants.endIso));
+  // Lo PROGRAMADO (tarifa por hora programada) y la DEMANDA (clases por día y hora) miden la agenda operativa: una cancelada o el origen de una reprogramación no es una clase programada
+  // (contarla dos veces inflaba ambas cifras). Lo DICTADO, las horas canceladas y las cobranzas salen de registros y cobros, no de estas listas, y no cambian.
+  const periodItems = resolveAgendaItems(composeCalendarView(calendarBase, periodLessons, new Date(periodInstants.startIso), new Date(periodInstants.endIso)));
+  const demandItems = resolveAgendaItems(composeCalendarView(calendarBase, demandLessons, new Date(demandInstants.startIso), new Date(demandInstants.endIso)));
 
   // Datos de prueba confirmados (R16): fuera de las estadísticas (registros y alumnos); con la lista vacía no cambia nada. La agenda ya viene filtrada por `composeCalendarView`.
   const excludedStudentIds = calendarBase.excludedStudentIds;

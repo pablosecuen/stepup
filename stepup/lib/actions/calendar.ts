@@ -16,6 +16,7 @@ import { listStudents } from "@/lib/repositories/students";
 import { evaluateAvailability, type TeacherAvailability } from "@/lib/calendar/availability";
 import { findCalendarConflicts, hasBlockingConflict, type ConflictCandidateLesson } from "@/lib/calendar-conflicts";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
+import { occupiesAgendaSlot } from "@/lib/calendar/agenda";
 import { toConflictCandidates } from "@/lib/calendar/conflict-candidates";
 import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { describeFutureConflicts, findFutureRecurrenceConflicts, futureValidationRange, occurrencesAsCandidates, FUTURE_VALIDATION_HORIZON_DAYS } from "@/lib/calendar/future-conflicts";
@@ -367,7 +368,7 @@ export async function createRecurrenceSeriesAction(_prevState: FormState, formDa
     for(const occurrence of planned){
       const evaluation=evaluateAvailability(occurrence.start,occurrence.end,availability);
       if(!evaluation.isAvailable&&readString(formData,'allowBlocked')!=='true')return {error:`Ese horario está bloqueado en tu disponibilidad (${evaluation.label??'no disponible'}).`,values};
-      if(otherItems.some(item=>!replacementFamily.has(item.recurrenceId??'')&&item.status!=='cancelled'&&item.occupiesSlot!==false&&item.start<occurrence.end&&item.end>occurrence.start)&&readString(formData,'allowOverlap')!=='true')return {error:'El patrón se superpone con otra clase ya agendada.',values};
+      if(otherItems.some(item=>!replacementFamily.has(item.recurrenceId??'')&&occupiesAgendaSlot(item)&&item.start<occurrence.end&&item.end>occurrence.start)&&readString(formData,'allowOverlap')!=='true')return {error:'El patrón se superpone con otra clase ya agendada.',values};
     }
 
     const created = await createRecurrenceSeries(ctx, {
@@ -454,19 +455,26 @@ export interface CancelOccurrenceActionInput {
   activityKind: string;
 }
 
-export async function cancelOccurrenceAction(input: CancelOccurrenceActionInput): Promise<FormState> {
+/**
+ * Cancelar una clase la saca de la agenda operativa (Calendario, Inicio, pendientes, recordatorios y búsqueda de horarios libres); la fila, sus registros, cobros y su historial se conservan.
+ * Devuelve el id de la fila cancelada para que la pantalla pueda ofrecer, en ese momento, reemplazarla con otro alumno o deshacer la cancelación.
+ */
+export async function cancelOccurrenceAction(input: CancelOccurrenceActionInput): Promise<FormState & { cancelledLessonId?: string }> {
+  let cancelledLessonId: string;
   try {
     const ctx = await requireAuthenticatedDbContext();
-    await cancelCalendarOccurrence(ctx, {
+    const cancelled = await cancelCalendarOccurrence(ctx, {
       ...input,
       color: input.modality === "online" ? "#DDEBFF" : input.modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
     });
+    cancelledLessonId = cancelled.id;
   } catch (error) {
     if (error instanceof CalendarLessonNotFoundError) return { error: "Clase no encontrada." };
     return { error: friendlyErrorMessage(error) };
   }
-  revalidatePath("/calendario");
-  return {};
+  // Todo lo que cuenta, lista o numera clases debe dejar de verla: calendario, Inicio, pendientes de registro, recordatorios y la ficha de los alumnos.
+  for (const path of ["/calendario", "/inicio", "/registro", "/recordatorios", "/alumnos"]) revalidatePath(path);
+  return { cancelledLessonId };
 }
 
 export interface RescheduleOccurrenceActionInput {

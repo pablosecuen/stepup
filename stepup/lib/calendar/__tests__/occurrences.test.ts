@@ -118,13 +118,12 @@ test("isActiveReplacement / visibleCalendarItems: una cancelada con reemplazo ac
   );
 });
 
-test("visibleCalendarItems: una cancelada SIN reemplazo sigue siendo visible (se muestra gris/tachada)", () => {
+test("visibleCalendarItems: una cancelada, con o sin reemplazo, NO está en la agenda operativa (no se dibuja, no se cuenta, no ocupa carril); la vista completa la conserva", () => {
   const cancelled = toItem(lesson({ id: "cancelled-1", status: "cancelled" }));
-  const visible = visibleCalendarItems([cancelled]);
-  assert.deepEqual(
-    visible.map((i) => i.id),
-    ["cancelled-1"]
-  );
+  const live = toItem(lesson({ id: "live-1" }));
+  assert.deepEqual(visibleCalendarItems([cancelled]).map((i) => i.id), [], "la cancelada sola desaparece de la agenda");
+  assert.deepEqual(visibleCalendarItems([cancelled, live]).map((i) => i.id), ["live-1"], "una clase vigente simultánea sigue siendo una clase");
+  assert.equal([cancelled, live].length, 2, "la lista completa (historia) no se toca");
 });
 
 // Ayuda mínima para construir un CalendarViewItem directo desde un MaterializedLessonForMerge, sin pasar por buildCalendarViewForRange.
@@ -203,6 +202,6 @@ test("el resultado de una clase cerrada sin dictar llega a la tarjeta (composeCa
   assert.equal(items.find((item) => item.id === "l2")?.closedOutcome, undefined);
   // `composeCalendarView` copia las clases campo por campo: si no pasa `closedOutcome`, la tarjeta vuelve a decir «Completada».
   const { readFileSync } = await import("node:fs");
-  const view = readFileSync(new URL("../view.ts", import.meta.url), "utf8");
+  const view = readFileSync(new URL("../compose.ts", import.meta.url), "utf8");
   assert.match(view, /closedOutcome: lesson\.closedOutcome \?\? null/);
 });

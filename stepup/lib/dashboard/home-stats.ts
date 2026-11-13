@@ -63,6 +63,7 @@ export function buildHomeStats(input: {
   const unmeasuredOnly = input.monthMinutes.length > 0 && input.monthMinutes.every((minutes) => minutes === null);
   return {
     activeStudents: input.activeStudents,
+    // Recibe la agenda ya resuelta (`resolveAgendaItems`); el filtro de canceladas se conserva por si algún llamador pasa la lista completa.
     lessonsThisWeek: input.weekItems.filter((item) => item.status !== "cancelled").length,
     hoursTaughtThisMonth: unmeasuredOnly ? null : Math.round((taughtMinutes / 60) * 10) / 10,
     averageGrade: calculateAverageGrade([...input.grades]),

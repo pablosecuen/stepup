@@ -8,6 +8,7 @@ import { listOpenChargeBalances } from "@/lib/repositories/payments";
 import { loadHomeStatsRaw } from "@/lib/repositories/home-stats-inputs";
 import { buildHomeStats, homeStatsInputsFrom, weekBounds, type HomeStats } from "@/lib/dashboard/home-stats";
 import { composeCalendarView, loadCalendarViewBase } from "@/lib/calendar/view";
+import { resolveAgendaItems } from "@/lib/calendar/agenda";
 import { withoutExcludedLessons, withoutExcludedRules } from "@/lib/data-exclusion/exclusion";
 import { DEFAULT_RECURRENCE_HORIZON_DAYS } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
@@ -126,12 +127,13 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const pendingLessonIds = pendingItems.map((item) => item.materializedLessonId).filter((id): id is string => !!id);
   const [registrations, legacyRegisteredOccurrences] = await Promise.all([listRegistrationProgressForCalendarLessonIds(ctx, pendingLessonIds), loadLegacyRegisteredOccurrenceKeys(ctx)]);
 
-  const todayLessons = todayItems.filter((item) => item.status !== "cancelled");
+  // Agenda operativa: una cancelada, el origen de una reprogramación o una clase reemplazada no es una clase de hoy (ni cuenta en la semana).
+  const todayLessons = resolveAgendaItems(todayItems);
   // Misma lectura acotada al día (una sola consulta): sin una consulta por clase ni historia que filtrar en el cliente.
   const todayAgenda = buildTodayAgenda(todayItems, now, todayDateKey);
   // La semana sale de las lecturas que ya se hicieron (los últimos 90 días hasta ahora + el horizonte desde ahora): sin una consulta más.
   const weekLessonRows = [...new Map([...pendingLessonRows, ...allHorizonLessons].map((lesson) => [lesson.id, lesson])).values()];
-  const weekItems = composeCalendarView(calendarBase, weekLessonRows, weekStart, weekEndExclusive);
+  const weekItems = resolveAgendaItems(composeCalendarView(calendarBase, weekLessonRows, weekStart, weekEndExclusive));
   const activeStudentCount = students.filter((student) => student.status === "activo").length;
   const stats: HomeStats = statsInputs
     ? buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: statsInputs.monthMinutes, grades: statsInputs.grades })

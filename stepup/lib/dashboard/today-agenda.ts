@@ -5,8 +5,8 @@ import { visibleCalendarItems, type CalendarViewItem } from "../calendar/occurre
 /**
  * Agenda COMPLETA del día para «Clases de hoy» (Inicio): todas las clases del día civil de Argentina, de la primera a la última,
  * en orden cronológico y sin ningún límite. Parte de lo que el calendario ya compuso para el día (una sola consulta acotada al
- * día, sin una consulta por clase) y conserva su regla de agenda válida (`visibleCalendarItems`): una clase cancelada se muestra
- * como cancelada, salvo que un reemplazo activo ocupe su lugar (entonces se ve sólo el reemplazo), igual que en el Calendario.
+ * día, sin una consulta por clase) y aplica la misma agenda operativa que el Calendario (`visibleCalendarItems` → `resolveAgendaItems`): una clase cancelada, el origen de una
+ * reprogramación y una clase reemplazada no figuran (sólo la sustituta o el destino); su fila y su historial se conservan.
  * Nunca mezcla clases de otro día: el día se decide por la fecha civil del INICIO de cada clase en la zona de Argentina.
  */
 export interface TodayAgendaEntry {

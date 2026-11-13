@@ -1,7 +1,7 @@
 "use server";
 import {revalidatePath} from 'next/cache';
 import {requireAuthenticatedDbContext} from '@/lib/db/server-context';
-import {loadCalendarViewForRange} from '@/lib/calendar/view';
+import {loadCalendarViewForRange} from '@/lib/calendar/view';import {occupiesAgendaSlot} from '@/lib/calendar/agenda';
 import {getTeacherAvailability} from '@/lib/repositories/teacher-availability';
 import {listStudents,createStudent,type NewStudentInput} from '@/lib/repositories/students';
 import {listRecurrenceRules} from '@/lib/repositories/recurrence-rules';
@@ -42,7 +42,7 @@ export async function adjustCalendarScheduleAction(input:{id:string;start:string
  const ctx=await requireAuthenticatedDbContext();const start=new Date(input.start);if(!Number.isFinite(start.getTime()))throw new Error('Fecha inválida');
  const items=await loadCalendarViewForRange(ctx,new Date(start.getTime()-86400000),new Date(start.getTime()+86400000),undefined,{includeTestData:true});const item=items.find(i=>i.id===input.id&&i.start===input.start);if(!item)throw new Error('La clase cambió. Recargá la agenda');
  const newStart=new Date(start.getTime()+input.minutes*60000*(input.direction==='delayed'?1:-1)).toISOString();const newEnd=new Date(Date.parse(newStart)+Date.parse(item.end)-Date.parse(item.start)).toISOString();
- if(items.some(i=>i.id!==item.id&&i.status!=='cancelled'&&i.occupiesSlot!==false&&i.start<newEnd&&i.end>newStart))throw new Error('El nuevo horario está ocupado');
+ if(items.some(i=>i.id!==item.id&&occupiesAgendaSlot(i)&&i.start<newEnd&&i.end>newStart))throw new Error('El nuevo horario está ocupado');
  const availability=await getTeacherAvailability(ctx);const {evaluateAvailability}=await import('@/lib/calendar/availability');const evaluation=evaluateAvailability(newStart,newEnd,availability);if(!evaluation.isAvailable&&!input.allowBlocked)return {error:evaluation.label??'Horario bloqueado',blocked:true};
  const students=await listStudents(ctx);const {error}=await ctx.supabase.rpc('adjust_calendar_schedule',{p_edit:calendarEditPayload(item,students),p_expected:item.start,p_start:newStart,p_adjustment:{direction:input.direction,minutes:input.minutes,reason:input.reason,adjustedAt:new Date().toISOString()}});if(error)throw error;refresh();return {};
  }catch(error){return {error:actionErrorMessage('schedule-adjustment',error)};}

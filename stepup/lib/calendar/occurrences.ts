@@ -1,4 +1,5 @@
 import { generateOccurrences, applyExceptionsToOccurrences } from "./recurrence-engine.ts";
+import { resolveAgendaItems } from "./agenda.ts";
 import { resolveOccurrenceStudentLabel, type StudentForLabel } from "./occurrence-student-label.ts";
 import type { ActivityKind, CalendarLessonStatus, CalendarLessonType, CalendarModality, ClosedOutcome, RecurrenceRuleForEngine } from "./types.ts";
 
@@ -212,13 +213,8 @@ export function buildCalendarViewForRange(input: {
 }
 
 /**
- * Qué tarjetas se dibujan — misma regla EXACTA que
- * `hideCancelledLessonsWithActiveReplacement` (móvil,
- * `cancelledSlotReuse.ts`) ya portada a `lib/calendar-layout.ts`
- * (`visibleWeekLessons`) para fixtures: nunca dos tarjetas relacionadas en
- * el mismo horario. Ocultar nunca borra el dato — `all` sigue completo
- * para resolver colores (el reemplazo coral necesita ver la cancelada
- * original aunque no se dibuje).
+ * Un reemplazo vigente: la clase nueva que ocupa el horario que liberó una cancelada (vínculo explícito `freedByLessonId`, nunca coincidencia de horario). La cancelada ya NO se dibuja
+ * (ver `agenda.ts`), pero `all` la conserva para que el reemplazo se pueda pintar como tal (coral) y para el historial.
  */
 export function isActiveReplacement(item: CalendarViewItem, all: CalendarViewItem[]): boolean {
   if (!item.freedByLessonId) return false;
@@ -226,15 +222,10 @@ export function isActiveReplacement(item: CalendarViewItem, all: CalendarViewIte
   return !!original && original.status === "cancelled" && item.status !== "cancelled";
 }
 
-function hasActiveReplacementForCancelledSlot(item: CalendarViewItem, all: CalendarViewItem[]): boolean {
-  return all.some((other) => other.freedByLessonId === item.id && other.status !== "cancelled");
-}
-
+/**
+ * Qué tarjetas se dibujan Y se cuentan: la agenda operativa (`resolveAgendaItems`). Una cancelada, el origen de una reprogramación y una clase reemplazada desaparecen de la agenda normal;
+ * no generan carriles, numeración de simultáneas ni espacio reservado. Nunca se borra el dato: `all` sigue completo para el historial.
+ */
 export function visibleCalendarItems(all: CalendarViewItem[]): CalendarViewItem[] {
-  return all.filter((item) => {
-    if (item.occupiesSlot === false || item.hiddenByReplacement) return false;
-    if (item.freedByLessonId && item.status === "cancelled") return false;
-    if (item.status === "cancelled" && hasActiveReplacementForCancelledSlot(item, all)) return false;
-    return true;
-  });
+  return resolveAgendaItems(all);
 }

@@ -99,8 +99,9 @@ test("ensayo: con la lista cargada, los registros y alumnos de prueba no cuentan
 // ── Cableado y reversibilidad ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 test("cableado: la agenda, Inicio y las estadísticas leen la lista; las acciones que escriben y la ficha del alumno ven todo; sin la tabla no se rompe nada", () => {
   const view = read("lib/calendar/view.ts");
-  assert.match(view, /const rules = withoutExcludedRules\(allRules, excludedStudentIds\);/);
-  assert.match(view, /const lessons = withoutExcludedLessons\(allLessons, excludedStudentIds\);/);
+  const compose = read("lib/calendar/compose.ts");
+  assert.match(compose, /const rules = withoutExcludedRules\(allRules, excludedStudentIds\);/);
+  assert.match(compose, /const lessons = withoutExcludedLessons\(allLessons, excludedStudentIds\);/);
   assert.match(view, /options\.includeTestData \? Promise\.resolve\(NO_EXCLUDED_STUDENTS\) : loadExcludedStudentIds\(ctx\)/);
   for (const file of ["lib/actions/calendar.ts", "lib/actions/lesson-registrations.ts", "lib/students/load-profile-overview.ts"]) {
     assert.match(read(file), /loadCalendarViewForRange\(ctx, rangeStart, rangeEnd, undefined, \{ includeTestData: true \}\)/, file);

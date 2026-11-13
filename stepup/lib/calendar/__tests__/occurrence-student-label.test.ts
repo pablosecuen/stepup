@@ -148,7 +148,6 @@ test("cableado: las pantallas siguen leyendo `item.studentName` (la corrección 
   assert.match(read("components/registro/pending-list-view.tsx"), /item\.studentName \|\| "Sin alumnos"/);
   assert.match(read("lib/dashboard/lesson-label.ts"), /item\.studentName \|\| "Sin alumnos"/);
   assert.match(read("lib/dashboard/reminders-center.ts"), /pending\.item\.studentName \|\| "Sin alumnos"/);
-  const view = read("lib/calendar/view.ts");
-  assert.match(view, /listStudents\(ctx\)/);
-  assert.match(view, /students: new Map\(students\.map/);
+  assert.match(read("lib/calendar/view.ts"), /listStudents\(ctx\)/);
+  assert.match(read("lib/calendar/compose.ts"), /students: new Map\(students\.map/);
 });

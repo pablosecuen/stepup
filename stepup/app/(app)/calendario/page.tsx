@@ -2,6 +2,7 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext, DbUnauthenticatedError } from "@/lib/db/server-context";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
+import { occupiesAgendaSlot } from "@/lib/calendar/agenda";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
@@ -63,6 +64,6 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     return qs ? `/calendario?${qs}` : "/calendario";
   }
 
-  const requestedStudentClass = params.reprogramarAlumno && params.reprogramarInicio ? items.find(item => item.participantIds.includes(params.reprogramarAlumno!) && item.start === params.reprogramarInicio && item.status !== "cancelled" && item.status !== "completed") : undefined;
+  const requestedStudentClass = params.reprogramarAlumno && params.reprogramarInicio ? items.find(item => item.participantIds.includes(params.reprogramarAlumno!) && item.start === params.reprogramarInicio && occupiesAgendaSlot(item) && item.status !== "completed") : undefined;
   return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} rescheduleItemId={params.reprogramar ?? requestedStudentClass?.id} />;
 }
