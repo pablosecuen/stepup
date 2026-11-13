@@ -156,3 +156,21 @@ test("tras cancelar, la acción devuelve el id y revalida todo lo que cuenta cla
   assert.match(modal, /\{isFutureSlot && \(\s*<PrivateButtonLink\s*href=\{`\/calendario\/nueva\?freedByLessonId=\$\{cancelledLessonId\}/, "reemplazar sólo si el horario liberado es futuro");
   assert.match(modal, /restoreOccurrenceAction\(\{ lessonId: cancelledLessonId, confirmOverlap \}\)/);
 });
+
+test("historial de canceladas: acceso secundario y cerrado por defecto; reutiliza la restauración existente con su comprobación previa y confirmación explícita; no vuelve al detalle principal ni a la grilla", () => {
+  const read = (file: string) => readFileSync(join(ROOT, file), "utf8");
+  const history = read("components/calendar/cancelled-history.tsx");
+  assert.match(history, /const \[open, setOpen\] = useState\(false\);/, "cerrado por defecto");
+  assert.match(history, /listCancelledClassesAction\(\)/);
+  assert.match(history, /restoreOccurrenceAction\(\{ lessonId: entry\.lessonId, confirmOverlap \}\)/, "misma operación; sin confirmación explícita no se superpone");
+  assert.match(history, /state\.conflict \? "Restaurar igual" : "Restaurar"/);
+  assert.match(read("components/calendar/calendar-view.tsx"), /<CancelledHistory className=\{`\$\{linkClass\(\)\} \$\{MOBILE_CHIP\}`\} \/>/, "mismo chip secundario que Series, Disponibilidad e Información");
+  const action = read("lib/actions/calendar.ts");
+  assert.match(action, /export async function listCancelledClassesAction\(\)/);
+  assert.match(action, /item\.status === "cancelled" && item\.isMaterialized && !!item\.materializedLessonId/);
+  assert.match(action, /const returnsToOriginal = lesson\.recurrenceId !== null && lesson\.recurrenceOccurrenceKey !== null;/, "el choque se comprueba en el horario al que realmente vuelve");
+  // Lo retirado no vuelve al detalle principal: «Restaurar» sólo está en el paso posterior a cancelar y en el historial.
+  const modal = read("components/calendar/real-lesson-detail-modal.tsx");
+  assert.equal((modal.match(/restoreOccurrenceAction\(/g) ?? []).length, 1, "una sola llamada, dentro del paso «cancelled»");
+  assert.doesNotMatch(read("components/calendar/real-calendar-grid.tsx"), /CancelledHistory|status === "cancelled"\s*\?\s*<RealLessonCard/);
+});

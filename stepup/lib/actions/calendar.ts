@@ -1122,7 +1122,9 @@ export async function restoreOccurrenceAction(input: RestoreOccurrenceActionInpu
     const lesson = await getCalendarLesson(ctx, input.lessonId);
     if (!lesson) return { error: "Clase no encontrada." };
     if (lesson.status !== "scheduled" && !input.confirmOverlap) {
-      const originalStart = lesson.recurrenceOriginalStart ?? lesson.startAt;
+      // Una ocurrencia de serie vuelve a su fecha ORIGINAL; una clase suelta o movida (sin clave de ocurrencia) vuelve en su propio horario: el choque se comprueba en el horario al que realmente vuelve.
+      const returnsToOriginal = lesson.recurrenceId !== null && lesson.recurrenceOccurrenceKey !== null;
+      const originalStart = returnsToOriginal ? (lesson.recurrenceOriginalStart ?? lesson.startAt) : lesson.startAt;
       const originalEnd = new Date(new Date(originalStart).getTime() + (new Date(lesson.endAt).getTime() - new Date(lesson.startAt).getTime())).toISOString();
       const message = await checkConflictsAndAvailability(ctx, originalStart, originalEnd, lesson.id);
       if (message) return { error: `${message} ¿Querés restaurarla igual?`, conflict: true };
@@ -1134,6 +1136,36 @@ export async function restoreOccurrenceAction(input: RestoreOccurrenceActionInpu
   }
   revalidateCalendar();
   return {};
+}
+
+export interface CancelledClassEntry {
+  lessonId: string;
+  start: string;
+  end: string;
+  title: string;
+  isRecurring: boolean;
+}
+
+const CANCELLED_HISTORY_PAST_DAYS = 60;
+const CANCELLED_HISTORY_FUTURE_DAYS = 120;
+
+/**
+ * Historial de clases CANCELADAS (acceso secundario del Calendario, cerrado por defecto): las clases canceladas de los últimos 60 días y los próximos 120, con la MISMA composición de
+ * la agenda (misma exclusión de datos de prueba) pero sólo las retiradas. No se dibujan en la agenda normal; sirven para localizar y restaurar una.
+ */
+export async function listCancelledClassesAction(): Promise<{ items?: CancelledClassEntry[]; error?: string }> {
+  try {
+    const ctx = await requireAuthenticatedDbContext();
+    const now = Date.now();
+    const items = await loadCalendarViewForRange(ctx, new Date(now - CANCELLED_HISTORY_PAST_DAYS * 86_400_000), new Date(now + CANCELLED_HISTORY_FUTURE_DAYS * 86_400_000));
+    const cancelled = items
+      .filter((item) => item.status === "cancelled" && item.isMaterialized && !!item.materializedLessonId)
+      .sort((a, b) => b.start.localeCompare(a.start))
+      .map((item) => ({ lessonId: item.materializedLessonId as string, start: item.start, end: item.end, title: item.title?.trim() || item.studentName || "Serie sin alumnos", isRecurring: item.isRecurring }));
+    return { items: cancelled };
+  } catch (error) {
+    return { error: friendlyErrorMessage(error) };
+  }
 }
 
 /** Eliminar la tarjeta de una clase cancelada. Nunca con registro o cobro asociado (lo valida la base). */

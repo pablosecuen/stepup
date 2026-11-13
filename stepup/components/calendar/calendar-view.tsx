@@ -6,6 +6,7 @@ import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 import { CALENDAR_PAGE_CLASS } from "@/components/calendar/calendar-page-class";
+import { CancelledHistory } from "@/components/calendar/cancelled-history";
 
 /**
  * Calendario (presentación). Arriba a la izquierda el título reducido y, debajo, Series, Disponibilidad y Clases por registrar;
@@ -59,6 +60,7 @@ export function CalendarView({
               Clases por registrar
             </PrivateLink>
             <PrivateLink href={`/calendario/informacion?volver=${encodeURIComponent(buildHref({ view, week: weekStartKey, day: dayKey }))}`} className={`${linkClass()} ${MOBILE_CHIP}`}>Información</PrivateLink>
+            <CancelledHistory className={`${linkClass()} ${MOBILE_CHIP}`} />
           </nav>
         </div>
         <div className="order-first w-full nav:order-none nav:w-auto">

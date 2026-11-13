@@ -411,6 +411,113 @@ try {
       assert.ok(items.every((i) => i.status !== "cancelled" && occupiesAgendaSlot(i)));
     }
   });
+  // ============================================================================================== 16-21: historial de canceladas y restauración
+  const toCandidates = (await importLib("calendar/conflict-candidates.ts")).toConflictCandidates;
+  const { findCalendarConflicts, hasBlockingConflict } = await importLib("calendar-conflicts.ts");
+  const conflictFor = (agendaItems, start, end, ignoredId) => hasBlockingConflict(findCalendarConflicts(start, end, toCandidates(agendaItems), ignoredId));
+  const restore = (client, id) => rpc(client, "restore_calendar_occurrence", { lesson_id: id });
+  const rejectsWith = async (promise, pattern) => assert.rejects(promise, (error) => pattern.test(String(error?.message)));
+
+  await step("16. RESTAURAR una clase SUELTA cancelada (otro momento): vuelve a la agenda en su horario; sin conflicto no hay aviso; reintentar es idempotente", async () => {
+    const day = addDays(MONDAY, 21);
+    const lesson = await createSingle(a, ids.pilar, at(day, 11));
+    let v = await view();
+    await cancelOcc(a, v.all.find((i) => i.id === lesson.id));
+    v = await view(); // «volver otro momento»: se recarga todo
+    assert.ok(!v.agenda.some((i) => i.id === lesson.id));
+    assert.equal(conflictFor(v.agenda, lesson.start_at, lesson.end_at, lesson.id), false, "horario libre: sin conflicto");
+    const back = await restore(a, lesson.id);
+    assert.equal(back.status, "scheduled");
+    assert.equal((await restore(a, lesson.id)).id, lesson.id, "idempotente");
+    v = await view();
+    assert.equal(v.agenda.filter((i) => i.id === lesson.id).length, 1);
+    assert.equal(new Date(v.agenda.find((i) => i.id === lesson.id).start).toISOString(), new Date(lesson.start_at).toISOString(), "vuelve en su propio horario");
+  });
+
+  await step("17. RESTAURAR con CONFLICTO: si otra clase vigente ocupa el horario se detecta ANTES (no se superpone sola); libre el horario, restaura", async () => {
+    const day = addDays(MONDAY, 22);
+    const lesson = await createSingle(a, ids.lucy, at(day, 12));
+    let v = await view();
+    await cancelOcc(a, v.all.find((i) => i.id === lesson.id));
+    const other = await createSingle(a, ids.maria, at(day, 12)); // otra clase vigente en el horario liberado (NO es un reemplazo vinculado)
+    v = await view();
+    assert.equal(conflictFor(v.agenda, lesson.start_at, lesson.end_at, lesson.id), true, "el conflicto se detecta antes de restaurar");
+    assert.deepEqual(who(onDay(v.agenda, day).filter((i) => hourOf(i.start) === 12)), ["Alumna Tres"], "la cancelada sigue fuera de la agenda mientras no se confirme");
+    await cancelOcc(a, v.all.find((i) => i.id === other.id));
+    v = await view();
+    assert.equal(conflictFor(v.agenda, lesson.start_at, lesson.end_at, lesson.id), false);
+    await restore(a, lesson.id);
+    v = await view();
+    assert.deepEqual(who(onDay(v.agenda, day).filter((i) => hourOf(i.start) === 12)), ["Alumna Dos"]);
+  });
+
+  await step("18. RESTAURAR una ocurrencia de SERIE cancelada: vuelve a su fecha original UNA sola vez (sin duplicar la virtual y la materializada) y deja de ser excepción", async () => {
+    const rule = await createSeries(a, ids.juan, 3, 13, 0, MONDAY); // jueves 13:00
+    let v = await view();
+    const target = v.agenda.find((i) => i.recurrenceId === rule.id && instantDateKey(i.start) === addDays(MONDAY, 17));
+    const total = v.agenda.filter((i) => i.recurrenceId === rule.id).length;
+    await cancelOcc(a, target);
+    v = await view();
+    assert.equal(v.agenda.filter((i) => i.recurrenceId === rule.id).length, total - 1);
+    const row = v.all.find((i) => i.recurrenceId === rule.id && i.status === "cancelled");
+    await restore(a, row.materializedLessonId);
+    v = await view();
+    const same = v.agenda.filter((i) => i.recurrenceId === rule.id && instantDateKey(i.start) === addDays(MONDAY, 17));
+    assert.equal(same.length, 1, "una sola clase en esa fecha (ni virtual + materializada ni ninguna)");
+    assert.equal(v.agenda.filter((i) => i.recurrenceId === rule.id).length, total);
+    assert.equal(await count("select count(*)::int n from public.recurrence_exceptions where recurrence_id = $1 and occurrence_key = $2", [rule.id, target.occurrenceKey]), 0);
+  });
+
+  await step("19. RESTAURAR el caso de PILAR (clase movida y después cancelada, sin clave de ocurrencia): vuelve en su propio horario; su origen sigue liberado (no reaparece)", async () => {
+    const rule = await createSeries(a, ids.pilar, 4, 9, 0, MONDAY); // viernes 09:00
+    let v = await view();
+    const occ = v.agenda.find((i) => i.recurrenceId === rule.id && instantDateKey(i.start) === addDays(MONDAY, 18));
+    const dest = at(addDays(MONDAY, 23), 15);
+    const moved = await reschedule(a, occ, dest);
+    v = await view();
+    await cancelOcc(a, v.all.find((i) => i.id === moved.id));
+    v = await view();
+    assert.ok(!v.agenda.some((i) => i.id === moved.id));
+    await restore(a, moved.id);
+    v = await view();
+    assert.equal(v.agenda.filter((i) => i.id === moved.id).length, 1);
+    assert.equal(new Date(v.agenda.find((i) => i.id === moved.id).start).toISOString(), new Date(dest).toISOString(), "en el horario al que se había movido");
+    assert.ok(!v.agenda.some((i) => i.recurrenceId === rule.id && instantDateKey(i.start) === addDays(MONDAY, 18)), "el horario original sigue liberado");
+  });
+
+  await step("20. PROTECCIONES de la base: con registro asociado, ya REEMPLAZADA por otra clase, o un origen reprogramado, NO se restaura; no se borra ni cambia nada", async () => {
+    const withReg = await createSingle(a, ids.ana, at(addDays(MONDAY, 24), 10));
+    let v = await view();
+    await cancelOcc(a, v.all.find((i) => i.id === withReg.id));
+    await admin.query("insert into public.lesson_registrations(owner_id,calendar_lesson_id,activity_kind,counts_as_class,status,scheduled_start_at) values ($1,$2,'class',true,'in_progress',$3)", [owner, withReg.id, withReg.start_at]);
+    await rejectsWith(restore(a, withReg.id), /registro o un cobro/);
+    assert.equal(await rowStatus(withReg.id), "cancelled");
+
+    const replaced = await createSingle(a, ids.lucy, at(addDays(MONDAY, 25), 10));
+    v = await view();
+    await cancelOcc(a, v.all.find((i) => i.id === replaced.id));
+    await rpc(a, "create_calendar_lesson", single(ids.maria, at(addDays(MONDAY, 25), 10), 60, { freed_by_lesson_id: replaced.id }));
+    await rejectsWith(restore(a, replaced.id), /ya fue reemplazada/);
+    assert.equal(await rowStatus(replaced.id), "cancelled");
+
+    const origin = await createSingle(a, ids.juan, at(addDays(MONDAY, 26), 10));
+    v = await view();
+    await reschedule(a, v.all.find((i) => i.id === origin.id), at(addDays(MONDAY, 26), 16));
+    await rejectsWith(restore(a, origin.id), /no pertenece a una repetición/);
+    v = await view();
+    assert.equal(v.agenda.filter((i) => i.studentName === "Alumno Cuatro" && instantDateKey(i.start) === addDays(MONDAY, 26)).length, 1, "sólo el destino");
+
+    await rejectsWith(restore(b, replaced.id), /Clase no encontrada/); // otra cuenta no puede restaurar una clase ajena
+  });
+
+  await step("21. EL HISTORIAL NO ESTÁ EN LA AGENDA: lo cancelado figura en la vista completa para listarlo, pero nada de eso entra en carriles, grupos, pendientes ni choques", async () => {
+    const v = await view();
+    const cancelledRows = v.all.filter((i) => i.status === "cancelled" && i.isMaterialized);
+    assert.ok(cancelledRows.length >= 5, `hay canceladas listables (${cancelledRows.length})`);
+    assert.ok(cancelledRows.every((i) => !v.agenda.some((x) => x.id === i.id)));
+    const pendingList = buildPendingLessons({ calendarItems: v.all, now: new Date(`${addDays(MONDAY, 70)}T00:00:00Z`), registrations: [] });
+    assert.ok(!pendingList.some((p) => p.item.status === "cancelled"));
+  });
 } finally {
   if (a) await a.end();
   if (b) await b.end();
