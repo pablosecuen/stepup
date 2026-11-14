@@ -6,7 +6,8 @@ import type { DayLabelPlan, LabelSource, MobileLabelText, PlannedItem } from "./
  * Teléfono: dónde y cómo se escribe el nombre de cada clase con columnas de ancho fijo (cinco días iguales en Semana, un día completo en Día).
  *
  * Reglas (PURO: sólo geometría y texto; los componentes dibujan lo que se decide acá):
- *  - El bloque conserva la hora y la duración EXACTAS. Si el nombre entero (en palabras completas, sin partirlas por letras) entra dentro del bloque, se escribe dentro.
+ *  - El bloque conserva la hora y la duración EXACTAS. Si el nombre entero (en palabras completas, sin partirlas por letras) entra dentro del bloque, se escribe dentro. Una palabra sola más larga que
+ *    el bloque («Entrenamiento») se recorta con «…» si el bloque tiene alto para dos líneas y carril propio: el tipo de clase no decide el formato, lo decide el espacio.
  *  - Si no entra, la clase pasa a barra exacta + rótulo al costado. El rótulo parte el nombre en palabras (hasta dos líneas) y puede ser más alto que la barra: su posición se
  *    acomoda sin tapar otras clases, nunca se agranda ni se mueve la barra.
  *  - Un grupo de clases simultáneas se numera en la barra y en el rótulo. Si el ancho no alcanza para el nombre se escribe la primera palabra, o las iniciales, o sólo el número;
@@ -45,7 +46,7 @@ interface Profile {
   maxCardWidthPx: number;
 }
 
-const WEEK: Profile = { cardSizes: [{ fontPx: 12, lineHeightPx: 13 }, { fontPx: 11, lineHeightPx: 12 }], cardChromePx: 6, labelSizes: [{ fontPx: 11, lineHeightPx: 12 }, { fontPx: 10, lineHeightPx: 11 }], chainBarPx: 6, laneBarPx: 8, areaShare: 0.5, maxLabelLines: 3, maxCardWidthPx: Infinity };
+const WEEK: Profile = { cardSizes: [{ fontPx: 12, lineHeightPx: 13 }, { fontPx: 11, lineHeightPx: 12 }, { fontPx: 10, lineHeightPx: 11 }], cardChromePx: 6, labelSizes: [{ fontPx: 11, lineHeightPx: 12 }, { fontPx: 10, lineHeightPx: 11 }], chainBarPx: 6, laneBarPx: 8, areaShare: 0.5, maxLabelLines: 3, maxCardWidthPx: Infinity };
 const DAY: Profile = { cardSizes: [{ fontPx: 16, lineHeightPx: 19 }], cardChromePx: 18, labelSizes: [{ fontPx: 14, lineHeightPx: 16 }], chainBarPx: 14, laneBarPx: 14, areaShare: 0.45, maxLabelLines: 2, maxCardWidthPx: 244 };
 
 /** La estimación de ancho es aproximada: se deja un margen para que una palabra que «entra» no se corte en pantalla. */
@@ -96,15 +97,30 @@ export function wrapWords(text: string, widthPx: number, fontPx: number, maxLine
   return { lines, truncated };
 }
 
-/** ¿Entra el nombre entero (y el estado, si lo hay) dentro de un bloque de ese tamaño, sin cortar nada? */
-export function fitCardText(title: string, stateText: string | null, widthPx: number, heightPx: number, sizes: Profile["cardSizes"]): MobileCardText | null {
+/** Letras que como mínimo debe conservar una palabra recortada con «…» dentro de un bloque («Entre…»): con menos, el bloque no dice nada y es mejor la barra con su rótulo. */
+export const MIN_TRUNCATED_LETTERS = 4;
+
+/**
+ * ¿Entra el nombre en un bloque de ese tamaño? Primero, ENTERO (palabras completas, el tamaño de letra más grande que alcance). Si una palabra sola es más ancha que el bloque («Entrenamiento» en
+ * cinco columnas de teléfono), un bloque con alto para al menos dos líneas y carril propio (`allowLongWord`) igual la escribe con «…» y deja el resto del nombre entero («Entrenamiento B2» →
+ * «Entrenam…» / «B2»): el tipo de clase no decide el formato, lo decide el espacio. El nombre completo queda en el nombre accesible y en el detalle. Si ni así entra, `null` (barra + rótulo).
+ */
+export function fitCardText(title: string, stateText: string | null, widthPx: number, heightPx: number, sizes: Profile["cardSizes"], allowLongWord = false): MobileCardText | null {
   for (const { fontPx, lineHeightPx } of sizes) {
     const maxLines = Math.floor((heightPx - 2) / lineHeightPx) - (stateText ? 1 : 0);
     if (maxLines < 1 || (stateText && widthOf(stateText, fontPx - 1) > widthPx)) continue;
     const wrapped = wrapWords(title, widthPx, fontPx, maxLines);
     if (!wrapped.truncated) return { state: stateText, lines: wrapped.lines, fontPx, lineHeightPx };
   }
-  return null;
+  if (!allowLongWord) return null;
+  // Sólo una palabra demasiado larga puede recortarse: las demás se escriben enteras y el nombre no se corta por falta de líneas.
+  const { fontPx, lineHeightPx } = sizes[sizes.length - 1];
+  const maxLines = Math.floor((heightPx - 2) / lineHeightPx) - (stateText ? 1 : 0);
+  if (maxLines < 2 || (stateText && widthOf(stateText, fontPx - 1) > widthPx)) return null;
+  const wrapped = wrapWords(title, widthPx, fontPx, Number.MAX_SAFE_INTEGER);
+  if (wrapped.lines.length > maxLines) return null;
+  if (wrapped.lines.some((line) => line.endsWith(ELLIPSIS) && Array.from(line).length - 1 < MIN_TRUNCATED_LETTERS)) return null;
+  return { state: stateText, lines: wrapped.lines, fontPx, lineHeightPx };
 }
 
 interface Cluster {
@@ -220,7 +236,7 @@ export function planMobileDay(positioned: readonly PositionedItem[], sources: Re
   const fits = new Map<string, MobileCardText | null>();
   for (const p of positioned) {
     const cardWidth = Math.min(colWidthPx / p.laneCount - 4, p.laneCount === 1 ? profile.maxCardWidthPx : Infinity);
-    fits.set(p.item.id, fitCardText(sources.get(p.item.id)?.title ?? "", sources.get(p.item.id)?.stateText ?? null, cardWidth - profile.cardChromePx, p.height, profile.cardSizes));
+    fits.set(p.item.id, fitCardText(sources.get(p.item.id)?.title ?? "", sources.get(p.item.id)?.stateText ?? null, cardWidth - profile.cardChromePx, p.height, profile.cardSizes, p.laneCount === 1));
   }
 
   // Quiénes pasan a barra + rótulo: la clase que no entra en su bloque; en un grupo simultáneo, todas (así la numeración las asocia).

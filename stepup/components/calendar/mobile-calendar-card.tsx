@@ -11,7 +11,7 @@ export const MOBILE_DAY_CARD_MAX_WIDTH_PX = 244;
 
 /**
  * Tarjeta del teléfono. El bloque conserva la hora y la duración exactas y su zona táctil (`hitTop`/`hitHeight`, el mismo mecanismo que la tarjeta de escritorio). Sólo se dibuja con un `text` que
- * YA entra en el bloque (lo decide `planMobileDay`): el nombre en palabras completas, sin recortes; si no entra, la clase se dibuja como barra + rótulo. La hora no se repite: está en la columna horaria.
+ * YA entra en el bloque (lo decide `planMobileDay`): el nombre en palabras completas (una palabra más larga que el bloque lleva «…»); si no entra, la clase se dibuja como barra + rótulo. La hora no se repite: está en la columna horaria.
  */
 export function MobileCalendarCard({ positioned, text, dayView, isElapsed, isActiveReplacement, isInProgress, onSelect, onTip, describedBy }: {
   positioned: PositionedItem; text: MobileCardText; dayView: boolean;
@@ -27,7 +27,6 @@ export function MobileCalendarCard({ positioned, text, dayView, isElapsed, isAct
   const alignment = dayView && !isGroup ? "items-start text-left" : "items-center text-center";
   const durationMinutes = Math.round((new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000);
   const label = ariaLabelOf({ title, timeLabel: instantTimeLabel(item.start), durationMinutes, item, isElapsed, isActiveReplacement, isInProgress });
-  const notHeld = item.status === "cancelled" || (item.status === "completed" && Boolean(item.closedOutcome));
   function tip(target: HTMLElement) {
     const rect = target.getBoundingClientRect();
     onTip?.({ id: `calendar-tip-${item.id}`, text: label, rect });
@@ -42,7 +41,6 @@ export function MobileCalendarCard({ positioned, text, dayView, isElapsed, isAct
       style={{ top: blockOffset, height, backgroundColor: colors.bg, borderColor: colors.border, color: colors.textPrimary, fontSize: text.fontPx, lineHeight: `${text.lineHeightPx}px`, fontWeight: 600 }}>
       {text.state && <span className="whitespace-nowrap font-extrabold" style={{ fontSize: text.fontPx - 1 }}>{text.state}</span>}
       {text.lines.map((line, index) => <span key={index} className="whitespace-nowrap" style={{ textDecorationLine: item.status === "cancelled" ? "line-through" : undefined }}>{line}</span>)}
-      {notHeld && <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px]" style={{ backgroundImage: `repeating-linear-gradient(135deg, ${colors.border} 0 2px, transparent 2px 4px)` }} />}
     </span>
   </button>;
 }

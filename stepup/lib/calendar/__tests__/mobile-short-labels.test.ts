@@ -41,6 +41,20 @@ test("fitCardText: un bloque sólo escribe el nombre si entra ENTERO; si no, dev
   assert.equal(fitCardText("Alejandro Pons Estel", "Cancel.", 62, 30, sizes), null, "el estado ocupa su línea");
 });
 
+test("fitCardText: una palabra más larga que el bloque («Entrenamiento») no manda la clase a barra + rótulo si el bloque tiene alto y carril propio", () => {
+  const sizes = [{ fontPx: 12, lineHeightPx: 13 }, { fontPx: 11, lineHeightPx: 12 }, { fontPx: 10, lineHeightPx: 11 }];
+  assert.equal(fitCardText("Entrenamiento B2", null, 58, 48, sizes), null, "sin permiso (carril compartido) sigue siendo barra + rótulo");
+  const fit = fitCardText("Entrenamiento B2", null, 58, 48, sizes, true)!;
+  assert.ok(fit, "60 min con carril propio: bloque normal");
+  assert.equal(fit.lines.length, 2);
+  assert.match(fit.lines[0], /^Entre\S*…$/, "la palabra larga se recorta con «…», nunca sin aviso");
+  assert.equal(fit.lines[1], "B2", "el resto del nombre queda entero");
+  assert.equal(fitCardText("Entrenamiento B2", null, 58, 23, sizes, true), null, "una clase corta (una línea de alto) conserva la barra con rótulo");
+  assert.equal(fitCardText("Entrenamiento", null, 20, 48, sizes, true), null, "sin ancho para al menos cuatro letras no hay bloque legible");
+  assert.equal(fitCardText("Entrenamiento de fuerza avanzada niveles", null, 58, 36, sizes, true), null, "si faltan líneas no se corta el nombre en la última: barra + rótulo");
+  assert.ok(fitCardText("Entrenamiento", null, 80, 48, sizes, true)!.lines.length === 1 && !fitCardText("Entrenamiento", null, 80, 48, sizes, true)!.lines[0].endsWith("…"), "con ancho suficiente va entera, sin «…»");
+});
+
 test("clases de 5, 10, 15 y 30 minutos: la barra conserva la duración exacta y el rótulo dice el nombre en palabras completas", () => {
   for (const minutes of [5, 10, 15, 30]) {
     const item = lesson("10:00", minutes, "Camila Quince");

@@ -56,5 +56,8 @@ test("a not-held result retains the status indicator and a cancelled card remain
   assert.match(cancelled, /line-through/);
   assert.match(cancelled, />Cancel\.</, "el estado se dice con texto");
   assert.match(render({ ...base, studentName: "Ana Pons", status: "rescheduled" }), />Reprog\.</);
-  assert.match(render({ ...base, studentName: "Ana Pons", status: "completed", closedOutcome: "cancelada_tarde" }), /repeating-linear-gradient/);
+  const notHeld = render({ ...base, studentName: "Ana Pons", status: "completed", closedOutcome: "cancelada_tarde" });
+  assert.doesNotMatch(notHeld, /repeating-linear-gradient|background-image/, "sin rayados ni texturas: el resultado queda en el nombre accesible y en el detalle");
+  assert.match(notHeld, /aria-label="[^"]*(Cancelada tarde|Canc\. tarde|no se dictó)/i, "el resultado real sigue en el nombre accesible");
+  assert.doesNotMatch(render({ ...base, studentName: "Ana Pons", status: "cancelled" }), /repeating-linear-gradient|background-image/);
 });
