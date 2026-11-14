@@ -56,3 +56,7 @@ La auditoría encontró 4 cargos por clase sobre registros de entrenamiento (2 c
 - Unitarias: `session-billing-separation.test.ts`, `training-vs-individual-billing.test.ts` (ejecuta el cuerpo REAL de la sincronización), `registration-charge-and-training-coverage.test.ts`, `registration-outcome-charge-parity.test.ts`.
 - Postgres real: `supabase/tests/postgres/registration_billing_resolutions.cjs` (33 comprobaciones: privilegios, validaciones, idempotencia, que guardar/finalizar/editar/reintentar no duplica cargos y que un cargo con pagos no se anula ni se reasigna).
 - Pendiente de comprobar en el navegador con la cuenta de QA: ver el informe de la sesión.
+
+## Actualización 14/11 — el registro ya no explica el cobro
+
+La pantalla de registro dejó de mostrar «Cobro de este entrenamiento» con «Cubierto por la cuota mensual de «X»…» y «Se cobra como clase suelta…»: la profesora ya sabe lo que cobra y esas aclaraciones sólo ocupaban espacio. La **lógica no cambió** (`resolveRegistrationBilling` sigue separando el entrenamiento cubierto por su acuerdo y mes de las clases sueltas; cargos, cuotas, pagos y saldos intactos). El bloque sólo se dibuja cuando falta una decisión real («Falta indicar a qué entrenamiento pertenece», con sus botones); sin nada pendiente no deja título, borde ni hueco. «Cobro de esta clase» (importe, estado y «Registrar pago») se conserva.

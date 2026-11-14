@@ -37,3 +37,8 @@ export function buildBillingRows(input: {
   }
   return rows;
 }
+
+/** Filas que exigen una decisión de la profesora. «Cubierto» y «clase suelta» ya están resueltos por el sistema: no se muestran. PURO. */
+export function rowsNeedingDecision(rows: readonly BillingRow[]): Extract<BillingRow, { kind: "needs_association" }>[] {
+  return rows.filter((row): row is Extract<BillingRow, { kind: "needs_association" }> => row.kind === "needs_association");
+}

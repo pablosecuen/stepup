@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatesPerClassCharge, resolveSessionBilling, type ParticipantBillingDecision, type SavedBillingResolution, type SessionBillingInput } from "../training-coverage.ts";
-import { buildBillingRows } from "../../registro/billing-rows.ts";
+import { buildBillingRows, rowsNeedingDecision } from "../../registro/billing-rows.ts";
 
 /**
  * Separación financiera entre entrenamientos, series y clases sueltas. La misma alumna («ana») puede tener un entrenamiento mensual (acuerdo A), otro distinto (acuerdo B) y clases
@@ -151,4 +151,26 @@ test("la decisión explícita sólo se guarda desde una acción propia que valid
   assert.match(sql, /security definer\s+set search_path = ''/);
   assert.match(sql, /revoke all on public\.lesson_registration_billing_resolutions from anon, authenticated;\s+grant select on/);
   assert.doesNotMatch(sql, /payment_charges|payment_allocations|payments\b/, "la migración no toca cargos, pagos ni asignaciones");
+});
+
+test("el registro no explica el cobro del entrenamiento: sólo queda lo que exige una decisión y, sin nada pendiente, no hay bloque", () => {
+  const decisions = new Map<string, ParticipantBillingDecision>([
+    ["ana", { kind: "covered", agreementId: "A", source: "series" }],
+    ["bea", { kind: "needs_association", candidateAgreementIds: ["A", "B"], suggestedAgreementId: "A" }],
+    ["caro", { kind: "own_regime", source: "explicit" }],
+  ]);
+  const participants = ["ana", "bea", "caro"].map((id) => ({ studentId: id, name: id, billsPerClass: true }));
+  const rows = buildBillingRows({ activityKind: "training", participants, decisions, agreementLabels: new Map([["A", "Entrenamiento B2"], ["B", "Entrenamiento B1"]]) });
+  // La lógica de cobro NO cambia: las tres decisiones se siguen resolviendo.
+  assert.deepEqual(rows.map((row) => row.kind), ["covered", "needs_association", "own_regime"]);
+  // Sólo la pendiente se muestra.
+  assert.deepEqual(rowsNeedingDecision(rows).map((row) => row.studentId), ["bea"]);
+  // Entrenamiento cubierto + clase suelta (alumno con ambas actividades): nada que mostrar.
+  assert.deepEqual(rowsNeedingDecision(rows.filter((row) => row.kind !== "needs_association")), []);
+  // El componente no conserva los textos explicativos ni el título del bloque.
+  const component = readFileSync(fileURLToPath(new URL("../../../components/registro/registration-billing-panel.tsx", import.meta.url)), "utf8");
+  for (const forbidden of ["Cubierto por la cuota mensual", "no genera un cobro por clase", "Se cobra como clase suelta", "Pendiente: sin cobro", ">Cobro de este entrenamiento<"]) {
+    assert.ok(!component.includes(forbidden), `no debe quedar «${forbidden}»`);
+  }
+  assert.match(component, /if \(pendingRows\.length === 0 && notes\.length === 0\) return null;/, "sin nada pendiente el bloque completo desaparece");
 });

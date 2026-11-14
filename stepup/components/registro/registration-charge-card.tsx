@@ -16,13 +16,13 @@ export interface RegistrationChargeLine {
 
 /**
  * Situación REAL del cobro de ESTA clase (pagada, parcial o pendiente) con los pagos asignados a ese cobro — nunca los de otra clase, serie o entrenamiento.
- * Una sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo no genera cobro por clase: eso lo explica `RegistrationBillingPanel`, participante por participante.
+ * Una sesión de entrenamiento cubierta por la cuota mensual de SU acuerdo no genera cobro por clase y no se explica en pantalla (lo resuelve `resolveRegistrationBilling`).
  * Con saldo, «Registrar pago» paga SÓLO el cobro de esta clase (`chargeId` fijo): nunca se reparte hacia un entrenamiento ni hacia otra clase del alumno. Es el equivalente web del aviso de cobro al dictar la clase de la app original (pagó el total / una parte / después).
  */
 export function RegistrationChargeCard({ lines }: { lines: RegistrationChargeLine[] }) {
   if (lines.length === 0) return null;
   return (
-    <section aria-label="Cobro de esta clase" className="rounded-lg border-[1.5px] border-border bg-surface2 p-4">
+    <section aria-label="Cobro de esta clase" className="mb-5 rounded-lg border-[1.5px] border-border bg-surface2 p-4">
       <h2 className="font-display text-card font-semibold">Cobro de esta clase</h2>
       <ul className="mt-2 flex flex-col gap-2.5">
         {lines.map((line) => (
