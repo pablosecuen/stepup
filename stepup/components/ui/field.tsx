@@ -20,7 +20,9 @@ export const fieldErrorId = (id: string) => `${id}-error`;
 // Un `<input type="date">` o `type="time"` nativo (sobre todo en iOS Safari) toma un ancho propio mayor que su contenedor y centra el valor: se fuerza a ocupar sólo el ancho disponible y a alinear el valor a la izquierda.
 // Vale para TODOS los controles nativos de fecha y hora (antes sólo `date`: los campos «Desde»/«Hasta» de hora de Disponibilidad se salían de la tarjeta).
 const NATIVE_PICKER_TYPES = new Set(["date", "time", "datetime-local", "month", "week"]);
-const dateInputClass = "block min-w-0 max-w-full appearance-none text-left [&::-webkit-date-and-time-value]:min-h-[1.5em] [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:p-0";
+// Centrado vertical del valor: en Safari móvil, con `appearance:none`, el valor interno (`::-webkit-date-and-time-value`) queda pegado arriba del campo. El campo pasa a ser un flex de alto fijo (46 px, el mismo
+// de todos los controles) que centra su contenido, sin márgenes propios en el valor ni relleno en la edición. La letra sigue en 16 px (la de `inputClass`: menos haría que iOS amplíe la página al enfocar).
+const dateInputClass = "flex h-[46px] min-w-0 max-w-full appearance-none items-center py-0 text-left [&::-webkit-date-and-time-value]:m-0 [&::-webkit-date-and-time-value]:min-h-[1.5em] [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:p-0";
 
 export function TextInput({ className, type, ...props }: ComponentProps<"input">) {
   const extra = [type && NATIVE_PICKER_TYPES.has(type) ? dateInputClass : "", className ?? ""].filter(Boolean).join(" ");

@@ -98,7 +98,7 @@ test("los campos nativos de hora y fecha no se salen de la tarjeta: el tratamien
   const field = code("components/ui/field.tsx");
   assert.ok(field.includes('NATIVE_PICKER_TYPES = new Set(["date", "time", "datetime-local", "month", "week"])'));
   assert.ok(field.includes("type && NATIVE_PICKER_TYPES.has(type) ? dateInputClass"));
-  assert.ok(field.includes('const dateInputClass = "block min-w-0 max-w-full appearance-none text-left'));
+  assert.ok(field.includes('const dateInputClass = "flex h-[46px] min-w-0 max-w-full appearance-none items-center py-0 text-left'));
   assert.ok(field.includes('<div className="flex min-w-0 flex-col gap-1.5">'), "la celda de la grilla puede encogerse por debajo del ancho propio del control");
 });
 

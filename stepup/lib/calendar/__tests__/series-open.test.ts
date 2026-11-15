@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findManageableForRule, lineageRootId, listPredecessorsRunningFrom, type RuleForLineage } from "../lineage.ts";
-import { parseSeriesId, seriesBackTarget, seriesDetailHref } from "../series-return.ts";
+import { parseSeriesId, seriesBackTarget, seriesDetailHref, seriesEditHref, wantsDirectFutureEdit } from "../series-return.ts";
 import { resolveParticipantNames } from "../occurrences.ts";
 
 const NOW = "2026-10-22T15:00:00.000Z";
@@ -83,7 +83,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\
 
 test("cableado: «Administrar esta serie» abre la serie exacta por su id (no el listado) y el detalle muestra a todos los alumnos", () => {
   const modal = read("components/calendar/real-lesson-detail-modal.tsx");
-  assert.match(modal, /href=\{seriesDetailHref\(item\.recurrenceId, calendarPath\)\}/);
+  assert.match(modal, /href=\{seriesEditHref\(item\.recurrenceId, calendarPath\)\}/, "«Administrar serie» abre directo «Editar futuras» de ESA serie");
   assert.doesNotMatch(modal, /href="\/calendario\/series"/, "ya no manda al listado general");
   assert.match(modal, /<LessonMemberSummary members=\{members\}/);
   assert.match(read("components/calendar/lesson-member-summary.tsx"), /aria-label="Alumnos de esta clase"/);
@@ -138,4 +138,28 @@ test("cableado: «Editar futuras» corta el tramo que cubre la fecha, hereda el 
   assert.match(actions, /originalRecurrenceId: target\.id,/);
   assert.match(actions, /successorEndDate,\n      \/\/ [^\n]*\n      endRuleIds: segment\.superseded\.map\(\(rule\) => rule\.id\),/);
   assert.match(read("lib/repositories/recurrence-split.ts"), /if \(input\.successorEndDate !== undefined\) plan\.successorEndDate = input\.successorEndDate;/);
+});
+
+test("«Administrar serie» abre directamente «Editar futuras» de la serie exacta y conserva el Calendario de origen", () => {
+  const id = "11111111-2222-4333-8444-555555555555";
+  assert.equal(seriesEditHref(id, "/calendario?week=2026-10-19"), `/calendario/series/${id}?volver=${encodeURIComponent("/calendario?week=2026-10-19")}&editar=futuras`);
+  assert.equal(seriesEditHref(id, "/calendario?view=day&day=2026-10-23"), `/calendario/series/${id}?volver=${encodeURIComponent("/calendario?view=day&day=2026-10-23")}&editar=futuras`);
+  assert.equal(seriesEditHref(id, null), `/calendario/series/${id}?editar=futuras`);
+  assert.equal(seriesEditHref(id, "https://malo.example/calendario"), `/calendario/series/${id}?editar=futuras`, "nunca un destino ajeno");
+  assert.equal(wantsDirectFutureEdit("futuras"), true);
+  for (const other of [undefined, "", "future", "FUTURAS", ["futuras"], "futuras&x"]) assert.equal(wantsDirectFutureEdit(other), false);
+});
+
+test("cableado del editor directo: se reutiliza el MISMO diálogo «Editar futuras», sólo para la serie vigente, y cerrarlo (cancelar o guardar) vuelve al Calendario", () => {
+  const page = read("app/(app)/calendario/series/[id]/page.tsx");
+  assert.match(page, /directEditFuture=\{head && wantsDirectFutureEdit\(query\.editar\) \? \{ returnTo: back \} : undefined\}/, "sólo con serie vigente (head) y el valor exacto");
+  const list = read("components/calendar/series-list-view.tsx");
+  assert.match(list, /directEditFuture=\{directEditFuture\} \/>/);
+  assert.doesNotMatch(list.slice(list.indexOf("export function SeriesListView")), /directEditFuture/, "el listado general no abre ningún editor solo");
+  const actions = read("app/(app)/calendario/series/series-status-actions.tsx");
+  assert.match(actions, /useState\(\(\) => !!directEditFuture && status !== "ended"\)/, "no abre en una serie terminada");
+  assert.equal((actions.match(/<Dialog title=\{dialogTitle\("Editar futuras"\)\}/g) ?? []).length, 1, "un solo editor: no se duplica el formulario");
+  assert.match(actions, /if \(directReturn\) \{\s*const target = directReturn;\s*setDirectReturn\(null\);\s*router\.push\(target\);/);
+  const effects = actions.slice(0, actions.indexOf("function submitEditFuture"));
+  assert.ok(!effects.includes("useEffect"), "abrir el editor no dispara ningún guardado");
 });

@@ -6,6 +6,8 @@ import type { Config } from "tailwindcss";
 // superficies; controles y foco 3:1. El móvil no se toca; los colores del calendario (escala congelada, lib/calendar-theme.ts)
 // tampoco pasan por acá.
 const config: Config = {
+  // `hover:` sólo donde el dispositivo permite pasar el puntero: en tacto no queda ningún estado hover pegado después de tocar.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",

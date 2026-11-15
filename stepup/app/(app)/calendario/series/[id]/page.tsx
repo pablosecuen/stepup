@@ -7,7 +7,7 @@ import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { withoutExcludedRules, withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
 import { findManageableForRule } from "@/lib/calendar/lineage";
 import { getLocalDateKey } from "@/lib/calendar/timezone";
-import { parseSeriesId, seriesBackTarget } from "@/lib/calendar/series-return";
+import { parseSeriesId, seriesBackTarget, wantsDirectFutureEdit } from "@/lib/calendar/series-return";
 import { formatCivilDayMonth } from "@/lib/format/date-format";
 import { ErrorState } from "@/components/ui/states";
 import { Notice } from "@/components/ui/notice";
@@ -22,6 +22,8 @@ export const metadata = { title: "Serie · TeacherFlow" };
 interface SeriesDetailSearchParams {
   /** Semana o día del Calendario desde el que se abrió (ruta interna); «Volver» regresa ahí. */
   volver?: string;
+  /** `futuras`: abre «Editar futuras» de esta serie al entrar (recorrido de «Administrar serie»). */
+  editar?: string;
 }
 
 /**
@@ -121,7 +123,7 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
             No tiene clases por venir, así que no hay nada que cambiar. Sus clases dictadas y registros se conservan.
           </Notice>
         )}
-        <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={head ? swapOptions : []} highlighted />
+        <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={head ? swapOptions : []} highlighted directEditFuture={head && wantsDirectFutureEdit(query.editar) ? { returnTo: back } : undefined} />
       </div>
     </div>
   );

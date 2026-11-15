@@ -69,3 +69,20 @@ test("el encabezado de la ficha no vuelve a subir cuando llega el cuerpo y el mo
   assert.match(css,/@media \(prefers-reduced-motion: reduce\) \{\s*::view-transition-group\(\*\)/);
   assert.match(css,/::view-transition \{ pointer-events: none; \}/);
 });
+
+test("el efecto decorativo de relleno, desplazamiento y elevación sólo corre con mouse; el tacto no lo ejecuta ni deja hover pegado", () => {
+  const css = read("app/natural-theme.css").replaceAll("\r\n", "\n");
+  const open = css.indexOf("@media (hover:hover) and (pointer:fine) {");
+  assert.ok(open > 0, "el hover decorativo está dentro de (hover:hover) and (pointer:fine)");
+  const mediaBlock = css.slice(open, css.indexOf("\n}\n", open));
+  assert.ok(mediaBlock.includes(":hover { background-size:100% 100%; translate:0 -3px; }"), "relleno y elevación al pasar el puntero, sólo con mouse");
+  assert.ok(mediaBlock.includes("320ms"), "la animación larga de escritorio vive dentro de la consulta de mouse");
+  const outside = css.slice(0, open) + css.slice(open + mediaBlock.length);
+  assert.ok(!outside.includes(":hover"), "fuera de la consulta no hay ningún :hover decorativo");
+  assert.ok(!outside.includes("320ms"), "el tacto no hereda la transición larga");
+  assert.ok(outside.includes(":active { background-size:100% 100%; }"), "pulsación breve para todos los dispositivos");
+  assert.ok(outside.includes(":focus-visible { background-size:100% 100%; translate:0 -2px; }"), "el foco visible por teclado se conserva");
+  assert.ok(!outside.split("\n").some((line) => line.includes(":active") && line.includes("translate")), "la pulsación nunca desplaza el diseño");
+  assert.ok(css.includes("transition:none; translate:none !important;"), "movimiento reducido");
+  assert.ok(read("tailwind.config.ts").includes("future: { hoverOnlyWhenSupported: true }"), "los hover: de Tailwind sólo donde hay hover real");
+});

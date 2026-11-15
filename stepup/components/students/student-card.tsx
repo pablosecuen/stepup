@@ -5,7 +5,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { avatarInitials, avatarToneFor } from "@/lib/ui/avatar-tone";
 import { GradeAndMonthText, NextClassText, PaymentStatusChip, StudentBadges } from "./student-list-parts";
-import { StudentRowActionsMenu } from "./row-actions-menu";
 
 /** Chip de nivel: se parte si el nombre del nivel es largo (nunca desborda ni se corta con «…»). */
 export function LevelChip({ children }: { children: string }) {
@@ -16,7 +15,7 @@ export function LevelChip({ children }: { children: string }) {
   );
 }
 
-/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, próxima clase, estado de pago del mes, promedio, clases del mes y avisos. La tarjeta es el enlace al perfil; el menú de acciones del alumno queda al costado, fuera del enlace. */
+/** Fila de la lista en móvil: avatar, nombre, nivel y modalidad, próxima clase, estado de pago del mes, promedio, clases del mes y avisos. Toda la tarjeta es el enlace al perfil (las acciones del alumno viven en su ficha). */
 export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
   const { student } = row;
   return (
@@ -42,9 +41,6 @@ export function StudentCard({ row, now }: { row: StudentListRow; now: Date }) {
         </div>
       </div>
     </PrivateLink>
-    <div className="pr-1 pt-1.5">
-      <StudentRowActionsMenu student={{ id: student.id, name: student.name, status: student.status }} nextClassStart={row.nextClassStart} />
-    </div>
     </div>
   );
 }
@@ -67,9 +63,6 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
           <Th>Próxima clase</Th>
           <Th>Estado de pago</Th>
           <Th>Notas y clases</Th>
-          <Th>
-            <span className="sr-only">Acciones</span>
-          </Th>
         </tr>
       </thead>
       <tbody>
@@ -112,9 +105,6 @@ export function StudentsTable({ rows, now }: { rows: StudentListRow[]; now: Date
             </Td>
             <Td>
               <GradeAndMonthText row={row} />
-            </Td>
-            <Td className="w-14 text-right">
-              <StudentRowActionsMenu student={{ id: student.id, name: student.name, status: student.status }} nextClassStart={row.nextClassStart} />
             </Td>
           </Tr>
           );

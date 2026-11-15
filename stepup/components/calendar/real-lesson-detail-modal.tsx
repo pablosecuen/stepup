@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowPathIcon, ArrowRightIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { editRegistrationHref } from "@/lib/registro/return-path";
-import { seriesDetailHref } from "@/lib/calendar/series-return";
+import { seriesEditHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { formatCivilDayLabelShort, instantDateKey, instantMinutesOfDay, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { lessonStatusLabel, MODALITY_LABELS } from "@/lib/calendar-theme";
@@ -270,7 +270,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 </summary>
                 <div className="flex flex-col items-start gap-2 pb-1 pt-2">
                   {item.recurrenceId && (
-                    <PrivateButtonLink href={seriesDetailHref(item.recurrenceId, calendarPath)} variant="secondary">
+                    <PrivateButtonLink href={seriesEditHref(item.recurrenceId, calendarPath)} variant="secondary">
                       Administrar serie
                       <ArrowRightIcon className="h-4 w-4" aria-hidden />
                     </PrivateButtonLink>

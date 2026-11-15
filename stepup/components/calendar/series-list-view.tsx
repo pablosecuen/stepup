@@ -60,6 +60,7 @@ export function SeriesCard({
   nowIso,
   swapOptions = [],
   highlighted = false,
+  directEditFuture,
 }: {
   swapOptions?: SwapOption[];
   rule: RuleWithLineageId;
@@ -67,6 +68,8 @@ export function SeriesCard({
   students: StudentRecord[];
   nowIso: string;
   highlighted?: boolean;
+  /** Llegó desde «Administrar serie»: «Editar futuras» se abre solo y al cancelar o guardar se vuelve a `returnTo` (el Calendario de origen). */
+  directEditFuture?: { returnTo: string };
 }) {
   const studentsById = new Map(students.map((s) => [s.id, s]));
   const namesOf = (ids: string[]) => ids.map((id) => studentsById.get(id)?.name ?? "Alumno").join(", ") || "Sin alumnos";
@@ -85,7 +88,7 @@ export function SeriesCard({
           <p title={rule.classTitle || participantNames} className="line-clamp-2 font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{rule.classTitle || participantNames}</p>
           {rule.classTitle && <p title={participantNames} className="mt-0.5 line-clamp-1 text-[14px] text-textMuted [overflow-wrap:anywhere]">{participantNames}</p>}
         </div>
-        <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} training={rule.activityKind === "training" ? { agreementId: rule.trainingBillingAgreementId } : null} />
+        <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} training={rule.activityKind === "training" ? { agreementId: rule.trainingBillingAgreementId } : null} directEditFuture={directEditFuture} />
       </div>
       <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-textSecondary">
         <span title={`${sinceLabel}${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} className="line-clamp-2 [overflow-wrap:anywhere]">

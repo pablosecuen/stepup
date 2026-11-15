@@ -47,6 +47,7 @@ export function SeriesStatusActions({
   scheduleLabel,
   swapOptions = [],
   training = null,
+  directEditFuture,
 }: {
   /** Nombre y horario de LA serie (para decir en la confirmación exactamente qué se quita). */
   seriesLabel: string;
@@ -54,6 +55,8 @@ export function SeriesStatusActions({
   swapOptions?: SwapOption[];
   /** Sólo un entrenamiento: su acuerdo de cobro (la cuota se configura o edita desde «Acciones»). */
   training?: { agreementId: string | null } | null;
+  /** Recorrido directo de «Administrar serie»: «Editar futuras» llega abierto y cerrarlo (cancelar o guardar) vuelve al Calendario de origen. Abrirlo no guarda nada. */
+  directEditFuture?: { returnTo: string };
   ruleId: string;
   status: RecurrenceRuleStatus;
   weeks: RecurrenceWeek[];
@@ -69,7 +72,9 @@ export function SeriesStatusActions({
   // Cambios ya programados que este cambio reemplazaría (tramos posteriores a la fecha): se muestran y se confirman, nunca se finalizan en silencio.
   const [replaceWarning, setReplaceWarning] = useState<string | null>(null);
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
-  const [editingFuture, setEditingFuture] = useState(false);
+  const [editingFuture, setEditingFuture] = useState(() => !!directEditFuture && status !== "ended");
+  // Mientras el editor abierto por el recorrido directo siga siendo ese, cerrarlo devuelve al Calendario; otras ventanas abiertas después desde «Acciones» no navegan.
+  const [directReturn, setDirectReturn] = useState<string | null>(() => (directEditFuture && status !== "ended" ? directEditFuture.returnTo : null));
   const [editingParticipants, setEditingParticipants] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   // «Cambiar horario»: mover una clase (o esta y las siguientes) a cualquier horario libre, sin necesidad de otra serie.
@@ -179,6 +184,12 @@ export function SeriesStatusActions({
     setSelectedPrimaryId(primaryStudentId ?? "");
     setFutureDate(today);
     setParticipantsDate(today);
+    if (directReturn) {
+      const target = directReturn;
+      setDirectReturn(null);
+      router.push(target);
+      return;
+    }
     window.requestAnimationFrame(() => actionsButtonRef.current?.focus({ preventScroll: true }));
   }
 
@@ -348,7 +359,7 @@ export function SeriesStatusActions({
           <form onSubmit={(event) => submitWithoutReset(event, submitEditFuture)} className="flex flex-col gap-4">
             <p className="text-[13.5px] text-textMuted">Dividir: «esta y las siguientes». El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
             <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
-              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
                 <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0" />
                 <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
                   Hoy
@@ -411,7 +422,7 @@ export function SeriesStatusActions({
         <Dialog title={dialogTitle("Administrar miembros")} size="lg" onClose={closeAll}>
           <form onSubmit={(event) => submitWithoutReset(event, submitChangeParticipants)} className="flex flex-col gap-4">
             <Field label="Desde qué fecha rige el nuevo grupo de alumnos" htmlFor={`participantsEffectiveDate-${ruleId}`} hint={participantsDate ? `Rige desde ${formatCivilDayLabel(participantsDate)}.` : undefined}>
-              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
                 <TextInput id={`participantsEffectiveDate-${ruleId}`} name="participantsEffectiveDate" type="date" required min={today} value={participantsDate} onChange={(e) => setParticipantsDate(e.target.value)} className="min-w-0" />
                 <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => setParticipantsDate(today)} disabled={participantsDate === today}>
                   Hoy

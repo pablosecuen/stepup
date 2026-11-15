@@ -11,13 +11,20 @@
 .tf-page-main [data-tf-student-name]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .tf-page-main section[aria-labelledby]{background-image:linear-gradient(120deg,#E8E4EF45,transparent 55%)}
 
-/* All shared links include the sidebar and mobile navigation, outside main. */
+/* Efecto decorativo de controles (relleno + elevación). All shared links include the sidebar and mobile navigation, outside main.
+   - Con mouse (hover real y puntero preciso): relleno, desplazamiento y elevación al pasar el puntero.
+   - Con tacto: NADA de eso al tocar y ningún hover pegado; sólo una pulsación breve (tinte de 90 ms mientras se mantiene), sin mover el diseño ni retrasar la acción.
+   - Teclado: el foco visible conserva su relleno y su elevación en cualquier dispositivo.
+   - Movimiento reducido: sin transición ni desplazamiento. */
 body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary) {
   background-image:linear-gradient(var(--tf-control-wash,color-mix(in srgb,currentColor 20%,transparent)),var(--tf-control-wash,color-mix(in srgb,currentColor 20%,transparent)));
   background-size:100% 0%; background-position:center bottom; background-repeat:no-repeat;
-  transition:background-size 320ms cubic-bezier(.2,.75,.2,1),background-color 280ms ease,color 280ms ease,border-color 280ms ease,translate 280ms ease;
+  transition:background-size 90ms ease-out,background-color 150ms ease,color 150ms ease,border-color 150ms ease,translate 150ms ease;
 }
 @media (hover:hover) and (pointer:fine) {
+  body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary) {
+    transition:background-size 320ms cubic-bezier(.2,.75,.2,1),background-color 280ms ease,color 280ms ease,border-color 280ms ease,translate 280ms ease;
+  }
   body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):not(:disabled):not([aria-disabled="true"]):hover { background-size:100% 100%; translate:0 -3px; }
 }
 body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):focus-visible { background-size:100% 100%; translate:0 -2px; }
