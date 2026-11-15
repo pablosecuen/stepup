@@ -11,7 +11,7 @@ import { PANEL_CLASS } from "@/components/ui/surfaces";
 import { agendaLessonLabel } from "@/lib/dashboard/lesson-label";
 import { buildFirstSteps, buildGreeting, homeDateLabel, resolveHomeStage, type HomeWelcome } from "@/lib/dashboard/home-welcome";
 import { formatInstantDayShort, formatInstantTime } from "@/lib/format/date-format";
-import { formatGrade, formatHours } from "@/lib/format/number-format";
+import { formatHours } from "@/lib/format/number-format";
 import type { HomeData } from "@/lib/dashboard/load-home-data";
 
 const MAX_VISIBLE_PENDING = 4;
@@ -36,7 +36,7 @@ function Figure({ value, label, href }: { value: number; label: string; href?: s
   );
 }
 
-/** Cifra con texto (horas, promedio, «Sin datos»): mismo estilo que `Figure`, pero acepta texto. */
+/** Cifra con texto (horas, «Sin datos»): mismo estilo que `Figure`, pero acepta texto. */
 function TextFigure({ value, label }: { value: string; label: string }) {
   return (
     <div className="block min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
@@ -132,11 +132,10 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
       {!onboarding && <DailyCollectionsNotice summary={data.collectionsUrgency} todayDateKey={data.todayDateKey} />}
 
       {!onboarding && (
-        <section aria-label="Indicadores" data-enter="2" className="tf-enter mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:divide-x nav:divide-border nav:gap-0">
+        <section aria-label="Indicadores" data-enter="2" className="tf-enter mt-3 grid grid-cols-3 gap-x-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:divide-x nav:divide-border nav:gap-0">
           <TextFigure value={String(data.stats.activeStudents)} label={data.stats.activeStudents === 1 ? "alumno activo" : "alumnos activos"} />
           <TextFigure value={String(data.stats.lessonsThisWeek)} label={data.stats.lessonsThisWeek === 1 ? "clase esta semana" : "clases esta semana"} />
           <TextFigure value={data.stats.hoursTaughtThisMonth === null ? "Sin datos" : formatHours(data.stats.hoursTaughtThisMonth)} label="enseñadas este mes" />
-          <TextFigure value={data.stats.averageGrade === null ? "Sin datos" : formatGrade(data.stats.averageGrade)} label="promedio de evaluaciones" />
         </section>
       )}
 

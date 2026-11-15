@@ -121,8 +121,8 @@ function InicioBody() {
       </div>
       {/* Aviso de cobros del día: 150 px en escritorio y 142 px en móvil (medidos en Production con datos de QA) */}
       <div className="mt-[15px] h-[142px] rounded-xl border-[1.5px] border-border bg-surface2 nav:h-[150px]" />
-      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:gap-0 nav:divide-x nav:divide-border">
-        {[0, 1, 2, 3].map((index) => (
+      <div className="mt-3 grid grid-cols-3 gap-x-3 border-b border-border pb-3 nav:flex nav:items-stretch nav:gap-0 nav:divide-x nav:divide-border">
+        {[0, 1, 2].map((index) => (
           <div key={index} className="min-h-11 min-w-0 py-1 nav:px-7 nav:first:pl-0">
             <SkBar className="h-[26px] w-10 max-[420px]:h-[22px]" />
             <SkBar className="mt-1 h-4 w-28 max-w-full opacity-80" />
@@ -642,7 +642,7 @@ function DisponibilidadBody({ title }: { title: string }) {
       <div data-tf-header="" className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={PAGE_TITLE_CLASS}>{title}</p>
-          <p className="mt-1.5 max-w-[68ch] text-[15px] text-textMuted">Bloqueos semanales y excepciones (vacaciones, feriados) — se usan para avisar de conflictos al crear/reprogramar una clase.</p>
+          <p className="mt-1.5 max-w-[68ch] text-[15px] text-textMuted">Bloqueos semanales y vacaciones / feriados — se usan para avisar de conflictos al crear/reprogramar una clase.</p>
         </div>
         <SkBar className="h-11 w-11 shrink-0" />
       </div>
@@ -671,9 +671,9 @@ function DisponibilidadBody({ title }: { title: string }) {
           </div>
         </Card>
         <Card>
-          <h2 className="font-display text-card font-semibold">Excepciones (vacaciones, feriados)</h2>
+          <h2 className="font-display text-card font-semibold">Vacaciones / feriados</h2>
           <ul className="mt-3 flex flex-col gap-2">
-            <li className={AVAILABILITY_EMPTY_CLASS}>Sin excepciones todavía.</li>
+            <li className={AVAILABILITY_EMPTY_CLASS}>Sin vacaciones ni feriados todavía.</li>
           </ul>
           <div className={AVAILABILITY_FORM_GRID}>
             {["Desde", "Hasta (opcional)", "Motivo"].map((label) => (
@@ -681,7 +681,7 @@ function DisponibilidadBody({ title }: { title: string }) {
                 <SkBar className={label === "Motivo" ? "h-[46px]" : "h-11"} />
               </Field>
             ))}
-            <SkAction label="Agregar excepción" variant="secondary" className="w-full" />
+            <SkAction label="Agregar período" variant="secondary" className="w-full" />
           </div>
         </Card>
       </div>

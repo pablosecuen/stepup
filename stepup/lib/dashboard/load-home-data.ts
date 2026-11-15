@@ -41,7 +41,7 @@ export interface HomeData {
   /** Instante de la carga (el reloj con el que se calcularon los estados de «Clases de hoy»). */
   nowIso: string;
   nextClass: HomeNextClass | null;
-  /** Indicadores de la cuenta (alumnos activos, clases de la semana, horas del mes, promedio de evaluaciones). */
+  /** Indicadores de la cuenta (alumnos activos, clases de la semana y horas del mes). */
   stats: HomeStats;
   /** Clases de hoy NO canceladas (alimentan el contador y «próxima clase»). */
   todayLessons: CalendarViewItem[];
@@ -104,7 +104,7 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   // de clases vacías (antes cada vista los volvía a pedir: reglas, alumnos y excepciones se leían tres veces).
   // Las clases de cada rango se leen a la vez que la base (no dependen de ella) y las vistas se componen cuando llega todo.
   const dayStart = new Date(dayStartIso);
-  // Información complementaria (horas del mes y promedio): arranca a la vez que las demás lecturas; si no se puede leer, esas dos cifras dicen «Sin datos» y el resto de Inicio sigue igual.
+  // Información complementaria (horas del mes): arranca a la vez que las demás lecturas; si no se puede leer, esa cifra dice «Sin datos» y el resto de Inicio sigue igual.
   const statsRawPromise = loadHomeStatsRaw(ctx).catch(() => null);
   const [calendarBase, todayLessonRows, allHorizonLessons, pendingLessonRows, balances] = await Promise.all([
     loadCalendarViewBase(ctx),
@@ -136,8 +136,8 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   const weekItems = resolveAgendaItems(composeCalendarView(calendarBase, weekLessonRows, weekStart, weekEndExclusive));
   const activeStudentCount = students.filter((student) => student.status === "activo").length;
   const stats: HomeStats = statsInputs
-    ? buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: statsInputs.monthMinutes, grades: statsInputs.grades })
-    : { ...buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: [], grades: [] }), hoursTaughtThisMonth: null, averageGrade: null };
+    ? buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: statsInputs.monthMinutes })
+    : { ...buildHomeStats({ activeStudents: activeStudentCount, weekItems, monthMinutes: [] }), hoursTaughtThisMonth: null };
   const nextClassSelection = selectCurrentOrNextOccurrence(todayLessons, now);
   const nextClass: HomeNextClass | null = nextClassSelection ? { item: nextClassSelection.occurrence, timing: nextClassSelection.timing } : null;
 

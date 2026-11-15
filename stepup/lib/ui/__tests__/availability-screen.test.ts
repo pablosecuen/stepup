@@ -70,7 +70,7 @@ test("estado vacío compacto: alineado a la izquierda, ~540 px como máximo en e
   const maxWidth = Number(/max-w-\[(\d+)px\]/.exec(emptyClass)?.[1]);
   assert.ok(maxWidth >= 500 && maxWidth <= 560, `ancho máximo ${maxWidth}`);
   assert.doesNotMatch(empty, /mx-auto|text-center|justify-center/, "alineado a la izquierda");
-  assert.match(editor, /<EmptyNote>Sin excepciones todavía\.<\/EmptyNote>/);
+  assert.match(editor, /<EmptyNote>Sin vacaciones ni feriados todavía\.<\/EmptyNote>/);
   assert.match(editor, /<EmptyNote>Sin bloqueos semanales todavía\.<\/EmptyNote>/);
   // la fila real (ListRow) y las listas no llevan el límite del estado vacío
   const row = editor.slice(editor.indexOf("function ListRow"), editor.indexOf("export function AvailabilityEditor"));
@@ -92,4 +92,25 @@ test("la lógica no cambió: mismas acciones, validaciones y «Quitar»", () => 
   assert.match(editor, /removeWeeklyBlock\(block\.id\)/);
   assert.match(editor, /removeException\(exception\.id\)/);
   assert.doesNotMatch(code(`${DIR}/page.tsx`), /migration|rpc\(|supabase\.from/i);
+});
+
+test("los campos nativos de hora y fecha no se salen de la tarjeta: el tratamiento de ancho vale para time y date, y el campo puede encogerse dentro de la grilla", () => {
+  const field = code("components/ui/field.tsx");
+  assert.ok(field.includes('NATIVE_PICKER_TYPES = new Set(["date", "time", "datetime-local", "month", "week"])'));
+  assert.ok(field.includes("type && NATIVE_PICKER_TYPES.has(type) ? dateInputClass"));
+  assert.ok(field.includes('const dateInputClass = "block min-w-0 max-w-full appearance-none text-left'));
+  assert.ok(field.includes('<div className="flex min-w-0 flex-col gap-1.5">'), "la celda de la grilla puede encogerse por debajo del ancho propio del control");
+});
+
+test("«Vacaciones / feriados»: el apartado se llama así en la pantalla, la cabecera, las etiquetas accesibles y el esqueleto, sin la aclaración redundante", () => {
+  const editor = code(`${DIR}/availability-editor.tsx`);
+  const skeleton = code("components/nav/screen-skeleton.tsx");
+  const page = code(`${DIR}/page.tsx`);
+  const title = '<h2 className="font-display text-card font-semibold">Vacaciones / feriados</h2>';
+  assert.ok(editor.includes(title));
+  assert.ok(skeleton.includes(title));
+  for (const source of [editor, skeleton, page]) {
+    for (const old of [">Excepciones", "Excepciones (", "excepciones (vacaciones", "Agregar excepción", "de la excepción"]) assert.ok(!source.includes(old), `no queda «${old}»`);
+  }
+  assert.ok(page.includes("Bloqueos semanales y vacaciones / feriados"));
 });

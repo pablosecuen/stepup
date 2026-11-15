@@ -17,11 +17,13 @@ export const textareaClass = `${inputClass} min-h-24 py-3 leading-normal`;
 export const fieldHintId = (id: string) => `${id}-hint`;
 export const fieldErrorId = (id: string) => `${id}-error`;
 
-// Un `<input type="date">` nativo (sobre todo en iOS Safari) toma un ancho propio mayor que su contenedor y centra el valor: se fuerza a ocupar sólo el ancho disponible y a alinear el valor a la izquierda.
+// Un `<input type="date">` o `type="time"` nativo (sobre todo en iOS Safari) toma un ancho propio mayor que su contenedor y centra el valor: se fuerza a ocupar sólo el ancho disponible y a alinear el valor a la izquierda.
+// Vale para TODOS los controles nativos de fecha y hora (antes sólo `date`: los campos «Desde»/«Hasta» de hora de Disponibilidad se salían de la tarjeta).
+const NATIVE_PICKER_TYPES = new Set(["date", "time", "datetime-local", "month", "week"]);
 const dateInputClass = "block min-w-0 max-w-full appearance-none text-left [&::-webkit-date-and-time-value]:min-h-[1.5em] [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:p-0";
 
 export function TextInput({ className, type, ...props }: ComponentProps<"input">) {
-  const extra = [type === "date" ? dateInputClass : "", className ?? ""].filter(Boolean).join(" ");
+  const extra = [type && NATIVE_PICKER_TYPES.has(type) ? dateInputClass : "", className ?? ""].filter(Boolean).join(" ");
   return <input type={type} className={`${inputClass}${extra ? ` ${extra}` : ""}`} {...props} />;
 }
 
@@ -40,7 +42,7 @@ export function TextArea({ className, ...props }: ComponentProps<"textarea">) {
  */
 export function Field({ label, htmlFor, hint, error, children }: { label: ReactNode; htmlFor: string; hint?: ReactNode; error?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-[650] text-textSecondary">
         {label}
       </label>

@@ -148,7 +148,7 @@ export function FloatAvailability({ className }: P) {
           <span className="tf-num text-textSecondary">Sáb y dom</span>
         </li>
       </ul>
-      <p className="mt-2 text-[12px] font-[650] text-textMuted">Excepciones</p>
+      <p className="mt-2 text-[12px] font-[650] text-textMuted">Vacaciones / feriados</p>
       <p className="mt-1 flex items-center justify-between gap-2 rounded-md border-[1.5px] border-warnLine bg-warnSoft px-2.5 py-1.5 text-[12.5px] text-warn">
         <span className="font-[650]">Vacaciones</span>
         <span className="tf-num">21/12 al 04/01</span>

@@ -348,7 +348,7 @@ const CAL_FEATURES = [
   { Icon: CheckCircleIcon, title: "Clase abierta", text: "Tocás una clase y ves su detalle: registrarla, reprogramarla o cancelarla." },
   { Icon: ArrowRightIcon, title: "Reprogramación", text: "Elegís el nuevo horario y te avisamos si choca con otra clase o un bloqueo." },
   { Icon: UsersIcon, title: "Series", text: "Definís los días de la semana una vez y cada clase queda en el calendario." },
-  { Icon: LockClosedIcon, title: "Disponibilidad", text: "Bloqueos semanales y excepciones, como vacaciones o feriados." },
+  { Icon: LockClosedIcon, title: "Disponibilidad", text: "Bloqueos semanales, vacaciones y feriados." },
 ] as const;
 
 export function CalendarDetail() {

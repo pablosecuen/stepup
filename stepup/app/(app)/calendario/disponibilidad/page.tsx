@@ -39,7 +39,7 @@ export default async function DisponibilidadPage() {
   // Ancho de lista (el del Calendario): la pantalla usa el espacio útil del shell; cada bloque decide su propio ancho según su contenido.
   return (
     <div className={PAGE_WIDTH.wide}>
-      <AvailabilityHeader subtitle="Bloqueos semanales y excepciones (vacaciones, feriados) — se usan para avisar de conflictos al crear/reprogramar una clase." />
+      <AvailabilityHeader subtitle="Bloqueos semanales y vacaciones / feriados — se usan para avisar de conflictos al crear/reprogramar una clase." />
       <div className="mt-6">
         <AvailabilityEditor initial={availability} />
       </div>

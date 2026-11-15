@@ -150,7 +150,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
       </Card>
 
       <Card>
-        <h2 className="font-display text-card font-semibold">Excepciones (vacaciones, feriados)</h2>
+        <h2 className="font-display text-card font-semibold">Vacaciones / feriados</h2>
         <ul className="mt-3 flex flex-col gap-2">
           {availability.exceptions.map((exception) => (
             <ListRow key={exception.id} onRemove={() => removeException(exception.id)} disabled={pending}>
@@ -158,7 +158,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
               {exception.endDate ? ` – ${formatCivilDate(exception.endDate)}` : ""} · {EXCEPTION_REASON_LABEL[exception.reason]}
             </ListRow>
           ))}
-          {availability.exceptions.length === 0 && <EmptyNote>Sin excepciones todavía.</EmptyNote>}
+          {availability.exceptions.length === 0 && <EmptyNote>Sin vacaciones ni feriados todavía.</EmptyNote>}
         </ul>
 
         <form action={addException} className={FORM_GRID}>
@@ -169,7 +169,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
             <TextInput id="exception-end" type="date" name="endDate" />
           </Field>
           <Field label="Motivo" htmlFor="exception-reason">
-            <SelectInput id="exception-reason" name="reason" aria-label="Motivo de la excepción" defaultValue="vacation">
+            <SelectInput id="exception-reason" name="reason" aria-label="Motivo de las vacaciones o feriados" defaultValue="vacation">
               {Object.entries(EXCEPTION_REASON_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -178,7 +178,7 @@ export function AvailabilityEditor({ initial }: { initial: TeacherAvailability }
             </SelectInput>
           </Field>
           <Button type="submit" variant="secondary" busy={pending} className="w-full">
-            Agregar excepción
+            Agregar período
           </Button>
         </form>
       </Card>

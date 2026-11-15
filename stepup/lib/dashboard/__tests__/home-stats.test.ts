@@ -1,4 +1,4 @@
-// Indicadores de Inicio (alumnos activos, clases de la semana, horas del mes, promedio de evaluaciones): reglas del original (buildDashboardData) sobre la semana civil de Argentina.
+// Indicadores de Inicio (alumnos activos, clases de la semana, horas del mes): reglas del original (buildDashboardData) sobre la semana civil de Argentina.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -17,25 +17,23 @@ test("la semana va de lunes a domingo (domingo incluido en la semana que termina
 });
 
 test("clases de la semana: las canceladas no cuentan; el resto (programadas, reprogramadas, dictadas) sí", () => {
-  const stats = buildHomeStats({ activeStudents: 3, weekItems: [{ status: "scheduled" }, { status: "cancelled" }, { status: "rescheduled" }, { status: "completed" }], monthMinutes: [], grades: [] });
+  const stats = buildHomeStats({ activeStudents: 3, weekItems: [{ status: "scheduled" }, { status: "cancelled" }, { status: "rescheduled" }, { status: "completed" }], monthMinutes: [] });
   assert.equal(stats.lessonsThisWeek, 3);
   assert.equal(stats.activeStudents, 3);
 });
 
 test("horas del mes: suma la duración real, redondea a 1 decimal y una clase sin duración suma 0", () => {
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [60, 90, null, 45], grades: [] }).hoursTaughtThisMonth, 3.3);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [], grades: [] }).hoursTaughtThisMonth, 0);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [60, 90, null, 45] }).hoursTaughtThisMonth, 3.3);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [] }).hoursTaughtThisMonth, 0);
 });
 
-test("promedio de evaluaciones: todas las notas reales; un 0 o la ausencia de nota nunca cuenta; sin notas, null", () => {
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [], grades: [8, 6, 10, 0, null] }).averageGrade, 8);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [], grades: [7, 8] }).averageGrade, 7.5);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [], grades: [] }).averageGrade, null);
-});
-
-test("cableado: Inicio muestra los cuatro indicadores, 'Sin datos' si no se pudieron leer, y la lectura es de sólo lectura", () => {
+test("cableado: Inicio muestra los tres indicadores (sin promedio de evaluaciones), 'Sin datos' si no se pudieron leer, y la lectura es de sólo lectura", () => {
   const view = read("components/dashboard/home-view.tsx");
-  for (const label of ["alumnos activos", "esta semana", "enseñadas este mes", "promedio de evaluaciones"]) assert.match(view, new RegExp(label));
+  for (const label of ["alumnos activos", "esta semana", "enseñadas este mes"]) assert.match(view, new RegExp(label));
+  assert.doesNotMatch(view, /promedio de evaluaciones|averageGrade/, "Inicio ya no muestra el promedio de evaluaciones");
+  assert.doesNotMatch(read("lib/repositories/home-stats-inputs.ts"), /lesson_registration_evaluations/, "Inicio ya no lee las evaluaciones");
+  const inicioSkeleton = read("components/nav/screen-skeleton.tsx").split("function InicioBody()")[1]?.split("export function")[0] ?? "";
+  assert.ok(inicioSkeleton.includes("[0, 1, 2].map") && !inicioSkeleton.includes("[0, 1, 2, 3].map"), "el esqueleto de Inicio tiene tres indicadores, como la pantalla");
   assert.match(view, /Sin datos/);
   const loader = read("lib/dashboard/load-home-data.ts");
   assert.match(loader, /loadHomeStatsRaw\(ctx\)\.catch\(\(\) => null\)/);
@@ -64,7 +62,7 @@ const row = (overrides: Partial<RegistrationRowForFacts> = {}): RegistrationRowF
   created_at: "2026-11-03T15:00:00.000Z",
   ...overrides,
 });
-const raw = (registrations: RegistrationRowForFacts[], extra: Partial<HomeStatsRawInputs> = {}): HomeStatsRawInputs => ({ registrations, roster: [], grades: [], ...extra });
+const raw = (registrations: RegistrationRowForFacts[], extra: Partial<HomeStatsRawInputs> = {}): HomeStatsRawInputs => ({ registrations, roster: [], ...extra });
 const minutesOf = (registrations: RegistrationRowForFacts[], month = "2026-11", excluded: ReadonlySet<string> = new Set(), extra: Partial<HomeStatsRawInputs> = {}) => homeStatsInputsFrom(raw(registrations, extra), month, excluded).monthMinutes;
 /** Horas dictadas del Resumen financiero para el mismo mes (el camino que usa su pantalla). */
 const financeHours = (registrations: RegistrationRowForFacts[], month = "2026-11") => {
@@ -72,7 +70,7 @@ const financeHours = (registrations: RegistrationRowForFacts[], month = "2026-11
   const last = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate();
   return buildAnnualActivitySummary(facts, { rangeStart: `${month}-01`, rangeEnd: `${month}-${String(last).padStart(2, "0")}` }).heldHours;
 };
-const homeHours = (registrations: RegistrationRowForFacts[], month = "2026-11") => buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: minutesOf(registrations, month), grades: [] }).hoursTaughtThisMonth;
+const homeHours = (registrations: RegistrationRowForFacts[], month = "2026-11") => buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: minutesOf(registrations, month) }).hoursTaughtThisMonth;
 
 test("la duración sale de la real guardada, del inicio y fin reales (lo que escribe la web) o de la programada; sin ninguna es null, nunca 0", () => {
   assert.deepEqual(minutesOf([row({ actual_duration_minutes: 75 })]), [75]);
@@ -97,7 +95,7 @@ test("el mes cuenta cada clase UNA vez (grupal o entrenamiento no se multiplican
   const roster = ["grupal"].flatMap((id) => ["a", "b", "c", "d", "e"].map((student) => ({ lesson_registration_id: id, student_id: student })));
   const minutes = minutesOf(registrations, "2026-11", new Set(), { roster });
   assert.deepEqual(minutes, [60, 90, 60, 60]);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: minutes, grades: [] }).hoursTaughtThisMonth, 4.5);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: minutes }).hoursTaughtThisMonth, 4.5);
 });
 
 test("sólo cuentan las clases DICTADAS: cancelada, ausencia, reprogramada y feriado sin excepción no suman; feriado con excepción sí", () => {
@@ -138,17 +136,10 @@ test("los alumnos de prueba confirmados quedan fuera (como en el Resumen), pero 
   assert.deepEqual(minutesOf(registrations, "2026-11", new Set(), { roster }), [60, 30, 45]);
 });
 
-test("las notas son las de las clases dictadas (todas las evaluaciones, también las de cada alumno de una grupal); las de clases no dictadas o de prueba no cuentan", () => {
-  const registrations = [row({ id: "g", scheduled_duration_minutes: 60 }), row({ id: "c", outcome: "cancelada_tarde" }), row({ id: "t", scheduled_duration_minutes: 60 })];
-  const roster = [{ lesson_registration_id: "t", student_id: "t1" }];
-  const grades = [{ registrationId: "g", grade: 8 }, { registrationId: "g", grade: 10 }, { registrationId: "c", grade: 1 }, { registrationId: "t", grade: 3 }];
-  assert.deepEqual(homeStatsInputsFrom(raw(registrations, { roster, grades }), "2026-11", new Set(["t1"])).grades, [8, 10]);
-});
-
 test("clases dictadas sin ninguna duración conocida muestran «Sin datos» (null); si hay algunas con duración, se suman las conocidas; sin clases son 0 h reales", () => {
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [null, null], grades: [] }).hoursTaughtThisMonth, null);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [null, 60], grades: [] }).hoursTaughtThisMonth, 1);
-  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [], grades: [] }).hoursTaughtThisMonth, 0);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [null, null] }).hoursTaughtThisMonth, null);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [null, 60] }).hoursTaughtThisMonth, 1);
+  assert.equal(buildHomeStats({ activeStudents: 0, weekItems: [], monthMinutes: [] }).hoursTaughtThisMonth, 0);
 });
 
 test("Inicio y «Horas dictadas» del Resumen financiero dan lo mismo con cualquier mezcla de fuentes de duración (distinto de cero)", () => {

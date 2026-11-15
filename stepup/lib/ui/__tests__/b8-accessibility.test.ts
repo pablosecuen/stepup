@@ -283,7 +283,7 @@ test("cada campo tiene nombre accesible: etiqueta asociada o envolvente, o aria-
     assert.equal(orphans.length, ALLOWED_SIBLING_LABELS[file] ?? 0, `${file}: etiquetas sin asociar`);
   }
   const availability = code("app/(app)/calendario/disponibilidad/availability-editor.tsx");
-  for (const label of ["Día de la semana", "Motivo del bloqueo", "Motivo de la excepción"]) assert.match(availability, new RegExp(`aria-label="${label}"`));
+  for (const label of ["Día de la semana", "Motivo del bloqueo", "Motivo de las vacaciones o feriados"]) assert.match(availability, new RegExp(`aria-label="${label}"`));
   const registro = code("app/(app)/registro/nuevo/nuevo-registro-form.tsx");
   for (const label of ["Modalidad", "Resultado"]) assert.match(registro, new RegExp(`aria-label="${label}"`));
   // El buscador de alumnos (compartido) lleva su etiqueta asociada por htmlFor/id, aunque no se vea (la lupa y el texto del campo la acompañan).

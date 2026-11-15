@@ -89,5 +89,5 @@ test("estructura del aviso: cinco respuestas separadas, formulario sólo tras el
   assert.match(prompt, /Alumno \$\{position\} de \$\{total\}/);
   const dialog = read("components/ui/dialog.tsx");
   assert.match(dialog, /onBeforeClose\(\) === false/);
-  assert.match(read("components/ui/field.tsx"), /type === "date" \? dateInputClass/, "el selector de fecha se limita al ancho del contenedor");
+  assert.match(read("components/ui/field.tsx"), /NATIVE_PICKER_TYPES\.has\(type\) \? dateInputClass/, "el selector de fecha (y el de hora) se limita al ancho del contenedor");
 });
