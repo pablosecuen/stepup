@@ -13,6 +13,7 @@ import { resolvePromptPayment, settleAfterRefresh, type PromptPaymentMode, type 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Notice } from "@/components/ui/notice";
 
 type PaymentMethod = "efectivo" | "transferencia" | "otro";
@@ -221,7 +222,7 @@ function PromptStep({
                   {view === "total" && <ReadOnlyValue label="Importe" value={formatMoney(live.balance)} />}
                   {view === "partial" && (
                     <Field label="Importe pagado" htmlFor={`${uid}-amount`} hint={`Hasta ${formatMoney(live.balance)}. El resto queda como saldo pendiente.`}>
-                      <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} />
+                      <MoneyInput id={`${uid}-amount`} autoFocus value={amount} onValueChange={setAmount} />
                     </Field>
                   )}
                   {view === "retroactive" && (
@@ -234,7 +235,7 @@ function PromptStep({
                         htmlFor={`${uid}-amount`}
                         hint={live.paid > 0 ? `Ya hay ${formatMoney(live.paid)} registrados en esta clase: sólo se puede cargar hasta el saldo (${formatMoney(live.balance)}).` : `Hasta ${formatMoney(live.balance)}.`}
                       >
-                        <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                        <MoneyInput id={`${uid}-amount`} value={amount} onValueChange={setAmount} />
                       </Field>
                     </>
                   )}

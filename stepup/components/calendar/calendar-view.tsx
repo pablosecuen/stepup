@@ -3,6 +3,7 @@ import { ClipboardDocumentCheckIcon, ClockIcon, Squares2X2Icon } from "@heroicon
 import { linkClass } from "@/components/ui/button";
 import { PageTitle } from "@/components/ui/page-header";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
+import type { DayBlockSegment } from "@/lib/calendar/availability-blocks";
 import { RealCalendarToolbar } from "@/components/calendar/real-calendar-toolbar";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 import { CALENDAR_PAGE_CLASS } from "@/components/calendar/calendar-page-class";
@@ -23,6 +24,7 @@ export function CalendarView({
   dayKey,
   dayKeys,
   items,
+  blocks,
   buildHref,
   rescheduleItemId,
 }: {
@@ -31,6 +33,8 @@ export function CalendarView({
   dayKey: string;
   dayKeys: string[];
   items: CalendarViewItem[];
+  /** Vacaciones / feriados guardados, por día civil: se marcan en el encabezado y en el área horaria. */
+  blocks: Record<string, DayBlockSegment[]>;
   buildHref: (params: { week?: string; day?: string; view?: "week" | "day" }) => string;
   /** Abre directo el flujo de reprogramar de esta clase (viene del resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
@@ -72,6 +76,7 @@ export function CalendarView({
         view={view}
         dayKeys={dayKeys}
         items={items}
+        blocks={blocks}
         weekHref={buildHref({ view: "week", week: weekStartKey })}
         dayHref={buildHref({ view: "day", day: dayKey })}
         newClassHref={`/calendario/nueva?volver=${encodeURIComponent(buildHref({ view, week: weekStartKey, day: dayKey }))}`}

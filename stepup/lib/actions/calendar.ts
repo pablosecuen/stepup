@@ -942,6 +942,8 @@ export async function saveAvailabilityAction(availability: TeacherAvailability):
     return { error: friendlyErrorMessage(error) };
   }
   revalidatePath("/calendario/disponibilidad");
+  // El Calendario muestra estos mismos períodos: se actualiza sin tener que cerrar sesión.
+  revalidatePath("/calendario");
   return {};
 }
 

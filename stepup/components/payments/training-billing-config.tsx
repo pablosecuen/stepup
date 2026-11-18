@@ -16,7 +16,8 @@ import { formatMoney } from "@/lib/format/number-format";
 import { formatCivilDate, todayInArgentina } from "@/lib/format/date-format";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Field, TextInput } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Notice } from "@/components/ui/notice";
 import { DialogContext } from "@/components/payments/dialog-context";
 
@@ -165,14 +166,11 @@ export function TrainingBillingConfigButton({ recurrenceRuleId, agreementId, ser
           <DialogContext title={seriesLabel} lines={contextLines} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label={agreementId ? "Nueva cuota mensual (vigente desde el próximo período)" : "Cuota mensual"} htmlFor={feeId}>
-            <TextInput
+            <MoneyInput
               id={feeId}
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
               value={monthlyFee}
-              onChange={(e) => {
-                setMonthlyFee(e.target.value);
+              onValueChange={(text) => {
+                setMonthlyFee(text);
                 setPlan(null);
               }}
             />

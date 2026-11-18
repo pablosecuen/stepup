@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { BILLING_LABEL, BILLING_TYPE_OPTIONS } from "@/lib/students/constants";
 import { DEFAULT_FIRST_MONTH_SITUATION, FIRST_MONTH_SITUATIONS, type FirstMonthSituation } from "@/lib/students/student-form-fields";
 import { todayInArgentina } from "@/lib/format/date-format";
@@ -34,7 +35,7 @@ export function NewStudentBillingFields() {
       </Field>
 
       <Field label="Precio (ARS) *" htmlFor="price" hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales). Tiene que ser mayor que cero.">
-        <TextInput id="price" name="price" type="text" inputMode="decimal" autoComplete="off" required defaultValue="" placeholder="0" />
+        <MoneyInput id="price" name="price" required defaultValue="" placeholder="0" />
       </Field>
 
       {billingType === "mensual" && (

@@ -13,6 +13,7 @@ import type { SavingsGoal } from "@/lib/payments/budget-distribution";
 import { FormErrorBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Notice } from "@/components/ui/notice";
 
 const INITIAL_STATE: FormState = {};
@@ -67,7 +68,7 @@ export function SavingsGoalForm({ goal, cumulativeRealTheoreticalSavings, progre
       {enabled && (
         <>
           <Field label="Monto objetivo" htmlFor={`${uid}-monto`} hint="En pesos. Usá solo números: 600000 o 600.000.">
-            <TextInput id={`${uid}-monto`} name="targetAmount" type="text" inputMode="decimal" autoComplete="off" defaultValue={formatMoneyForInput(goal.targetAmount)} disabled={pending} />
+            <MoneyInput id={`${uid}-monto`} name="targetAmount" defaultValue={formatMoneyForInput(goal.targetAmount)} disabled={pending} />
           </Field>
           <Field label="Fecha objetivo" htmlFor={`${uid}-fecha`} hint="La fecha en que querés alcanzar el objetivo (desde hoy en adelante).">
             <TextInput id={`${uid}-fecha`} name="targetDate" type="date" min={today} defaultValue={goal.targetDate ?? ""} disabled={pending} />

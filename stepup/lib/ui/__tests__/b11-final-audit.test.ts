@@ -57,9 +57,10 @@ test("todo campo de formulario tiene un nombre accesible propio: aria-label, eti
     // components/ui/field.tsx DEFINE los envoltorios (reciben id/aria-* por props): lo que se verifica es cada USO.
     // components/ui/password-input.tsx es otro envoltorio del mismo tipo (recibe el id por props); sus usos sí se verifican.
     // components/ui/auto-grow-textarea.tsx también: recibe aria-label/id por props y se verifica en cada USO (`AutoGrowTextArea`).
-    if (file === "components/ui/field.tsx" || file === "components/ui/password-input.tsx" || file === "components/ui/auto-grow-textarea.tsx") continue;
+    // components/ui/money-input.tsx igual: el campo de importes recibe id/aria-* por props y se verifica en cada USO (`MoneyInput`).
+    if (file === "components/ui/field.tsx" || file === "components/ui/password-input.tsx" || file === "components/ui/auto-grow-textarea.tsx" || file === "components/ui/money-input.tsx") continue;
     const source = code(file);
-    for (const name of ["input", "select", "textarea", "TextInput", "SelectInput", "TextArea", "AutoGrowTextArea", "PasswordInput"]) {
+    for (const name of ["input", "select", "textarea", "TextInput", "SelectInput", "TextArea", "AutoGrowTextArea", "PasswordInput", "MoneyInput"]) {
       for (const tag of openingTags(source, name)) {
         if (/type="hidden"/.test(tag.text)) continue;
         if (/aria-label=|aria-labelledby=/.test(tag.text)) continue;

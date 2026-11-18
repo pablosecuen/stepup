@@ -4,6 +4,7 @@ import { readTable, readTableByIds } from "@/lib/db/read";
 import type { ImportRunHistoryRow } from "@/lib/backup/import-history-mapping";
 import type { RawClassification, RawExcludedCollections, RawDuplicatePersonSource } from "@/lib/backup/import-preview-mapping";
 import type { ResolvedBlockerRow, ResolvedBlockerChild } from "@/lib/backup/undo-blocked-mapping";
+import { formatMoney } from "@/lib/format/number-format";
 
 /**
  * Repositorio de Fase 9 — envuelve las 6 RPC reales (`fetch_own_latest_cloud_backup`,
@@ -175,11 +176,11 @@ export async function previewUndoBackupImport(ctx: AuthenticatedDbContext, impor
  * rótulo humano genérico de `humanTableLabel`.
  */
 const BLOCKER_TABLE_SELECT: Record<string, { select: string; date: (r: Record<string, unknown>) => string | null; concept?: (r: Record<string, unknown>) => string | null }> = {
-  payment_charges: { select: "due_date, billing_period, original_amount", date: (r) => r.due_date as string | null, concept: (r) => (r.original_amount != null ? `$${r.original_amount}${r.billing_period ? ` (${r.billing_period})` : ""}` : null) },
-  payments: { select: "paid_at, amount", date: (r) => r.paid_at as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
-  payment_allocations: { select: "created_at, amount", date: (r) => r.created_at as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
+  payment_charges: { select: "due_date, billing_period, original_amount", date: (r) => r.due_date as string | null, concept: (r) => (r.original_amount != null ? `${formatMoney(Number(r.original_amount))}${r.billing_period ? ` (${r.billing_period})` : ""}` : null) },
+  payments: { select: "paid_at, amount", date: (r) => r.paid_at as string | null, concept: (r) => (r.amount != null ? formatMoney(Number(r.amount)) : null) },
+  payment_allocations: { select: "created_at, amount", date: (r) => r.created_at as string | null, concept: (r) => (r.amount != null ? formatMoney(Number(r.amount)) : null) },
   payment_adjustments: { select: "created_at, reason", date: (r) => r.created_at as string | null, concept: (r) => (r.reason as string | null) },
-  package_purchases: { select: "valid_from, amount", date: (r) => r.valid_from as string | null, concept: (r) => (r.amount != null ? `$${r.amount}` : null) },
+  package_purchases: { select: "valid_from, amount", date: (r) => r.valid_from as string | null, concept: (r) => (r.amount != null ? formatMoney(Number(r.amount)) : null) },
   package_credit_movements: { select: "created_at, amount, reason", date: (r) => r.created_at as string | null, concept: (r) => (r.reason as string | null) },
   lesson_registrations: { select: "scheduled_start_at, actual_started_at", date: (r) => (r.actual_started_at ?? r.scheduled_start_at) as string | null },
   calendar_lessons: { select: "start_at, student_name", date: (r) => r.start_at as string | null, concept: (r) => (r.student_name as string | null) },

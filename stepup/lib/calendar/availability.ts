@@ -89,7 +89,8 @@ function dayBounds(dayIndex: number): LocalRange {
   return { startMinutes: dayIndex * 1440, endMinutes: (dayIndex + 1) * 1440 };
 }
 
-function exceptionCoversDate(exception: AvailabilityException, dateKey: string): boolean {
+/** ¿La excepción cubre esta fecha civil? Fechas INCLUSIVAS (`endDate` es el último día). Única regla de cobertura: la usa también la señal visual del Calendario. */
+export function exceptionCoversDate(exception: AvailabilityException, dateKey: string): boolean {
   const end = exception.endDate ?? exception.date;
   return daysBetweenDateKeys(exception.date, dateKey) >= 0 && daysBetweenDateKeys(dateKey, end) >= 0;
 }

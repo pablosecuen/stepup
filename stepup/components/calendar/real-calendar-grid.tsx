@@ -7,8 +7,10 @@ import { newLessonSlotHref, slotAriaLabel } from "@/lib/calendar/slot-link";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { isActiveReplacement, visibleCalendarItems } from "@/lib/calendar/occurrences";
 import { getCancelledSlotReuseDecision } from "@/lib/calendar/mutations";
+import { fullDayBlockLabel, segmentTimeRange, type DayBlockSegment } from "@/lib/calendar/availability-blocks";
 import {
   HOURS,
+  START_HOUR,
   MOBILE_TIME_COLUMN_WIDTH_PX,
   TIME_COLUMN_WIDTH_PX,
   WEEKDAY_SHORT,
@@ -44,6 +46,8 @@ interface RealCalendarGridProps {
   /** Clase cuyo diálogo se abre directo en «Reprogramar» (resultado «Reprogramada» del registro). */
   rescheduleItemId?: string;
   dayHrefs?: Record<string, string>;
+  /** Vacaciones / feriados guardados, por día civil: encabezado y área horaria con fondo suave y rótulo breve (o sólo el tramo si el bloqueo es de un horario). Nunca toca las clases. */
+  blocks?: Record<string, DayBlockSegment[]>;
   /** PROPUESTA (entorno de revisión): clases cortas como barra exacta + rótulo de 11 px. Apagado por defecto: nada cambia en producción. */
 }
 
@@ -55,7 +59,7 @@ interface RealCalendarGridProps {
  * y la escala horaria fijos. Móvil conserva la grilla de Semana y Día del origen, con su geometría propia y scroll dentro del
  * espacio útil del teléfono. La alternativa de lista sólo queda en escritorio angosto. Todos comparten datos, colores y detalle.
  */
-export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs }: RealCalendarGridProps) {
+export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, rescheduleItemId, dayHrefs, blocks }: RealCalendarGridProps) {
   const [now, setNow] = useState<Date | null>(null);
   const router = useRouter();
   const [selected, setSelected] = useState<CalendarViewItem | null>(() => (rescheduleItemId ? (items.find((item) => item.id === rescheduleItemId) ?? null) : null));
@@ -182,6 +186,8 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
     labelSources.set(item.id, { id: item.id, title: lessonTitle(item), timeText: isMobile ? "" : instantTimeLabel(item.start), stateText: compactStateTag(facts, true) });
   }
   const gridHeightPx = HOURS.length * hourHeightPx;
+  // Si algún día de la vista está bloqueado entero, todos los encabezados reservan la línea del rótulo (así los números de los días no quedan a distinta altura).
+  const anyFullDayBlock = dayKeys.some((key) => fullDayBlockLabel(blocks?.[key]) !== null);
   const labeledIdsByDay = new Map<string, Set<string>>();
   for (const dayKey of dayKeys) {
     const probe = planShortLabels(positionedByDay.get(dayKey) ?? [], labelSources, 600, gridHeightPx);
@@ -258,13 +264,19 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
               <div className="sticky left-0 z-10 bg-surface" />
               {dayKeys.map((dayKey) => {
                 const today = todayKey === dayKey;
+                const blockedLabel = fullDayBlockLabel(blocks?.[dayKey]);
                 return (
-                  <div key={dayKey} className={`relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1 text-center nav:min-h-0 nav:justify-start nav:py-1.5 ${today ? "bg-accentSoft" : ""}`}>
+                  <div key={dayKey} {...(blockedLabel ? { "data-availability-block": "day-header" } : {})} className={`relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1 text-center nav:min-h-0 nav:justify-start nav:py-1.5 ${blockedLabel ? "bg-[#E2EBDC]" : today ? "bg-accentSoft" : ""}`}>
                     {isWeek && <span className={`text-[9.5px] font-bold leading-3 nav:text-label ${today ? "text-accentText" : "text-textMuted"}`}>{WEEKDAY_SHORT[weekdayIndexMondayFirst(dayKey)]}</span>}
                     <span className={`text-[16px] font-bold leading-[18px] nav:font-display nav:text-[22px] nav:font-semibold nav:leading-none nav:tracking-tight ${today ? "text-accentDark" : "text-textPrimary"}`}>
                       {isMobile && !isWeek ? mobileDayHeading(weekdayIndexMondayFirst(dayKey), dayOfMonth(dayKey)) : dayOfMonth(dayKey)}
                       {today && <span className="sr-only"> (hoy)</span>}
                     </span>
+                    {anyFullDayBlock && (
+                      <span aria-hidden={blockedLabel ? undefined : true} className={`block h-3 max-w-full truncate px-0.5 text-[9px] font-bold leading-3 nav:h-[14px] nav:text-[11px] nav:leading-[14px] ${blockedLabel ? "text-ok" : "invisible"}`}>
+                        {blockedLabel ?? "·"}
+                      </span>
+                    )}
                     {/* Teléfono: cuántas clases tiene el día (como la app) y toda la cabecera del día es el enlace a su vista Día (sin agrandarla). */}
                     {isMobile && isWeek && (positionedByDay.get(dayKey)?.length ?? 0) > 0 && (
                       <span aria-hidden className="absolute right-0.5 top-0.5 inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-paperDeep px-0.5 text-[9px] font-bold leading-none text-textSecondary">
@@ -312,6 +324,25 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                         </div>
                       </div>
                     )}
+
+                    {/* Vacaciones / feriados: fondo suave sobre el área horaria (todo el día o sólo el tramo bloqueado). Debajo de las clases y de los espacios libres; no recibe toques. */}
+                    {(blocks?.[dayKey] ?? []).map((segment, segmentIndex) => {
+                      const top = Math.max(0, (segment.startMinutes / 60 - START_HOUR) * hourHeightPx);
+                      const bottom = Math.min(gridHeightPx, (segment.endMinutes / 60 - START_HOUR) * hourHeightPx);
+                      if (bottom - top < 1) return null;
+                      return (
+                        <div
+                          key={`${segment.id}-${segmentIndex}`}
+                          data-availability-block={segment.fullDay ? "day" : "range"}
+                          // El día entero ya se anuncia en el encabezado: el fondo es sólo visual. Un tramo suelto se anuncia con su horario.
+                          {...(segment.fullDay ? { "aria-hidden": true } : { role: "note", "aria-label": `${segment.label}, de ${segmentTimeRange(segment).replace("–", " a ")}` })}
+                          className={`pointer-events-none absolute inset-x-0 bg-[rgba(47,87,54,0.10)] ${segment.fullDay ? "" : "border-y border-[rgba(47,87,54,0.35)]"}`}
+                          style={{ top, height: bottom - top }}
+                        >
+                          {!segment.fullDay && bottom - top >= 16 && <span className="absolute left-0.5 top-0.5 max-w-full truncate text-[9px] font-bold leading-3 text-ok nav:text-[11px]">{segment.label}</span>}
+                        </div>
+                      );
+                    })}
 
                     {/* Espacios libres: tocar una hora vacía abre «Nueva clase» en ese día y hora (como la app original). Van ANTES de las clases (quedan debajo) y sólo reaccionan al toque/clic, nunca al deslizar. */}
                     {HOURS.map((hour, index) => (
@@ -394,6 +425,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
         {dayKeys.map((dayKey) => {
           const today = todayKey === dayKey;
           const dayItems = (positionedByDay.get(dayKey) ?? []).map((p) => p.item);
+          const blockText = (blocks?.[dayKey] ?? []).map((segment) => (segment.fullDay ? segment.label : `${segment.label} ${segmentTimeRange(segment)}`)).join(" · ");
           return (
             <section key={dayKey} aria-label={formatCivilDayLabelShort(dayKey)}>
               {/* En la vista de un solo día el título de la barra ya dice el día: acá sólo el recuento. */}
@@ -407,6 +439,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                   {!isWeek && today && " · hoy"}
                 </p>
               </div>
+              {blockText && <p data-availability-block="agenda" className="mt-1 rounded-md bg-[#E2EBDC] px-3 py-1.5 text-[13.5px] font-semibold text-ok">{blockText}</p>}
               {dayItems.length === 0 ? (
                 <p className="mt-2 rounded-md border-2 border-dashed border-borderMid px-4 py-3.5 text-[14.5px] text-textMuted">Día libre.</p>
               ) : (

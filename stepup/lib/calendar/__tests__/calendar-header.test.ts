@@ -161,7 +161,7 @@ test("fila de controles: Densidad · Semana/Día · Nueva clase en tres columnas
   assert.match(code("components/calendar/calendar-view.tsx"), /newClassHref=\{`\/calendario\/nueva\?volver=\$\{encodeURIComponent\(buildHref\(\{ view, week: weekStartKey, day: dayKey \}\)\)\}`\}/, "misma ruta de Nueva clase, con su vista de origen");
   assert.match(workspace, /saveGridScroll\(returnPath, document\.querySelector<HTMLElement>\("\[data-calendar-scroller\]"\)\)/, "recuerda la posición de la grilla al salir");
   assert.match(workspace, /className="w-full nav:w-auto" onClick=\{rememberGrid\}/);
-  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} dayHrefs=\{dayHrefs\} \/>/, "la grilla comparte datos y enlaces de navegación diaria");
+  assert.match(workspace, /<RealCalendarGrid dayKeys=\{dayKeys\} items=\{items\} density=\{density\} onGridFitChange=\{setGridFits\} rescheduleItemId=\{rescheduleItemId\} dayHrefs=\{dayHrefs\} blocks=\{blocks\} \/>/, "la grilla comparte datos y enlaces de navegación diaria");
   assert.match(workspace, /readStoredCalendarDensity\(storage\)/);
   assert.match(workspace, /writeStoredCalendarDensity\(window\.localStorage, next\)/);
   assert.match(workspace, /useState<CalendarDensityKey>\(DEFAULT_CALENDAR_DENSITY\)/, "mismo valor por defecto en servidor y navegador");

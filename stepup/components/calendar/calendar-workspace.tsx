@@ -6,6 +6,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { PrivateButtonLink, linkClass } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { visibleCalendarItems, type CalendarViewItem } from "@/lib/calendar/occurrences";
+import type { DayBlockSegment } from "@/lib/calendar/availability-blocks";
 import { saveGridScroll } from "@/lib/calendar/grid-scroll";
 import { DEFAULT_CALENDAR_DENSITY, readStoredCalendarDensity, writeStoredCalendarDensity, type CalendarDensityKey } from "@/lib/calendar/density";
 import { CalendarDensityPicker } from "./calendar-density-picker";
@@ -17,6 +18,8 @@ interface CalendarWorkspaceProps {
   view: "week" | "day";
   dayKeys: string[]; // 7 claves civiles YYYY-MM-DD (semana) o 1 (día) — nunca Date
   items: CalendarViewItem[];
+  /** Vacaciones / feriados guardados, por día civil. */
+  blocks: Record<string, DayBlockSegment[]>;
   weekHref: string;
   dayHref: string;
   newClassHref: string;
@@ -33,7 +36,7 @@ interface CalendarWorkspaceProps {
  * Semana · Día al centro y «Nueva clase» a la derecha. En móvil se apilan (Semana · Día y «Nueva clase»; sin Densidad, que allá no
  * cambia nada). La densidad se guarda sólo en el `localStorage` de este navegador.
  */
-export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, newClassHref, returnPath, rescheduleItemId, dayHrefs }: CalendarWorkspaceProps) {
+export function CalendarWorkspace({ view, dayKeys, items, blocks, weekHref, dayHref, newClassHref, returnPath, rescheduleItemId, dayHrefs }: CalendarWorkspaceProps) {
   // La densidad por defecto al cargar (igual en servidor y navegador); la preferencia guardada en ESTE navegador se aplica al montar.
   const [density, setDensity] = useState<CalendarDensityKey>(DEFAULT_CALENDAR_DENSITY);
   // Si el ancho efectivo no alcanza para la grilla, se usa la agenda por día (la de móvil) y Densidad no cambiaría nada: se oculta.
@@ -92,7 +95,7 @@ export function CalendarWorkspace({ view, dayKeys, items, weekHref, dayHref, new
       )}
 
       <EnterOnChange changeKey={`${view}|${dayKeys[0]}`} className="tf-block mt-1.5 flex min-h-0 flex-1 flex-col nav:mt-2">
-        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} dayHrefs={dayHrefs} />
+        <RealCalendarGrid dayKeys={dayKeys} items={items} density={density} onGridFitChange={setGridFits} rescheduleItemId={rescheduleItemId} dayHrefs={dayHrefs} blocks={blocks} />
       </EnterOnChange>
     </div>
   );

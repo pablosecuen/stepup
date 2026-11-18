@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, TextInput, checkClass, choiceGroupClass, choiceRowClass } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Notice } from "@/components/ui/notice";
 
 /**
@@ -138,7 +139,7 @@ function EditPlanDialog({ studentId, studentName, plan, charges, currentPeriod, 
       </div>
       {values.type !== "complimentary" && (
         <Field label={values.type === "class_package" ? "Precio del paquete (ARS)" : "Importe (ARS)"} htmlFor={`${uid}-amount`} hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
-          <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={values.amountText} onChange={(event) => set("amountText", event.target.value)} disabled={pending} />
+          <MoneyInput id={`${uid}-amount`} value={values.amountText} onValueChange={(text) => set("amountText", text)} disabled={pending} />
         </Field>
       )}
       {values.type === "weekly" && (
@@ -259,7 +260,7 @@ function MonthlyAmountDialog({ studentId, studentName, plan, onClose }: { studen
       </p>
       {error && <Notice tone="bad">{error}</Notice>}
       <Field label="Nuevo importe mensual (ARS)" htmlFor={`${uid}-amount`} hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
-        <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amountText} onChange={(event) => setAmountText(event.target.value)} disabled={pending} />
+        <MoneyInput id={`${uid}-amount`} value={amountText} onValueChange={setAmountText} disabled={pending} />
       </Field>
       <div role="radiogroup" aria-label="Desde cuándo se aplica" className={choiceGroupClass}>
         <label className={choiceRowClass}>

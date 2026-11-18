@@ -3,6 +3,8 @@ import { AuthNotConfigured } from "@/components/auth/auth-not-configured";
 import { requireAuthenticatedDbContext, DbUnauthenticatedError } from "@/lib/db/server-context";
 import { loadCalendarViewForRange } from "@/lib/calendar/view";
 import { occupiesAgendaSlot } from "@/lib/calendar/agenda";
+import { availabilityBlocksForDays, type DayBlockSegment } from "@/lib/calendar/availability-blocks";
+import { getTeacherAvailability } from "@/lib/repositories/teacher-availability";
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
@@ -32,9 +34,16 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
   const { view, weekStartKey, dayKey, dayKeys, rangeStartIso, rangeEndIso } = resolveCalendarWindow(params, new Date());
 
   let items;
+  // Vacaciones / feriados guardados: el mismo dato con el que se validan las clases. Si no se pudiera leer, el Calendario se muestra igual (sin la señal) en vez de quedar vacío.
+  let blocks: Record<string, DayBlockSegment[]> = {};
   try {
     const ctx = await requireAuthenticatedDbContext();
-    items = await loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso));
+    const [loadedItems, loadedBlocks] = await Promise.all([
+      loadCalendarViewForRange(ctx, new Date(rangeStartIso), new Date(rangeEndIso)),
+      getTeacherAvailability(ctx).then((availability) => availabilityBlocksForDays(dayKeys, availability)).catch((): Record<string, DayBlockSegment[]> => ({})),
+    ]);
+    items = loadedItems;
+    blocks = loadedBlocks;
   } catch (error) {
     if (error instanceof DbUnauthenticatedError) {
       return <ErrorState message="Tu sesión expiró. Volvé a iniciar sesión." />;
@@ -65,5 +74,5 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
   }
 
   const requestedStudentClass = params.reprogramarAlumno && params.reprogramarInicio ? items.find(item => item.participantIds.includes(params.reprogramarAlumno!) && item.start === params.reprogramarInicio && occupiesAgendaSlot(item) && item.status !== "completed") : undefined;
-  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} buildHref={buildHref} rescheduleItemId={params.reprogramar ?? requestedStudentClass?.id} />;
+  return <CalendarView view={view} weekStartKey={weekStartKey} dayKey={dayKey} dayKeys={dayKeys} items={items} blocks={blocks} buildHref={buildHref} rescheduleItemId={params.reprogramar ?? requestedStudentClass?.id} />;
 }

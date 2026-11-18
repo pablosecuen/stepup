@@ -11,6 +11,7 @@ import { formatMoneyForInput, parseMoneyInput } from "@/lib/format/money-input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Notice } from "@/components/ui/notice";
 import { DialogContext, chargeContextLines, joinContextTitle, type ChargeContext } from "@/components/payments/dialog-context";
 
@@ -130,7 +131,7 @@ export function ChargeActions({ chargeId, studentId, balance, context, compact =
           <DialogContext title={joinContextTitle(context?.studentName, context?.concept)} lines={chargeContextLines(context, balance)} />
           {error && <Notice tone="bad">{error}</Notice>}
           <Field label="Importe" htmlFor={`${uid}-amount`}>
-            <TextInput id={`${uid}-amount`} type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <MoneyInput id={`${uid}-amount`} value={amount} onValueChange={setAmount} />
           </Field>
           <Field label="Método" htmlFor={`${uid}-method`}>
             <SelectInput id={`${uid}-method`} value={method} onChange={(e) => setMethod(e.target.value)}>
