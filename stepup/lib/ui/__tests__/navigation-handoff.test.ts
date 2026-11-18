@@ -56,7 +56,7 @@ test("el efecto de controles incluye los enlaces del menú y el foco no pierde f
   const link=read("components/nav/private-link.tsx");
   assert.match(link,/className=\{`tf-motion-link \$\{props\.className \?\? ""\}`\}/);
   const css=read("app/natural-theme.css");
-  const selector='body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary)';
+  const selector='body :is(.tf-motion-link, .tf-motion-button, button:not([role="switch"]):not([role="checkbox"]):not([role="slider"]), summary):not(:where([data-calendar-scroller] *))';
   assert.ok(css.includes(`${selector}:focus-visible { background-size:100% 100%;`));
   assert.ok(css.includes(`${selector}:not(:disabled):not([aria-disabled="true"]):active`));
   assert.match(css,/prefers-reduced-motion:reduce/);
