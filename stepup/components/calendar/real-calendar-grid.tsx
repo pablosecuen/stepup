@@ -273,7 +273,7 @@ export function RealCalendarGrid({ dayKeys, items, density, onGridFitChange, res
                       {today && <span className="sr-only"> (hoy)</span>}
                     </span>
                     {anyFullDayBlock && (
-                      <span aria-hidden={blockedLabel ? undefined : true} className={`block h-3 max-w-full truncate px-0.5 text-[9px] font-bold leading-3 nav:h-[14px] nav:text-[11px] nav:leading-[14px] ${blockedLabel ? "text-ok" : "invisible"}`}>
+                      <span aria-hidden={blockedLabel ? undefined : true} className={`block max-w-full truncate px-0.5 font-bold nav:h-[14px] nav:text-[11px] nav:leading-[14px] ${isWeek ? "h-3 text-[9px] leading-3" : "h-[14px] text-[11px] leading-[14px]"} ${blockedLabel ? "text-ok" : "invisible"}`}>
                         {blockedLabel ?? "·"}
                       </span>
                     )}
