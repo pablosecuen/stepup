@@ -39,8 +39,11 @@ interface RealLessonDetailModalProps {
  * clase y QUÉ fecha se están modificando sin depender del fondo oscurecido. La lógica (acciones, validaciones, foco entre
  * pasos) no cambió; sólo la presentación.
  */
-export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInReschedule = false }: RealLessonDetailModalProps) {
+export function RealLessonDetailModal({ item: shownItem, canReuseSlot, onClose, startInReschedule = false }: RealLessonDetailModalProps) {
   const router = useRouter();
+  // Fin guardado por «Extender duración»: el detalle (chips, horario, duración, pasos siguientes) lo usa al instante, sin esperar a que la grilla entregue la clase actualizada.
+  const [extendedEnd, setExtendedEnd] = useState<string | null>(null);
+  const item = extendedEnd && extendedEnd !== shownItem.end ? { ...shownItem, end: extendedEnd } : shownItem;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
@@ -171,7 +174,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
           </div>
         ) : <div className="flex flex-wrap gap-1.5">
           <MetaChip>{dateLabel}</MetaChip>
-          <MetaChip>{timeLabel}</MetaChip>
+          <MetaChip>{timeLabel}–{instantTimeLabel(item.end)}</MetaChip>
           <MetaChip>{formatMinutes(durationMinutes)}</MetaChip>
           <MetaChip>{MODALITY_LABELS[item.modality]}</MetaChip>
           <MetaChip>{item.isRecurring ? "Serie recurrente" : "Clase suelta"}</MetaChip>
@@ -201,6 +204,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
             lesson={{ id: item.id, recurrenceId: item.recurrenceId, occurrenceKey: item.occurrenceKey, start: item.start, end: item.end, title: item.title, studentName: item.studentName }}
             onCancel={() => setExtendingOpen(false)}
             onDone={onClose}
+            onExtended={setExtendedEnd}
           />
         )}
 

@@ -13,7 +13,7 @@ import { instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 
 /**
- * «Extender duración» de UNA clase (+15, +30 o +60 min). Todo se decide en el servidor y la escritura es atómica:
+ * «Extender duración» de UNA clase (+15, +30, +45 o +60 min). Todo se decide en el servidor y la escritura es atómica:
  *  1. se relee la clase por su IDENTIDAD (id real, o serie + clave de ocurrencia si todavía es virtual), nunca por nombre u horario;
  *  2. se valida el intervalo FINAL completo contra la agenda operativa compartida (clases reales y ocurrencias virtuales vigentes; una cancelada, reemplazada u origen liberado no bloquea; la propia
  *     clase se excluye por su identidad) y contra la disponibilidad (bloqueos semanales, vacaciones y feriados);

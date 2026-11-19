@@ -10,28 +10,45 @@ const at = (hhmm: string, day = "2026-12-03") => {
 };
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-test("incrementos rápidos: +15, +30 y +60; ejemplo 13:00–14:00 → +15 → 13:00–14:15, 75 minutos", () => {
-  assert.deepEqual([...EXTEND_INCREMENTS_MINUTES], [15, 30, 60]);
+test("incrementos rápidos: +15, +30, +45 y +60; ejemplo 13:00–14:00 → +15 → 13:00–14:15, 75 minutos", () => {
+  assert.deepEqual([...EXTEND_INCREMENTS_MINUTES], [15, 30, 45, 60]);
   const options = extendOptions(at("13:00"), at("14:00"));
-  assert.deepEqual(options.map((option) => option.minutes), [15, 30, 60]);
-  assert.ok(options.every((option) => option.disabledReason === null), "una clase de 60 min admite las tres");
+  assert.deepEqual(options.map((option) => option.minutes), [15, 30, 45, 60]);
+  assert.ok(options.every((option) => option.disabledReason === null), "una clase de 60 min admite las cuatro (+60 llega justo a 120)");
   assert.deepEqual(describeExtension(at("13:00"), options[0].newEnd), { range: "13:00–14:15", duration: "75 min" });
   assert.equal(options[0].newDuration, 75);
   assert.equal(options[1].newDuration, 90);
-  assert.equal(options[2].newDuration, 120);
+  assert.equal(options[2].newDuration, 105);
+  assert.equal(options[3].newDuration, 120);
 });
 
-test("evaluateExtension calcula el fin nuevo y la duración total; sólo acepta +15, +30 o +60", () => {
+test("+45 usa la misma validación: una clase de 75 min llega a 120 con +45 y +60 queda deshabilitada (daría 135); una de 90 admite hasta +30", () => {
+  const of75 = extendOptions(at("13:00"), at("14:15"));
+  assert.deepEqual(of75.map((option) => option.disabledReason), [null, null, null, "Máximo 120 min por clase."]);
+  assert.equal(of75[2].newDuration, 120);
+  assert.equal(of75[3].newDuration, 135);
+  const ok = evaluateExtension(at("13:00"), at("14:15"), 45);
+  assert.ok(ok.ok);
+  if (ok.ok) assert.deepEqual({ end: ok.newEnd, duration: ok.newDuration }, { end: at("15:00"), duration: 120 });
+  assert.equal(evaluateExtension(at("13:00"), at("14:15"), 60).ok, false, "el servidor rechaza lo mismo que la pantalla deshabilita");
+  const of90 = extendOptions(at("13:00"), at("14:30"));
+  assert.deepEqual(of90.map((option) => option.disabledReason), [null, null, "Máximo 120 min por clase.", "Máximo 120 min por clase."]);
+  // La jornada también aplica a +45: 21:30 + 45 = 22:15.
+  const tarde = extendOptions(at("20:30"), at("21:30"));
+  assert.deepEqual(tarde.map((option) => option.disabledReason), [null, null, "Terminaría después de las 22:00.", "Terminaría después de las 22:00."]);
+});
+
+test("evaluateExtension calcula el fin nuevo y la duración total; sólo acepta +15, +30, +45 o +60", () => {
   const ok = evaluateExtension(at("13:00"), at("14:00"), 15);
   assert.ok(ok.ok);
   if (ok.ok) assert.deepEqual({ end: ok.newEnd, duration: ok.newDuration }, { end: at("14:15"), duration: 75 });
-  for (const invalid of [0, 10, 20, 45, 90, -15, Number.NaN]) assert.equal(evaluateExtension(at("13:00"), at("14:00"), invalid).ok, false, String(invalid));
+  for (const invalid of [0, 10, 20, 75, 90, 120, -15, Number.NaN]) assert.equal(evaluateExtension(at("13:00"), at("14:00"), invalid).ok, false, String(invalid));
 });
 
 test("el máximo de duración existente no se amplía en silencio: la opción que lo supera se deshabilita con su motivo", () => {
   assert.equal(MAX_LESSON_DURATION_MINUTES, 120, "el máximo es el de la lista de duraciones de la clase");
   const options = extendOptions(at("13:00"), at("14:30")); // 90 min
-  assert.deepEqual(options.map((option) => option.disabledReason), [null, null, "Máximo 120 min por clase."]);
+  assert.deepEqual(options.map((option) => option.disabledReason), [null, null, "Máximo 120 min por clase.", "Máximo 120 min por clase."]);
   const full = extendOptions(at("13:00"), at("15:00")); // ya en el máximo
   assert.ok(full.every((option) => option.disabledReason === "Máximo 120 min por clase."));
   const result = evaluateExtension(at("13:00"), at("14:30"), 60);
@@ -41,9 +58,9 @@ test("el máximo de duración existente no se amplía en silencio: la opción qu
 test("la jornada del calendario (hasta las 22:00) tampoco se amplía: terminar justo a las 22:00 sí, pasarse no", () => {
   assert.equal(WORKDAY_END_MINUTES, 22 * 60);
   const tarde = extendOptions(at("20:30"), at("21:30"));
-  assert.deepEqual(tarde.map((option) => option.disabledReason), [null, null, "Terminaría después de las 22:00."], "21:30 + 30 = 22:00 exacto está dentro");
+  assert.deepEqual(tarde.map((option) => option.disabledReason), [null, null, "Terminaría después de las 22:00.", "Terminaría después de las 22:00."], "21:30 + 30 = 22:00 exacto está dentro");
   const casi = extendOptions(at("21:00"), at("21:50"));
-  assert.deepEqual(casi.map((option) => option.disabledReason), ["Terminaría después de las 22:00.", "Terminaría después de las 22:00.", "Terminaría después de las 22:00."]);
+  assert.ok(casi.every((option) => option.disabledReason === "Terminaría después de las 22:00."));
   const alMediodia = extendOptions(at("11:00"), at("12:00"));
   assert.ok(alMediodia.every((option) => option.disabledReason === null));
   // Una clase que cruza la medianoche civil (la hora se lee en la zona de la cuenta, nunca en UTC) tampoco se extiende.
@@ -77,6 +94,10 @@ test("cableado: botón visible junto a Reprogramar y Administrar miembros (no es
   assert.doesNotMatch(panel, /Guardar igual|allowOverlap|Agendar igualmente/, "ante un choque no se ofrece guardar igual");
   assert.match(panel, /setError\(\{ message: response\.error/, "ante un error la selección se conserva (no se reinicia)");
   assert.match(panel, /router\.refresh\(\)/, "la tarjeta y el detalle se actualizan sin salir del Calendario");
+  assert.match(panel, /onExtended\?\.\(savedEnd\)/, "el detalle completo recibe el fin nuevo al instante");
+  assert.match(modal, /onExtended=\{setExtendedEnd\}/);
+  assert.match(modal, /\{ \.\.\.shownItem, end: extendedEnd \}/, "chips, horario y duración salen del fin guardado");
+  assert.match(modal, /<MetaChip>\{timeLabel\}–\{instantTimeLabel\(item\.end\)\}<\/MetaChip>/, "el chip de horario muestra inicio y fin");
   assert.match(panel, /Actualizar el calendario/, "cambio desde otro dispositivo: se pide actualizar");
 });
 

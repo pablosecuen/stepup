@@ -21,11 +21,11 @@ export interface ExtendDurationLesson {
 }
 
 /**
- * «Extender duración»: +15, +30 o +60 minutos sobre ESTA clase, sin tocar el resto de su serie. Abre con el horario actual y ninguna opción elegida; al elegir muestra enseguida el nuevo fin y la
+ * «Extender duración»: +15, +30, +45 o +60 minutos sobre ESTA clase, sin tocar el resto de su serie. Abre con el horario actual y ninguna opción elegida; al elegir muestra enseguida el nuevo fin y la
  * duración total. Las opciones que superan el máximo de duración o la jornada del calendario quedan deshabilitadas con su motivo. Confirmar valida y guarda en el servidor (agenda,
  * disponibilidad y cambios desde otro dispositivo); ante un choque conserva la selección y dice con qué clase o bloqueo. Cancelar no cambia nada.
  */
-export function ExtendDurationPanel({ lesson, onCancel, onDone }: { lesson: ExtendDurationLesson; onCancel: () => void; onDone: () => void }) {
+export function ExtendDurationPanel({ lesson, onCancel, onDone, onExtended }: { lesson: ExtendDurationLesson; onCancel: () => void; onDone: () => void; onExtended?: (newEnd: string) => void }) {
   const router = useRouter();
   const uid = useId();
   const [pending, startTransition] = useTransition();
@@ -53,7 +53,10 @@ export function ExtendDurationPanel({ lesson, onCancel, onDone }: { lesson: Exte
           setError({ message: response.error, stale: response.stale === true });
           return;
         }
-        setDoneEnd(response.newEnd ?? chosen.newEnd);
+        const savedEnd = response.newEnd ?? chosen.newEnd;
+        setDoneEnd(savedEnd);
+        // El detalle completo (chips, horario y duración) pasa al valor nuevo en el mismo instante, sin cerrarlo ni reabrirlo.
+        onExtended?.(savedEnd);
         router.refresh();
       } finally {
         inFlight.current = false;
@@ -88,7 +91,7 @@ export function ExtendDurationPanel({ lesson, onCancel, onDone }: { lesson: Exte
 
       <fieldset className="flex min-w-0 flex-col" disabled={pending}>
         <legend className="mb-1.5 text-[14px] font-[650] text-textSecondary">¿Cuánto más dura?</legend>
-        <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {options.map((option) => {
             const isSelected = option.minutes === selected && option.disabledReason === null;
             const disabled = option.disabledReason !== null;

@@ -4,12 +4,12 @@ import { instantDateKey, instantMinutesOfDay, instantTimeLabel } from "./civil-c
 import { formatMinutes } from "../format/number-format.ts";
 
 /**
- * «Extender duración»: acción rápida sobre UNA clase (+15, +30 o +60 minutos). Reglas puras compartidas por la pantalla, la Server Action y las pruebas.
+ * «Extender duración»: acción rápida sobre UNA clase (+15, +30, +45 o +60 minutos). Reglas puras compartidas por la pantalla, la Server Action y las pruebas.
  *
  * Los límites son los que ya existen, nunca se amplían en silencio: la duración máxima de la lista de duraciones de la clase (`DURATION_OPTIONS_MINUTES`, hoy 2 h) y la jornada del calendario
  * (`END_HOUR`, hoy 22:00, en la zona horaria de la cuenta). Una opción que los supera se deshabilita con un motivo breve.
  */
-export const EXTEND_INCREMENTS_MINUTES = [15, 30, 60] as const;
+export const EXTEND_INCREMENTS_MINUTES = [15, 30, 45, 60] as const;
 export type ExtendIncrement = (typeof EXTEND_INCREMENTS_MINUTES)[number];
 
 export const MAX_LESSON_DURATION_MINUTES: number = Math.max(...DURATION_OPTIONS_MINUTES);
@@ -54,7 +54,7 @@ export function extensionLimitReason(startIso: string, newEndIso: string): strin
   return null;
 }
 
-/** Las tres opciones rápidas para una clase, ninguna seleccionada de antemano. */
+/** Las cuatro opciones rápidas para una clase, ninguna seleccionada de antemano. */
 export function extendOptions(startIso: string, endIso: string): ExtendOption[] {
   return EXTEND_INCREMENTS_MINUTES.map((minutes) => {
     const newEnd = addMinutes(endIso, minutes);
@@ -64,7 +64,7 @@ export function extendOptions(startIso: string, endIso: string): ExtendOption[] 
 
 /** Resultado de aplicar `minutes` a una clase: el fin nuevo o el motivo por el que no se puede (para el servidor y la pantalla). */
 export function evaluateExtension(startIso: string, endIso: string, minutes: number): { ok: true; newEnd: string; newDuration: number } | { ok: false; error: string } {
-  if (!(EXTEND_INCREMENTS_MINUTES as readonly number[]).includes(minutes)) return { ok: false, error: "Elegí +15, +30 o +60 minutos." };
+  if (!(EXTEND_INCREMENTS_MINUTES as readonly number[]).includes(minutes)) return { ok: false, error: "Elegí +15, +30, +45 o +60 minutos." };
   const newEnd = addMinutes(endIso, minutes);
   const reason = extensionLimitReason(startIso, newEnd);
   if (reason) return { ok: false, error: reason };
