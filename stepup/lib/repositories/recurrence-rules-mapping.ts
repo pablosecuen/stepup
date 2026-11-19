@@ -23,6 +23,8 @@ export interface RecurrenceRuleRecord {
   rawEndDate: string | null;
   /** Fecha de finalización de la serie entera (null = sin fecha). */
   seriesEndDate: string | null;
+  /** Estado de la FILA tal cual está guardada (`status` puede salir `ended` sólo porque la fecha de la serie cae antes de que el tramo empiece a regir). */
+  dbStatus: RecurrenceRuleStatus;
   status: RecurrenceRuleStatus;
   supersedesRecurrenceId: string | null;
   supersededByRecurrenceId: string | null;
@@ -49,6 +51,7 @@ export function toRecurrenceRuleRecord(row: RecurrenceRuleRow, participantIds: s
     endDate: derived.endDate,
     rawEndDate: row.end_date,
     seriesEndDate: row.series_end_date ?? null,
+    dbStatus: row.status,
     status: derived.status,
     supersedesRecurrenceId: row.supersedes_recurrence_id,
     supersededByRecurrenceId: row.superseded_by_recurrence_id,

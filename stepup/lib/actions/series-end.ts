@@ -7,7 +7,7 @@ import { listRecurrenceExceptionsForRules } from "@/lib/repositories/recurrence-
 import { readTableByIds } from "@/lib/db/read";
 import { lineageMemberIds } from "@/lib/calendar/lineage";
 import { getLocalDateKey } from "@/lib/calendar/timezone";
-import { lessonOccupiesSlot, planSeriesEndImpact, validateSeriesEndInput, type LessonForSeriesEnd } from "@/lib/calendar/series-end";
+import { lastClassOfLineage, lessonOccupiesSlot, planSeriesEndImpact, validateSeriesEndInput, type LessonForSeriesEnd } from "@/lib/calendar/series-end";
 import { actionErrorMessage } from "@/lib/errors/action-error";
 
 /**
@@ -30,6 +30,8 @@ export interface SeriesEndPreview {
   /** Tienen registro o cobro y quedarían después del límite: no se puede guardar. */
   blocked: string[];
   blockedTotal: number;
+  /** Inicio (instante ISO) de la última clase prevista de la serie entera con esa fecha de finalización (cuenta los cambios ya programados), o `null` si no queda ninguna. */
+  lastClassStart: string | null;
 }
 
 const TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -78,6 +80,7 @@ export async function previewSeriesEndAction(input: { ruleId: string; endDate: s
         restoredTotal: impact.toRestore.length,
         blocked: impact.blocked.slice(0, 3).map((lesson) => lesson.date),
         blockedTotal: impact.blocked.length,
+        lastClassStart: endDate ? (lastClassOfLineage(memberIds.flatMap((id) => rules.filter((rule) => rule.id === id)), input.effectiveDate, endDate)?.start ?? null) : null,
       },
     };
   } catch (error) {

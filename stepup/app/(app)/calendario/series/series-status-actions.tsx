@@ -146,14 +146,18 @@ export function SeriesStatusActions({
   // Última clase prevista con el patrón que va a regir: el mismo motor que genera la agenda. Si el patrón no cambia se conserva el ciclo del tramo vigente.
   const lastClass = useMemo(() => {
     if (!seriesEnd || endMessage) return null;
+    // Con el patrón sin cambios la última clase se calcula en el servidor sobre TODOS los tramos (un cambio programado más adelante tiene otro patrón).
+    if (patternUnchanged) return endPreview?.lastClassStart ? { start: endPreview.lastClassStart } : null;
     try {
       const anchor = patternUnchanged && patternStartDate <= futureDate ? patternStartDate : mondayOfWeekContaining(futureDate);
       return lastPlannedClass({ weeks: patternWeeks, startDate: anchor, timezone: CALENDAR_TIMEZONE, fromDate: futureDate, endDate: seriesEnd });
     } catch {
       return null;
     }
-  }, [seriesEnd, endMessage, patternWeeks, patternUnchanged, patternStartDate, futureDate]);
-  const endBlocked = !!seriesEnd && (!!endMessage || !lastClass || (endPreview?.blockedTotal ?? 0) > 0);
+  }, [seriesEnd, endMessage, patternWeeks, patternUnchanged, patternStartDate, futureDate, endPreview]);
+  // Con el patrón sin cambios hay que esperar la respuesta del servidor para saber cuál es la última clase.
+  const lastClassPending = !!seriesEnd && !endMessage && patternUnchanged && seriesEnd !== initialSeriesEnd && !endPreview && !endPreviewError;
+  const endBlocked = !!seriesEnd && (!!endMessage || (!lastClass && !(patternUnchanged && seriesEnd === initialSeriesEnd)) || lastClassPending || (endPreview?.blockedTotal ?? 0) > 0);
 
   function requestEndPreview(nextEnd: string, nextEffective: string) {
     const request = ++endPreviewRequest.current;
@@ -432,6 +436,8 @@ export function SeriesStatusActions({
                 {seriesEnd ? (
                   lastClass ? (
                     <p className="font-[650] text-textPrimary">Última clase prevista: {formatCivilDayLabelShort(instantDateKey(lastClass.start))}, {instantTimeLabel(lastClass.start)}.</p>
+                  ) : lastClassPending || (patternUnchanged && seriesEnd === initialSeriesEnd) ? (
+                    <p className="font-[650] text-textPrimary">{lastClassPending ? "Calculando la última clase…" : `La serie termina el ${formatCivilDate(seriesEnd)}.`}</p>
                   ) : (
                     <p className="font-[650] text-bad">Ese patrón no tiene ninguna clase entre el {formatCivilDate(futureDate)} y el {formatCivilDate(seriesEnd)}. Elegí otra fecha.</p>
                   )

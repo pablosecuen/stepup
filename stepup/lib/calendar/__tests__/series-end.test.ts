@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { deriveRuleEnd, isValidDateKey, lastPlannedClass, lessonOccupiesSlot, minDateKey, planSeriesEndImpact, validateSeriesEndInput, weeksKey, type LessonForSeriesEnd } from "../series-end.ts";
+import { deriveRuleEnd, isValidDateKey, lastClassOfLineage, lastPlannedClass, lessonOccupiesSlot, minDateKey, planSeriesEndImpact, validateSeriesEndInput, weeksKey, type LessonForSeriesEnd } from "../series-end.ts";
 import { lineageMemberIds, selectManageableRecurrenceSeries, type RuleForLineage } from "../lineage.ts";
 import { toRecurrenceRuleRecord } from "../../repositories/recurrence-rules-mapping.ts";
 import { instantDateKey, instantTimeLabel } from "../civil-calendar.ts";
@@ -77,6 +77,21 @@ test("última clase prevista: cruce de mes y de año, varios días y ciclos", ()
   assert.equal(label(lastPlannedClass({ weeks: cycle, startDate: "2026-11-23", timezone: TZ, fromDate: "2026-11-23", endDate: "2026-12-20" })), "2026-12-07 10:00", "ciclo de 2 semanas: el lunes 14/12 es de la semana vacía");
   assert.equal(label(lastPlannedClass({ weeks: cycle, startDate: "2026-11-23", timezone: TZ, fromDate: "2026-11-23", endDate: "2026-12-21" })), "2026-12-21 10:00");
   assert.equal(lastPlannedClass({ weeks: friday, startDate: "2026-12-21", timezone: TZ, fromDate: "2026-12-30", endDate: "2026-12-29" }), null, "fecha anterior al inicio: ninguna");
+});
+
+test("última clase de la SERIE ENTERA: cada tramo genera sólo en su período; un cambio programado más adelante no cuenta antes de empezar", () => {
+  const thursday: RecurrenceWeek[] = [week([3, 17])]; // jueves 17:00
+  const friday: RecurrenceWeek[] = [week([4, 14])]; // viernes 14:00
+  const segments = [
+    { weeks: thursday, startDate: "2026-09-07", effectiveFromDate: "2026-09-07", rawEndDate: "2027-01-06", timezone: TZ, dbStatus: "active" as const },
+    { weeks: friday, startDate: "2027-01-04", effectiveFromDate: "2027-01-07", rawEndDate: null, timezone: TZ, dbStatus: "active" as const },
+  ];
+  assert.equal(label(lastClassOfLineage(segments, "2026-11-18", "2026-12-20")), "2026-12-17 17:00", "antes del cambio programado manda el tramo que rige hoy");
+  assert.equal(label(lastClassOfLineage(segments, "2026-11-18", "2027-01-15")), "2027-01-15 14:00", "después, el del cambio programado");
+  assert.equal(label(lastClassOfLineage(segments, "2026-11-18", "2027-01-07")), "2026-12-31 17:00", "el día 07/01 el tramo anterior ya terminó (06/01) y el nuevo todavía no tiene clase");
+  assert.equal(label(lastClassOfLineage(segments, "2026-11-18", "2027-01-06")), "2026-12-31 17:00");
+  assert.equal(lastClassOfLineage([{ ...segments[0], dbStatus: "ended" }], "2026-11-18", "2026-12-20"), null, "un tramo cerrado por estado no genera clases");
+  assert.equal(lastClassOfLineage(segments, "2026-11-18", "2026-11-18"), null, "hoy no hay clase");
 });
 
 test("patrón: la clave canónica ignora el orden de claves y de sesiones", () => {
@@ -160,6 +175,7 @@ test("cableado: el límite no se pierde en ningún flujo ni se reescribe el fin 
   const actions = read("lib/actions/calendar.ts");
   assert.match(actions, /const successorEndDate = segment\.superseded\.length > 0 \? currentRule\.rawEndDate : target\.rawEndDate;/, "la sucesora hereda el fin PROPIO, no el efectivo");
   assert.match(actions, /weeksKey\(weeks\) === weeksKey\(target\.weeks\)/, "si sólo cambia la fecha no se crea un tramo nuevo");
+  assert.match(actions, /endChanged && weeksKey\(weeks\) === weeksKey\(currentRule\.weeks\)/, "con un cambio programado más adelante, confirmar sólo la fecha no reemplaza el tramo que rige hoy");
   assert.match(actions, /splitRecurrenceWithSeriesEnd\(ctx, \{ \.\.\.splitInput, seriesEnd:/);
   assert.match(read("lib/repositories/recurrence-split.ts"), /originalEndDate: original\.rawEndDate/);
   const ui = read("app/(app)/calendario/series/series-status-actions.tsx");

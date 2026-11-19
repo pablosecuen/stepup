@@ -683,7 +683,10 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     const primaryStudentId = currentRule.primaryStudentId;
     if (!primaryStudentId) return { error: "Serie no encontrada." };
     // Sólo cambia la fecha de finalización (el patrón queda igual): no se corta ni se crea ningún tramo nuevo; el límite rige para todo el linaje en UNA transacción.
-    if (endField && !keepPattern && weeksKey(weeks) === weeksKey(target.weeks)) {
+    // «Sólo la fecha»: (a) el patrón que se ve es el de la serie vigente y la fecha cambió — con un cambio ya programado más adelante el patrón mostrado es el de ESE cambio, y confirmarlo no debe
+    // reemplazar el tramo que rige hoy —; o (b) el patrón es el del tramo que rige en esa fecha y no cambió nada más.
+    const endChanged = endField && seriesEnd !== expectedSeriesEnd;
+    if (endField && !keepPattern && ((endChanged && weeksKey(weeks) === weeksKey(currentRule.weeks)) || weeksKey(weeks) === weeksKey(target.weeks))) {
       if (effectiveDate < todayDate) return { error: "La fecha desde la que rige no puede ser anterior a hoy: las clases pasadas no se modifican." };
       await setRecurrenceSeriesEnd(ctx, { headId: originalRecurrenceId, endDate: seriesEnd, minDate: effectiveDate, timezone: target.timezone, expectedEnd: expectedSeriesEnd, checkExpected: true });
       revalidatePath("/calendario");

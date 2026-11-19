@@ -91,6 +91,41 @@ export function lastPlannedClass(input: SeriesEndPatternInput & { fromDate: stri
   return last ? { start: last.start, end: last.end } : null;
 }
 
+export interface LineageSegmentForLastClass {
+  weeks: RecurrenceWeek[];
+  startDate: string;
+  effectiveFromDate: string | null;
+  /** Fin PROPIO del tramo (corte de «esta y las siguientes» o fin fijado al crear); no incluye la fecha de la serie. */
+  rawEndDate: string | null;
+  timezone: string;
+  /** Estado de la fila: un tramo cerrado por estado no genera clases. */
+  dbStatus: RecurrenceRuleStatus;
+}
+
+/**
+ * Última clase prevista de la SERIE ENTERA (todos sus tramos, incluidos los cambios programados) entre `fromDate` y `endDate`, inclusivas. Cada tramo genera clases sólo dentro de su propio período
+ * (desde su fecha efectiva hasta su fin propio) y del límite que se está evaluando; gana la clase más tardía. Con el patrón sin cambios esto dice la verdad aunque el tramo vigente empiece después
+ * de hoy (un cambio ya programado).
+ */
+export function lastClassOfLineage(segments: LineageSegmentForLastClass[], fromDate: string, endDate: string): { start: string; end: string } | null {
+  let best: { start: string; end: string } | null = null;
+  for (const segment of segments) {
+    if (segment.dbStatus === "ended" || segment.weeks.length === 0) continue;
+    const first = segment.effectiveFromDate && segment.effectiveFromDate > segment.startDate ? segment.effectiveFromDate : segment.startDate;
+    const from = first > fromDate ? first : fromDate;
+    const to = minDateKey(segment.rawEndDate, endDate) ?? endDate;
+    if (to < from) continue;
+    let candidate: { start: string; end: string } | null = null;
+    try {
+      candidate = lastPlannedClass({ weeks: segment.weeks, startDate: segment.startDate, timezone: segment.timezone, fromDate: from, endDate: to });
+    } catch {
+      candidate = null;
+    }
+    if (candidate && (!best || candidate.start > best.start)) best = candidate;
+  }
+  return best;
+}
+
 export interface LessonForSeriesEnd {
   id: string;
   status: "scheduled" | "completed" | "cancelled" | "rescheduled";
