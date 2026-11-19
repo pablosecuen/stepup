@@ -22,6 +22,7 @@ import { Notice } from "@/components/ui/notice";
 import { CALENDAR_TIMEZONE, formatCivilDayLabel, instantDateKey, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
+import { lastPlannedClass, validateSeriesEndInput } from "@/lib/calendar/series-end";
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
 import { describeWeeklySessions, formatClock, parseSlotPreset, seriesWeeksFromSlot, weekdayIndexOfDate } from "@/lib/calendar/slot-preset";
 
@@ -215,6 +216,17 @@ export function NewLessonForm({
       return null;
     }
   }, [startDate, currentWeeks]);
+  // Fecha de finalización (opcional): inclusiva, civil, nunca anterior al inicio; la última clase prevista sale del mismo motor que genera la agenda.
+  const endMessage = endDate ? validateSeriesEndInput(endDate, startDate) : null;
+  const lastClassLabel = useMemo(() => {
+    if (!endDate || endMessage || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || currentWeeks.every((week) => week.sessions.length === 0)) return null;
+    try {
+      const last = lastPlannedClass({ weeks: currentWeeks, startDate: mondayOfWeekContaining(startDate), timezone: CALENDAR_TIMEZONE, fromDate: startDate, endDate });
+      return last ? `${formatCivilDayLabel(instantDateKey(last.start))}, ${instantTimeLabel(last.start)}` : null;
+    } catch {
+      return null;
+    }
+  }, [endDate, endMessage, startDate, currentWeeks]);
   const scheduleSummary =
     mode === "single"
       ? currentSingle ? `${formatCivilDayLabel(currentSingle.date)} · ${formatClock(currentSingle.hour, currentSingle.minute)}` : "Completá la fecha y la hora."
@@ -349,9 +361,15 @@ export function NewLessonForm({
               <TextInput id="startDate" name="startDate" type="date" required value={startDate} onChange={(e) => { seriesTouched.current = true; setStartDate(e.target.value); }} />
             </Field>
             <AvailabilityPicker date={startDate} time={`${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`} duration={Number(durationMinutes)||60} onSelect={(date,time)=>seedSeriesFrom({date,hour:Number(time.slice(0,2)),minute:Number(time.slice(3,5)),durationMinutes:Number(durationMinutes)||60})} />
-            <Field label="Fecha de fin (opcional)" htmlFor="endDate">
-              <TextInput id="endDate" name="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Field label="Fecha de finalización (opcional)" htmlFor="endDate" hint={endDate ? undefined : "Sin fecha de finalización."}>
+              <TextInput id="endDate" name="endDate" type="date" min={startDate || undefined} value={endDate} aria-describedby={endMessage ? "endDate-error" : undefined} onChange={(e) => setEndDate(e.target.value)} />
             </Field>
+            {endMessage && <p id="endDate-error" role="alert" className="text-[13.5px] font-semibold text-bad sm:col-span-2">{endMessage}</p>}
+            {endDate && !endMessage && (
+              <p role="status" aria-live="polite" className={`text-[14px] font-[650] sm:col-span-2 ${lastClassLabel ? "text-textPrimary" : "text-bad"}`}>
+                {lastClassLabel ? `Última clase prevista: ${lastClassLabel}.` : "Ese patrón no tiene ninguna clase entre el inicio y la fecha de finalización. Elegí otra fecha."}
+              </p>
+            )}
           </div>
 
           <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={(next) => { seriesTouched.current = true; setWeekCycles(next); }} />
@@ -371,7 +389,7 @@ export function NewLessonForm({
       {(state.error?.includes('bloqueado')||allowBlocked)&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowBlocked} onChange={e=>setAllowBlocked(e.target.checked)} className="h-5 w-5" required />Agendar igualmente sobre este bloqueo de disponibilidad</label>}
       {(state.error?.includes('superpone')||allowOverlap)&&<label className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={allowOverlap} onChange={e=>setAllowOverlap(e.target.checked)} className="h-5 w-5" required />Confirmo que quiero superponer estas clases</label>}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-        <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId} />
+        <SubmitButton disabled={selected.size === 0 || !primaryStudentId || !operationId || (mode === "series" && !!endDate && (!!endMessage || !lastClassLabel))} />
         <PrivateButtonLink href={returnHref} variant="ghost">
           Cancelar
         </PrivateButtonLink>

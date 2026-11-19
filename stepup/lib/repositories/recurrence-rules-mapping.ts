@@ -1,6 +1,7 @@
 import type { ActivityKind, CalendarModality, RecurrenceRuleRow, RecurrenceRuleStatus } from "../db/database.types.ts";
 import type { RecurrenceWeek } from "../calendar/types.ts";
 import { parseOperationId } from "../calendar/operation-id.ts";
+import { deriveRuleEnd } from "../calendar/series-end.ts";
 
 /**
  * Lógica PURA del repositorio de series — separada para poder probarla
@@ -16,7 +17,12 @@ export interface RecurrenceRuleRecord {
   modality: CalendarModality;
   timezone: string;
   startDate: string;
+  /** Fin EFECTIVO del tramo: el menor entre su fin propio (`rawEndDate`) y la fecha de finalización de la serie. Es el que usan el motor, el linaje y todo lo que genera o cuenta clases. */
   endDate: string | null;
+  /** Fin propio de la fila (corte de «esta y las siguientes» o fin fijado al crear la serie). Lo que se COPIA a una sucesora o se persiste, nunca `endDate`. */
+  rawEndDate: string | null;
+  /** Fecha de finalización de la serie entera (null = sin fecha). */
+  seriesEndDate: string | null;
   status: RecurrenceRuleStatus;
   supersedesRecurrenceId: string | null;
   supersededByRecurrenceId: string | null;
@@ -30,6 +36,7 @@ export interface RecurrenceRuleRecord {
 }
 
 export function toRecurrenceRuleRecord(row: RecurrenceRuleRow, participantIds: string[]): RecurrenceRuleRecord {
+  const derived = deriveRuleEnd({ startDate: row.start_date, effectiveFromDate: row.effective_from_date, endDate: row.end_date, seriesEndDate: row.series_end_date ?? null, status: row.status });
   return {
     id: row.id,
     primaryStudentId: row.primary_student_id,
@@ -39,8 +46,10 @@ export function toRecurrenceRuleRecord(row: RecurrenceRuleRow, participantIds: s
     modality: row.modality,
     timezone: row.timezone,
     startDate: row.start_date,
-    endDate: row.end_date,
-    status: row.status,
+    endDate: derived.endDate,
+    rawEndDate: row.end_date,
+    seriesEndDate: row.series_end_date ?? null,
+    status: derived.status,
     supersedesRecurrenceId: row.supersedes_recurrence_id,
     supersededByRecurrenceId: row.superseded_by_recurrence_id,
     effectiveFromDate: row.effective_from_date,

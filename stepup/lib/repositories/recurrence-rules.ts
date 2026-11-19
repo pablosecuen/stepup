@@ -111,6 +111,40 @@ export async function createRecurrenceSeries(ctx: AuthenticatedDbContext, input:
   return toRecurrenceRuleRecord(row, input.participantIds);
 }
 
+export interface SetSeriesEndInput {
+  /** Tramo vigente (el que se administra). */
+  headId: string;
+  /** Fecha de finalización inclusive (`YYYY-MM-DD`, fecha civil de la cuenta) o `null` = sin fecha. */
+  endDate: string | null;
+  /** La fecha no puede ser anterior a ésta (inicio del tramo que se edita); la base lo repite. */
+  minDate: string | null;
+  timezone: string;
+  /** Fin efectivo que vio la pantalla: si otro dispositivo lo cambió, la base rechaza (TF001) y se pide actualizar. */
+  expectedEnd?: string | null;
+  checkExpected?: boolean;
+}
+
+export interface SeriesEndResult {
+  previousEnd: string | null;
+  endDate: string | null;
+  /** Clases ya creadas que dejaron de regir por quedar después del límite / que volvieron al quitarlo o extenderlo. */
+  cancelled: number;
+  restored: number;
+}
+
+/** Fecha de finalización de la serie en UNA transacción (RPC `set_recurrence_series_end`): el límite del linaje completo y la cancelación/restauración de las clases ya creadas, o nada. */
+export async function setRecurrenceSeriesEnd(ctx: AuthenticatedDbContext, input: SetSeriesEndInput): Promise<SeriesEndResult> {
+  const { data, error } = await ctx.supabase.rpc("set_recurrence_series_end", {
+    p_payload: { head_id: input.headId, end_date: input.endDate, min_date: input.minDate, timezone: input.timezone, check_expected: input.checkExpected === true, expected_end: input.expectedEnd ?? null },
+  });
+  if (error) {
+    if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie no encontrada.");
+    throw error;
+  }
+  const result = data as { previous_end: string | null; end_date: string | null; cancelled: number; restored: number };
+  return { previousEnd: result.previous_end, endDate: result.end_date, cancelled: result.cancelled, restored: result.restored };
+}
+
 /** Pausar/reanudar/finalizar — una sola tabla, no necesita RPC (RLS ya exige owner_id = auth.uid()). */
 export async function setRecurrenceRuleStatus(
   ctx: AuthenticatedDbContext,

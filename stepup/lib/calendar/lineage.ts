@@ -79,6 +79,32 @@ export function selectManageableRecurrenceSeries<T extends RuleForLineage>(rules
   return result;
 }
 
+/**
+ * TODOS los tramos del linaje de una serie (la raíz y todos sus descendientes por `supersedesRecurrenceId`: tramos anteriores, la vigente y los cambios programados, incluso los ya cerrados).
+ * La fecha de finalización de la serie rige para todos ellos; las series independientes (aunque sean del mismo alumno) nunca entran. Corta ante un ciclo.
+ */
+export function lineageMemberIds<T extends RuleForLineage>(rules: T[], ruleId: string): string[] {
+  const root = lineageRootId(rules, ruleId);
+  const children = new Map<string, string[]>();
+  rules.forEach((rule) => {
+    if (!rule.supersedesRecurrenceId) return;
+    const list = children.get(rule.supersedesRecurrenceId) ?? [];
+    list.push(rule.recurrenceId);
+    children.set(rule.supersedesRecurrenceId, list);
+  });
+  const members: string[] = [];
+  const seen = new Set<string>();
+  const queue = [root];
+  while (queue.length > 0) {
+    const id = queue.shift() as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    members.push(id);
+    (children.get(id) ?? []).forEach((child) => queue.push(child));
+  }
+  return members;
+}
+
 /** Raíz del linaje de una serie (siguiendo `supersedesRecurrenceId` hacia atrás); corta ante un ciclo o un antecesor desconocido. */
 export function lineageRootId<T extends RuleForLineage>(rules: T[], ruleId: string): string {
   const byId = new Map(rules.map((rule) => [rule.recurrenceId, rule]));

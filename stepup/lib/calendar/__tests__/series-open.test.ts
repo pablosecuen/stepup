@@ -154,7 +154,7 @@ test("cableado del editor directo: se reutiliza el MISMO diálogo «Editar futur
   const page = read("app/(app)/calendario/series/[id]/page.tsx");
   assert.match(page, /directEditFuture=\{head && wantsDirectFutureEdit\(query\.editar\) \? \{ returnTo: back \} : undefined\}/, "sólo con serie vigente (head) y el valor exacto");
   const list = read("components/calendar/series-list-view.tsx");
-  assert.match(list, /directEditFuture=\{directEditFuture\} \/>/);
+  assert.match(list, /directEditFuture=\{directEditFuture\} seriesEndDate=\{rule\.endDate\} patternStartDate=\{rule\.startDate\} \/>/);
   assert.doesNotMatch(list.slice(list.indexOf("export function SeriesListView")), /directEditFuture/, "el listado general no abre ningún editor solo");
   const actions = read("app/(app)/calendario/series/series-status-actions.tsx");
   assert.match(actions, /useState\(\(\) => !!directEditFuture && status !== "ended"\)/, "no abre en una serie terminada");

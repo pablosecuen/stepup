@@ -12,6 +12,8 @@ export type SwapRule = RuleForLineage & {
   weeks: RecurrenceWeek[];
   participantIds: string[];
   primaryStudentId: string | null;
+  /** Fin PROPIO de la fila (sin la fecha de finalización de la serie): es el que se copia a la sucesora. Si falta se usa `endDate`. */
+  rawEndDate?: string | null;
 };
 
 export interface SwapSide<T extends SwapRule> {
@@ -59,7 +61,7 @@ export function planSeriesSwap<T extends SwapRule>(rules: T[], idA: string, idB:
     target: segment.target,
     superseded: segment.superseded,
     newWeeks: other.weeks,
-    successorEndDate: segment.superseded.length > 0 ? head.endDate : segment.target.endDate,
+    successorEndDate: segment.superseded.length > 0 ? (head.rawEndDate ?? head.endDate) : (segment.target.rawEndDate ?? segment.target.endDate),
   });
   return { ok: true, a: side(headA, segmentA, segmentB.target), b: side(headB, segmentB, segmentA.target) };
 }

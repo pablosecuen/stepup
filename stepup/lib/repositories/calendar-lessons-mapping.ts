@@ -28,6 +28,8 @@ export interface CalendarLessonRecord {
   participantIds: string[];
   /** Sólo en una clase completada cuyo registro no se dictó (cancelada tarde, profesora/alumno ausente, feriado): para no rotularla «Completada». */
   closedOutcome?: ClosedOutcome | null;
+  /** La canceló la fecha de finalización de su serie: sólo estas se restauran al quitar o extender el límite. */
+  cancelledBySeriesLimit?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +55,7 @@ export function toCalendarLessonRecord(row: CalendarLessonRow, participantIds: s
     activityKind: row.activity_kind,
     notes: row.notes,
     participantIds,
+    cancelledBySeriesLimit: row.cancelled_by_series_limit === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -81,6 +84,8 @@ export interface NewSingleLessonInput {
   participants: LessonParticipantInput[];
   /** Sólo cuando esta clase nace de "Reemplazar con otro alumno" sobre una cancelada. */
   freedByLessonId?: string | null;
+  /** La base rechaza, dentro de la misma transacción, un horario que otra clase real ya ocupa (carrera entre dos dispositivos). No se manda cuando la profesora eligió «Guardar igual». */
+  guardOverlap?: boolean;
 }
 
 export interface LessonValidationError {
@@ -114,5 +119,6 @@ export function singleLessonInputToPayload(input: NewSingleLessonInput): Record<
     color: input.color,
     freed_by_lesson_id: input.freedByLessonId ?? null,
     participants: input.participants.map((p) => ({ student_id: p.studentId, student_name: p.studentName, level: p.level })),
+    ...(input.guardOverlap ? { guard_overlap: true } : {}),
   };
 }

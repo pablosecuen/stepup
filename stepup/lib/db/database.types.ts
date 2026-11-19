@@ -130,6 +130,8 @@ export interface RecurrenceRuleRow {
   timezone: string;
   start_date: ISODateString;
   end_date: ISODateString | null;
+  /** Fecha de finalización de la serie ENTERA (20261118200000); el fin efectivo de un tramo es el menor entre `end_date` y ésta. */
+  series_end_date: ISODateString | null;
   status: RecurrenceRuleStatus;
   supersedes_recurrence_id: UUID | null;
   superseded_by_recurrence_id: UUID | null;
@@ -181,6 +183,8 @@ export interface CalendarLessonRow {
   activity_kind: ActivityKind;
   /** Idempotencia de la creación (20261001150000); null en filas históricas y en las que nacen por otros caminos. */
   operation_id: UUID | null;
+  /** La canceló la fecha de finalización de su serie (20261118200000): sólo estas se restauran al quitar o extender el límite. */
+  cancelled_by_series_limit?: boolean;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon, ArrowRightIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowRightIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, ClockIcon, PencilSquareIcon, UserPlusIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import { editRegistrationHref } from "@/lib/registro/return-path";
 import { seriesEditHref } from "@/lib/calendar/series-return";
 import type { CalendarViewItem } from "@/lib/calendar/occurrences";
@@ -15,6 +15,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Notice } from "@/components/ui/notice";
 import { LessonParticipantsDialog } from "@/components/calendar/lesson-participants-dialog";
 import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel";
+import { ExtendDurationPanel } from "@/components/calendar/extend-duration-panel";
+import { canExtendLesson } from "@/lib/calendar/extend-duration";
 import { LessonMemberSummary } from "@/components/calendar/lesson-member-summary";
 
 function MetaChip({ children }: { children: React.ReactNode }) {
@@ -42,6 +44,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [reschedulingOpen, setReschedulingOpen] = useState(startInReschedule);
+  const [extendingOpen, setExtendingOpen] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   // Id de la clase recién cancelada: la cancelación la saca de la agenda, así que acá se ofrece (una vez) reemplazarla con otro alumno o deshacer.
   const [cancelledLessonId, setCancelledLessonId] = useState<string | null>(null);
@@ -60,7 +63,7 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
     if (!dialog) return;
     const target = dialog.querySelector<HTMLElement>("[data-autofocus]");
     (target ?? dialog).focus();
-  }, [reschedulingOpen, confirmingCancel, cancelledLessonId]);
+  }, [reschedulingOpen, extendingOpen, confirmingCancel, cancelledLessonId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -78,6 +81,8 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
   const isCancelled = item.status === "cancelled";
   const isPast = now !== null && start.getTime() <= now;
   const canEdit = item.status !== "cancelled" && item.status !== "completed";
+  // «Extender duración»: no para una clase cancelada, reemplazada, liberada por una reprogramación ni registrada.
+  const canExtend = canEdit && canExtendLesson(item);
   const lessonTitle = item.title?.trim() || item.studentName || "Serie sin alumnos";
   // Todos los alumnos de la clase (el principal primero): `studentName` es sólo el del principal, y una clase compartida parecía de uno solo.
   const participantNames = item.participantNames && item.participantNames.length > 0 ? item.participantNames : item.studentName ? [item.studentName] : [];
@@ -132,12 +137,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
 
   if (participantsOpen) return <LessonParticipantsDialog item={item} onBack={() => setParticipantsOpen(false)} onDone={onClose} />;
 
-  const step: "actions" | "reschedule" | "cancel" | "cancelled" = cancelledLessonId ? "cancelled" : reschedulingOpen ? "reschedule" : confirmingCancel ? "cancel" : "actions";
-  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : step === "cancelled" ? `Clase cancelada · ${lessonTitle}` : lessonTitle;
+  const step: "actions" | "reschedule" | "extend" | "cancel" | "cancelled" = cancelledLessonId ? "cancelled" : reschedulingOpen ? "reschedule" : extendingOpen ? "extend" : confirmingCancel ? "cancel" : "actions";
+  const dialogTitle = step === "reschedule" ? `Reprogramar · ${lessonTitle}` : step === "extend" ? `Extender duración · ${lessonTitle}` : step === "cancel" ? `Cancelar clase · ${lessonTitle}` : step === "cancelled" ? `Clase cancelada · ${lessonTitle}` : lessonTitle;
   const isFutureSlot = now !== null && start.getTime() > now;
 
   const footer =
-    step === "reschedule" ? undefined : step === "cancelled" ? (
+    step === "reschedule" || step === "extend" ? undefined : step === "cancelled" ? (
       <Button variant="primary" onClick={onClose} className="self-end" data-autofocus>
         Listo
       </Button>
@@ -187,6 +192,14 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
             initialScope="single"
             singleClassOnly
             onCancel={() => setReschedulingOpen(false)}
+            onDone={onClose}
+          />
+        )}
+
+        {step === "extend" && (
+          <ExtendDurationPanel
+            lesson={{ id: item.id, recurrenceId: item.recurrenceId, occurrenceKey: item.occurrenceKey, start: item.start, end: item.end, title: item.title, studentName: item.studentName }}
+            onCancel={() => setExtendingOpen(false)}
             onDone={onClose}
           />
         )}
@@ -246,6 +259,12 @@ export function RealLessonDetailModal({ item, canReuseSlot, onClose, startInResc
                 <Button variant={isPast && item.status !== "cancelled" && item.status !== "completed" ? "secondary" : "primary"} block onClick={() => setReschedulingOpen(true)}>
                   <ArrowPathIcon className="h-5 w-5" aria-hidden />
                   <span>Reprogramar<span className="block text-xs font-normal">Solo esta clase</span></span>
+                </Button>
+              )}
+              {canExtend && (
+                <Button variant="secondary" block onClick={() => setExtendingOpen(true)}>
+                  <ClockIcon className="h-5 w-5" aria-hidden />
+                  Extender duración
                 </Button>
               )}
               {canEdit && (

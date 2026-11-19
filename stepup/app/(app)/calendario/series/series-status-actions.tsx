@@ -9,6 +9,8 @@ import { ChangeSchedulePanel } from "@/components/calendar/change-schedule-panel
 import { SeriesActionsMenu, type SeriesMenuGroup } from "@/components/calendar/series-actions-menu";
 import { TrainingBillingConfigButton } from "@/components/payments/training-billing-config";
 import { upcomingSeriesOccurrencesAction, type UpcomingSeriesOccurrence } from "@/lib/actions/schedule-change";
+import { previewSeriesEndAction, type SeriesEndPreview } from "@/lib/actions/series-end";
+import { lastPlannedClass, validateSeriesEndInput, weeksKey } from "@/lib/calendar/series-end";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { FormErrorBox, FormInfoBox } from "@/components/auth/form-boxes";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,7 @@ import { generateOccurrences } from "@/lib/calendar/recurrence-engine";
 import { CALENDAR_TIMEZONE, formatCivilDayLabel, formatCivilDayLabelShort, instantDateKey, instantTimeLabel } from "@/lib/calendar/civil-calendar";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { mondayOfWeekContaining } from "@/lib/calendar/weekday";
-import { todayInArgentina } from "@/lib/format/date-format";
+import { formatCivilDate, todayInArgentina } from "@/lib/format/date-format";
 
 /**
  * Envío de los formularios de esta pantalla SIN `action={…}`: con `action`, React 19 reinicia el formulario al terminar la acción (incluso si
@@ -48,7 +50,13 @@ export function SeriesStatusActions({
   swapOptions = [],
   training = null,
   directEditFuture,
+  seriesEndDate = null,
+  patternStartDate,
 }: {
+  /** Fecha de finalización vigente de la serie (fin efectivo, inclusivo) o `null` = sin fecha. Precarga el campo del editor. */
+  seriesEndDate?: string | null;
+  /** Lunes de la semana 0 del tramo vigente: ancla del ciclo para calcular la última clase prevista cuando el patrón no cambia. */
+  patternStartDate: string;
   /** Nombre y horario de LA serie (para decir en la confirmación exactamente qué se quita). */
   seriesLabel: string;
   scheduleLabel: string;
@@ -96,6 +104,12 @@ export function SeriesStatusActions({
   const today = useMemo(() => todayInArgentina(), []);
   const [futureDate, setFutureDate] = useState(today);
   const [participantsDate, setParticipantsDate] = useState(today);
+  // Fecha de finalización (opcional) de la serie: vacía = sin fecha. La vista previa de lo que cambia se pide al elegirla; una respuesta vieja nunca pisa a una más nueva.
+  const initialSeriesEnd = seriesEndDate ?? "";
+  const [seriesEnd, setSeriesEnd] = useState(initialSeriesEnd);
+  const [endPreview, setEndPreview] = useState<SeriesEndPreview | null>(null);
+  const [endPreviewError, setEndPreviewError] = useState<string | null>(null);
+  const endPreviewRequest = useRef(0);
   // Primera clase que tendrá el nuevo patrón desde la fecha elegida: así se ve de entrada si el cambio cae en el día que se espera.
   const firstNewClass = useMemo(() => {
     try {
@@ -125,6 +139,33 @@ export function SeriesStatusActions({
       return null;
     }
   }, [futureDate, weekCycles]);
+
+  const endMessage = seriesEnd ? validateSeriesEndInput(seriesEnd, futureDate) : null;
+  const patternWeeks = useMemo(() => JSON.parse(weekCyclesToWeeksJson(weekCycles)) as RecurrenceWeek[], [weekCycles]);
+  const patternUnchanged = weeksKey(patternWeeks) === weeksKey(weeks);
+  // Última clase prevista con el patrón que va a regir: el mismo motor que genera la agenda. Si el patrón no cambia se conserva el ciclo del tramo vigente.
+  const lastClass = useMemo(() => {
+    if (!seriesEnd || endMessage) return null;
+    try {
+      const anchor = patternUnchanged && patternStartDate <= futureDate ? patternStartDate : mondayOfWeekContaining(futureDate);
+      return lastPlannedClass({ weeks: patternWeeks, startDate: anchor, timezone: CALENDAR_TIMEZONE, fromDate: futureDate, endDate: seriesEnd });
+    } catch {
+      return null;
+    }
+  }, [seriesEnd, endMessage, patternWeeks, patternUnchanged, patternStartDate, futureDate]);
+  const endBlocked = !!seriesEnd && (!!endMessage || !lastClass || (endPreview?.blockedTotal ?? 0) > 0);
+
+  function requestEndPreview(nextEnd: string, nextEffective: string) {
+    const request = ++endPreviewRequest.current;
+    setEndPreview(null);
+    setEndPreviewError(null);
+    if (nextEnd === initialSeriesEnd || validateSeriesEndInput(nextEnd, nextEffective)) return;
+    void guardNetwork(() => previewSeriesEndAction({ ruleId, endDate: nextEnd, effectiveDate: nextEffective })).then((result) => {
+      if (request !== endPreviewRequest.current) return;
+      if (result.error) setEndPreviewError(result.error);
+      else setEndPreview(result.preview ?? null);
+    });
+  }
 
   function handleCycleLengthChange(next: 1 | 2 | 3 | 4) {
     setCycleLengthWeeks(next);
@@ -184,6 +225,10 @@ export function SeriesStatusActions({
     setSelectedPrimaryId(primaryStudentId ?? "");
     setFutureDate(today);
     setParticipantsDate(today);
+    endPreviewRequest.current += 1;
+    setSeriesEnd(initialSeriesEnd);
+    setEndPreview(null);
+    setEndPreviewError(null);
     if (directReturn) {
       const target = directReturn;
       setDirectReturn(null);
@@ -210,6 +255,8 @@ export function SeriesStatusActions({
     setReplaceWarning(null);
     if (confirmReplace) formData.set("confirmReplace", "true");
     formData.set("originalRecurrenceId", ruleId);
+    formData.set("seriesEndDate", seriesEnd);
+    formData.set("expectedSeriesEnd", initialSeriesEnd);
     formData.set("weeksJson", weekCyclesToWeeksJson(weekCycles));
     participantIds.forEach((id) => formData.append("participantIds", id));
     startTransition(async () => {
@@ -360,8 +407,8 @@ export function SeriesStatusActions({
             <p className="text-[13.5px] text-textMuted">Dividir: «esta y las siguientes». El nuevo patrón rige desde la fecha que elijas. Lo anterior no se modifica.</p>
             <Field label="Desde qué fecha rige el nuevo patrón" htmlFor={`effectiveDate-${ruleId}`} hint={futureDate ? `Rige desde ${formatCivilDayLabel(futureDate)}.` : undefined}>
               <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
-                <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); }} className="min-w-0" />
-                <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); }} disabled={futureDate === today}>
+                <TextInput id={`effectiveDate-${ruleId}`} name="effectiveDate" type="date" required min={today} value={futureDate} onChange={(e) => { setFutureDate(e.target.value); setReplaceConfirmed(false); requestEndPreview(seriesEnd, e.target.value); }} className="min-w-0" />
+                <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => { setFutureDate(today); setReplaceConfirmed(false); requestEndPreview(seriesEnd, today); }} disabled={futureDate === today}>
                   Hoy
                 </Button>
               </div>
@@ -371,6 +418,38 @@ export function SeriesStatusActions({
             </p>
             <WeekdayScheduleEditor cycleLengthWeeks={cycleLengthWeeks} onCycleLengthChange={handleCycleLengthChange} weekCycles={weekCycles} onChange={setWeekCycles} />
             <p className="text-[13.5px] text-textMuted">La agenda anterior a esa fecha queda intacta — nunca se modifica el pasado.</p>
+            <Field label="Fecha de finalización (opcional)" htmlFor={`seriesEnd-${ruleId}`} hint={seriesEnd ? undefined : "Sin fecha de finalización."}>
+              <div data-series-effective-date className="grid w-full max-w-[300px] grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
+                <TextInput id={`seriesEnd-${ruleId}`} name="seriesEndDate" type="date" min={futureDate} value={seriesEnd} aria-describedby={endMessage ? `seriesEnd-error-${ruleId}` : undefined} onChange={(e) => { setSeriesEnd(e.target.value); setReplaceConfirmed(false); requestEndPreview(e.target.value, futureDate); }} className="min-w-0" />
+                <Button variant="secondary" className="min-h-[46px] shrink-0 px-3" onClick={() => { setSeriesEnd(""); setReplaceConfirmed(false); requestEndPreview("", futureDate); }} disabled={!seriesEnd}>
+                  Quitar
+                </Button>
+              </div>
+            </Field>
+            {endMessage && <p id={`seriesEnd-error-${ruleId}`} role="alert" className="-mt-2 text-[13.5px] font-semibold text-bad">{endMessage}</p>}
+            {(seriesEnd || initialSeriesEnd) && !endMessage && (
+              <div role="status" aria-live="polite" className="flex flex-col gap-1 rounded-md border-[1.5px] border-accentLine bg-accentSoft p-3 text-[14px] text-textSecondary">
+                {seriesEnd ? (
+                  lastClass ? (
+                    <p className="font-[650] text-textPrimary">Última clase prevista: {formatCivilDayLabelShort(instantDateKey(lastClass.start))}, {instantTimeLabel(lastClass.start)}.</p>
+                  ) : (
+                    <p className="font-[650] text-bad">Ese patrón no tiene ninguna clase entre el {formatCivilDate(futureDate)} y el {formatCivilDate(seriesEnd)}. Elegí otra fecha.</p>
+                  )
+                ) : (
+                  <p className="font-[650] text-textPrimary">Se quita la fecha de finalización: la serie sigue sin fecha de fin.</p>
+                )}
+                {endPreviewError && <p className="text-bad">{endPreviewError}</p>}
+                {endPreview && endPreview.blockedTotal > 0 && (
+                  <p role="alert" className="font-semibold text-bad">La clase del {formatCivilDate(endPreview.blocked[0])} ya tiene registro o cobro y quedaría después de esa fecha: no se puede guardar. Elegí una fecha posterior o resolvé esa clase antes.</p>
+                )}
+                {endPreview && endPreview.cancelledTotal > 0 && endPreview.blockedTotal === 0 && (
+                  <p>
+                    {endPreview.cancelledTotal === 1 ? "1 clase ya creada deja" : `${endPreview.cancelledTotal} clases ya creadas dejan`} de figurar en la agenda: {endPreview.cancelled.map((item) => `${formatCivilDate(item.date)}${item.rescheduled ? " (reprogramada)" : ""}`).join(", ")}{endPreview.cancelledTotal > endPreview.cancelled.length ? "…" : ""}. Se conservan sus datos.
+                  </p>
+                )}
+                {endPreview && endPreview.restoredTotal > 0 && <p>{endPreview.restoredTotal === 1 ? "Vuelve 1 clase" : `Vuelven ${endPreview.restoredTotal} clases`} que había quitado la fecha anterior: {endPreview.restored.map((item) => formatCivilDate(item.date)).join(", ")}.</p>}
+              </div>
+            )}
             {replaceWarning && (
               <Notice tone="warn" title="Este cambio reemplaza cambios ya programados">
                 <p className="[overflow-wrap:anywhere]">{replaceWarning}</p>
@@ -406,7 +485,7 @@ export function SeriesStatusActions({
               </Notice>
             )}
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-              <Button type="submit" variant="primary" busy={pending}>
+              <Button type="submit" variant="primary" busy={pending} disabled={endBlocked}>
                 {pending ? "Guardando..." : "Confirmar desde esa fecha"}
               </Button>
               <Button variant="ghost" onClick={closeAll}>

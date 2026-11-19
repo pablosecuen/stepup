@@ -25,7 +25,8 @@ const MAX_DOMAIN_MESSAGE_LENGTH = 300;
 // Códigos que levantan NUESTRAS funciones con `raise exception ... using errcode`
 // (o el `raise exception` por defecto, P0001) — sus mensajes están escritos
 // para la usuaria.
-const DOMAIN_CODES = new Set(["P0001", "22023", "P0002", "28000"]);
+// TF001–TF005: avisos propios de la agenda (la clase o la serie cambió desde otro dispositivo, horario superpuesto, agenda modificada, clase posterior con registro o cobro).
+const DOMAIN_CODES = new Set(["P0001", "22023", "P0002", "28000", "TF001", "TF002", "TF003", "TF005"]);
 
 const FRIENDLY_BY_CODE: Record<string, string> = {
   "42501": "No tenés permiso para realizar esta acción.",

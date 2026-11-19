@@ -5,9 +5,10 @@ import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { planEndSeriesFromDate } from "@/lib/calendar/end-series";
 import { replacementSeriesFamilyIds } from "@/lib/calendar/replacement-visibility";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError, editCalendarLesson, restoreCalendarOccurrence, deleteCancelledCalendarLesson, type EditCalendarLessonInput } from "@/lib/repositories/calendar-lessons";
-import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, editRecurrenceClassTitle, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
+import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, setRecurrenceSeriesEnd, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, editRecurrenceClassTitle, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
 import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
-import { splitRecurrenceThisAndFuture, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
+import { splitRecurrenceThisAndFuture, splitRecurrenceWithSeriesEnd, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
+import { minDateKey, validateSeriesEndInput, weeksKey } from "@/lib/calendar/series-end";
 import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
 import { affectedFutureLessons, type AffectedLessons } from "@/lib/calendar/affected-lessons";
 import { listCalendarLessonsForRecurrence } from "@/lib/repositories/calendar-lessons";
@@ -275,6 +276,8 @@ export async function createSingleLessonAction(_prevState: FormState, formData: 
       color: modality === "online" ? "#DDEBFF" : modality === "mixta" ? "#F2E8FF" : "#FFE4D2",
       participants: selected.map((s) => ({ studentId: s.id, studentName: s.name, level: s.levels[0] ?? "" })),
       freedByLessonId,
+      // Sin «Guardar igual», la base repite el chequeo de solapamiento dentro de la transacción: una extensión de duración simultánea ya no puede dejar dos clases superpuestas.
+      guardOverlap: readString(formData, "allowOverlap") !== "true",
     });
   } catch (error) {
     return { error: friendlyErrorMessage(error), values };
@@ -595,6 +598,10 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
   const effectiveDate = readString(formData, "effectiveDate");
   // Cambios que NO tocan el patrón (nombre, duración de una sesión): el patrón y los alumnos son los del tramo que rige en esa fecha (`keepPattern`).
   const keepPattern = readString(formData, "keepPattern") === "true";
+  // Fecha de finalización de la serie (opcional): sólo la envía el editor de «Administrar serie». Vacía = sin fecha. `expectedSeriesEnd` es la que vio la pantalla (cambios desde otro dispositivo).
+  const endField = formData.has("seriesEndDate");
+  const seriesEndInput = endField ? readString(formData, "seriesEndDate").trim() : "";
+  const expectedSeriesEnd = readString(formData, "expectedSeriesEnd").trim() || null;
   let participantIds = formData.getAll("participantIds").filter((v): v is string => typeof v === "string" && v.trim() !== "");
   let weeks: RecurrenceWeek[] = [];
   if (!keepPattern) {
@@ -626,6 +633,11 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     }
   }
   if (!effectiveDate) return { error: "Elegí la fecha efectiva." };
+  if (endField) {
+    const endMessage = validateSeriesEndInput(seriesEndInput, effectiveDate);
+    if (endMessage) return { error: endMessage };
+  }
+  const seriesEnd = endField && seriesEndInput ? seriesEndInput : null;
   if (!keepPattern && participantIds.length === 0) return { error: "Elegí al menos un alumno." };
 
   try {
@@ -670,8 +682,18 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     }
     const primaryStudentId = currentRule.primaryStudentId;
     if (!primaryStudentId) return { error: "Serie no encontrada." };
+    // Sólo cambia la fecha de finalización (el patrón queda igual): no se corta ni se crea ningún tramo nuevo; el límite rige para todo el linaje en UNA transacción.
+    if (endField && !keepPattern && weeksKey(weeks) === weeksKey(target.weeks)) {
+      if (effectiveDate < todayDate) return { error: "La fecha desde la que rige no puede ser anterior a hoy: las clases pasadas no se modifican." };
+      await setRecurrenceSeriesEnd(ctx, { headId: originalRecurrenceId, endDate: seriesEnd, minDate: effectiveDate, timezone: target.timezone, expectedEnd: expectedSeriesEnd, checkExpected: true });
+      revalidatePath("/calendario");
+      revalidatePath("/calendario/series");
+      revalidatePath("/inicio");
+      return {};
+    }
     const replacedRuleIds = [target.id, ...segment.superseded.map((rule) => rule.id)];
-    const successorEndDate = segment.superseded.length > 0 ? currentRule.endDate : target.endDate;
+    // Fin PROPIO que hereda la sucesora (no el efectivo): la fecha de finalización de la serie viaja aparte y se hereda por trigger.
+    const successorEndDate = segment.superseded.length > 0 ? currentRule.rawEndDate : target.rawEndDate;
 
     // Nada se finaliza en silencio: si el cambio reemplaza cambios futuros ya programados (tramos posteriores a la fecha), se muestran y la
     // profesora los confirma. La finalización de esos tramos va en la MISMA transacción que el corte.
@@ -687,15 +709,17 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     const allowOverlap = readString(formData, "allowOverlap") === "true" && keepPattern && !!durationPatch && !weeksPatch;
     const patternUnchanged = keepPattern && !durationPatch && !weeksPatch;
     if (!allowOverlap && !patternUnchanged) {
-      const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, replacedRuleIds, successorEndDate, effectiveDate, todayDate, weeks, participantIds });
+      // La sucesora no genera clases después de la fecha de finalización de la serie (la nueva, o la vigente que hereda): no se validan choques más allá.
+      const effectiveSuccessorEnd = minDateKey(successorEndDate, endField ? seriesEnd : currentRule.seriesEndDate);
+      const conflictMessage = await checkFuturePatternConflicts(ctx, { original: currentRule, replacedRuleIds, successorEndDate: effectiveSuccessorEnd, effectiveDate, todayDate, weeks, participantIds });
       if (conflictMessage) return { error: conflictMessage, conflict: true };
     }
 
-    await splitRecurrenceThisAndFuture(ctx, {
+    const splitInput = {
       originalRecurrenceId: target.id,
       effectiveDate,
       todayDate,
-      ruleType: weeks.length > 1 ? "custom" : "weekly",
+      ruleType: (weeks.length > 1 ? "custom" : "weekly") as "custom" | "weekly",
       cycleLengthWeeks: weeks.length as 1 | 2 | 3 | 4,
       weeks,
       participantIds,
@@ -704,7 +728,13 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
       successorEndDate,
       // Los tramos posteriores al de la fecha ya no generan clases: los reemplaza la sucesora (mismo RPC, misma transacción).
       endRuleIds: segment.superseded.map((rule) => rule.id),
-    });
+    };
+    if (endField) {
+      // Corte + fecha de finalización del linaje en UNA transacción: si falla cualquier paso, no queda nada a medias.
+      await splitRecurrenceWithSeriesEnd(ctx, { ...splitInput, seriesEnd: { endDate: seriesEnd, minDate: effectiveDate, timezone: target.timezone, checkHeadId: originalRecurrenceId, expectedEnd: expectedSeriesEnd } });
+    } else {
+      await splitRecurrenceThisAndFuture(ctx, splitInput);
+    }
   } catch (error) {
     return { error: friendlyErrorMessage(error) };
   }

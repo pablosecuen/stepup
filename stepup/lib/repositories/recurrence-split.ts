@@ -35,7 +35,8 @@ export function buildSplitPayload(original: RecurrenceRuleRecord, input: SplitTh
   const plan = planRecurrenceSplit({
     originalRecurrenceId: input.originalRecurrenceId,
     originalStartDate: original.startDate,
-    originalEndDate: original.endDate,
+    // El corte guarda el fin PROPIO de la fila (nunca el efectivo): la fecha de finalización de la serie la hereda la sucesora por trigger y sigue siendo reversible.
+    originalEndDate: original.rawEndDate,
     effectiveDate: input.effectiveDate,
     todayDate: input.todayDate,
   });
@@ -94,6 +95,44 @@ export async function splitRecurrenceThisAndFuture(ctx: AuthenticatedDbContext, 
   }
   const row = data as RecurrenceRuleRow;
   return toRecurrenceRuleRecord(row, input.participantIds);
+}
+
+export interface SeriesEndWithSplit {
+  /** Fecha de finalización inclusive o `null` = sin fecha. */
+  endDate: string | null;
+  /** Inicio del tramo que se edita (fecha efectiva del cambio): la fecha de finalización no puede ser anterior. */
+  minDate: string;
+  timezone: string;
+  /** Serie vigente y fin efectivo que vio la pantalla (detección de cambios desde otro dispositivo, ANTES de cortar). */
+  checkHeadId: string;
+  expectedEnd: string | null;
+}
+
+/**
+ * «Editar futuras» + fecha de finalización en UNA transacción (RPC `edit_recurrence_future_with_end`): el corte (con la finalización de los tramos posteriores que reemplaza) y el límite del linaje
+ * resultante, o nada. La sucesora hereda el límite por trigger; devuelve el id de la serie vigente que queda y cuántas clases ya creadas se cancelaron o volvieron.
+ */
+export async function splitRecurrenceWithSeriesEnd(
+  ctx: AuthenticatedDbContext,
+  input: SplitThisAndFutureInput & { endRuleIds?: string[]; seriesEnd: SeriesEndWithSplit }
+): Promise<{ headId: string; cancelled: number; restored: number }> {
+  const original = await getRecurrenceRule(ctx, input.originalRecurrenceId);
+  if (!original) throw new RecurrenceRuleNotFoundError("Serie original no encontrada.");
+  const payload = buildSplitPayload(original, input);
+  const { data, error } = await ctx.supabase.rpc("edit_recurrence_future_with_end", {
+    p_payload: {
+      split: payload,
+      end_rule_ids: input.endRuleIds ?? [],
+      end: { end_date: input.seriesEnd.endDate, min_date: input.seriesEnd.minDate, timezone: input.seriesEnd.timezone },
+      check: { head_id: input.seriesEnd.checkHeadId, expected_end: input.seriesEnd.expectedEnd },
+    },
+  });
+  if (error) {
+    if (error.code === "P0002") throw new RecurrenceRuleNotFoundError("Serie original no encontrada.");
+    throw error;
+  }
+  const result = data as { head_id: string; cancelled: number; restored: number };
+  return { headId: result.head_id, cancelled: result.cancelled, restored: result.restored };
 }
 
 export interface SwapSideInput {

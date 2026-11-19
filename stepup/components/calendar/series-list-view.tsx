@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { BackLink, PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
 import { listLineagePredecessors, selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
-import { formatCivilDayMonth } from "@/lib/format/date-format";
+import { formatCivilDate, formatCivilDayMonth } from "@/lib/format/date-format";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
 import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
@@ -88,13 +88,14 @@ export function SeriesCard({
           <p title={rule.classTitle || participantNames} className="line-clamp-2 font-display text-[19px] font-semibold leading-tight tracking-tight text-textPrimary [overflow-wrap:anywhere]">{rule.classTitle || participantNames}</p>
           {rule.classTitle && <p title={participantNames} className="mt-0.5 line-clamp-1 text-[14px] text-textMuted [overflow-wrap:anywhere]">{participantNames}</p>}
         </div>
-        <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} training={rule.activityKind === "training" ? { agreementId: rule.trainingBillingAgreementId } : null} directEditFuture={directEditFuture} />
+        <SeriesStatusActions ruleId={rule.id} status={rule.status} weeks={rule.weeks} participantIds={rule.participantIds} primaryStudentId={rule.primaryStudentId} students={students} seriesLabel={rule.classTitle || participantNames} scheduleLabel={`${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} swapOptions={swapOptions} training={rule.activityKind === "training" ? { agreementId: rule.trainingBillingAgreementId } : null} directEditFuture={directEditFuture} seriesEndDate={rule.endDate} patternStartDate={rule.startDate} />
       </div>
       <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-textSecondary">
         <span title={`${sinceLabel}${scheduleLabel} · ${MODALITY_LABEL[rule.modality]}`} className="line-clamp-2 [overflow-wrap:anywhere]">
           {sinceLabel}
           {scheduleLabel} · {MODALITY_LABEL[rule.modality]}
         </span>
+        {rule.endDate && rule.status !== "ended" && <span className="font-[650] text-textPrimary">Hasta {formatCivilDate(rule.endDate)}</span>}
         {rule.activityKind !== "class" && <Badge>{ACTIVITY_KIND_LABEL[rule.activityKind]}</Badge>}
         <Badge tone={badge.tone} dot>
           {badge.label}
