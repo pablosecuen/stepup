@@ -6,7 +6,7 @@ import { planEndSeriesFromDate } from "@/lib/calendar/end-series";
 import { replacementSeriesFamilyIds } from "@/lib/calendar/replacement-visibility";
 import { createSingleLesson, findCalendarLessonIdByOperationId, cancelCalendarOccurrence, rescheduleCalendarOccurrence, getCalendarLesson, CalendarLessonNotFoundError, editCalendarLesson, restoreCalendarOccurrence, deleteCancelledCalendarLesson, type EditCalendarLessonInput } from "@/lib/repositories/calendar-lessons";
 import { endRecurrenceSeriesFromDate, createRecurrenceSeries, setRecurrenceRuleStatus, setRecurrenceSeriesEnd, changeRecurrenceParticipantsFromDate, getRecurrenceRule, listRecurrenceRules, editRecurrenceClassTitle, RecurrenceRuleNotFoundError } from "@/lib/repositories/recurrence-rules";
-import { listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
+import { lineageMemberIds, listPredecessorsRunningFrom, resolveEditableSegment } from "@/lib/calendar/lineage";
 import { splitRecurrenceThisAndFuture, splitRecurrenceWithSeriesEnd, swapRecurrencePatterns } from "@/lib/repositories/recurrence-split";
 import { minDateKey, validateSeriesEndInput, weeksKey } from "@/lib/calendar/series-end";
 import { describeWeeks, planSeriesSwap } from "@/lib/calendar/swap";
@@ -660,6 +660,23 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     // anterior que la cubre. Se corta ESE tramo en la fecha, la sucesora toma el fin de la vigente y las vigentes posteriores se
     // finalizan (el patrón nuevo las reemplaza). Antes se rechazaba y no había forma de corregir «desde hoy».
     const allRules = (await listRecurrenceRules(ctx)).map((rule) => ({ ...rule, recurrenceId: rule.id }));
+    // «Sólo la fecha de finalización»: el patrón que se ve es el de la serie vigente y la fecha cambió. Con un cambio ya programado más adelante (o una serie que todavía no empezó) el patrón mostrado
+    // es el de ESE tramo, y confirmarlo no debe reemplazar el que rige hoy ni exigir un tramo en esa fecha: sólo se guarda el límite del linaje, en UNA transacción, sin cortes ni tramos nuevos.
+    const endChanged = endField && seriesEnd !== expectedSeriesEnd;
+    if (endField && !keepPattern && endChanged && weeksKey(weeks) === weeksKey(currentRule.weeks)) {
+      if (effectiveDate < todayDate) return { error: "La fecha desde la que rige no puede ser anterior a hoy: las clases pasadas no se modifican." };
+      // La fecha no puede ser anterior al inicio de la serie (el primer tramo que todavía genera clases) ni a la fecha elegida.
+      const memberIds = new Set(lineageMemberIds(allRules, originalRecurrenceId));
+      const firstStart = allRules.filter((rule) => memberIds.has(rule.id) && rule.dbStatus !== "ended").map((rule) => (rule.effectiveFromDate && rule.effectiveFromDate > rule.startDate ? rule.effectiveFromDate : rule.startDate)).sort()[0];
+      const minDate = firstStart && firstStart > effectiveDate ? firstStart : effectiveDate;
+      const endMessageForMin = seriesEnd ? validateSeriesEndInput(seriesEnd, minDate) : null;
+      if (endMessageForMin) return { error: endMessageForMin };
+      await setRecurrenceSeriesEnd(ctx, { headId: originalRecurrenceId, endDate: seriesEnd, minDate, timezone: currentRule.timezone, expectedEnd: expectedSeriesEnd, checkExpected: true });
+      revalidatePath("/calendario");
+      revalidatePath("/calendario/series");
+      revalidatePath("/inicio");
+      return {};
+    }
     const segment = resolveEditableSegment(allRules, originalRecurrenceId, effectiveDate);
     if (!segment) {
       return { error: `Ningún tramo de esta serie rige el ${formatCivilDate(effectiveDate)} (empieza el ${formatCivilDate(currentRule.startDate)}). Elegí una fecha dentro de la serie.` };
@@ -682,11 +699,8 @@ export async function editFutureRecurrenceAction(_prevState: FormState, formData
     }
     const primaryStudentId = currentRule.primaryStudentId;
     if (!primaryStudentId) return { error: "Serie no encontrada." };
-    // Sólo cambia la fecha de finalización (el patrón queda igual): no se corta ni se crea ningún tramo nuevo; el límite rige para todo el linaje en UNA transacción.
-    // «Sólo la fecha»: (a) el patrón que se ve es el de la serie vigente y la fecha cambió — con un cambio ya programado más adelante el patrón mostrado es el de ESE cambio, y confirmarlo no debe
-    // reemplazar el tramo que rige hoy —; o (b) el patrón es el del tramo que rige en esa fecha y no cambió nada más.
-    const endChanged = endField && seriesEnd !== expectedSeriesEnd;
-    if (endField && !keepPattern && ((endChanged && weeksKey(weeks) === weeksKey(currentRule.weeks)) || weeksKey(weeks) === weeksKey(target.weeks))) {
+    // Sólo cambia la fecha de finalización y el patrón es el del tramo que rige en esa fecha (no cambió nada más): no se corta ni se crea ningún tramo nuevo.
+    if (endField && !keepPattern && weeksKey(weeks) === weeksKey(target.weeks)) {
       if (effectiveDate < todayDate) return { error: "La fecha desde la que rige no puede ser anterior a hoy: las clases pasadas no se modifican." };
       await setRecurrenceSeriesEnd(ctx, { headId: originalRecurrenceId, endDate: seriesEnd, minDate: effectiveDate, timezone: target.timezone, expectedEnd: expectedSeriesEnd, checkExpected: true });
       revalidatePath("/calendario");

@@ -176,6 +176,7 @@ test("cableado: el límite no se pierde en ningún flujo ni se reescribe el fin 
   assert.match(actions, /const successorEndDate = segment\.superseded\.length > 0 \? currentRule\.rawEndDate : target\.rawEndDate;/, "la sucesora hereda el fin PROPIO, no el efectivo");
   assert.match(actions, /weeksKey\(weeks\) === weeksKey\(target\.weeks\)/, "si sólo cambia la fecha no se crea un tramo nuevo");
   assert.match(actions, /endChanged && weeksKey\(weeks\) === weeksKey\(currentRule\.weeks\)/, "con un cambio programado más adelante, confirmar sólo la fecha no reemplaza el tramo que rige hoy");
+  assert.ok(actions.indexOf("endChanged && weeksKey(weeks) === weeksKey(currentRule.weeks)") < actions.indexOf("const segment = resolveEditableSegment(allRules, originalRecurrenceId, effectiveDate);"), "se decide antes de exigir un tramo que rija en esa fecha (una serie que todavía no empezó también puede fijar su fecha)");
   assert.match(actions, /splitRecurrenceWithSeriesEnd\(ctx, \{ \.\.\.splitInput, seriesEnd:/);
   assert.match(read("lib/repositories/recurrence-split.ts"), /originalEndDate: original\.rawEndDate/);
   const ui = read("app/(app)/calendario/series/series-status-actions.tsx");
