@@ -22,17 +22,17 @@ test("incrementos rápidos: +15, +30, +45 y +60; ejemplo 13:00–14:00 → +15 �
   assert.equal(options[3].newDuration, 120);
 });
 
-test("+45 usa la misma validación: una clase de 75 min llega a 120 con +45 y +60 queda deshabilitada (daría 135); una de 90 admite hasta +30", () => {
+test("una clase de 75 minutos admite +45 y +60: el selector inicial de dos horas no limita las extensiones", () => {
   const of75 = extendOptions(at("13:00"), at("14:15"));
-  assert.deepEqual(of75.map((option) => option.disabledReason), [null, null, null, "Máximo 120 min por clase."]);
+  assert.deepEqual(of75.map((option) => option.disabledReason), [null, null, null, null]);
   assert.equal(of75[2].newDuration, 120);
   assert.equal(of75[3].newDuration, 135);
   const ok = evaluateExtension(at("13:00"), at("14:15"), 45);
   assert.ok(ok.ok);
   if (ok.ok) assert.deepEqual({ end: ok.newEnd, duration: ok.newDuration }, { end: at("15:00"), duration: 120 });
-  assert.equal(evaluateExtension(at("13:00"), at("14:15"), 60).ok, false, "el servidor rechaza lo mismo que la pantalla deshabilita");
+  assert.deepEqual(evaluateExtension(at("13:00"), at("14:15"), 60), { ok: true, newEnd: at("15:15"), newDuration: 135 });
   const of90 = extendOptions(at("13:00"), at("14:30"));
-  assert.deepEqual(of90.map((option) => option.disabledReason), [null, null, "Máximo 120 min por clase.", "Máximo 120 min por clase."]);
+  assert.deepEqual(of90.map((option) => option.disabledReason), [null, null, null, null]);
   // La jornada también aplica a +45: 21:30 + 45 = 22:15.
   const tarde = extendOptions(at("20:30"), at("21:30"));
   assert.deepEqual(tarde.map((option) => option.disabledReason), [null, null, "Terminaría después de las 22:00.", "Terminaría después de las 22:00."]);
@@ -45,14 +45,16 @@ test("evaluateExtension calcula el fin nuevo y la duración total; sólo acepta 
   for (const invalid of [0, 10, 20, 75, 90, 120, -15, Number.NaN]) assert.equal(evaluateExtension(at("13:00"), at("14:00"), invalid).ok, false, String(invalid));
 });
 
-test("el máximo de duración existente no se amplía en silencio: la opción que lo supera se deshabilita con su motivo", () => {
-  assert.equal(MAX_LESSON_DURATION_MINUTES, 120, "el máximo es el de la lista de duraciones de la clase");
+test("las clases de dos horas o más también admiten una hora adicional dentro de la jornada", () => {
+  assert.equal(MAX_LESSON_DURATION_MINUTES, 14 * 60, "el RPC recibe la jornada completa como cota, no 120 minutos");
   const options = extendOptions(at("13:00"), at("14:30")); // 90 min
-  assert.deepEqual(options.map((option) => option.disabledReason), [null, null, "Máximo 120 min por clase.", "Máximo 120 min por clase."]);
+  assert.deepEqual(options.map((option) => option.disabledReason), [null, null, null, null]);
   const full = extendOptions(at("13:00"), at("15:00")); // ya en el máximo
-  assert.ok(full.every((option) => option.disabledReason === "Máximo 120 min por clase."));
+  assert.ok(full.every((option) => option.disabledReason === null));
   const result = evaluateExtension(at("13:00"), at("14:30"), 60);
-  assert.equal(result.ok, false);
+  assert.deepEqual(result, { ok: true, newEnd: at("15:30"), newDuration: 150 });
+  assert.deepEqual(evaluateExtension(at("15:45"), at("17:00"), 60), { ok: true, newEnd: at("18:00"), newDuration: 135 }, "caso de María Luz de la captura");
+  assert.deepEqual(evaluateExtension(at("13:00"), at("15:00"), 60), { ok: true, newEnd: at("16:00"), newDuration: 180 });
 });
 
 test("la jornada del calendario (hasta las 22:00) tampoco se amplía: terminar justo a las 22:00 sí, pasarse no", () => {
@@ -109,6 +111,7 @@ test("cableado de servidor: identidad de la clase, agenda operativa compartida, 
   assert.match(action, /findCalendarConflicts\(item\.start, requested\.newEnd, toConflictCandidates\(items\), item\.id\)/, "la propia clase se excluye por su identidad");
   assert.match(action, /evaluateAvailability\(item\.start, requested\.newEnd, availability\)/, "intervalo final completo contra bloqueos, vacaciones y feriados");
   assert.match(action, /rpc\("extend_calendar_lesson_duration"/);
+  assert.match(action, /max_duration_minutes: MAX_LESSON_DURATION_MINUTES/, "el servidor envía al RPC la cota actualizada");
   for (const code of ["TF001", "TF002", "TF003"]) assert.match(action, new RegExp(code), code);
   assert.doesNotMatch(action, /allowOverlap|allowBlocked/, "nunca «guardar igual»");
   assert.doesNotMatch(action, /payment_|billing|from\("(payments?|students|student_plans)"\)|rpc\("(register|apply)_/i, "no cambia tarifas ni genera cobros");

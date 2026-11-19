@@ -1,18 +1,19 @@
-import { END_HOUR } from "./layout.ts";
-import { DURATION_OPTIONS_MINUTES, lessonDurationMinutes } from "./lesson-edit.ts";
+import { END_HOUR, START_HOUR } from "./layout.ts";
+import { lessonDurationMinutes } from "./lesson-edit.ts";
 import { instantDateKey, instantMinutesOfDay, instantTimeLabel } from "./civil-calendar.ts";
 import { formatMinutes } from "../format/number-format.ts";
 
 /**
  * «Extender duración»: acción rápida sobre UNA clase (+15, +30, +45 o +60 minutos). Reglas puras compartidas por la pantalla, la Server Action y las pruebas.
  *
- * Los límites son los que ya existen, nunca se amplían en silencio: la duración máxima de la lista de duraciones de la clase (`DURATION_OPTIONS_MINUTES`, hoy 2 h) y la jornada del calendario
- * (`END_HOUR`, hoy 22:00, en la zona horaria de la cuenta). Una opción que los supera se deshabilita con un motivo breve.
+ * La extensión no depende del selector de duración inicial (que ofrece hasta 2 h). Puede superar esas dos horas, siempre dentro de la jornada del calendario
+ * (`END_HOUR`, hoy 22:00, en la zona horaria de la cuenta). El servidor conserva además los controles de disponibilidad y solapamiento.
  */
 export const EXTEND_INCREMENTS_MINUTES = [15, 30, 45, 60] as const;
 export type ExtendIncrement = (typeof EXTEND_INCREMENTS_MINUTES)[number];
 
-export const MAX_LESSON_DURATION_MINUTES: number = Math.max(...DURATION_OPTIONS_MINUTES);
+/** Cota técnica enviada al RPC: la jornada completa, no el máximo del selector de creación. */
+export const MAX_LESSON_DURATION_MINUTES = (END_HOUR - START_HOUR) * 60;
 export const WORKDAY_END_MINUTES = END_HOUR * 60;
 
 export interface ExtendableItem {
