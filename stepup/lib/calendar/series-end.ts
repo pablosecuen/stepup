@@ -34,7 +34,10 @@ export function minDateKey(first: string | null, second: string | null): string 
 export function deriveRuleEnd(input: { startDate: string; effectiveFromDate: string | null; endDate: string | null; seriesEndDate: string | null; status: RecurrenceRuleStatus }): { endDate: string | null; status: RecurrenceRuleStatus } {
   const endDate = minDateKey(input.endDate, input.seriesEndDate);
   const firstDay = input.effectiveFromDate && input.effectiveFromDate > input.startDate ? input.effectiveFromDate : input.startDate;
-  if (endDate !== null && endDate < firstDay && input.status !== "ended") return { endDate, status: "ended" };
+  if (endDate !== null && endDate < firstDay && input.status !== "ended") {
+    // Cerrado: sin clases. El fin que se expone nunca es anterior al inicio de la fila (los motores de series lo rechazan aun para una serie finalizada).
+    return { endDate: endDate < input.startDate ? input.startDate : endDate, status: "ended" };
+  }
   return { endDate, status: input.status };
 }
 

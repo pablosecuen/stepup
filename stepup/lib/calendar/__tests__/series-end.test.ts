@@ -5,8 +5,9 @@ import { deriveRuleEnd, isValidDateKey, lastClassOfLineage, lastPlannedClass, le
 import { lineageMemberIds, selectManageableRecurrenceSeries, type RuleForLineage } from "../lineage.ts";
 import { toRecurrenceRuleRecord } from "../../repositories/recurrence-rules-mapping.ts";
 import { instantDateKey, instantTimeLabel } from "../civil-calendar.ts";
+import { generateOccurrences } from "../recurrence-engine.ts";
 import type { RecurrenceRuleRow } from "../../db/database.types.ts";
-import type { RecurrenceWeek } from "../types.ts";
+import type { RecurrenceRuleForEngine, RecurrenceWeek } from "../types.ts";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
@@ -33,11 +34,24 @@ test("fin efectivo = el menor entre el fin propio y la fecha de la serie; un tra
   assert.deepEqual(deriveRuleEnd({ ...base, endDate: "2026-12-10", seriesEndDate: "2026-12-31" }), { endDate: "2026-12-10", status: "active" }, "el corte propio manda si es anterior");
   assert.deepEqual(deriveRuleEnd({ ...base, endDate: "2027-01-31", seriesEndDate: "2026-12-31" }), { endDate: "2026-12-31", status: "active" });
   // Cambio programado que empezaría después de la fecha de finalización: no genera nada.
-  assert.deepEqual(deriveRuleEnd({ startDate: "2026-12-21", effectiveFromDate: "2026-12-21", endDate: null, seriesEndDate: "2026-12-10", status: "active" }), { endDate: "2026-12-10", status: "ended" });
+  // El fin que se expone nunca queda antes del inicio de la fila: los motores de series lo rechazan (aun para una serie finalizada) y rompían la agenda.
+  assert.deepEqual(deriveRuleEnd({ startDate: "2026-12-21", effectiveFromDate: "2026-12-21", endDate: null, seriesEndDate: "2026-12-10", status: "active" }), { endDate: "2026-12-21", status: "ended" });
   // Sucesora cuyo lunes de arranque es anterior al límite pero cuya fecha efectiva es posterior.
   assert.equal(deriveRuleEnd({ startDate: "2026-12-14", effectiveFromDate: "2026-12-17", endDate: null, seriesEndDate: "2026-12-15", status: "active" }).status, "ended");
   assert.equal(deriveRuleEnd({ startDate: "2026-12-14", effectiveFromDate: "2026-12-17", endDate: null, seriesEndDate: "2026-12-17", status: "active" }).status, "active", "el día del límite todavía pertenece a la serie");
   assert.equal(deriveRuleEnd({ ...base, endDate: null, seriesEndDate: "2026-12-31", status: "paused" }).status, "paused", "una pausada sigue pausada");
+});
+
+test("REGRESIÓN: un cambio programado que queda después de la fecha de finalización no rompe la agenda (el motor no lo rechaza ni genera clases)", () => {
+  const row = { id: "c", owner_id: "o", legacy_mobile_id: null, primary_student_id: "s", rule_type: "weekly", cycle_length_weeks: 1, weeks: [week([4, 14])], modality: "online", timezone: TZ, start_date: "2027-01-04", end_date: null, series_end_date: "2026-12-20", status: "active", supersedes_recurrence_id: "b", superseded_by_recurrence_id: null, effective_from_date: "2027-01-07", class_title: null, activity_kind: "class", training_billing_agreement_id: null, operation_id: null, created_at: "", updated_at: "" } as unknown as RecurrenceRuleRow;
+  const record = toRecurrenceRuleRecord(row, ["s"]);
+  assert.equal(record.status, "ended");
+  assert.equal(record.dbStatus, "active", "la fila no se toca");
+  assert.ok(record.endDate !== null && record.endDate >= record.startDate, "el fin expuesto nunca es anterior al inicio");
+  const engineRule = { recurrenceId: record.id, studentId: "s", participantIds: ["s"], cycleLengthWeeks: 1, weeks: record.weeks, modality: record.modality, timezone: record.timezone, startDate: record.startDate, endDate: record.endDate, status: record.status, classTitle: null, activityKind: record.activityKind } as RecurrenceRuleForEngine;
+  assert.deepEqual(generateOccurrences(engineRule, new Date("2026-12-01T00:00:00Z"), new Date("2027-03-01T00:00:00Z")), []);
+  // Aunque un llamador pase el fin sin recortar, una serie finalizada no se valida ni genera nada.
+  assert.deepEqual(generateOccurrences({ ...engineRule, endDate: "2026-12-20" }, new Date("2026-12-01T00:00:00Z"), new Date("2027-03-01T00:00:00Z")), []);
 });
 
 test("el mapeo conserva el fin propio y la fecha de la serie por separado (lo que se copia a una sucesora nunca es el efectivo)", () => {

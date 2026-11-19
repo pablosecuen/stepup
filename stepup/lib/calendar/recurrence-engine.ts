@@ -81,6 +81,8 @@ export function buildOccurrenceKey(params: {
 }
 
 export function generateOccurrences(rule: RecurrenceRuleForEngine, rangeStart: Date, rangeEnd: Date): GeneratedOccurrence[] {
+  // Una serie que no está activa (pausada o finalizada, también por la fecha de finalización de su serie) no genera clases: se decide antes de validar sus fechas.
+  if (rule.status !== "active") return [];
   assertRecurrenceRule(rule);
 
   const rangeStartTime = rangeStart.getTime();
