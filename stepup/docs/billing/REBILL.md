@@ -63,6 +63,35 @@ Variables (sólo servidor, en la configuración segura de Vercel; ver `.env.exam
 4. Cargar las variables de la sección 3 en Vercel (sandbox en Preview/QA, producción sólo en Production). Los ids y direcciones de sandbox **no** sirven en producción: se vuelven a crear.
 5. Revisar en el panel qué correos envía Rebill al cliente (comprobantes/avisos): TeacherFlow no envía correos de cobro propios, así que no hay duplicados; el texto legal lo informa.
 
+### 4 bis. Aprovisionamiento con `scripts/rebill-provision.mjs`
+
+Reemplaza los pasos 1–3 de arriba por una corrida repetible. (El adaptador citaba `provision.mjs` y ese archivo no existía en el repositorio: el script se recreó el 19/11/2026 con ese nombre y con las garantías de abajo.)
+
+```
+node scripts/rebill-provision.mjs check                       # sólo lectura
+node scripts/rebill-provision.mjs provision                   # simulacro
+node scripts/rebill-provision.mjs provision --apply           # crea lo que falte (en producción exige además --yes-production)
+```
+
+* La clave secreta `sk_…` se lee de `REBILL_API_KEY` o de `.env.rebill.local` (ignorado por git). Nunca por argumentos ni por el chat. Una clave por organización: sandbox y producción se corren por separado.
+* Busca antes de crear (por `metadata.tfCode`); si no puede listar lo existente **no crea nada**; ante un plan con otro precio, una prueba gratuita o un link que no vuelve a `/facturacion/resultado`, se detiene (nunca edita un precio).
+* Crea los planes en ARS con el **total del período** (25.900 / 69.900 / 131.400 / 238.800 cada 1 / 3 / 6 / 12 meses), sin prueba gratuita ni repeticiones; un payment link por plan (sólo tarjeta) con retorno aprobado y rechazado a `/facturacion/resultado`; y el webhook con los cuatro eventos.
+* Imprime los ids y direcciones (no secretos). El secreto de firma del webhook, que Rebill muestra una sola vez, queda en `.env.rebill.secrets.local` (permisos 600) y nunca se imprime: se carga en Vercel como `REBILL_WEBHOOK_SECRET` (sensible) y se borra el archivo.
+* `check` también prueba contra la API real los cuerpos de búsqueda que usa la integración (ver «Qué dice la documentación oficial» abajo): hay que correrlo con la clave real antes de encender nada.
+
+### 4 ter. Qué dice la documentación oficial (leída el 19/11/2026) y qué NO está confirmado
+
+Confirmado por la documentación: encabezado `x-api-key`; clave `sk_` en servidor (los endpoints de links, pagos, suscripciones y webhooks rechazan `pk_`); firma `x-rebill-signature` = HMAC-SHA256 hexadecimal del cuerpo crudo con el secreto completo `whsec_…` (sin marca de tiempo); eventos `payment.created` / `payment.updated` / `subscription.created` / `subscription.updated`; estados de pago `pending`, `approved`, `rejected`, `refunded`, `partially_refunded`, `cancelled`, `chargeback`; `PATCH /v3/subscriptions/:id` acepta `active`, `paused` y `cancelled` y `nextChargeDate` (hoy o después); el payment link devuelve su `url` (`https://pay.rebill.com/{alias}/{pl_…}`).
+
+**La referencia `tf_ref`:** la página del checkout alojado documenta que «cualquier parámetro que no esté en la lista reservada se guarda en el `metadata` del pago» y llega en `GET /v3/payments/:id` y en los avisos de ese cobro. `tf_ref` no es reservado, así que **debería** llegar. **No está documentado** que se copie a la suscripción ni al cliente: por eso la integración vincula con el `metadata` del PAGO y, recién después, adopta el `sub_…`. Sigue siendo una hipótesis hasta comprobarla con un cobro real en el sandbox (`check` no puede probarla).
+
+**No confirmado todavía (se prueba con la clave real):**
+* Los nombres de los campos del cuerpo de `POST /v3/payments/search` y `POST /v3/subscriptions/search` no están impresos en la documentación y Rebill responde 400 ante propiedades desconocidas. La integración usa `limit/offset/sortBy/sortOrder/subscriptionId`; `check` lo verifica. Si falla, se rompe el barrido global de pagos (la recuperación sin aviso).
+* La ruta para leer la organización y la de buscar planes/links/webhooks no están impresas; el script prueba rutas candidatas e informa cuál responde.
+* El campo `environment` de la organización vale `sandbox` o `productive`; la integración usa `REBILL_ENVIRONMENT=sandbox|production` (valores propios, no los de Rebill).
+* Si los ids de plan del sandbox llevan el prefijo `test_` (el adaptador se cierra si el prefijo no coincide con el ambiente). La documentación sólo lo afirma de las organizaciones.
+* **Recuperación de avisos fallidos:** Rebill reintenta (5 min, 1 h, 1 día) y marca el fallo en su panel, pero **no documenta ninguna API para listar ni reenviar avisos**. La recuperación no depende de eso: el cron `reconcile` barre los pagos con la consulta autenticada.
+
 ## 5. Para pasar a producción
 
 Rebill habilita producción cuando termina su proceso comercial. Entonces: nuevas claves, nuevos planes/links/webhook en la organización de producción (nada se reutiliza de sandbox), `REBILL_ENVIRONMENT=production`, aplicar el checklist de la matriz de pruebas con una compra real **hecha por la titular** (el importe exacto del plan elegido) y recién después encender `BILLING_ENABLED` al público. No se abre el cobro si el circuito depende de respuestas simuladas.
