@@ -5,7 +5,7 @@ import { listRecurrenceRules } from "@/lib/repositories/recurrence-rules";
 import { listStudents } from "@/lib/repositories/students";
 import { loadExcludedStudentIds } from "@/lib/repositories/excluded-students";
 import { withoutExcludedRules, withoutExcludedStudents } from "@/lib/data-exclusion/exclusion";
-import { findManageableForRule } from "@/lib/calendar/lineage";
+import { findManageableForRule, lineageRootId, selectFinishedRecurrenceSeries } from "@/lib/calendar/lineage";
 import { getLocalDateKey } from "@/lib/calendar/timezone";
 import { parseSeriesId, seriesBackTarget, wantsDirectFutureEdit } from "@/lib/calendar/series-return";
 import { formatCivilDayMonth } from "@/lib/format/date-format";
@@ -13,7 +13,7 @@ import { ErrorState } from "@/components/ui/states";
 import { Notice } from "@/components/ui/notice";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { BackLink, PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
-import { SeriesCard, swapOptionsOf, withLineageIds } from "@/components/calendar/series-list-view";
+import { FinishedSeriesCard, SeriesCard, swapOptionsOf, withLineageIds } from "@/components/calendar/series-list-view";
 import { selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +96,9 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
   const today = getLocalDateKey(nowIso, exact.timezone);
   const exactEnded = exact.status === "ended" || (exact.endDate !== null && exact.endDate < today);
   const shown = head ?? { ...exact, status: exactEnded ? ("ended" as const) : exact.status };
+  // Una serie que LLEGÓ a su fecha de finalización no es un callejón sin salida: se muestra con su única acción, cambiar esa fecha.
+  const exactRoot = lineageRootId(rulesForLineage, exact.id);
+  const finishedHead = head ? undefined : selectFinishedRecurrenceSeries(rulesForLineage, nowIso).find((candidate) => lineageRootId(rulesForLineage, candidate.id) === exactRoot);
   const swapOptions = swapOptionsOf(selectManageableRecurrenceSeries(rulesForLineage, nowIso), students);
   const namesOf = (ids: string[]) => ids.map((participantId) => students.find((student) => student.id === participantId)?.name ?? "Alumno").join(", ") || "Sin alumnos";
 
@@ -118,12 +121,17 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
             Ese tramo era {namesOf(exact.participantIds)}{exact.endDate ? ` hasta el ${formatCivilDayMonth(exact.endDate)}` : ""}. Los cambios se hacen en la serie vigente, que está abajo.
           </Notice>
         )}
-        {!head && (
+        {!head && finishedHead && (
+          <Notice tone="info" title="Esta serie llegó a su fecha de finalización">
+            No tiene clases por venir. Sus clases dictadas y registros se conservan, y desde acá podés cambiar la fecha si querés que siga.
+          </Notice>
+        )}
+        {!head && !finishedHead && (
           <Notice tone="warn" title="Esta serie ya terminó">
             No tiene clases por venir, así que no hay nada que cambiar. Sus clases dictadas y registros se conservan.
           </Notice>
         )}
-        <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={head ? swapOptions : []} highlighted directEditFuture={head && wantsDirectFutureEdit(query.editar) ? { returnTo: back } : undefined} />
+        {finishedHead ? <FinishedSeriesCard rule={finishedHead} students={students} /> : <SeriesCard rule={shown} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={head ? swapOptions : []} highlighted directEditFuture={head && wantsDirectFutureEdit(query.editar) ? { returnTo: back } : undefined} />}
       </div>
     </div>
   );

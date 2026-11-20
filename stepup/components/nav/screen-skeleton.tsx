@@ -620,8 +620,8 @@ function SeriesBody({ title }: { title: string }) {
       <div className="mt-2">
         <SkHeader title={title} />
       </div>
-      {/* La MISMA lista que la real: tope de 70 vh (`max-h-[70vh]`), así el alto depende de la ventana igual que en la pantalla final */}
-      <ul className="mt-6 flex max-h-[70vh] flex-col gap-3.5 overflow-hidden pr-1">
+      {/* La MISMA lista que la real: sin scroll propio (el desplazamiento es el de la página) */}
+      <ul className="mt-6 flex flex-col gap-3.5">
         {[0, 1, 2].map((index) => (
           <li key={index}>
             <div className={`${CARD_CLASS} min-h-[320px] nav:min-h-[182px]`}>

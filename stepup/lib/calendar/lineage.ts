@@ -79,6 +79,49 @@ export function selectManageableRecurrenceSeries<T extends RuleForLineage>(rules
   return result;
 }
 
+/** Lo que hace falta además para reconocer una serie que LLEGÓ a su fecha de finalización (la que fija la profesora en «Fecha de finalización»). */
+export interface RuleForFinished extends RuleForLineage {
+  /** Fin propio de la fila (corte o fin fijado al crear), sin la fecha de finalización de la serie. */
+  rawEndDate: string | null;
+  /** Fecha de finalización de la serie entera (la misma en todos los tramos del linaje) o null. */
+  seriesEndDate: string | null;
+  /** Estado real de la fila: «ended» lo deja sólo «Eliminar serie» o un tramo reemplazado; nunca una fecha que llegó. */
+  dbStatus: "active" | "paused" | "ended";
+  startDate: string;
+}
+
+/**
+ * Series que LLEGARON a su fecha de finalización: una por linaje, representada por el último tramo que corrió hasta ese límite. Es lo que se
+ * lista en «Finalizadas»: antes desaparecían de la pantalla y no había dónde consultarlas ni cambiar su fecha.
+ *
+ * Una serie ELIMINADA explícitamente nunca entra: «Eliminar serie» cierra el tramo por estado (`ended`) o le pone un fin propio ANTERIOR a la
+ * fecha de la serie, y en los dos casos ningún tramo llegó a correr hasta el límite. Tampoco entra una serie cuyo límite todavía no llegó (ésa sigue
+ * en «Vigentes») ni una que terminó por un fin propio sin fecha de finalización (no hay forma de distinguirla de una eliminada sin un marcador nuevo).
+ */
+export function selectFinishedRecurrenceSeries<T extends RuleForFinished>(rules: T[], nowIso: string): T[] {
+  const manageableRoots = new Set(selectManageableRecurrenceSeries(rules, nowIso).map((rule) => lineageRootId(rules, rule.recurrenceId)));
+  const byRoot = new Map<string, T[]>();
+  rules.forEach((rule) => {
+    const root = lineageRootId(rules, rule.recurrenceId);
+    byRoot.set(root, [...(byRoot.get(root) ?? []), rule]);
+  });
+  const result: T[] = [];
+  byRoot.forEach((members, root) => {
+    if (manageableRoots.has(root)) return;
+    const seriesEnd = members.map((member) => member.seriesEndDate).find((value): value is string => !!value);
+    if (!seriesEnd) return;
+    const today = getLocalDateKey(nowIso, members[0].timezone);
+    if (seriesEnd >= today) return;
+    const firstDay = (rule: T) => (rule.effectiveFromDate && rule.effectiveFromDate > rule.startDate ? rule.effectiveFromDate : rule.startDate);
+    // Un tramo que corrió hasta el límite: no cerrado por estado, sin fin propio anterior a la fecha de la serie y que ya había empezado cuando ésta llegó.
+    const ran = members.filter((member) => member.dbStatus !== "ended" && (member.rawEndDate === null || member.rawEndDate >= seriesEnd) && firstDay(member) <= seriesEnd);
+    if (ran.length === 0) return;
+    ran.sort((a, b) => (firstDay(a) === firstDay(b) ? (a.recurrenceId < b.recurrenceId ? -1 : 1) : firstDay(a) < firstDay(b) ? -1 : 1));
+    result.push(ran[ran.length - 1]);
+  });
+  return result;
+}
+
 /**
  * TODOS los tramos del linaje de una serie (la raíz y todos sus descendientes por `supersedesRecurrenceId`: tramos anteriores, la vigente y los cambios programados, incluso los ya cerrados).
  * La fecha de finalización de la serie rige para todos ellos; las series independientes (aunque sean del mismo alumno) nunca entran. Corta ante un ciclo.

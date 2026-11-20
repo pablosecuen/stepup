@@ -8,12 +8,13 @@ import { withoutExcludedRules, withoutExcludedStudents } from "@/lib/data-exclus
 import { ErrorState } from "@/components/ui/states";
 import { PrivateButtonLink } from "@/components/ui/button";
 import { PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
-import { SeriesListView } from "@/components/calendar/series-list-view";
+import { SeriesListView, parseSeriesListFilter } from "@/components/calendar/series-list-view";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Series · TeacherFlow" };
 
-export default async function SeriesPage() {
+export default async function SeriesPage({ searchParams }: { searchParams: Promise<{ estado?: string | string[] }> }) {
+  const filter = parseSeriesListFilter((await searchParams).estado);
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
@@ -42,5 +43,5 @@ export default async function SeriesPage() {
     );
   }
 
-  return <SeriesListView rules={rules} students={students} nowIso={new Date().toISOString()} />;
+  return <SeriesListView rules={rules} students={students} nowIso={new Date().toISOString()} filter={filter} />;
 }
