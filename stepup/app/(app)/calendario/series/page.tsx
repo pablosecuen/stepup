@@ -13,8 +13,12 @@ import { SeriesListView, parseSeriesListFilter } from "@/components/calendar/ser
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Series · TeacherFlow" };
 
-export default async function SeriesPage({ searchParams }: { searchParams: Promise<{ estado?: string | string[] }> }) {
-  const filter = parseSeriesListFilter((await searchParams).estado);
+export default async function SeriesPage({ searchParams }: { searchParams: Promise<{ estado?: string | string[]; reactivada?: string | string[] }> }) {
+  const query = await searchParams;
+  const filter = parseSeriesListFilter(query.estado);
+  const reactivatedParam = Array.isArray(query.reactivada) ? query.reactivada[0] : query.reactivada;
+  // Sólo un id con forma de UUID: nunca se refleja texto libre de la dirección.
+  const reactivatedId = reactivatedParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reactivatedParam) ? reactivatedParam : undefined;
   if (!isSupabaseConfigured()) {
     return <AuthNotConfigured inShell />;
   }
@@ -43,5 +47,5 @@ export default async function SeriesPage({ searchParams }: { searchParams: Promi
     );
   }
 
-  return <SeriesListView rules={rules} students={students} nowIso={new Date().toISOString()} filter={filter} />;
+  return <SeriesListView rules={rules} students={students} nowIso={new Date().toISOString()} filter={filter} reactivatedId={reactivatedId} />;
 }

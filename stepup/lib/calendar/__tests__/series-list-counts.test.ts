@@ -176,7 +176,7 @@ test("cableado: un único desplazamiento (el de la página), contador = tarjetas
   const skeleton = read("components/nav/screen-skeleton.tsx");
   assert.doesNotMatch(skeleton.slice(skeleton.indexOf("function SeriesBody"), skeleton.indexOf("function DisponibilidadBody")), /max-h-\[70vh\]|overflow-hidden/, "el esqueleto es igual a la lista real");
   const page = read("app/(app)/calendario/series/page.tsx");
-  assert.match(page, /parseSeriesListFilter\(\(await searchParams\)\.estado\)/);
+  assert.match(page, /parseSeriesListFilter\(query\.estado\)/);
   const detail = read("app/(app)/calendario/series/[id]/page.tsx");
   assert.match(detail, /selectFinishedRecurrenceSeries\(rulesForLineage, nowIso\)/, "una serie finalizada abierta desde una clase también permite cambiar su fecha");
   const finishedUi = read("app/(app)/calendario/series/finished-series-date.tsx");
@@ -184,4 +184,7 @@ test("cableado: un único desplazamiento (el de la página), contador = tarjetas
   assert.match(finishedUi, /previewSeriesEndAction/, "con la misma vista previa");
   assert.match(finishedUi, /if \(!canSave \|\| nextEnd === null \|\| inFlight\.current\) return;/, "sin doble envío ni guardado sin elegir");
   assert.match(finishedUi, /useState<Choice \| null>\(null\)/, "ninguna opción elegida de antemano: abrir no reactiva nada");
+  assert.match(finishedUi, /router\.push\(`\/calendario\/series\?reactivada=\$\{ruleId\}`\)/, "al guardar se abre Vigentes con la serie resaltada");
+  assert.match(view, /reactivated\?\.id === rule\.id/, "la serie que volvió se resalta");
+  assert.match(page, /reactivatedId = reactivatedParam && \/\^\[0-9a-f\]/, "el id de la dirección sólo se acepta con forma de UUID");
 });

@@ -30,7 +30,6 @@ export function FinishedSeriesDate({ ruleId, seriesLabel, scheduleLabel, seriesE
   const [preview, setPreview] = useState<SeriesEndPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ endDate: string | null } | null>(null);
   const request = useRef(0);
   const inFlight = useRef(false);
   const openerRef = useRef<HTMLButtonElement>(null);
@@ -54,17 +53,14 @@ export function FinishedSeriesDate({ ruleId, seriesLabel, scheduleLabel, seriesE
 
   function close() {
     if (pending) return;
-    const wasSaved = saved !== null;
     setOpen(false);
     setChoice(null);
     setDate("");
     setPreview(null);
     setPreviewError(null);
     setError(null);
-    setSaved(null);
     request.current += 1;
-    if (wasSaved) router.refresh();
-    else window.setTimeout(() => openerRef.current?.focus(), 0);
+    window.setTimeout(() => openerRef.current?.focus(), 0);
   }
 
   function save() {
@@ -85,7 +81,8 @@ export function FinishedSeriesDate({ ruleId, seriesLabel, scheduleLabel, seriesE
           setError(result.error);
           return;
         }
-        setSaved({ endDate: nextEnd === "" ? null : nextEnd });
+        // El guardado ya refrescó la lista y esta tarjeta deja «Finalizadas»: se abre «Vigentes» con la serie resaltada para que se vea adónde fue.
+        router.push(`/calendario/series?reactivada=${ruleId}`);
       } finally {
         inFlight.current = false;
       }
@@ -105,28 +102,17 @@ export function FinishedSeriesDate({ ruleId, seriesLabel, scheduleLabel, seriesE
           onClose={close}
           busy={pending}
           footer={
-            saved ? (
-              <Button variant="primary" onClick={close} data-autofocus>
-                Listo
+            <>
+              <Button variant="secondary" onClick={close} disabled={pending}>
+                Cancelar
               </Button>
-            ) : (
-              <>
-                <Button variant="secondary" onClick={close} disabled={pending}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" onClick={save} busy={pending} disabled={!canSave}>
-                  {pending ? "Guardando..." : choice === "none" ? "Seguir sin fecha de finalización" : "Guardar nueva fecha"}
-                </Button>
-              </>
-            )
+              <Button variant="primary" onClick={save} busy={pending} disabled={!canSave}>
+                {pending ? "Guardando..." : choice === "none" ? "Seguir sin fecha de finalización" : "Guardar nueva fecha"}
+              </Button>
+            </>
           }
         >
-          {saved ? (
-            <Notice tone="ok" role="status" title="Cambio guardado">
-              {saved.endDate ? `La serie vuelve a «Vigentes» y continúa hasta el ${formatCivilDate(saved.endDate)}.` : "La serie vuelve a «Vigentes» y continúa sin fecha de finalización."} Se conservan sus clases dictadas, registros y cobros.
-            </Notice>
-          ) : (
-            <div className="flex min-w-0 flex-col gap-3.5">
+          <div className="flex min-w-0 flex-col gap-3.5">
               <div className="rounded-md border-[1.5px] border-border bg-surface2 p-3">
                 <p className="text-[15px] font-[650] text-textPrimary [overflow-wrap:anywhere]">{seriesLabel}</p>
                 <p className="text-[14px] text-textSecondary [overflow-wrap:anywhere]">{scheduleLabel}</p>
@@ -203,8 +189,7 @@ export function FinishedSeriesDate({ ruleId, seriesLabel, scheduleLabel, seriesE
                   <p className="[overflow-wrap:anywhere]">{error}</p>
                 </Notice>
               )}
-            </div>
-          )}
+          </div>
         </Dialog>
       )}
     </>

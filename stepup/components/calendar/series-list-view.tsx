@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { BackLink, PAGE_WIDTH, PageTitle } from "@/components/ui/page-header";
-import { listLineagePredecessors, selectFinishedRecurrenceSeries, selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
+import { lineageRootId, listLineagePredecessors, selectFinishedRecurrenceSeries, selectManageableRecurrenceSeries } from "@/lib/calendar/lineage";
 import { formatCivilDate, formatCivilDayMonth } from "@/lib/format/date-format";
 import { MODALITY_LABEL } from "@/lib/students/constants";
 import { ACTIVITY_KIND_LABEL } from "@/lib/calendar/activity-kind";
@@ -12,6 +12,8 @@ import type { RecurrenceRuleRecord } from "@/lib/repositories/recurrence-rules";
 import type { StudentRecord } from "@/lib/repositories/students-mapping";
 import { SeriesStatusActions } from "@/app/(app)/calendario/series/series-status-actions";
 import { FinishedSeriesDate } from "@/app/(app)/calendario/series/finished-series-date";
+import { ScrollToSeries } from "@/components/calendar/scroll-to-series";
+import { Notice } from "@/components/ui/notice";
 import type { SwapOption } from "@/components/calendar/series-swap-panel";
 
 const WEEKDAY_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
@@ -154,12 +156,14 @@ export function parseSeriesListFilter(value: string | string[] | undefined): Ser
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
-export function SeriesListView({ rules, students, nowIso, filter = "vigentes" }: { rules: RecurrenceRuleRecord[]; students: StudentRecord[]; nowIso: string; filter?: SeriesListFilter }) {
+export function SeriesListView({ rules, students, nowIso, filter = "vigentes", reactivatedId }: { rules: RecurrenceRuleRecord[]; students: StudentRecord[]; nowIso: string; filter?: SeriesListFilter; /** Una serie que acaba de volver a «Vigentes» (cualquiera de sus tramos): se resalta y se lleva a la vista. */ reactivatedId?: string }) {
   // Agrupación por LINAJE real (supersedesRecurrenceId), NUNCA por studentId — dos series del mismo alumno, o una serie sin alumno
   // principal, quedan siempre como tarjetas independientes.
   const rulesForLineage = withLineageIds(rules);
   const manageable = selectManageableRecurrenceSeries(rulesForLineage, nowIso);
   const swapOptions = swapOptionsOf(manageable, students);
+  const reactivatedRoot = reactivatedId ? lineageRootId(rulesForLineage, reactivatedId) : null;
+  const reactivated = reactivatedRoot && filter === "vigentes" ? manageable.find((card) => lineageRootId(rulesForLineage, card.id) === reactivatedRoot) : undefined;
   // «Finalizadas»: series que llegaron a su fecha de finalización. Su total NUNCA se mezcla con el de «Vigentes».
   const finished = selectFinishedRecurrenceSeries(rulesForLineage, nowIso);
   const showingFinished = filter === "finalizadas";
@@ -224,13 +228,23 @@ export function SeriesListView({ rules, students, nowIso, filter = "vigentes" }:
         </div>
       ) : (
         // Un único desplazamiento: el de la página. Una lista con su propio scroll interno parecía terminar con tarjetas todavía ocultas debajo.
-        <ul className="mt-6 flex flex-col gap-3.5">
-          {manageable.map((rule) => (
-            <li key={rule.id} id={`series-${rule.id}`} className="scroll-mt-4">
-              <SeriesCard rule={rule} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={swapOptions} />
-            </li>
-          ))}
-        </ul>
+        <>
+          {reactivated && (
+            <div className="mt-5">
+              <Notice tone="ok" role="status" title="La serie volvió a «Vigentes»">
+                Quedó resaltada en la lista. Se conservan sus clases dictadas, registros y cobros.
+              </Notice>
+              <ScrollToSeries ruleId={reactivated.id} />
+            </div>
+          )}
+          <ul className="mt-6 flex flex-col gap-3.5">
+            {manageable.map((rule) => (
+              <li key={rule.id} id={`series-${rule.id}`} className="scroll-mt-4">
+                <SeriesCard rule={rule} rulesForLineage={rulesForLineage} students={students} nowIso={nowIso} swapOptions={swapOptions} highlighted={reactivated?.id === rule.id} />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
