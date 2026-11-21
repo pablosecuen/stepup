@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { BanknotesIcon, ClipboardDocumentCheckIcon, ExclamationCircleIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, ClipboardDocumentCheckIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { BadgeTone } from "@/components/ui/badge";
 import type { ReminderCategoryKind } from "@/lib/dashboard/reminders-center";
 
@@ -10,5 +10,4 @@ export const REMINDER_ICONS: Record<ReminderCategoryKind, { icon: IconComponent;
   clases_sin_alumnos: { icon: UserGroupIcon, tone: "warn" },
   clases_sin_registrar: { icon: ClipboardDocumentCheckIcon, tone: "warn" },
   pagos_por_vencer: { icon: BanknotesIcon, tone: "warn" },
-  pagos_vencidos: { icon: ExclamationCircleIcon, tone: "bad" },
 };

@@ -89,7 +89,8 @@ test("Recordatorios: las cuatro categorías reales, sin acciones nuevas para «r
   assert.match(view, /item\.subtitle/);
   assert.doesNotMatch(view, /Button|onClick|useState|href=\{`/, "las filas son informativas: no existe una acción para resolver un recordatorio");
   const icons = code("components/reminders/reminder-icons.ts");
-  for (const kind of ["clases_sin_alumnos", "clases_sin_registrar", "pagos_por_vencer", "pagos_vencidos"]) assert.ok(icons.includes(kind), kind);
+  for (const kind of ["clases_sin_alumnos", "clases_sin_registrar", "pagos_por_vencer"]) assert.ok(icons.includes(kind), kind);
+  assert.ok(!icons.includes("pagos_vencidos"), "los pagos vencidos no son recordatorios");
   assert.match(code("components/dashboard/home-view.tsx"), /import \{ REMINDER_ICONS \} from "@\/components\/reminders\/reminder-icons"/, "Inicio y Recordatorios comparten íconos");
 });
 

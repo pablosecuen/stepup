@@ -6,15 +6,17 @@ import { formatCivilDate, formatInstantDayShort } from "../format/date-format.ts
 
 /**
  * Puerto de `buildRemindersCenterSummary` (móvil, `remindersCenter.ts`) —
- * reúne, sin inventar ni duplicar nada, las 4 categorías reales que ya
+ * reúne, sin inventar ni duplicar nada, las 3 categorías reales que ya
  * arman otras partes de la app: clases sin alumnos (`buildEmptyClassesSummary`),
- * clases sin registrar (`buildPendingLessons`), y pagos por vencer/vencidos
- * (`buildCollectionsCenterEntries`, separados por `urgency === 'vence_hoy'`
- * vs el resto). Deliberadamente NO existe una quinta categoría — sería el
- * mismo cargo ya contado en pagos. Una categoría sin ítems no aparece en
- * `categories` (nunca se muestra un contador en cero). Pura.
+ * clases sin registrar (`buildPendingLessons`) y pagos que vencen HOY
+ * (`buildCollectionsCenterEntries`). Los pagos YA VENCIDOS NO son recordatorios (decisión
+ * del 21/11/2026): son información financiera y viven en Cobros y en el aviso diario de
+ * Inicio (`DailyCollectionsNotice`, otra fuente); aquí ni se listan ni se cuentan, así que
+ * ninguna insignia ni contador de Recordatorios los incluye. Una categoría sin ítems no
+ * aparece en `categories` (nunca se muestra un contador en cero). Esta función es la ÚNICA
+ * fuente de Inicio (insignia, cifra, panel) y de «Ver todo». Pura.
  */
-export type ReminderCategoryKind = "clases_sin_alumnos" | "clases_sin_registrar" | "pagos_por_vencer" | "pagos_vencidos";
+export type ReminderCategoryKind = "clases_sin_alumnos" | "clases_sin_registrar" | "pagos_por_vencer";
 
 export interface ReminderCenterItem {
   kind: ReminderCategoryKind;
@@ -44,20 +46,8 @@ function chargeConcept(entry: CollectionsCenterEntry): string {
 }
 
 /**
- * Mismo criterio real del móvil (`buildCollectionsCenterEntries` ahí
- * excluye `pendiente_en_termino` antes de construir cada `CollectionEntry`):
- * un cargo recién generado que vence en varios días no "necesita atención"
- * todavía — nunca entra a Recordatorios aunque sí aparezca en el Centro de
- * Cobros completo (`/cobros`, que a propósito muestra TODO lo pendiente).
- */
-function needsAttention(entry: CollectionsCenterEntry, todayDateKey: string): boolean {
-  if (entry.urgency !== null) return entry.urgency !== "pendiente_en_termino";
-  return entry.isOverdue || entry.dueDate === todayDateKey;
-}
-
-/**
  * «Vence hoy» (todavía no vencido): las mensualidades/entrenamientos lo traen en su urgencia (`vence_hoy`); el resto de los tipos (por clase, semanal, quincenal, paquete) no tienen urgencia y vencen
- * «hoy» cuando su fecha es hoy y todavía no están vencidos. Antes esos últimos caían siempre en «Pagos vencidos» (la urgencia es nula), por eso Recordatorios mostraba 4 vencidos cuando 2 vencían hoy.
+ * «hoy» cuando su fecha es hoy y todavía no están vencidos. Un cargo vencido o que vence en varios días NO es un recordatorio (sigue en Cobros).
  */
 function isDueToday(entry: CollectionsCenterEntry, todayDateKey: string): boolean {
   if (entry.urgency !== null) return entry.urgency === "vence_hoy";
@@ -84,21 +74,10 @@ export function buildRemindersCenterSummary(input: {
     subtitle: formatInstantDayShort(pending.item.start),
   }));
 
-  const urgentEntries = input.collectionEntries.filter((entry) => needsAttention(entry, input.todayDateKey));
-
-  const pagosPorVencer: ReminderCenterItem[] = urgentEntries
+  const pagosPorVencer: ReminderCenterItem[] = input.collectionEntries
     .filter((entry) => isDueToday(entry, input.todayDateKey))
     .map((entry) => ({
       kind: "pagos_por_vencer",
-      id: `charge_${entry.chargeId}`,
-      title: entry.studentName,
-      subtitle: chargeConcept(entry),
-    }));
-
-  const pagosVencidos: ReminderCenterItem[] = urgentEntries
-    .filter((entry) => !isDueToday(entry, input.todayDateKey))
-    .map((entry) => ({
-      kind: "pagos_vencidos",
       id: `charge_${entry.chargeId}`,
       title: entry.studentName,
       subtitle: chargeConcept(entry),
@@ -108,7 +87,6 @@ export function buildRemindersCenterSummary(input: {
     { kind: "clases_sin_alumnos", label: "Clases sin alumnos", items: clasesSinAlumnos },
     { kind: "clases_sin_registrar", label: "Clases sin registrar", items: clasesSinRegistrar },
     { kind: "pagos_por_vencer", label: "Pagos próximos a vencer", items: pagosPorVencer },
-    { kind: "pagos_vencidos", label: "Pagos vencidos", items: pagosVencidos },
   ];
   const categories = allCategories.filter((category) => category.items.length > 0);
 

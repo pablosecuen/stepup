@@ -592,7 +592,7 @@ function RecordatoriosBody({ title }: { title: string }) {
         <SkHeader title={title} />
       </div>
       <div className="mt-6 grid grid-cols-1 items-start gap-x-6 gap-y-6 min-[1040px]:grid-cols-2">
-        {[3, 2, 2, 1].map((rows, index) => (
+        {[3, 2, 2].map((rows, index) => (
           <section key={index} className={`min-w-0 ${READING_WIDTH}`}>
             <div className="flex items-center gap-3">
               <SkRound className="h-9 w-9" />
