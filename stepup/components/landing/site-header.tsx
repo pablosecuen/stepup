@@ -23,11 +23,20 @@ export function SiteHeader() {
           </span>
         </a>
         <nav aria-label="Secciones de la página" className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink">
-              {link.label}
-            </a>
-          ))}
+          <details className="tf-product-nav relative">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+              Producto <span aria-hidden>⌄</span>
+            </summary>
+            <div className="tf-product-menu absolute left-0 top-full z-50 grid min-w-[220px] gap-1 rounded-2xl border border-border bg-surface p-2">
+              {LINKS.filter((link) => link.href !== "/planes" && link.href !== "#recorrido").map((link) => (
+                <a key={link.href} href={link.href} className="flex min-h-11 items-center rounded-lg px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                  {link.href === "#producto" ? "Todo TeacherFlow" : link.label}
+                </a>
+              ))}
+            </div>
+          </details>
+          <a href="#recorrido" className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Cómo funciona</a>
+          <a href="/planes" className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Planes</a>
         </nav>
         <div className="flex items-center gap-1.5 nav:gap-2">
           <ButtonLink href="/login" variant="ghost" className="tf-ctl whitespace-nowrap px-3 nav:px-[18px] nav:text-[14.5px]">

@@ -48,9 +48,14 @@ test("el recorrido es un tablist accesible: roles, aria-selected, tabIndex rotat
   assert.match(TOUR, /min-h-11/, "pestañas de 44 px");
   assert.match(TOUR, /h-11 w-11/, "botones de 44 px");
   assert.match(TOUR, /hidden=\{index !== active\}/, "sólo se muestra la elegida");
-  // sólo Inicio viaja en el HTML; el resto se pide aparte (rendimiento)
-  assert.match(TOUR, /dynamic\(loaders\./);
-  assert.match(TOUR, /ssr: false/);
+  // Las maquetas se renderizan en el servidor, sin cascadas de carga al elegir pestañas.
+  assert.doesNotMatch(TOUR, /next\/dynamic|ssr: false|import\("/);
+  assert.match(TOUR, /screens\[index\]/);
+  assert.match(TOUR, /inert=\{index !== active\}/);
+  assert.equal((TOUR.match(/<Monitor /g) ?? []).length, 1, "un solo marco para las cinco pantallas");
+  const natural = read("components/landing/landing-natural.css");
+  assert.match(natural, /\.tf-tour-panel\[hidden\][\s\S]*?display: block; visibility: hidden/);
+  assert.match(natural, /\.tf-tour-copy > div \{ grid-area: 1 \/ 1/);
   assert.doesNotMatch(TOUR, /setInterval|autoplay|requestAnimationFrame/, "no avanza solo");
   for (const key of ["inicio", "calendario", "perfil", "cobros", "resumen"]) assert.ok(SECTIONS.includes(`key: "${key}"`), key);
 });

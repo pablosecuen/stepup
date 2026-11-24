@@ -1,34 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Monitor } from "@/components/landing/frame";
-import { ScreenInicio } from "@/components/landing/screens";
-
-// Sólo Inicio viaja en el HTML inicial; las demás pantallas son fragmentos aparte que se piden al elegirlas (o cuando el navegador queda libre).
-const loaders = {
-  calendario: () => import("@/components/landing/tour-screens").then((m) => m.TourCalendario),
-  perfil: () => import("@/components/landing/tour-screens").then((m) => m.TourPerfil),
-  cobros: () => import("@/components/landing/tour-screens").then((m) => m.TourCobros),
-  resumen: () => import("@/components/landing/tour-screens").then((m) => m.TourResumen),
-};
-const Calendario = dynamic(loaders.calendario, { ssr: false, loading: () => <Pending /> });
-const Perfil = dynamic(loaders.perfil, { ssr: false, loading: () => <Pending /> });
-const Cobros = dynamic(loaders.cobros, { ssr: false, loading: () => <Pending /> });
-const Resumen = dynamic(loaders.resumen, { ssr: false, loading: () => <Pending /> });
-
-function Pending() {
-  return <div className="min-h-[420px] rounded-[20px] bg-sideActive" aria-hidden />;
-}
-
-function TourScreen({ id }: { id: string }) {
-  if (id === "inicio") return <Monitor path="inicio"><ScreenInicio /></Monitor>;
-  if (id === "calendario") return <Calendario />;
-  if (id === "perfil") return <Perfil />;
-  if (id === "cobros") return <Cobros />;
-  return <Resumen />;
-}
 
 export interface TourItem {
   key: string;
@@ -41,34 +15,17 @@ export interface TourItem {
 
 /**
  * Recorrido interactivo: la computadora permanece y la persona elige la pantalla (pestañas accesibles con flechas, Inicio y Fin, y
- * botones Anterior / Siguiente). Sólo Inicio llega en el HTML; las demás se piden al elegirlas (o al acercarse a la sección). Sólo se muestra la elegida, con un
+ * botones Anterior / Siguiente). Las cinco maquetas llegan renderizadas desde el servidor, sin descargar componentes al elegirlas.
+ * Comparten un marco de altura estable; el contenido largo se recorre dentro de la pantalla sin mover los controles externos. Sólo se muestra la elegida, con un
  * cambio suave de 260 ms (sin movimiento con «reducir movimiento»). No es un video: nada avanza solo.
  */
-export function Tour({ items }: { items: readonly TourItem[] }) {
+export function Tour({ items, screens }: { items: readonly TourItem[]; screens: readonly ReactNode[] }) {
   const [active, setActive] = useState(0);
-  const [seen, setSeen] = useState<ReadonlySet<number>>(new Set([0]));
-  const root = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    // Las pantallas restantes se descargan cuando el recorrido está a menos de una pantalla de distancia (el cambio de pestaña queda inmediato).
-    const el = root.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        Object.values(loaders).forEach((load) => void load());
-        observer.disconnect();
-      },
-      { rootMargin: "900px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
   const select = (index: number, focus = false) => {
     const next = (index + items.length) % items.length;
     setActive(next);
-    setSeen((previous) => new Set(previous).add(next));
-    if (focus) tabs.current[next]?.focus();
+    if (focus) tabs.current[next]?.focus({ preventScroll: true });
   };
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const target = event.key === "ArrowRight" ? index + 1 : event.key === "ArrowLeft" ? index - 1 : event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : null;
@@ -79,7 +36,7 @@ export function Tour({ items }: { items: readonly TourItem[] }) {
   const current = items[active];
 
   return (
-    <div ref={root}>
+    <div className="tf-tour">
       <div role="tablist" aria-label="Pantallas de TeacherFlow" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden nav:mx-0 nav:flex-wrap nav:justify-center nav:overflow-visible nav:px-0">
         {items.map((item, index) => (
           <button
@@ -105,19 +62,27 @@ export function Tour({ items }: { items: readonly TourItem[] }) {
       </div>
 
       <div className="mt-6 nav:mt-8">
-        {items.map((item, index) => (
-          <div key={item.key} role="tabpanel" id={`tour-panel-${item.key}`} aria-labelledby={`tour-tab-${item.key}`} hidden={index !== active} className="tf-tab-in">
-            <div role="img" aria-label={item.alt}>
-              {seen.has(index) && <TourScreen id={item.key} />}
-            </div>
+        <Monitor path={current.key === "perfil" ? "alumnos/perfil" : current.key === "resumen" ? "resumen-financiero" : current.key}>
+          <div className="tf-tour-stage">
+            {items.map((item, index) => (
+              <div key={item.key} role="tabpanel" id={`tour-panel-${item.key}`} aria-labelledby={`tour-tab-${item.key}`} hidden={index !== active} inert={index !== active} className="tf-tour-panel">
+                <div role="img" aria-label={item.alt} className={index === active ? "tf-tour-screen tf-tab-in" : "tf-tour-screen"}>
+                  {screens[index]}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </Monitor>
       </div>
 
       <div className="mt-6 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 nav:mt-8">
-        <div className="max-w-[640px]" aria-live="polite">
-          <p className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">{current.title}</p>
-          <p className="mt-1.5 text-[16px] leading-relaxed text-sideText">{current.text}</p>
+        <div className="tf-tour-copy max-w-[640px]" aria-live="polite">
+          {items.map((item, index) => (
+            <div key={item.key} hidden={index !== active}>
+              <p className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">{item.title}</p>
+              <p className="mt-1.5 text-[16px] leading-relaxed text-sideText">{item.text}</p>
+            </div>
+          ))}
         </div>
         <div className="flex gap-2">
           <button

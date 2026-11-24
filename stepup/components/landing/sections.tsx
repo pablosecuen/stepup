@@ -48,11 +48,11 @@ function Check({ children, dark = false }: { children: ReactNode; dark?: boolean
 
 export function Hero() {
   return (
-    <section id="top" aria-labelledby="hero-title" className="tf-s-hero relative overflow-hidden pb-14 pt-10 nav:pb-24 nav:pt-16">
+    <section id="top" aria-labelledby="hero-title" className="tf-s-hero relative overflow-hidden pb-14 pt-9 nav:pb-24 nav:pt-12">
       <div className={WRAP}>
         <div className="mx-auto max-w-[900px] nav:text-center">
           <p style={{ animationDelay: "0ms" }} className="motion-safe:animate-tf-rise">
-            <Badge tone="accent">Para profesoras y profesores independientes</Badge>
+            <Badge tone="accent">Pensado para profesores</Badge>
           </p>
           <h1
             id="hero-title"
@@ -62,7 +62,7 @@ export function Hero() {
             Tu agenda, tus alumnos y tus cobros, <em className="text-accentDark">en un solo lugar.</em>
           </h1>
           <p style={{ animationDelay: "120ms" }} className="mt-5 text-[17px] leading-relaxed text-textSecondary motion-safe:animate-tf-rise nav:mx-auto nav:max-w-[700px] nav:text-[20px]">
-            TeacherFlow es la plataforma web para profesoras y profesores independientes. Organizá tus clases y series, llevá el seguimiento de cada alumno y controlá qué cobraste y qué vence, sin planillas ni cuadernos.
+            Organizá tus clases y series, acompañá a tus alumnos y llevá tus cobros al día, sin planillas ni cuadernos.
           </p>
           <div style={{ animationDelay: "180ms" }} className="mt-7 flex flex-col items-start gap-3 motion-safe:animate-tf-rise min-[480px]:flex-row min-[480px]:items-center nav:justify-center">
             <ButtonLink href="/crear-cuenta" variant="accent" size="lg" className="tf-ctl">
@@ -78,7 +78,7 @@ export function Hero() {
           </p>
         </div>
 
-        <Parallax className="relative mx-auto mt-10 max-w-[1100px] nav:mt-14">
+        <Parallax className="tf-hero-showcase relative mx-auto mt-10 max-w-[1100px] nav:mt-12">
           <MockScene label="Pantalla de Inicio de TeacherFlow en una computadora de escritorio: clases de hoy, próxima clase, clases por registrar, recordatorios y cobros. Alrededor, paneles con una próxima clase, un cobro recibido, una clase por registrar, un recordatorio y el detalle de un alumno. Información ilustrativa.">
             <div style={{ animationDelay: "260ms" }} className="motion-safe:animate-tf-rise">
               <Monitor path="inicio">
@@ -333,7 +333,13 @@ export function TourSection() {
           <p className="mt-4 text-[17px] leading-relaxed text-textSecondary">Cinco pantallas de TeacherFlow, con información ilustrativa. Vos decidís cuál mirar.</p>
         </Reveal>
         <Reveal delay={80} className="tf-tour-box mt-10 rounded-[28px] p-4 nav:mt-14 nav:p-10">
-          <Tour items={TOUR_ITEMS} />
+          <Tour items={TOUR_ITEMS} screens={[
+            <ScreenInicio key="inicio" />,
+            <ScreenCalendarioSemana key="calendario" />,
+            <ScreenPerfil key="perfil" />,
+            <ScreenCobros key="cobros" />,
+            <ScreenResumen key="resumen" />,
+          ]} />
         </Reveal>
       </div>
     </section>
