@@ -270,7 +270,7 @@
   background-color: var(--n-brown);
   box-shadow: 0 28px 60px -34px rgb(65 42 22 / 0.55);
 }
-.tf-landing #planes article {
+.tf-landing #planes article:not([data-featured]) {
   box-shadow: 0 8px 18px -10px rgb(65 42 22 / 0.2), 0 2px 4px rgb(65 42 22 / 0.04);
 }
 .tf-landing .tf-footer {

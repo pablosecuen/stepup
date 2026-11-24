@@ -130,3 +130,17 @@ test("valor «estimado» mientras el período no cerró; definitivo cuando ya ce
   assert.equal(open.isEstimate, true);
   assert.equal(summarize({ evaluationDate: "2026-11-02" }).isEstimate, false);
 });
+
+test("tarifa por hora: una clase programada de 90 minutos proyecta tarifa × 1,5; una de 45, × 0,75; el importe fijo por clase no depende de la duración", () => {
+  const long = (id: string, day: string, participantIds: string[]): HourlyRateOccurrence => ({ id, start: `${day}T13:00:00.000Z`, end: `${day}T14:30:00.000Z`, status: "scheduled", participantIds, registration: null });
+  const short = (id: string, day: string, participantIds: string[]): HourlyRateOccurrence => ({ id, start: `${day}T13:00:00.000Z`, end: `${day}T13:45:00.000Z`, status: "scheduled", participantIds, registration: null });
+  const hourly: HourlyRateStudent = { id: "h1", level: "B1", billingPlan: { type: "per_class", amount: 36000, rateBasis: "hour" } };
+  const ninety = summarize({ occurrences: [long("a", "2026-10-06", ["h1"])], students: [hourly] });
+  assert.equal(ninety.totalRevenueAttributed, 54000);
+  assert.equal(ninety.generalRatePerHour, 36000, "el valor de la hora sigue siendo la tarifa");
+  const fortyFive = summarize({ occurrences: [short("a", "2026-10-06", ["h1"])], students: [hourly] });
+  assert.equal(fortyFive.totalRevenueAttributed, 27000);
+  const fixed = perClass("f1", 36000);
+  assert.equal(summarize({ occurrences: [long("a", "2026-10-06", ["f1"])], students: [fixed] }).totalRevenueAttributed, 36000, "importe fijo: igual que siempre, dure lo que dure");
+  assert.equal(summarize({ occurrences: [short("a", "2026-10-06", ["f1"])], students: [fixed] }).totalRevenueAttributed, 36000);
+});

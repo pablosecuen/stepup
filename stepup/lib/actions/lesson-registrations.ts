@@ -22,7 +22,7 @@ import type { CalendarViewItem } from "@/lib/calendar/occurrences";
 import { localDateTimeToInstantIso } from "@/lib/calendar/timezone";
 import { adhocEndAt, isAdhocClassHeld, validateAdhocRegistrationInput, type AdhocOutcome, type LateCancellationPolicy } from "@/lib/lessons/adhoc";
 import { computePerClassBilledAmount } from "@/lib/payments/adhoc-billing";
-import { resolveStudentBillingPlan, type MonthlyBillingPlan } from "@/lib/payments/billing-plan";
+import { resolveStudentBillingPlan, type StudentBillingPlan } from "@/lib/payments/billing-plan";
 import { listChargeStatusForRegistration, syncPerClassCharge } from "@/lib/repositories/payments";
 import { resolveRegistrationBilling, saveRegistrationBillingResolution } from "@/lib/repositories/training-coverage";
 import { actionErrorMessage } from "@/lib/errors/action-error";
@@ -305,16 +305,28 @@ async function syncPerClassChargesForRegistration(ctx: Awaited<ReturnType<typeof
   const sessionAnchor = detail.registration.scheduledStartAt ?? detail.registration.actualStartedAt ?? detail.registration.createdAt;
   const billing = await resolveRegistrationBilling(ctx, { registrationId, activityKind: detail.registration.activityKind, recurrenceId: calendarLesson?.recurrenceId ?? null, calendarLessonId: detail.registration.calendarLessonId, participantIds: detail.participants.map((p) => p.studentId), sessionAnchorIso: sessionAnchor });
 
+  // Horarios de la clase para la duración facturable: la real del registro (la que la profesora confirma o corrige al registrar) y, si no hay, la programada del propio registro o de su clase del
+  // calendario — ya con cualquier «Extender duración» aplicado. Sólo la usan los alumnos con tarifa POR HORA; un importe fijo por clase no depende de ella. La base de datos repite este cálculo y lo valida.
+  const lessonTimes = {
+    actualStartedAt: detail.registration.actualStartedAt,
+    actualEndedAt: detail.registration.actualEndedAt,
+    ...(detail.registration.scheduledStartAt && detail.registration.scheduledEndAt
+      ? { scheduledStartAt: detail.registration.scheduledStartAt, scheduledEndAt: detail.registration.scheduledEndAt }
+      : { scheduledStartAt: calendarLesson?.startAt ?? null, scheduledEndAt: calendarLesson?.endAt ?? null }),
+  };
+
   const participants = detail.participants
     .map((p) => {
       const student = studentsById.get(p.studentId);
       if (!student) return null;
-      const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as MonthlyBillingPlan | null, billingType: student.billingType, price: student.price });
+      const plan = resolveStudentBillingPlan({ billingPlan: student.billingPlan as StudentBillingPlan | null, billingType: student.billingType, price: student.price });
       if (plan.type !== "per_class") return null;
       const decision = billing.decisions.get(p.studentId);
       if (!decision || decision.kind === "needs_association") return null;
       const amount = detail.registration.isBillable === false || decision.kind === "covered" ? 0 : computePerClassBilledAmount({
         perClassAmount: plan.amount,
+        rateBasis: plan.rateBasis === "hour" ? "hour" : "class",
+        lessonTimes,
         outcome,
         isClassHeld: detail.registration.countsAsClass,
         lateCancellationPolicy,

@@ -66,3 +66,7 @@ tamaño de fila, acciones costosas por ventana, `anon`/sin sesión y configuraci
     node supabase/tests/postgres/export_schema_rehearsal.cjs            (exportación del destino sobre el esquema ANTERIOR a R9/R10 y el nuevo: «no disponible en esta versión» sólo para las tablas nuevas; aborta ante permisos, red o tabla existente faltante; cifrado y recuperación)
     node supabase/tests/postgres/extractor_destination_rehearsal.cjs    (el extractor con el cliente real de Supabase contra un destino aislado con la forma de Supabase: prueba de un archivo, tamaño distinto, caída del servidor, «ya existe», idempotencia, ausentes, aislamiento)
     node supabase/tests/postgres/real_rehearsal.cjs <copia-origen.tfsc>  (ENSAYO CON EL RESPALDO REAL en un Postgres local aislado y descartable: importa, coteja, deshace y borra todo; informa sólo ids y cantidades)
+
+## Tarifa por hora (docs/TARIFA_POR_HORA_20261124.md)
+
+    node supabase/tests/postgres/hourly_rate_billing.mjs   (107 comprobaciones: diferencial TypeScript ↔ SQL, circuito de cobro por duración, tarifa congelada y por fecha, importe fijo intacto, cargos con pagos, revisión/corrección/reversión, carreras, aislamiento y privilegios)

@@ -3,6 +3,7 @@ import { isValidDateKey } from "./dates.ts";
 import { DEFAULT_MONTHLY_DUE_DAY, type StudentBillingPlan } from "./billing-plan.ts";
 import { formatMoney } from "../format/number-format.ts";
 import { formatCivilDate } from "../format/date-format.ts";
+import type { RateBasis } from "./lesson-amount.ts";
 
 export type BillingPlanType = StudentBillingPlan["type"];
 
@@ -13,6 +14,11 @@ export const PLAN_TYPE_OPTIONS: Array<{ value: BillingPlanType; label: string; d
   { value: "monthly", label: "Mensual", description: "Una obligación por mes, cubre todas sus clases" },
   { value: "class_package", label: "Paquete de clases", description: "Compra clases por adelantado, se consumen créditos" },
   { value: "complimentary", label: "Sin cargo", description: "Nunca genera cobros ni preguntas financieras" },
+];
+
+export const RATE_BASIS_OPTIONS: Array<{ value: RateBasis; label: string; description: string }> = [
+  { value: "class", label: "Importe fijo por clase", description: "Cada clase cuesta lo mismo, dure lo que dure" },
+  { value: "hour", label: "Tarifa por hora", description: "Cada clase se cobra según su duración (90 min = 1,5 horas)" },
 ];
 
 export const WEEKDAY_OPTIONS: Array<{ value: number; label: string }> = [
@@ -28,6 +34,8 @@ export const WEEKDAY_OPTIONS: Array<{ value: number; label: string }> = [
 export interface BillingPlanFormValues {
   type: BillingPlanType;
   amountText: string;
+  /** Sólo para «Por clase»: importe fijo por clase o tarifa por hora. */
+  rateBasis?: RateBasis;
   dueWeekday: number;
   anchorDate: string;
   includedClassesText: string;
@@ -40,6 +48,7 @@ export function initialPlanFormValues(type: BillingPlanType, current: StudentBil
   return {
     type,
     amountText,
+    rateBasis: current.type === "per_class" && current.rateBasis === "hour" ? "hour" : "class",
     dueWeekday: current.type === "weekly" ? current.dueWeekday : 1,
     anchorDate: current.type === "biweekly" ? current.anchorDate : todayKey,
     includedClassesText: current.type === "class_package" ? String(current.includedClasses) : "8",
@@ -62,7 +71,7 @@ export function buildPlanFromForm(values: BillingPlanFormValues, currentPlan: St
   if (!(amount > 0)) return { error: "El importe tiene que ser mayor a cero." };
   switch (values.type) {
     case "per_class":
-      return { plan: { type: "per_class", amount } };
+      return { plan: values.rateBasis === "hour" ? { type: "per_class", amount, rateBasis: "hour" } : { type: "per_class", amount } };
     case "weekly":
       return { plan: { type: "weekly", amount, dueWeekday: values.dueWeekday } };
     case "biweekly":
@@ -89,7 +98,7 @@ export function buildPlanFromForm(values: BillingPlanFormValues, currentPlan: St
 export function describePlan(plan: StudentBillingPlan): { title: string; lines: string[] } {
   switch (plan.type) {
     case "per_class":
-      return { title: "Por clase", lines: [`${formatMoney(plan.amount)} por clase`] };
+      return { title: "Por clase", lines: [plan.rateBasis === "hour" ? `${formatMoney(plan.amount)} por hora` : `${formatMoney(plan.amount)} por clase`] };
     case "weekly": {
       const day = WEEKDAY_OPTIONS.find((option) => option.value === plan.dueWeekday)?.label ?? "—";
       return { title: "Semanal", lines: [`${formatMoney(plan.amount)} por semana`, `Vence los ${day}`] };

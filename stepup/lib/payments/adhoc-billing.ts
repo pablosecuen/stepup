@@ -1,4 +1,5 @@
 import type { AdhocOutcome, LateCancellationPolicy } from "../lessons/adhoc.ts";
+import { computeHourlyAmount, resolveBillableMinutes, type RateBasis } from "./lesson-amount.ts";
 
 /**
  * Puerto de `computeLessonBilledAmount`/`billingFactor`
@@ -47,15 +48,22 @@ export function computeLateCancellationBillingFactor(input: {
 /**
  * Importe final a facturar a UN alumno `'per_class'` por esta clase. Con el factor completo (1) es EXACTAMENTE la tarifa del alumno (con sus centavos, sin perder ni sumar nada: 27.500,50 sigue siendo 27.500,50);
  * un importe derivado de un porcentaje se redondea a pesos enteros, igual que la app original. `null` si el alumno no factura por clase (se resuelve fuera de esta función).
+ *
+ * `rateBasis: "hour"` (sólo un plan «por clase» que lo declara expresamente): `perClassAmount` es una TARIFA POR HORA y el valor de ESTA clase es tarifa × duración / 60 (`lesson-amount.ts`), con la
+ * duración que salga de `lessonTimes`; sobre ese valor se aplican las mismas reglas de resultado. Sin base (todos los planes existentes) el importe es fijo y la duración no interviene: idéntico a siempre.
  */
 export function computePerClassBilledAmount(input: {
   perClassAmount: number;
+  rateBasis?: RateBasis;
+  /** Sólo con base «hour»: la duración facturable sale de la real (si el registro la tiene) o de la programada. */
+  lessonTimes?: { actualStartedAt?: string | null; actualEndedAt?: string | null; scheduledStartAt?: string | null; scheduledEndAt?: string | null };
   outcome: AdhocOutcome;
   isClassHeld: boolean;
   lateCancellationPolicy: LateCancellationPolicy | null;
   lateCancellationPercentage: number | null;
 }): number {
+  const base = input.rateBasis === "hour" ? computeHourlyAmount(input.perClassAmount, resolveBillableMinutes(input.lessonTimes ?? {})) : input.perClassAmount;
   const factor = computeLateCancellationBillingFactor(input);
-  if (factor === 1) return Math.round(input.perClassAmount * 100) / 100;
-  return Math.round(input.perClassAmount * factor);
+  if (factor === 1) return Math.round(base * 100) / 100;
+  return Math.round(base * factor);
 }

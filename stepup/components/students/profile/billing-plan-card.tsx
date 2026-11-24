@@ -8,7 +8,7 @@ import { todayInArgentina } from "@/lib/format/date-format";
 import { formatMoneyForInput, parseMoneyInput } from "@/lib/format/money-input";
 import { formatMoney } from "@/lib/format/number-format";
 import type { StudentBillingPlan } from "@/lib/payments/billing-plan";
-import { PLAN_TYPE_OPTIONS, WEEKDAY_OPTIONS, buildPlanFromForm, describePlan, initialPlanFormValues, planTransitionOverlap, type BillingPlanFormValues, type BillingPlanType } from "@/lib/payments/plan-form";
+import { PLAN_TYPE_OPTIONS, RATE_BASIS_OPTIONS, WEEKDAY_OPTIONS, buildPlanFromForm, describePlan, initialPlanFormValues, planTransitionOverlap, type BillingPlanFormValues, type BillingPlanType } from "@/lib/payments/plan-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -137,8 +137,21 @@ function EditPlanDialog({ studentId, studentName, plan, charges, currentPeriod, 
           </label>
         ))}
       </div>
+      {values.type === "per_class" && (
+        <div role="radiogroup" aria-label="Cómo se calcula el importe de cada clase" className={choiceGroupClass}>
+          {RATE_BASIS_OPTIONS.map((option) => (
+            <label key={option.value} className={choiceRowClass}>
+              <input type="radio" name={`${uid}-basis`} className={checkClass} checked={(values.rateBasis ?? "class") === option.value} onChange={() => set("rateBasis", option.value)} disabled={pending} />
+              <span className="min-w-0">
+                <span className="block font-[650] text-textPrimary">{option.label}</span>
+                <span className="block text-[13.5px] text-textMuted">{option.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
       {values.type !== "complimentary" && (
-        <Field label={values.type === "class_package" ? "Precio del paquete (ARS)" : "Importe (ARS)"} htmlFor={`${uid}-amount`} hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
+        <Field label={values.type === "class_package" ? "Precio del paquete (ARS)" : values.type === "per_class" ? ((values.rateBasis ?? "class") === "hour" ? "Tarifa por hora (ARS)" : "Importe por clase (ARS)") : "Importe (ARS)"} htmlFor={`${uid}-amount`} hint="Ej: 36000 o 36.000 (punto para los miles, coma para los decimales).">
           <MoneyInput id={`${uid}-amount`} value={values.amountText} onValueChange={(text) => set("amountText", text)} disabled={pending} />
         </Field>
       )}

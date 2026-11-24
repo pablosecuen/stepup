@@ -1,6 +1,7 @@
 import { instantDateKey } from "../calendar/civil-calendar.ts";
 import { addDaysToDateKey, billingPeriodOfDateKey, daysBetweenDateKeys } from "../payments/dates.ts";
 import { resolveEffectiveMonthlyAmount, type StudentBillingPlan } from "../payments/billing-plan.ts";
+import { computeHourlyAmount, rateBasisOf } from "../payments/lesson-amount.ts";
 import type { AvailabilityException } from "../calendar/availability.ts";
 import { isClassHeld, lessonMinutes, type RegisteredLessonFacts } from "./registered-lessons.ts";
 
@@ -251,7 +252,10 @@ export function buildProgrammedHourlyRateSummary(input: {
         }
       } else if (student) {
         // Ocurrencia proyectada (sin registrar): usa el plan vigente del alumno.
-        if (student.billingPlan.type === "per_class") amount = resolveEffectiveBillingAmount(student.billingPlan, billingPeriodOfDateKey(dateKey));
+        if (student.billingPlan.type === "per_class") {
+          const effective = resolveEffectiveBillingAmount(student.billingPlan, billingPeriodOfDateKey(dateKey));
+          amount = rateBasisOf(student.billingPlan) === "hour" ? computeHourlyAmount(effective, minutes) : effective;
+        }
         else if (student.billingPlan.type === "class_package") amount = student.billingPlan.includedClasses > 0 ? student.billingPlan.amount / student.billingPlan.includedClasses : 0;
       }
       lessonRevenue += amount;

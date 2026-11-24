@@ -13,13 +13,13 @@ export function PlanSummary() {
           {publicPricing().map(plan => {
             const annual = plan.monthsOfAccess === 12;
             return (
-              <article key={plan.code} aria-label={`Plan ${plan.name}`} className={`flex min-w-0 flex-col rounded-2xl border p-5 ${annual ? "border-[#80639f] bg-[#e8e4ef]" : "border-border bg-surface"}`}>
+              <article key={plan.code} aria-label={`Plan ${plan.name}`} className={`flex min-w-0 flex-col rounded-2xl border p-5 ${annual ? "relative border-[#4d356b] bg-[#fcfaf6] shadow-[0_0_0_1px_#4d356b,0_0_0_7px_rgba(194,191,203,0.65),0_18px_30px_-12px_rgba(65,42,22,0.35)]" : "border-border bg-surface"}`} data-featured={annual ? "true" : undefined}>
                 <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
                   <h3 className="font-display text-2xl">{plan.name}</h3>
-                  {annual && <span className="rounded-full bg-[#4d356b] px-3 py-1 text-xs font-semibold text-white">Recomendado</span>}
+                  {annual && <span className="absolute -top-3.5 right-4 z-10 rounded-full bg-[#4d356b] px-4 py-1.5 text-sm font-bold leading-none text-white shadow-[0_2px_6px_rgba(65,42,22,0.3)]">Recomendado</span>}
                 </div>
                 <p className="mt-5 flex flex-wrap items-baseline gap-x-1 tabular-nums">
-                  <strong className="font-display text-4xl font-normal">{formatMoney(plan.monthlyEquivalentPesos)}</strong>
+                  <strong className={`font-display text-4xl font-normal ${annual ? "text-[#4d356b]" : ""}`}>{formatMoney(plan.monthlyEquivalentPesos)}</strong>
                   <span className="text-textSecondary">/mes</span>
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-textSecondary">

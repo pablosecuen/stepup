@@ -10,7 +10,13 @@
  */
 export interface PerClassBillingPlan {
   type: "per_class";
+  /** Importe por clase (base fija) o tarifa por hora (`rateBasis: "hour"`). */
   amount: number;
+  /**
+   * Base de la tarifa. Ausente = IMPORTE FIJO por clase (todos los planes que ya existen, sin cambios). `"hour"` = `amount` es una tarifa POR HORA y cada clase factura
+   * `amount × duración en minutos / 60` (ver `lesson-amount.ts`). Sólo se activa por una decisión expresa de la profesora en «Plan de cobro».
+   */
+  rateBasis?: "hour";
 }
 
 export interface WeeklyBillingPlan {

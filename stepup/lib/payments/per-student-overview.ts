@@ -16,7 +16,7 @@ import type { PaymentAllocationRecord, PaymentChargeRecord, PaymentRecord, Train
  */
 
 export type PlanFilterKey = "per_class" | "weekly" | "biweekly" | "monthly" | "class_package" | "complimentary" | "training";
-export type RatePeriod = "clase" | "semana" | "quincena" | "mes" | "paquete";
+export type RatePeriod = "clase" | "hora" | "semana" | "quincena" | "mes" | "paquete";
 
 export interface ConceptRate {
   amount: number;
@@ -128,7 +128,7 @@ function planLabel(plan: StudentBillingPlan): string {
 function planRate(plan: StudentBillingPlan, currentPeriod: string): { rate: ConceptRate | null; upcoming: PerStudentConcept["upcomingRate"] } {
   switch (plan.type) {
     case "per_class":
-      return { rate: { amount: plan.amount, period: "clase" }, upcoming: null };
+      return { rate: { amount: plan.amount, period: plan.rateBasis === "hour" ? "hora" : "clase" }, upcoming: null };
     case "weekly":
       return { rate: { amount: plan.amount, period: "semana" }, upcoming: null };
     case "biweekly":
@@ -334,6 +334,8 @@ export function ratePeriodLabel(rate: ConceptRate): string {
   switch (rate.period) {
     case "clase":
       return "por clase";
+    case "hora":
+      return "por hora";
     case "semana":
       return "por semana";
     case "quincena":
