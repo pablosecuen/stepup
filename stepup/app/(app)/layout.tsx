@@ -13,7 +13,7 @@ import { isSupabaseConfigured, shouldFailClosed } from "@/lib/auth/config";
 import { getRenderUser } from "@/lib/auth/render-user";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import type { AuthUser } from "@/lib/auth/auth-adapter";
-import { readBillingFlags } from "@/lib/billing/flags";
+import { isBillingOpenFor } from "@/lib/billing/pilot";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
 import { StudentFileCleanup } from "@/components/nav/student-file-cleanup";
@@ -79,7 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SharedNameTransition />
       <SoftKeyboardSync />
       {configured && user && <StudentFileCleanup />}
-      <PrimaryNav billingEnabled={readBillingFlags(process.env).enabled} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
+      <PrimaryNav billingEnabled={isBillingOpenFor(user?.id ?? null, process.env)} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
           fila propia de `--tf-shell-top` de alto: nunca se superpone con el título ni con las acciones de cada pantalla. */}
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">

@@ -67,7 +67,7 @@ test("la barra lateral sólo ofrece «Facturación» con el interruptor encendid
   assert.match(code("components/account/delete-account-button.tsx"), /billingEnabled = false/);
   assert.match(code("components/account/delete-account-button.tsx"), /\{billingEnabled && \(/);
   assert.match(code("components/account/configuration-view.tsx"), /billingEnabled = false/);
-  assert.match(code("app/(app)/layout.tsx"), /readBillingFlags\(process\.env\)\.enabled/);
+  assert.match(code("app/(app)/layout.tsx"), /isBillingOpenFor\(user\?\.id \?\? null, process\.env\)/);
 });
 
 test("la eliminación de cuenta agrega el paso de facturación SÓLO con el interruptor encendido (apagado, el flujo es exactamente el de siempre)", () => {

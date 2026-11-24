@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuthenticatedDbContext } from "@/lib/db/server-context";
 import { getSiteOrigin } from "@/lib/auth/site-url";
 import { getBillingRuntime, reconcileOwnerNow } from "@/lib/billing/runtime";
+import { isBillingOpenFor } from "@/lib/billing/pilot";
 import { cancelSubscription, changePlan, reactivateSubscription, startCheckout, updatePaymentMethod, type CommandDeps } from "@/lib/billing/commands";
 import { parseCheckoutCustomer, parseEmailOnlyCustomer, type CustomerField } from "@/lib/billing/customer";
 import { FixedWindowLimiter } from "@/lib/billing/rate-limit";
@@ -37,6 +38,8 @@ async function context(): Promise<{ ownerId: string; email: string | null; deps:
   } catch {
     return { ok: false, error: billingErrorMessage("billing_unavailable") };
   }
+  // Piloto (ver lib/billing/pilot.ts): fuera de la lista, la facturación no existe para esta cuenta.
+  if (!isBillingOpenFor(ctx.ownerId, process.env)) return UNAVAILABLE;
   if (!actionLimiter.check(ctx.ownerId).allowed) return BUSY;
   const user = (await ctx.supabase.auth.getUser()).data.user;
   return { ownerId: ctx.ownerId, email: user?.email ?? null, deps: { store: runtime.store, provider: runtime.provider, flags: runtime.flags, now: runtime.now } };

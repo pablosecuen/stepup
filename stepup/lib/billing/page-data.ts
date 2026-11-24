@@ -7,6 +7,7 @@ import { buildBillingView, buildPlanOptions, type BillingView, type PlanOptionVi
 import type { ProviderCapabilities } from "./provider";
 import { resolveSupportContact, type SupportContact } from "./support";
 import { isLegalReviewed } from "./legal";
+import { isBillingOpenFor, readPilotOwnerIds } from "./pilot";
 
 /**
  * Datos de las pantallas de facturación. Con la facturación apagada devuelve `null` y la pantalla responde 404 (como si no existiera).
@@ -57,6 +58,16 @@ export async function loadBillingPageData(searchParams?: { escenario?: string | 
   if (scenario) {
     const view = buildBillingView({ snapshot: scenario.snapshot, history: scenario.history, now: DEMO_NOW, capabilities, available: scenario.available });
     return { view, options, capabilities, askIdentity, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
+  }
+
+  // Piloto: con `BILLING_PILOT_OWNER_IDS` definida, las pantallas de facturación sólo existen para las cuentas listadas (para el resto, como apagada).
+  if (readPilotOwnerIds(process.env) !== null) {
+    try {
+      const { ownerId } = await requireAuthenticatedDbContext();
+      if (!isBillingOpenFor(ownerId, process.env)) return null;
+    } catch {
+      return null;
+    }
   }
 
   const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, askIdentity, demo: false, canCheckout: false, support: resolveSupportContact(process.env) });

@@ -8,7 +8,7 @@ import { ConfigurationView } from "@/components/account/configuration-view";
 import { EmptyState } from "@/components/ui/states";
 import { PageHeader, PAGE_WIDTH } from "@/components/ui/page-header";
 import { CloudIcon } from "@heroicons/react/24/outline";
-import { readBillingFlags } from "@/lib/billing/flags";
+import { isBillingOpenFor } from "@/lib/billing/pilot";
 
 export const dynamic = "force-dynamic";
 // R4: eliminar la cuenta borra antes todos los PDF de reportes de Storage (puede llevar un rato en cuentas con muchos): tiempo máximo explícito.
@@ -37,7 +37,7 @@ async function ConfiguredSections({ email }: { email: string | null }) {
   // Si no se puede leer, el acceso simplemente no se ofrece (nunca rompe la pantalla).
   const testData = testDataResult.status === "fulfilled" && testDataResult.value.students.length > 0 ? { hidden: testDataResult.value.hiddenCount > 0 } : null;
 
-  return <ConfigurationView email={email} displayName={profile.displayName} billingEnabled={readBillingFlags(process.env).enabled} testData={testData} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />;
+  return <ConfigurationView email={email} displayName={profile.displayName} billingEnabled={isBillingOpenFor(ctx.ownerId, process.env)} testData={testData} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />;
 }
 
 function UnavailableState() {
