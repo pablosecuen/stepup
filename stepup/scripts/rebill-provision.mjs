@@ -18,6 +18,10 @@ import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { CURRENT_PLAN_CODES, getPlan } from "../lib/billing/plans.ts";
+import { buildSearchPaymentsRequest } from "../lib/billing/providers/rebill.ts";
+
+/** Paginación comprobada contra la API real (24/11/2026): anidada en `pagination`. */
+const PAGE_100 = { pagination: { limit: 100, offset: 0 } };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_SITE = "https://teacherflowapp.com";
@@ -84,14 +88,14 @@ export async function check(request, log = console.log) {
     if (data?.environment === "sandbox") log("  → es la organización de PRUEBA (sandbox).");
     if (data?.environment === "productive") log("  → es la organización de PRODUCCIÓN: cualquier cobro es real.");
   }
-  const plans = await firstOk(request, [["POST", "/v3/plans/search", { limit: 100, offset: 0 }], ["POST", "/v3/plans/search", {}]]);
+  const plans = await firstOk(request, [["POST", "/v3/plans/search", PAGE_100], ["POST", "/v3/plans/search", {}]]);
   if (!plans.result) { log(`✖ Planes: no se pudo listar (${plans.tried.join(" | ")}). No se creará nada hasta poder listar.`); report.ok = false; }
   else {
     const records = recordsOf(plans.result.body) ?? [];
     log(`✔ Planes existentes: ${records.length}`);
     for (const record of records) log(`    ${record.id} · ${record.status ?? "?"} · tfCode=${record.metadata?.tfCode ?? "—"}`);
   }
-  const links = await firstOk(request, [["POST", "/v3/payment-links/search", { limit: 100, offset: 0 }]]);
+  const links = await firstOk(request, [["POST", "/v3/payment-links/search", PAGE_100]]);
   if (!links.result) { log(`✖ Payment links: no se pudo listar (${links.tried.join(" | ")})`); report.ok = false; }
   else log(`✔ Payment links existentes: ${(recordsOf(links.result.body) ?? []).length}`);
   const hooks = await firstOk(request, [["POST", "/v3/webhooks/search", { limit: 100, offset: 0 }], ["GET", "/v3/webhooks"]]);
@@ -100,17 +104,17 @@ export async function check(request, log = console.log) {
 
   // La integración consulta los pagos con un cuerpo concreto (lib/billing/providers/rebill.ts). Rebill rechaza (400) las propiedades desconocidas: hay que verlo contra la API real.
   const variants = [
-    ["los nombres que usa hoy la integración (limit/offset/sortBy/sortOrder)", { limit: 1, offset: 0, sortBy: "updated_at", sortOrder: "DESC" }],
-    ["variante sort/order", { limit: 1, offset: 0, sort: "updated_at", order: "DESC" }],
-    ["sólo paginación", { limit: 1, offset: 0 }],
+    ["el cuerpo que usa hoy la integración (pagination anidada)", buildSearchPaymentsRequest({ limit: 1, offset: 0 }).json],
+    ["el mismo cuerpo filtrado por suscripción", buildSearchPaymentsRequest({ limit: 1, offset: 0, subscriptionId: "sub_inexistente" }).json],
   ];
   for (const [label, body] of variants) {
     const result = await request("POST", "/v3/payments/search", body);
     log(`${result.ok ? "✔" : "✖"} Búsqueda de pagos con ${label}: ${short(result)}`);
-    if (label.startsWith("los nombres") && !result.ok) report.ok = false;
+    if (!result.ok) report.ok = false;
   }
-  const subs = await request("POST", "/v3/subscriptions/search", { limit: 1, offset: 0 });
-  log(`${subs.ok ? "✔" : "✖"} Búsqueda de suscripciones (limit/offset): ${short(subs)}`);
+  const subs = await request("POST", "/v3/subscriptions/search", { pagination: { limit: 1, offset: 0 } });
+  log(`${subs.ok ? "✔" : "✖"} Búsqueda de suscripciones (pagination): ${short(subs)}`);
+  if (!subs.ok) report.ok = false;
   return report;
 }
 
@@ -138,10 +142,10 @@ function priceMatches(record, plan) {
 /** Crea lo que falta. `apply=false` es un simulacro. Devuelve los ids/direcciones (no secretos) y, si se creó el webhook, su secreto (para guardarlo sin imprimirlo). */
 export async function provision(request, { site = DEFAULT_SITE, apply = false, log = console.log } = {}) {
   const result = { env: {}, webhookSecret: null };
-  const existingPlans = await firstOk(request, [["POST", "/v3/plans/search", { limit: 100, offset: 0 }]]);
+  const existingPlans = await firstOk(request, [["POST", "/v3/plans/search", PAGE_100]]);
   if (!existingPlans.result) throw new ProvisionError(`No se pudo listar los planes de Rebill (${existingPlans.tried.join(" | ")}): no se crea nada para no duplicar.`);
   const plans = recordsOf(existingPlans.result.body) ?? [];
-  const existingLinks = await firstOk(request, [["POST", "/v3/payment-links/search", { limit: 100, offset: 0 }]]);
+  const existingLinks = await firstOk(request, [["POST", "/v3/payment-links/search", PAGE_100]]);
   if (!existingLinks.result) throw new ProvisionError(`No se pudo listar los payment links (${existingLinks.tried.join(" | ")}): no se crea nada para no duplicar.`);
   const links = recordsOf(existingLinks.result.body) ?? [];
 

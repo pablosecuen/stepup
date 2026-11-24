@@ -198,7 +198,9 @@ test("cancelar = PAUSAR (no dar de baja); reanudar manda la fecha del próximo c
   assert.deepEqual(buildPauseRequest("sub_1"), { method: "PATCH", path: "/v3/subscriptions/sub_1", json: { status: "paused" } });
   assert.deepEqual(buildResumeRequest("sub_1", "2026-12-01T15:00:00.000Z").json, { status: "active", nextChargeDate: "2026-12-01T15:00:00.000Z" });
   assert.equal(buildCardUpdateLinkRequest("sub_1").path, "/v3/subscriptions/sub_1/card/update-link");
-  assert.equal(buildSearchPaymentsRequest({ limit: 500, offset: -4, subscriptionId: "sub_1" }).json && (buildSearchPaymentsRequest({ limit: 500, offset: -4 }).json as { limit: number; offset: number }).limit, 100);
+  // Cuerpo comprobado contra la API real (24/11/2026): paginación anidada y filtros dentro de `filters`; nada suelto en la raíz (Rebill responde 400).
+  assert.deepEqual(buildSearchPaymentsRequest({ limit: 500, offset: -4 }).json, { pagination: { limit: 100, offset: 0, order: "DESC" } });
+  assert.deepEqual(buildSearchPaymentsRequest({ limit: 50, offset: 100, subscriptionId: "sub_1" }).json, { pagination: { limit: 50, offset: 100, order: "DESC" }, filters: { subscriptionId: "sub_1" } });
   assert.equal(resumeInstantIso("2027-02-12"), "2027-02-12T15:00:00.000Z");
   assert.equal(resumeInstantIso("12/02/2027"), null);
 

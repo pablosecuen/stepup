@@ -104,9 +104,21 @@ export interface RebillRequest {
 export const buildGetPaymentRequest = (paymentId: string): RebillRequest => ({ method: "GET", path: `/v3/payments/${encodeURIComponent(paymentId)}` });
 export const buildGetSubscriptionRequest = (subscriptionId: string): RebillRequest => ({ method: "GET", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}` });
 
-/** Búsqueda paginada de pagos, los más recientemente actualizados primero (`sortBy: updated_at`): no depende de los nombres de los filtros de fecha. */
+/**
+ * Búsqueda paginada de pagos. Cuerpo comprobado contra la API real del sandbox (24/11/2026): la paginación va ANIDADA en
+ * `pagination: { limit, offset, order }` y los filtros en `filters`; Rebill responde 400 ante `limit`, `offset`, `sortBy`, `sortOrder`
+ * o `subscriptionId` sueltos en la raíz. `order: "DESC"` es aceptado; que ordene por fecha de actualización (lo que el barrido
+ * global necesita para cortar en el primer pago viejo) se confirma con el primer pago real del sandbox.
+ */
 export function buildSearchPaymentsRequest(input: { limit: number; offset: number; subscriptionId?: string }): RebillRequest {
-  return { method: "POST", path: "/v3/payments/search", json: { limit: Math.min(100, Math.max(1, input.limit)), offset: Math.max(0, input.offset), sortBy: "updated_at", sortOrder: "DESC", ...(input.subscriptionId ? { subscriptionId: input.subscriptionId } : {}) } };
+  return {
+    method: "POST",
+    path: "/v3/payments/search",
+    json: {
+      pagination: { limit: Math.min(100, Math.max(1, input.limit)), offset: Math.max(0, input.offset), order: "DESC" },
+      ...(input.subscriptionId ? { filters: { subscriptionId: input.subscriptionId } } : {}),
+    },
+  };
 }
 
 /** Cancelar la renovación = PAUSAR (`PATCH status: paused`): conserva la suscripción y permite reanudarla. La baja `cancelled` de Rebill es terminal y no se usa. */
