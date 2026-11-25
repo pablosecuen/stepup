@@ -171,12 +171,8 @@ export async function loadHomeData(ctx: AuthenticatedDbContext): Promise<HomeDat
   });
 
   const collectionsUrgency = summarizeCollectionsUrgency(collectionEntries, todayDateKey);
-  const remindersSummary = buildRemindersCenterSummary({
-    emptyClassItems: emptyClasses.items,
-    pendingLessons,
-    collectionEntries,
-    todayDateKey,
-  });
+  // Recordatorios: sólo lo que no tiene su propio bloque (clases sin alumnos). Las clases por registrar y los cobros viven en los suyos.
+  const remindersSummary = buildRemindersCenterSummary({ emptyClassItems: emptyClasses.items });
 
   return {
     todayDateKey,

@@ -176,7 +176,7 @@ test("no reaparecen funciones retiradas: Comenzar clase, Ajustar horario, Visto/
 test("insignias de notificación rojas, con el dato en texto", () => {
   assert.match(FRAME, /export function NotificationBadge[\s\S]*bg-bad[\s\S]*text-white/);
   assert.match(SCREENS, /<NotificationBadge count=\{2\} \/>/);
-  assert.match(FLOATS, /Recordatorio[\s\S]*bg-bad[\s\S]*2 pagos próximos a vencer/);
+  assert.match(FLOATS, /Recordatorio[\s\S]*bg-bad[\s\S]*Clases sin alumnos/, "el recordatorio ilustrativo es una clase sin alumnos (los pagos viven en Cobros)");
   assert.match(FLOATS, /<span aria-hidden className="absolute -right-2 -top-2/, "la insignia es decorativa: el dato va en texto");
 });
 

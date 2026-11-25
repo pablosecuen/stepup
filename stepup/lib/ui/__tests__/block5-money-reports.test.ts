@@ -81,7 +81,7 @@ test("ChargeActions: las acciones y la clave de operación no cambiaron; sólo e
   assert.match(actions, /<DialogContext title=\{joinContextTitle\(context\?\.studentName, context\?\.concept\)\}/);
 });
 
-test("Recordatorios: las cuatro categorías reales, sin acciones nuevas para «resolver» y «Todo al día» cuando no queda nada", () => {
+test("Recordatorios: las categorías reales (hoy sólo clases sin alumnos), sin acciones nuevas para «resolver» y «Todo al día» cuando no queda nada", () => {
   const view = code(VIEWS[1]);
   assert.match(view, /summary\.categories\.map\(\(category\) =>/);
   assert.match(view, /message="Todo al día\. No hay recordatorios pendientes\."/);
@@ -89,8 +89,8 @@ test("Recordatorios: las cuatro categorías reales, sin acciones nuevas para «r
   assert.match(view, /item\.subtitle/);
   assert.doesNotMatch(view, /Button|onClick|useState|href=\{`/, "las filas son informativas: no existe una acción para resolver un recordatorio");
   const icons = code("components/reminders/reminder-icons.ts");
-  for (const kind of ["clases_sin_alumnos", "clases_sin_registrar", "pagos_por_vencer"]) assert.ok(icons.includes(kind), kind);
-  assert.ok(!icons.includes("pagos_vencidos"), "los pagos vencidos no son recordatorios");
+  assert.ok(icons.includes("clases_sin_alumnos"), "clases_sin_alumnos");
+  for (const kind of ["clases_sin_registrar", "pagos_por_vencer", "pagos_vencidos"]) assert.ok(!icons.includes(kind), `${kind} ya no es un recordatorio (vive en su propio bloque)`);
   assert.match(code("components/dashboard/home-view.tsx"), /import \{ REMINDER_ICONS \} from "@\/components\/reminders\/reminder-icons"/, "Inicio y Recordatorios comparten íconos");
 });
 

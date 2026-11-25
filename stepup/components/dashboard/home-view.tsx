@@ -152,7 +152,7 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
           </div>
         )}
 
-        {/* Pendientes: clases por registrar → recordatorios → cobros de hoy */}
+        {/* Pendientes: clases por registrar → recordatorios (sólo si hay) → cobros de hoy */}
         <div className="flex min-w-0 flex-col gap-5">
           {pending.length > 0 ? (
             <section aria-labelledby="por-registrar" data-enter="3" className={`tf-enter ${PANEL}`}>
@@ -183,27 +183,25 @@ export function HomeView({ data, welcome }: { data: HomeData; welcome: HomeWelco
             )
           )}
 
-          {(remindersCount > 0 || !onboarding) && (
+          {/* Recordatorios: sólo lo que no tiene su propio bloque (hoy, clases sin alumnos). Sin ninguno no se dibuja la tarjeta ni queda su espacio
+              (nada de «No hay recordatorios»): las clases por registrar y los cobros viven únicamente en los suyos. */}
+          {remindersCount > 0 && (
             <section aria-labelledby="recordatorios-resumen" data-enter="3" className={`tf-enter ${PANEL}`}>
               <PanelHeader id="recordatorios-resumen" title="Recordatorios" count={remindersCount} href="/recordatorios" />
-              {remindersCount === 0 ? (
-                <p className="border-t border-border px-4 py-3 text-[14px] text-textMuted nav:px-5">No hay recordatorios pendientes.</p>
-              ) : (
-                <ul>
-                  {data.remindersSummary.categories.map((category) => {
-                    const { icon: Icon } = REMINDER_ICONS[category.kind];
-                    return (
-                      <li key={category.kind}>
-                        <Link href="/recordatorios" className={`min-h-14 ${ROW}`}>
-                          <Icon className="h-5 w-5 shrink-0 text-textSecondary" aria-hidden />
-                          <span className="min-w-0 flex-1 text-[14.5px] font-[650]">{category.label}</span>
-                          <Badge tone="bad">{category.items.length}</Badge>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <ul>
+                {data.remindersSummary.categories.map((category) => {
+                  const { icon: Icon } = REMINDER_ICONS[category.kind];
+                  return (
+                    <li key={category.kind}>
+                      <Link href="/recordatorios" className={`min-h-14 ${ROW}`}>
+                        <Icon className="h-5 w-5 shrink-0 text-textSecondary" aria-hidden />
+                        <span className="min-w-0 flex-1 text-[14.5px] font-[650]">{category.label}</span>
+                        <Badge tone="bad">{category.items.length}</Badge>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           )}
 

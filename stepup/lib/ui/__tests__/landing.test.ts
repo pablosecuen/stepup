@@ -55,9 +55,53 @@ test("el recorrido es un tablist accesible: roles, aria-selected, tabIndex rotat
   assert.equal((TOUR.match(/<Monitor /g) ?? []).length, 1, "un solo marco para las cinco pantallas");
   const natural = read("components/landing/landing-natural.css");
   assert.match(natural, /\.tf-tour-panel\[hidden\][\s\S]*?display: block; visibility: hidden/);
-  assert.match(natural, /\.tf-tour-copy > div \{ grid-area: 1 \/ 1/);
+  assert.match(natural, /\.tf-tour-titles > p,\s*\.tf-landing \.tf-tour-texts > p \{ grid-area: 1 \/ 1/, "los textos comparten celda: el pie reserva el alto del más largo");
   assert.doesNotMatch(TOUR, /setInterval|autoplay|requestAnimationFrame/, "no avanza solo");
   for (const key of ["inicio", "calendario", "perfil", "cobros", "resumen"]) assert.ok(SECTIONS.includes(`key: "${key}"`), key);
+});
+
+test("recorrido: UN solo marco que cabe bajo el encabezado fijo, limitado por alto y por ancho, con controles que no cambian de lugar", () => {
+  const css = read("components/landing/landing-natural.css");
+  const tourRules = css.slice(css.indexOf("Recorrido: UN solo marco"), css.indexOf("Nombres largos"));
+  // Alto: lo visible bajo el encabezado fijo (100svh − encabezado − relleno de la caja), nunca un alto fijo para todas las vistas.
+  assert.match(tourRules, /100svh - var\(--tf-hdr\) - 2 \* var\(--tf-box-pad\)/, "limitado por la altura disponible bajo el encabezado");
+  assert.match(tourRules, /@media \(min-width: 1024px\) \{\s*\.tf-landing \.tf-tour \{ height: clamp\([^;]*min\(calc\(100svh[^;]*cqw/, "en escritorio también lo limita el ancho");
+  assert.match(tourRules, /\.tf-tour-box \{\s*container-type: inline-size;/, "el ancho de su caja es el contenedor de las unidades cqw");
+  assert.doesNotMatch(tourRules, /\.tf-tour-stage \{[^}]*height: clamp\(\d+px, \d+vw/, "la pantalla ya no tiene un alto fijo por vista");
+  // El alto lo reparte una columna flexible: pestañas y pie con su alto propio, la pantalla con lo que sobra.
+  assert.match(tourRules, /\.tf-tour \{\s*display: flex;\s*flex-direction: column;/);
+  assert.match(tourRules, /\.tf-tour-stage \{\s*display: grid;\s*flex: 1 1 0;/);
+  assert.match(tourRules, /\.tf-tour-foot \{\s*display: grid;\s*flex: none;/);
+  // Lo que no entra se recorre DENTRO de la pantalla; el marco exterior no crece ni oculta los controles.
+  assert.match(tourRules, /\.tf-tour-panel \{[^}]*overflow: auto/);
+  assert.match(tourRules, /\.tf-tour-stage \{ container: tstage \/ size; \}/, "la pantalla es un contenedor de tamaño: las demostraciones se componen según el alto que les toca");
+  // Estructura: las pestañas, el marco y las flechas son hermanos del recorrido (no viven dentro de cada pantalla).
+  const panel = TOUR.slice(TOUR.indexOf("tf-tour-panel"), TOUR.indexOf("tf-tour-foot"));
+  assert.doesNotMatch(panel, /role="tab"|Pantalla (anterior|siguiente)/, "ningún control exterior dentro de una pantalla");
+  assert.equal((TOUR.match(/Pantalla anterior/g) ?? []).length, 1);
+  assert.equal((TOUR.match(/Pantalla siguiente/g) ?? []).length, 1);
+  assert.doesNotMatch(TOUR, /\bmt-6\b|nav:mt-8/, "sin márgenes decorativos entre las partes");
+  // La animación de cambio va en el panel (el contenedor que desplaza), no en la maqueta interna: no crea un desborde pasajero.
+  assert.match(TOUR, /"tf-tour-panel tf-tab-in"/);
+  const sections = read("components/landing/sections.tsx");
+  assert.match(sections, /className="tf-tour-box mt-8 rounded-\[24px\] nav:mt-10"/, "la caja del recorrido ya no suma un relleno decorativo propio");
+});
+
+test("recorrido: las cinco maquetas se adaptan al alto con reglas del contenedor (sin reducir la interfaz) y conservan su contenido", () => {
+  const css = read("components/landing/landing-natural.css");
+  assert.match(css, /@container tstage \(min-width: 600px\) and \(max-height: 470px\)/);
+  assert.doesNotMatch(css, /\.tf-tour[^{]*\{[^}]*(?:transform: scale|zoom:)/, "no se achica toda la interfaz");
+  const screens = read("components/landing/screens.tsx");
+  for (const marker of ["tf-mk-figs", "tf-mk-dayrows", "tf-mk-charges", "tf-mk-payments", "tf-mk-legend", "tf-mk-extra"]) assert.ok(screens.includes(marker), marker);
+  assert.match(screens, /const HPX = "var\(--tf-hpx, 44px\)"/, "la hora del calendario es una variable (44 px fuera del recorrido)");
+  assert.match(css, /\.tf-tour-stage \.tf-mk-tabbar \{ position: sticky; bottom: 0;/, "en teléfono la barra inferior queda al pie visible");
+});
+
+test("textos aprobados de la portada: «Pensado para profesores» en el héroe y nunca «Para profesoras y profesores independientes» como etiqueta", () => {
+  assert.match(SECTIONS, /<Badge tone="accent">Pensado para profesores<\/Badge>/);
+  assert.doesNotMatch(SECTIONS, /<Badge[^>]*>Para profesoras y profesores independientes<\/Badge>/);
+  assert.doesNotMatch(SECTIONS, /TeacherFlow es la plataforma web para profesoras y profesores independientes\. Organizá/, "el párrafo del héroe aprobado (sin esa frase)");
+  assert.match(SECTIONS, /Organizá tus clases y series, acompañá a tus alumnos y llevá tus cobros al día, sin planillas ni cuadernos\./);
 });
 
 test("movimiento: aparición de 320 ms con 16 px, una sola observadora, sin animaciones infinitas y con «reducir movimiento» respetado", () => {

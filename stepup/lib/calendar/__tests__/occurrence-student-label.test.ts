@@ -6,7 +6,7 @@ import { resolveOccurrenceStudentLabel, type StudentForLabel } from "../occurren
 import { buildCalendarViewForRange } from "../occurrences.ts";
 import { buildParticipantFreezePayload } from "../participants-freeze-payload.ts";
 import { buildPendingLessons } from "../../lessons/pending.ts";
-import { buildRemindersCenterSummary } from "../../dashboard/reminders-center.ts";
+import { agendaLessonLabel } from "../../dashboard/lesson-label.ts";
 import type { RecurrenceRuleForEngine, RecurrenceWeek } from "../types.ts";
 
 /**
@@ -119,7 +119,7 @@ test("MISMA regla que las clases materializadas: el nombre/nivel de la virtual c
   }
 });
 
-test("Calendario, Inicio, Registro y Recordatorios muestran el nombre de una ocurrencia virtual individual y de grupo", () => {
+test("Calendario, Inicio y Registro muestran el nombre de una ocurrencia virtual individual y de grupo", () => {
   const individual = virtualItems(rule({ recurrenceId: "r-ind" }), STUDENTS);
   const group = virtualItems(rule({ recurrenceId: "r-grp", studentId: BETO.id, participantIds: [ANA.id, BETO.id] }), STUDENTS);
   const empty = virtualItems(rule({ recurrenceId: "r-vacia", studentId: null as never, participantIds: [] }), STUDENTS);
@@ -131,12 +131,11 @@ test("Calendario, Inicio, Registro y Recordatorios muestran el nombre de una ocu
   assert.equal(cardLabel(group[0]), "QA Alumno Dos");
   assert.equal(cardLabel(empty[0]), "Serie sin alumnos");
 
-  // Registro y Recordatorios: la lista real de "clases sin registrar" y su título real.
+  // Inicio («Clases por registrar») y Registro: la lista real de clases sin registrar y su título real. Recordatorios ya no repite esa lista (24/11/2026).
   const pending = buildPendingLessons({ calendarItems: items, now: new Date("2026-10-12T12:00:00Z"), registrations: [] });
-  const summary = buildRemindersCenterSummary({ emptyClassItems: [], pendingLessons: pending, collectionEntries: [], todayDateKey: "2026-10-12" });
-  const titles = summary.categories.find((category) => category.kind === "clases_sin_registrar")?.items.map((entry) => entry.title) ?? [];
-  assert.ok(titles.includes("QA Alumno Editado"), `Recordatorios muestra el alumno individual (${titles.join(" | ")})`);
-  assert.ok(titles.includes("Clase grupal · 2 alumnos"), "Recordatorios muestra la clase grupal por su cantidad");
+  const titles = pending.map((entry) => agendaLessonLabel(entry.item));
+  assert.ok(titles.includes("QA Alumno Editado"), `Inicio muestra el alumno individual (${titles.join(" | ")})`);
+  assert.ok(titles.includes("Clase grupal · 2 alumnos"), "Inicio muestra la clase grupal por su cantidad");
   assert.ok(titles.includes("Sin alumnos"), "y SÓLO la realmente vacía queda como 'Sin alumnos'");
   assert.equal(titles.filter((title) => title === "Sin alumnos").length, 1);
 });
@@ -147,7 +146,6 @@ test("cableado: las pantallas siguen leyendo `item.studentName` (la corrección 
   assert.match(read("components/calendar/real-lesson-detail-modal.tsx"), /item\.title\?\.trim\(\) \|\| item\.studentName \|\| "Serie sin alumnos"/);
   assert.match(read("components/registro/pending-list-view.tsx"), /item\.studentName \|\| "Sin alumnos"/);
   assert.match(read("lib/dashboard/lesson-label.ts"), /item\.studentName \|\| "Sin alumnos"/);
-  assert.match(read("lib/dashboard/reminders-center.ts"), /pending\.item\.studentName \|\| "Sin alumnos"/);
   assert.match(read("lib/calendar/view.ts"), /listStudents\(ctx\)/);
   assert.match(read("lib/calendar/compose.ts"), /students: new Map\(students\.map/);
 });

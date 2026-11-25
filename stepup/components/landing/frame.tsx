@@ -48,7 +48,7 @@ export function MockApp({ active, children }: { active: MockNavKey; children: Re
           </div>
         </aside>
         <div className="flex min-w-0 flex-col">
-          <div className="min-w-0 flex-1 px-3.5 pb-4 pt-3.5">{children}</div>
+          <div className="tf-mk-pad min-w-0 flex-1 px-3.5 pb-4 pt-3.5">{children}</div>
           <div className="tf-mk-tabbar justify-around border-t border-border bg-surface px-1 py-1.5 text-textMuted">
             {NAV.map(({ key, label, Icon }) => (
               <div key={key} className={`flex flex-col items-center gap-0.5 text-[11px] font-medium ${key === active ? "text-accentDark" : ""}`}>

@@ -60,14 +60,14 @@ export function FloatReminder({ className }: P) {
         <span className="relative mr-2 inline-flex">
           <BellIcon className="h-3.5 w-3.5" />
           <span aria-hidden className="absolute -right-2 -top-2 inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-pill bg-bad px-[3px] text-[10px] font-bold leading-none text-white">
-            2
+            1
           </span>
         </span>
       }
       className={className}
     >
-      <p className="text-[13.5px] font-bold leading-snug">2 pagos próximos a vencer</p>
-      <p className="mt-0.5 text-[12px] text-textMuted">Mateo S. vence hoy · Sofía I. vence el jueves</p>
+      <p className="text-[13.5px] font-bold leading-snug">Clases sin alumnos</p>
+      <p className="mt-0.5 text-[12px] text-textMuted">Serie de los jueves · jue 15/10</p>
       <p className="mt-2 flex items-center gap-1 text-[12.5px] font-[650] text-accentDark">
         Ver recordatorios <ArrowRightIcon className="h-3.5 w-3.5" />
       </p>

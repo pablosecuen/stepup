@@ -68,7 +68,7 @@ export function ScreenInicio() {
     <MockApp active="inicio">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[12px] font-[650] text-textMuted">Miércoles, 14 de octubre</p>
+          <p className="tf-mk-date text-[12px] font-[650] text-textMuted">Miércoles, 14 de octubre</p>
           <p className="font-display text-[26px] font-medium leading-tight tracking-[-0.025em]">
             Buenas tardes, <em className="font-normal text-accentDark">Docente</em>
           </p>
@@ -78,14 +78,14 @@ export function ScreenInicio() {
           Nueva clase
         </span>
       </div>
-      <div className="mt-3 flex divide-x divide-border border-y border-border py-2.5">
+      <div className="tf-mk-figs mt-3 flex divide-x divide-border border-y border-border py-2.5">
         <Figure value="6" label="clases hoy" />
         <Figure value="2" label="por registrar" />
-        <Figure value="3" label="recordatorios" />
+        <Figure value="1" label="recordatorio" />
       </div>
       <div className="tf-mk-two mt-3.5">
         <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex min-h-[78px] items-center justify-between gap-3 rounded-[12px] bg-side px-4 py-3 text-white">
+          <div className="tf-mk-next flex min-h-[78px] items-center justify-between gap-3 rounded-[12px] bg-side px-4 py-3 text-white">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-sideText">Próxima clase</p>
               <p className="mt-1 flex flex-wrap items-baseline gap-x-3">
@@ -100,7 +100,7 @@ export function ScreenInicio() {
           </div>
           <div className={PANEL}>
             <PanelTitle right={<span className="text-[12px] text-textMuted">6 clases</span>}>Tu día</PanelTitle>
-            <ul className="pb-1.5">
+            <ul className="tf-mk-dayrows pb-1.5">
               {DAY_LESSONS.slice(0, 5).map((lesson) => (
                 <DayRow key={lesson.time + lesson.title} lesson={lesson} />
               ))}
@@ -164,7 +164,8 @@ function DayRow({ lesson }: { lesson: DemoDayLesson }) {
 
 // ── Calendario ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const HOUR_PX = 44;
+/** Alto de una hora de la grilla: una variable CSS (44 px por defecto) para que el recorrido pueda compactarla cuando le falta alto. */
+const HPX = "var(--tf-hpx, 44px)";
 
 function lessonPalette(lesson: DemoLesson): { bg: string; border: string; text: string; sub: string } {
   if (lesson.kind === "elapsed") return { bg: ELAPSED_COLORS.bg, border: ELAPSED_COLORS.border, text: ELAPSED_COLORS.textPrimary, sub: ELAPSED_COLORS.textSecondary };
@@ -191,7 +192,7 @@ export function WeekGrid({ highlight }: { highlight?: { day: number; start: numb
       <div className="tf-mk-week">
         <div>
           {hours.map((hour) => (
-            <p key={hour} style={{ height: HOUR_PX }} className="pr-1.5 pt-0.5 text-right text-[11px] text-textMuted tf-num">
+            <p key={hour} style={{ height: HPX }} className="pr-1.5 pt-0.5 text-right text-[11px] text-textMuted tf-num">
               {hour}:00
             </p>
           ))}
@@ -200,9 +201,9 @@ export function WeekGrid({ highlight }: { highlight?: { day: number; start: numb
           <div
             key={day.short}
             className={`relative border-l border-border ${dayIndex >= 3 ? "tf-mk-md" : ""}`}
-            style={{ height: HOUR_PX * WEEK_HOURS, backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${HOUR_PX}px` }}
+            style={{ height: `calc(${HPX} * ${WEEK_HOURS})`, backgroundImage: "linear-gradient(to bottom, #E6DAC4 1px, transparent 1px)", backgroundSize: `100% ${HPX}` }}
           >
-            {dayIndex === 0 && <span className="absolute inset-x-0 z-10 h-[2px]" style={{ top: (10.35 - WEEK_FIRST_HOUR) * HOUR_PX, background: CURRENT_TIME_COLOR }} />}
+            {dayIndex === 0 && <span className="absolute inset-x-0 z-10 h-[2px]" style={{ top: `calc(${HPX} * ${10.35 - WEEK_FIRST_HOUR})`, background: CURRENT_TIME_COLOR }} />}
             {WEEK_LESSONS.filter((lesson) => lesson.day === dayIndex).map((lesson) => {
               const palette = lessonPalette(lesson);
               const label = KIND_LABEL[lesson.kind];
@@ -211,7 +212,7 @@ export function WeekGrid({ highlight }: { highlight?: { day: number; start: numb
                 <div
                   key={`${lesson.day}-${lesson.start}`}
                   className={`absolute inset-x-[3px] overflow-hidden rounded-[6px] px-1.5 py-[3px] leading-tight ${lifted ? "z-20 ring-2 ring-ink ring-offset-1" : ""}`}
-                  style={{ top: (lesson.start - WEEK_FIRST_HOUR) * HOUR_PX + 1, height: lesson.hours * HOUR_PX - 2, background: palette.bg, borderLeft: `3px solid ${palette.border}`, color: palette.text }}
+                  style={{ top: `calc(${HPX} * ${lesson.start - WEEK_FIRST_HOUR} + 1px)`, height: `calc(${HPX} * ${lesson.hours} - 2px)`, background: palette.bg, borderLeft: `3px solid ${palette.border}`, color: palette.text }}
                 >
                   <p className={`text-[11.5px] font-bold ${lesson.kind === "cancelled" ? "line-through" : ""}`}>{lesson.title}</p>
                   <p className="text-[11px]" style={{ color: palette.sub }}>
@@ -251,7 +252,7 @@ export function ScreenCalendarioSemana({ highlight }: { highlight?: { day: numbe
 
 export function ModalityLegend() {
   return (
-    <p className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-textSecondary">
+    <p className="tf-mk-legend mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-textSecondary">
       {(["online", "presencial", "mixta"] as LessonModality[]).map((modality) => (
         <span key={modality} className="inline-flex items-center gap-1.5">
           <i className="block h-3 w-3 rounded-[3px]" style={{ background: MODALITY_COLORS[modality].bg, border: `1.5px solid ${MODALITY_COLORS[modality].border}` }} />
@@ -433,6 +434,17 @@ function ProfileBody({ tab }: { tab: ProfileTab }) {
           <p className="mt-1 text-[13px] leading-snug">Present perfect: ejercicios 1 a 4. Tarea: leer el capítulo 3.</p>
         </div>
       </div>
+      {/* Sólo aparece dentro del recorrido cuando sobra alto (ver .tf-mk-extra en landing-natural.css): mismas filas de la pestaña «Clases». */}
+      <div className={`tf-mk-extra ${PANEL} overflow-hidden`}>
+        <PanelTitle>Últimas clases</PanelTitle>
+        {DEMO_HISTORY.slice(0, 3).map((entry) => (
+          <div key={entry.date} className="flex items-center gap-3 border-t border-border px-3.5 py-2.5">
+            <span className="w-[68px] shrink-0 text-[12.5px] font-[650] tf-num">{entry.date}</span>
+            <span className="min-w-0 flex-1 text-[13px] leading-snug">{entry.note}</span>
+            <Badge tone={entry.state === "Dictada" ? "ok" : "neutral"}>{entry.state}</Badge>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -467,7 +479,7 @@ export function ScreenPerfil({ tab = "Resumen", framed = true }: { tab?: Profile
 
 export function ChargeRows({ limit = 5 }: { limit?: number }) {
   return (
-    <ul className={`${PANEL} overflow-hidden`}>
+    <ul className={`tf-mk-charges ${PANEL} overflow-hidden`}>
       {DEMO_CHARGES.slice(0, limit).map((charge) => (
         <li key={charge.student} className="flex items-center gap-3 border-b border-border px-3.5 py-2.5 last:border-b-0">
           <Avatar initial={charge.student[0]} tone={charge.tone} size="m" />
@@ -491,7 +503,7 @@ export function ScreenCobros() {
   return (
     <MockApp active="cobros">
       <MockHeader title="Cobros" sub="Octubre 2026" right={<Segmented items={["Cobros", "Resumen financiero"]} active="Cobros" />} />
-      <div className="mt-3 flex divide-x divide-border border-y border-border py-2.5">
+      <div className="tf-mk-figs mt-3 flex divide-x divide-border border-y border-border py-2.5">
         <Figure value={formatMoney(144000)} label="pendiente de cobro" />
         <Figure value="1" label="vencido" tone="text-bad" />
         <Figure value="2" label="vencen esta semana" />
@@ -499,7 +511,7 @@ export function ScreenCobros() {
       <div className="mt-3">
         <ChargeRows />
       </div>
-      <ul className={`${PANEL} mt-3 overflow-hidden`}>
+      <ul className={`tf-mk-payments ${PANEL} mt-3 overflow-hidden`}>
         <li className="px-3.5 pb-1 pt-3 font-display text-[16px] font-semibold tracking-tight">Pagos registrados</li>
         {DEMO_PAYMENTS.slice(0, 2).map((payment) => (
           <li key={payment.student} className="flex items-center justify-between gap-3 border-t border-border px-3.5 py-2 text-[13px]">
@@ -562,7 +574,7 @@ export function MiniBars({ height = 96 }: { height?: number }) {
   const months = ["may", "jun", "jul", "ago", "sep", "oct"];
   return (
     <div>
-      <div className="flex items-end gap-2 border-b-[1.5px] border-borderMid" style={{ height }}>
+      <div className="flex items-end gap-2 border-b-[1.5px] border-borderMid" style={{ height: `var(--tf-bars, ${height}px)` }}>
         {DEMO_COLLECTED.map((point) => (
           <span key={point.month} className="block flex-1 rounded-t-md bg-ok" style={{ height: `${Math.round((point.amount / max) * 100)}%` }} />
         ))}

@@ -13,11 +13,18 @@ export interface TourItem {
   alt: string;
 }
 
+const ARROW =
+  "inline-flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-sideLine text-white transition-colors duration-200 hover:bg-sideActive focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent focus-visible:ring-offset-2 focus-visible:ring-offset-side motion-reduce:transition-none";
+
 /**
  * Recorrido interactivo: la computadora permanece y la persona elige la pantalla (pestañas accesibles con flechas, Inicio y Fin, y
  * botones Anterior / Siguiente). Las cinco maquetas llegan renderizadas desde el servidor, sin descargar componentes al elegirlas.
- * Comparten un marco de altura estable; el contenido largo se recorre dentro de la pantalla sin mover los controles externos. Sólo se muestra la elegida, con un
- * cambio suave de 260 ms (sin movimiento con «reducir movimiento»). No es un video: nada avanza solo.
+ *
+ * Comparten UN solo marco: el recorrido completo (pestañas, pantalla, descripción y flechas) mide como máximo lo que queda visible bajo el
+ * encabezado fijo y nunca más de lo que su ancho justifica (ver `.tf-tour` en landing-natural.css). El alto lo reparte una columna flexible:
+ * pestañas y pie con su alto propio y la pantalla con todo lo que sobra, así pestañas, marco y flechas no se mueven al cambiar de pantalla.
+ * Lo que no entra en la pantalla se recorre dentro de su área. Sólo se muestra la elegida, con un cambio suave de 260 ms (sin movimiento con
+ * «reducir movimiento»). No es un video: nada avanza solo.
  */
 export function Tour({ items, screens }: { items: readonly TourItem[]; screens: readonly ReactNode[] }) {
   const [active, setActive] = useState(0);
@@ -37,7 +44,7 @@ export function Tour({ items, screens }: { items: readonly TourItem[]; screens: 
 
   return (
     <div className="tf-tour">
-      <div role="tablist" aria-label="Pantallas de TeacherFlow" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden nav:mx-0 nav:flex-wrap nav:justify-center nav:overflow-visible nav:px-0">
+      <div role="tablist" aria-label="Pantallas de TeacherFlow" className="tf-tour-tabs -mx-3 flex gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden nav:mx-0 nav:flex-wrap nav:justify-center nav:overflow-visible nav:px-0">
         {items.map((item, index) => (
           <button
             key={item.key}
@@ -61,44 +68,38 @@ export function Tour({ items, screens }: { items: readonly TourItem[]; screens: 
         ))}
       </div>
 
-      <div className="mt-6 nav:mt-8">
-        <Monitor path={current.key === "perfil" ? "alumnos/perfil" : current.key === "resumen" ? "resumen-financiero" : current.key}>
-          <div className="tf-tour-stage">
-            {items.map((item, index) => (
-              <div key={item.key} role="tabpanel" id={`tour-panel-${item.key}`} aria-labelledby={`tour-tab-${item.key}`} hidden={index !== active} inert={index !== active} className="tf-tour-panel">
-                <div role="img" aria-label={item.alt} className={index === active ? "tf-tour-screen tf-tab-in" : "tf-tour-screen"}>
-                  {screens[index]}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Monitor>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 nav:mt-8">
-        <div className="tf-tour-copy max-w-[640px]" aria-live="polite">
+      <Monitor className="tf-tour-monitor" path={current.key === "perfil" ? "alumnos/perfil" : current.key === "resumen" ? "resumen-financiero" : current.key}>
+        <div className="tf-tour-stage">
           {items.map((item, index) => (
-            <div key={item.key} hidden={index !== active}>
-              <p className="font-display text-[24px] font-semibold leading-tight tracking-tight text-white">{item.title}</p>
-              <p className="mt-1.5 text-[16px] leading-relaxed text-sideText">{item.text}</p>
+            <div key={item.key} role="tabpanel" id={`tour-panel-${item.key}`} aria-labelledby={`tour-tab-${item.key}`} hidden={index !== active} inert={index !== active} className={index === active ? "tf-tour-panel tf-tab-in" : "tf-tour-panel"}>
+              <div role="img" aria-label={item.alt} className="tf-tour-screen">
+                {screens[index]}
+              </div>
             </div>
           ))}
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => select(active - 1, false)}
-            aria-label="Pantalla anterior"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-sideLine text-white transition-colors duration-200 hover:bg-sideActive focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent focus-visible:ring-offset-2 focus-visible:ring-offset-side motion-reduce:transition-none"
-          >
+      </Monitor>
+
+      <div className="tf-tour-foot" aria-live="polite">
+        <div className="tf-tour-titles">
+          {items.map((item, index) => (
+            <p key={item.key} hidden={index !== active} className="font-display text-[20px] font-semibold leading-tight tracking-tight text-white nav:text-[22px]">
+              {item.title}
+            </p>
+          ))}
+        </div>
+        <div className="tf-tour-texts">
+          {items.map((item, index) => (
+            <p key={item.key} hidden={index !== active} className="text-[15px] leading-snug text-sideText nav:text-[16px]">
+              {item.text}
+            </p>
+          ))}
+        </div>
+        <div className="tf-tour-arrows">
+          <button type="button" onClick={() => select(active - 1, false)} aria-label="Pantalla anterior" className={ARROW}>
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => select(active + 1, false)}
-            aria-label="Pantalla siguiente"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border-[1.5px] border-sideLine text-white transition-colors duration-200 hover:bg-sideActive focus:outline-none focus-visible:ring-2 focus-visible:ring-sideAccent focus-visible:ring-offset-2 focus-visible:ring-offset-side motion-reduce:transition-none"
-          >
+          <button type="button" onClick={() => select(active + 1, false)} aria-label="Pantalla siguiente" className={ARROW}>
             <ChevronRightIcon className="h-5 w-5" />
           </button>
         </div>

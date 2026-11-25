@@ -8,7 +8,8 @@ import { REMINDER_ICONS } from "@/components/reminders/reminder-icons";
 import type { RemindersCenterSummary } from "@/lib/dashboard/reminders-center";
 
 /**
- * Recordatorios (presentación). Las cuatro categorías reales con lo que ya traen (título y subtítulo). Hoy no existe una acción
+ * Recordatorios (presentación). Las categorías reales (hoy sólo las clases sin alumnos: las clases por registrar y los pagos viven en
+ * Registro, Cobros e Inicio) con lo que ya traen (título y subtítulo). Hoy no existe una acción
  * para «resolver» un recordatorio —uno resuelto desaparece—, así que las filas son sólo informativas.
  */
 export function RemindersView({ summary }: { summary: RemindersCenterSummary }) {

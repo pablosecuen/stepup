@@ -338,23 +338,144 @@
   color: var(--n-brown);
 }
 
-/* El marco mantiene su tamaño desde el HTML inicial. Las pantallas comparten la
- * celda, y hidden/inert excluyen las inactivas de la lectura y la interacción.
- * El texto inferior reserva el alto de su descripción más larga. */
-.tf-landing .tf-tour-stage,
-.tf-landing .tf-tour-copy { display: grid; grid-template-columns: minmax(0, 1fr); }
-.tf-landing .tf-tour-stage {
-  height: clamp(560px, 55vw, 640px);
-  grid-template-rows: minmax(0, 1fr);
+/* ── Recorrido: UN solo marco, limitado por el alto visible y por el ancho ─────────────────────────────────────────────────
+ * El recorrido completo (pestañas + pantalla + descripción + flechas) mide a lo sumo lo que queda bajo el encabezado fijo
+ * (100svh − alto del encabezado − el relleno de su caja) y nunca más de lo que su ancho justifica (56 % del ancho + el alto de los controles),
+ * así no se agranda en pantallas anchas y bajas ni queda fuera de la vista a zoom 100 %. Es una columna flexible: pestañas y pie con su alto
+ * propio y la pantalla con todo lo que sobra, de modo que el marco, las pestañas y las flechas no cambian de lugar ni de tamaño al cambiar de
+ * vista. Lo que no entra en una pantalla se recorre dentro de su área (el marco exterior nunca crece). */
+.tf-landing { --tf-hdr: 61px; --tf-box-pad: 12px; }
+@media (min-width: 820px) {
+  .tf-landing { --tf-box-pad: 14px; }
 }
-.tf-landing .tf-tour-panel,
-.tf-landing .tf-tour-copy > div { grid-area: 1 / 1; min-width: 0; }
-.tf-landing .tf-tour-panel { min-height: 0; overflow: auto; overscroll-behavior: contain; }
-.tf-landing .tf-tour-panel[hidden],
-.tf-landing .tf-tour-copy > div[hidden] { display: block; visibility: hidden; pointer-events: none; }
-.tf-landing .tf-tour-screen,
-.tf-landing .tf-tour-screen > .tf-mk,
-.tf-landing .tf-tour-screen > .tf-mk > .tf-mk-frame { height: 100%; }
+.tf-landing .tf-tour-box {
+  container-type: inline-size;
+  padding: var(--tf-box-pad);
+}
+.tf-landing .tf-tour {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Teléfono (pantalla vertical): todo el alto visible, con un mínimo que deja la demostración legible (si el teléfono es muy bajo, se baja la página). */
+  height: clamp(580px, calc(100svh - var(--tf-hdr) - 2 * var(--tf-box-pad) - 2px), 980px);
+}
+@media (min-width: 820px) {
+  .tf-landing .tf-tour { height: clamp(520px, calc(100svh - var(--tf-hdr) - 2 * var(--tf-box-pad) - 2px), 860px); }
+}
+/* Escritorio: además del alto visible, el ancho pone el tope (no se estira en pantallas anchas y bajas ni queda con grandes vacíos). */
+@media (min-width: 1024px) {
+  .tf-landing .tf-tour { height: clamp(440px, min(calc(100svh - var(--tf-hdr) - 2 * var(--tf-box-pad) - 2px), calc(56cqw + 190px)), 1000px); }
+}
+.tf-landing .tf-tour-tabs { flex: none; }
+.tf-landing .tf-tour-monitor {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+.tf-landing .tf-tour-monitor > .tf-bezel {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 5px;
+}
+.tf-landing .tf-tour-monitor > .tf-bezel > div {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+.tf-landing .tf-tour-monitor > .tf-bezel-foot,
+.tf-landing .tf-tour-monitor > .tf-bezel-base { display: none; }
+.tf-landing .tf-tour-stage {
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+.tf-landing .tf-tour-panel { grid-area: 1 / 1; min-height: 0; min-width: 0; overflow: auto; }
+.tf-landing .tf-tour-panel[hidden] { display: block; visibility: hidden; pointer-events: none; }
+/* La maqueta llena el alto de la pantalla (la barra lateral llega al pie) y crece si su contenido es más alto: entonces se recorre dentro del área. */
+.tf-landing .tf-tour-screen { display: flex; flex-direction: column; min-height: 100%; }
+.tf-landing .tf-tour-screen > .tf-mk { display: flex; flex: 1 0 auto; flex-direction: column; }
+.tf-landing .tf-tour-screen > .tf-mk > .tf-mk-frame { flex: 1 0 auto; }
+/* En teléfono la barra inferior de la maqueta queda fija al pie del área visible, como en la aplicación. */
+.tf-landing .tf-tour-stage .tf-mk-tabbar { position: sticky; bottom: 0; z-index: 2; }
+
+/* Composición de las demostraciones según el alto que les toca (la pantalla es un contenedor de tamaño): al faltar alto se compactan los
+ * rellenos y se omite lo secundario (filas finales, leyendas, pagos registrados) en vez de reducir la interfaz; el texto conserva su tamaño.
+ * Lo que aún no entre se recorre dentro del área (barra fina). Sólo afecta a las maquetas DENTRO del recorrido. */
+.tf-landing .tf-tour-stage { container: tstage / size; }
+.tf-landing .tf-tour-panel { scrollbar-width: thin; scrollbar-color: var(--n-lav) transparent; }
+.tf-landing .tf-mk-extra { display: none; }
+@container tstage (min-height: 400px) {
+  .tf-landing .tf-mk-extra { display: block; }
+}
+@container tstage (min-height: 400px) and (max-height: 504px) {
+  .tf-landing .tf-mk-extra > :nth-child(n+3) { display: none; }
+}
+@container tstage (min-height: 505px) {
+  .tf-landing .tf-mk-pad { --tf-bars: 150px; }
+}
+@container tstage (min-height: 600px) {
+  .tf-landing .tf-mk-pad { --tf-bars: 200px; }
+}
+@container tstage (min-width: 600px) and (max-height: 640px) {
+  .tf-landing .tf-mk-pad { padding: 12px 14px 12px; }
+  .tf-landing .tf-mk-legend { display: none; }
+  .tf-landing .tf-mk-payments { display: none; }
+}
+@container tstage (min-width: 600px) and (max-height: 540px) {
+  .tf-landing .tf-mk-pad { padding: 10px 12px 10px; }
+  .tf-landing .tf-mk-pad { --tf-hpx: 38px; }
+  .tf-landing .tf-mk-figs { margin-top: 8px; padding-block: 6px; }
+  .tf-landing .tf-mk-figs .font-display { font-size: 22px; }
+  .tf-landing .tf-mk-dayrows > :nth-child(n+5) { display: none; }
+}
+@container tstage (min-width: 600px) and (max-height: 470px) {
+  .tf-landing .tf-mk-dayrows > :nth-child(n+4) { display: none; }
+  .tf-landing .tf-mk-pad { --tf-hpx: 34px; }
+  .tf-landing .tf-mk-date { display: none; }
+  .tf-landing .tf-mk-dayrows > li { padding-block: 4px; }
+  .tf-landing .tf-mk-next { min-height: 0; padding-block: 8px; }
+  .tf-landing .tf-mk-charges > :nth-child(n+5) { display: none; }
+  .tf-landing .tf-mk-charges > li { padding-block: 7px; }
+}
+@container tstage (min-width: 600px) and (max-height: 410px) {
+  .tf-landing .tf-mk-dayrows > :nth-child(n+3) { display: none; }
+  .tf-landing .tf-mk-charges > :nth-child(n+4) { display: none; }
+}
+@container tstage (min-width: 600px) and (max-height: 400px) {
+  .tf-landing .tf-mk-figs { display: none; }
+}
+
+/* Pie: título y flechas en la primera fila, descripción debajo. Cada texto comparte celda con los demás, así el pie reserva el alto del más largo. */
+.tf-landing .tf-tour-foot {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  row-gap: 4px;
+  align-items: start;
+}
+.tf-landing .tf-tour-titles,
+.tf-landing .tf-tour-texts { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.tf-landing .tf-tour-titles { grid-area: 1 / 1; }
+.tf-landing .tf-tour-texts { grid-area: 2 / 1 / 3 / 3; max-width: 720px; }
+.tf-landing .tf-tour-arrows { display: flex; gap: 8px; grid-area: 1 / 2; }
+.tf-landing .tf-tour-titles > p,
+.tf-landing .tf-tour-texts > p { grid-area: 1 / 1; min-width: 0; }
+.tf-landing .tf-tour-titles > p[hidden],
+.tf-landing .tf-tour-texts > p[hidden] { display: block; visibility: hidden; pointer-events: none; }
+@media (min-width: 820px) {
+  .tf-landing .tf-tour-titles { grid-area: 1 / 1; align-self: center; }
+  .tf-landing .tf-tour-texts { grid-area: 2 / 1; }
+  .tf-landing .tf-tour-arrows { grid-area: 1 / 2 / 3 / 3; align-self: center; }
+}
+/* La sección del recorrido recuerda un alto parecido al real (evita un salto al aparecer su contenido). */
+.tf-landing #recorrido.tf-cv { contain-intrinsic-size: auto calc(100svh + 200px); }
 
 /* ── Nombres largos: una sola línea con puntos suspensivos, sin agrandar la fila ──────────────────────────────────────── */
 .tf-landing .tf-name {
