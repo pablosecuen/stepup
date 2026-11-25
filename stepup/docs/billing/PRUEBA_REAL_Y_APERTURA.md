@@ -64,3 +64,16 @@ Ver `CONTROL_DE_ACCESO.md` §7. Con las 5 cuentas existentes `grandfathered`, ac
 - **Contracargo:** no documentado cómo simularlo.
 - Con un pago de sandbox hecho por una persona se pueden ejecutar, en orden: `status` → `rebill-verify.mjs` (dónde llega `tf_ref`, orden y paginación) → `advance` (renovación rechazada → reintentos en horas → `defaulted`) → `pause` → `resume <sub> AAAA-MM-DD` → `refund`.
 
+
+## F. Comprobación del pago REAL y de la activación automática (preparada 25/11/2026; no ejecutada)
+
+Estado verificado antes de la prueba (Production, sólo lectura): 0 intentos de pago, 0 cobros, 0 períodos, 0 avisos, 0 revisiones abiertas; compuerta de la base apagada; piloto activo; webhook de Rebill activo con los 4 eventos y protegido (401 sin firma); crons protegidos (401).
+
+Cómo se comprueba que el pago activa **la cuenta correcta** (la que inició el checkout, no otra):
+1. La cuenta del piloto inicia el pago desde Facturación → Planes → Mensual. Eso crea UN intento (`billing_checkout_attempts`) y la referencia `tf_ref` = `provider_reference` de ESA cuenta; Rebill la devuelve en el pago.
+2. Después del pago (sin volver a TeacherFlow): `node scripts/rebill-verify.mjs --env-file <productiva> --expect monthly` debe mostrar 1 pago aprobado de 25.900 ARS con `tf_ref` válido y 1 suscripción activa con próximo cobro a un mes.
+3. La consulta SQL que imprime ese script (con la huella de `tf_ref`) se corre con `supabase db query --linked --read-only -f <archivo>` y debe dar: estado `active`, plan `tf_monthly_ars_v2`, `bound = true`, 1 ejecución aprobada, 1 período vigente, ≥1 aviso recibido, 0 revisiones abiertas, y el `owner_id` de esa fila debe ser el de la cuenta del piloto (se compara con el intento de pago).
+4. Registros de Vercel: aviso recibido y procesado (o recuperado por el cron `reconcile`), sin errores. La cuenta debe verse activa en Facturación sin haber visitado la página de resultado.
+5. Resultado esperado de «cuenta correcta»: ninguna otra fila de `billing_subscriptions` cambia (las 5 cuentas existentes siguen `grandfathered`).
+
+Qué NO se hace sin autorización: cancelar, reanudar, cambiar de plan o devolver un pago real.
