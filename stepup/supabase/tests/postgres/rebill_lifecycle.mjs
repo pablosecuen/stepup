@@ -58,6 +58,7 @@ const rb = {
   payments: new Map(),
   subscriptions: new Map(),
   requests: [],
+  searches: [],
   patches: [],
   down: false,
   addPayment(payment) {
@@ -86,9 +87,20 @@ const fetchImpl = async (url, init = {}) => {
     return payment ? json(payment) : json({ message: "not found" }, 404);
   }
   if (init.method === "POST" && u.pathname === "/v3/payments/search") {
-    const all = [...rb.payments.values()].filter((p) => !body.subscriptionId || p.subscriptionId === body.subscriptionId).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-    const page = all.slice(body.offset, body.offset + body.limit);
-    return json({ records: page, pagination: { hasNextPage: body.offset + body.limit < all.length } });
+    // FORMATO VIGENTE de la API (comprobado contra el sandbox real el 24-25/11/2026): `pagination` y `filters` anidados; cualquier otra propiedad
+    // (limit/offset/sortBy/subscriptionId sueltos en la raíz) es un 400 «Validation failed», igual que en la API real.
+    const rootKeys = Object.keys(body ?? {}).filter((key) => key !== "pagination" && key !== "filters");
+    const page = body?.pagination;
+    const pageKeys = Object.keys(page ?? {}).filter((key) => !["limit", "offset", "sort", "order"].includes(key));
+    const filterKeys = Object.keys(body?.filters ?? {}).filter((key) => !["subscriptionId", "status", "id"].includes(key));
+    const validPage = page && Number.isInteger(page.limit) && page.limit >= 1 && page.limit <= 100 && Number.isInteger(page.offset) && page.offset >= 0 && (page.order === undefined || page.order === "ASC" || page.order === "DESC") && (page.sort === undefined || ["created_at", "updated_at", "amount"].includes(page.sort));
+    if (rootKeys.length || pageKeys.length || filterKeys.length || !validPage) return json({ message: "Validation failed" }, 400);
+    const sortKey = page.sort === "updated_at" ? "updatedAt" : "createdAt"; // sin `sort`, la API ordena por created_at (documentación oficial)
+    const direction = page.order === "ASC" ? 1 : -1;
+    const all = [...rb.payments.values()].filter((p) => !body.filters?.subscriptionId || p.subscriptionId === body.filters.subscriptionId).sort((a, b) => (a[sortKey] < b[sortKey] ? -direction : a[sortKey] > b[sortKey] ? direction : 0));
+    const records = all.slice(page.offset, page.offset + page.limit);
+    rb.searches.push({ sort: page.sort ?? null, order: page.order ?? null });
+    return json({ records, pagination: { totalItems: all.length, totalPages: Math.ceil(all.length / page.limit), currentPage: Math.floor(page.offset / page.limit) + 1, itemsPerPage: page.limit, hasNextPage: page.offset + page.limit < all.length, hasPreviousPage: page.offset > 0 } }, 201);
   }
   if (init.method === "GET" && (match = /^\/v3\/subscriptions\/([^/]+)$/.exec(u.pathname))) {
     const subscription = rb.subscriptions.get(decodeURIComponent(match[1]));
@@ -140,7 +152,9 @@ try {
   const limiter = createNoticeLimiter();
   const deps = (overrides = {}) => ({ store, provider: sandbox, now, expectLive: false, worker: "rb-worker", ...overrides });
   const liveDeps = () => deps({ provider: live, expectLive: true });
-  const cmd = (provider = sandbox) => ({ store, provider, flags: FLAGS, now });
+  // RELOJ CONTROLADO: el reloj de la aplicación (`clock`) es simulado, pero `now()` de la base es el real. El intento de pago vence según el reloj
+  // simulado; para que la prueba no dependa del día en que se corra, el intento dura décadas (así `expires_at > now()` vale siempre).
+  const cmd = (provider = sandbox) => ({ store, provider, flags: FLAGS, now, attemptTtlMinutes: 60 * 24 * 365 * 40 });
   const at = (date, h = 12, m = 0) => {
     clock = new Date(ar(date, h, m));
   };
@@ -490,7 +504,95 @@ try {
     assert.equal((await sub(C)).version >= before, true);
   });
 
-  await step("19. NINGUNA clave ni secreto quedó en la base: ni en las tablas de facturación ni en los avisos guardados; los avisos no contienen correos", async () => {
+  await step("19. BARRIDO GLOBAL con el formato vigente de la API: pide `sort: updated_at` y encuentra la DEVOLUCIÓN de un pago VIEJO aunque haya pagos más nuevos (con el orden por creación de Rebill se perdería)", async () => {
+    const [J, K] = [1000, 1100].map(uuidFor);
+    for (const [id, tag] of [[J, "j"], [K, "k"]]) await admin.query("insert into auth.users (id, email, created_at) values ($1, $2, now())", [id, `${tag}@example.test`]);
+    at("2028-01-10", 10);
+    const jc = await checkout(J, "rb-key-j-000001", "tf_monthly_ars_v2");
+    assert.equal(jc.result.ok, true, JSON.stringify(jc.result));
+    pay(J, jc.ref, "test_sub_J", "test_pln_monthly", "J1");
+    at("2028-01-20", 10);
+    const kc = await checkout(K, "rb-key-k-000001", "tf_monthly_ars_v2");
+    assert.equal(kc.result.ok, true, JSON.stringify(kc.result));
+    pay(K, kc.ref, "test_sub_K", "test_pln_monthly", "K1");
+    at("2028-01-25", 10);
+    rb.searches.length = 0;
+    await runProviderSweep(deps(), {}); // sin avisos: el barrido recupera los dos primeros cobros y vincula a J y K
+    assert.equal((await sub(J)).provider_subscriber_uid, "test_sub_J");
+    assert.equal((await sub(K)).provider_subscriber_uid, "test_sub_K");
+    assert.equal(await periods(J), 1);
+    // J1 se devuelve DESPUÉS de que existe K1 (más nuevo): por creación K1 va primero; por actualización, J1.
+    at("2028-02-01", 10);
+    rb.setStatus("test_pay_J1", "refunded");
+    await runProviderSweep(deps(), {});
+    assert.equal(await executions(J, "refunded"), 1, "el barrido encontró la devolución del pago viejo");
+    assert.equal(await count("select count(*)::int n from public.billing_periods where owner_id = $1 and voided_at is not null", [J]), 1);
+    assert.equal(await periods(K), 1, "K no se tocó");
+    assert.ok(rb.searches.length >= 1 && rb.searches.every((s) => s.sort === "updated_at" && s.order === "DESC"), JSON.stringify(rb.searches));
+  });
+
+  await step("20. paused + statusDetail «defaulted» (Rebill agotó sus reintentos): estado IDENTIFICADO, no desconocido ni cancelación pedida → gracia, modo limitado, fin del proveedor; se puede volver a suscribir", async () => {
+    const L = uuidFor(1200);
+    await admin.query("insert into auth.users (id, email, created_at) values ($1, $2, now())", [L, "l@example.test"]);
+    at("2028-03-01", 10);
+    const lc = await checkout(L, "rb-key-l-000001", "tf_monthly_ars_v2");
+    pay(L, lc.ref, "test_sub_L", "test_pln_monthly", "L1");
+    await send(sandbox, SANDBOX_SECRET, created("test_pay_L1", "approved", lc.ref));
+    await drain();
+    assert.equal((await sub(L)).status, "active");
+    assert.equal(iso((await sub(L)).current_period_end), ar("2028-04-01"));
+    // La renovación falla: Rebill reintenta (sandbox: horas; producción: 2, 2, 3 y 3 días) y mientras tanto TeacherFlow da sus 5 días de gracia.
+    at("2028-04-01", 12);
+    rb.addPayment({ id: "test_pay_L2", status: "rejected", amount: 25900, subscriptionId: "test_sub_L" });
+    await send(sandbox, SANDBOX_SECRET, updated("test_pay_L2", "rejected", { subscriptionId: "test_sub_L" }));
+    await drain();
+    const inGrace = await access(L, "2028-04-03");
+    assert.equal(inGrace.level, "full_with_notice");
+    assert.equal(inGrace.reason, "payment_failed_grace");
+    assert.equal((await access(L, "2028-04-06", 12)).level, "full_with_notice", "día 5 de gracia: sigue con acceso");
+    assert.equal((await access(L, "2028-04-07", 0, 1)).level, "limited", "pasada la gracia: modo limitado");
+    // Rebill agota los reintentos: la suscripción queda `paused` con `statusDetail: defaulted` (no es una pausa pedida por la persona).
+    at("2028-04-11", 12);
+    const rbSub = rb.subscriptions.get("test_sub_L");
+    rbSub.status = "paused";
+    rbSub.statusDetail = "defaulted";
+    await admin.query("update public.billing_poll_schedule set due_at = $1 where owner_id = $2", [new Date(clock.getTime() - 60_000), L]);
+    await runSubscriberPoll(deps());
+    const row = await sub(L);
+    assert.ok(row.provider_ended_at, "el fin de cobro del proveedor quedó registrado");
+    assert.equal(row.cancel_requested_at, null, "NO se toma como una cancelación pedida por la persona");
+    const after = await access(L, "2028-04-11", 12);
+    assert.equal(after.level, "limited");
+    assert.equal(after.reason, "subscription_expired");
+    assert.equal(after.nextAction, "resubscribe");
+    assert.equal(await count("select count(*)::int n from public.billing_reconciliations where owner_id = $1 and kind = 'provider_state_mismatch'", [L]), 0, "ninguna anomalía: es un estado conocido");
+    const again = await checkout(L, "rb-key-l-000002", "tf_monthly_ars_v2");
+    assert.equal(again.result.ok, true, "puede volver a suscribirse (nuevo intento, nuevo pago) y recuperar el acceso al pagar");
+    pay(L, again.ref, "test_sub_L2", "test_pln_monthly", "L3");
+    await send(sandbox, SANDBOX_SECRET, created("test_pay_L3", "approved", again.ref));
+    await drain();
+    assert.equal((await access(L, "2028-04-11", 13)).level, "full", "pagar devuelve el acceso completo");
+  });
+
+  await step("21. PAUSA pedida del lado de Rebill (paused SIN defaulted) sí es una cancelación: conserva el período pagado y no es «fin del proveedor»", async () => {
+    const M = uuidFor(1300);
+    await admin.query("insert into auth.users (id, email, created_at) values ($1, $2, now())", [M, "m@example.test"]);
+    at("2028-05-01", 10);
+    const mc = await checkout(M, "rb-key-m-000001", "tf_monthly_ars_v2");
+    pay(M, mc.ref, "test_sub_M", "test_pln_monthly", "M1");
+    await send(sandbox, SANDBOX_SECRET, created("test_pay_M1", "approved", mc.ref));
+    await drain();
+    at("2028-05-02", 10); // pasa el minuto de caché del adaptador (60 s): la consulta ve la pausa de Rebill
+    rb.subscriptions.get("test_sub_M").status = "paused";
+    await admin.query("update public.billing_poll_schedule set due_at = $1 where owner_id = $2", [new Date(clock.getTime() - 60_000), M]);
+    await runSubscriberPoll(deps());
+    const row = await sub(M);
+    assert.ok(row.cancel_requested_at, "se registra la cancelación");
+    assert.equal(row.provider_ended_at, null);
+    assert.equal((await access(M, "2028-05-15")).level, "full_with_notice", "conserva el acceso hasta el fin del período pagado");
+  });
+
+  await step("22. NINGUNA clave ni secreto quedó en la base: ni en las tablas de facturación ni en los avisos guardados; los avisos no contienen correos", async () => {
     const tables = (await admin.query("select tablename from pg_tables where schemaname = 'public' and tablename like 'billing\\_%'")).rows.map((r) => r.tablename);
     for (const table of tables) {
       for (const needle of [SANDBOX_KEY, LIVE_KEY, SANDBOX_SECRET, LIVE_SECRET, "sk_test", "sk_live", "whsec_", "@example.test"]) {

@@ -503,7 +503,7 @@ export async function runSubscriberPoll(deps: ProcessorDeps, options: { limit?: 
         acc.patches.set(ownerId, { ...acc.patches.get(ownerId), cancelRequestedAt: now.toISOString() });
         acc.changes.push({ ownerId, kind: "cancel", fromPlanCode: snapshot.planCode, toPlanCode: null, effectiveAt: snapshot.currentPeriodEnd, idempotencyKey: `repair_cancel:${snapshot.providerSubscriberUid}` });
         stats.repaired += 1;
-      } else if (state.status === "finished" && open && !snapshot.providerEndedAt) {
+      } else if ((state.status === "finished" || state.status === "defaulted") && open && !snapshot.providerEndedAt) {
         acc.patches.set(ownerId, { ...acc.patches.get(ownerId), providerEndedAt: now.toISOString() });
         stats.repaired += 1;
       } else if (state.status === "active" && snapshot.cancelRequestedAt && snapshot.providerSubscriberUid && polled.planCode) {

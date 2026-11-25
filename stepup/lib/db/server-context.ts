@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getRenderUser } from "@/lib/auth/render-user";
+import { getSupabaseRuntimeConfig } from "@/lib/auth/config";
+import { enforcementFetchFor } from "@/lib/billing/enforcement-server";
 import { DeviceNotAuthorizedError, readDeviceAccess } from "@/lib/auth/device-session/server";
 
 /**
@@ -41,12 +43,17 @@ export class DbUnauthenticatedError extends Error {
  * silencio.
  */
 export async function requireAuthenticatedDbContext(): Promise<AuthenticatedDbContext> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) throw new DbNotConfiguredError();
+  const config = getSupabaseRuntimeConfig();
+  if (!config) throw new DbNotConfiguredError();
 
   // Compartido con el layout privado dentro de la misma solicitud (una sola verificación con Auth por navegación).
   const user = await getRenderUser();
   if (!user) throw new DbUnauthenticatedError();
+
+  // Control de acceso por suscripción: con `BILLING_ENFORCEMENT_ENABLED` apagado el `fetch` es el de siempre (`undefined`); encendido, TODA escritura de datos
+  // de la web pasa por la guarda del servidor (lib/billing/enforcement.ts) además de lo que muestre o esconda la interfaz.
+  const supabase = await createSupabaseServerClient({ fetch: enforcementFetchFor(user, config.url) });
+  if (!supabase) throw new DbNotConfiguredError();
 
   // Toda pantalla y acción exige uno de los dos dispositivos autorizados (lectura compartida con el layout).
   const access = await readDeviceAccess(user.id);

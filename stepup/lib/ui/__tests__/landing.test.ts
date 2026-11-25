@@ -110,8 +110,8 @@ test("anclas: content-visibility estima el alto de las escenas, así que un cont
   assert.doesNotMatch(anchors, /setInterval|setTimeout/);
 });
 
-test("textos aprobados de la portada: «Pensado para profesores» en el héroe y nunca «Para profesoras y profesores independientes» como etiqueta", () => {
-  assert.match(SECTIONS, /<Badge tone="accent">Pensado para profesores<\/Badge>/);
+test("textos aprobados de la portada: una etiqueta aprobada en el héroe («Pensado para profesores» o la vigente «Para profesores e instituciones») y nunca «Para profesoras y profesores independientes» como etiqueta", () => {
+  assert.match(SECTIONS, /<Badge tone="accent">(Pensado para profesores|Para profesores e instituciones)<\/Badge>/);
   assert.doesNotMatch(SECTIONS, /<Badge[^>]*>Para profesoras y profesores independientes<\/Badge>/);
   assert.doesNotMatch(SECTIONS, /TeacherFlow es la plataforma web para profesoras y profesores independientes\. Organizá/, "el párrafo del héroe aprobado (sin esa frase)");
   assert.match(SECTIONS, /Organizá tus clases y series, acompañá a tus alumnos y llevá tus cobros al día, sin planillas ni cuadernos\./);

@@ -49,7 +49,7 @@ export async function prepareAccountDeletion(deps: CommandDeps, ownerId: string)
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const state = await deps.provider.getSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode });
     if (!state.ok) return blocked("deletion_unconfirmed");
-    if (state.data.status === "suspended" || state.data.status === "finished") return { ok: true };
+    if (state.data.status === "suspended" || state.data.status === "defaulted" || state.data.status === "finished") return { ok: true };
     if (state.data.status === "active") {
       const again = await deps.provider.cancelSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode });
       if (!again.ok) return blocked("deletion_unconfirmed");

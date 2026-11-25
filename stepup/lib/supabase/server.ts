@@ -15,13 +15,15 @@ import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/sup
  * refresca la sesión en cada navegación, así que perder una escritura acá
  * no deja al usuario sin sesión.
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(options: { fetch?: typeof fetch } = {}) {
   const config = getSupabaseRuntimeConfig();
   if (!config) return null;
 
   const cookieStore = await cookies();
 
   return createServerClient(config.url, config.publishableKey, {
+    // Control de acceso por suscripción (lib/billing/enforcement.ts): sólo viene con el interruptor encendido; sin él, el `fetch` de siempre.
+    ...(options.fetch ? { global: { fetch: options.fetch } } : {}),
     auth: {
       flowType: "pkce",
     },

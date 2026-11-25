@@ -1,9 +1,16 @@
+import { SUBSCRIPTION_TERMS, ownerIdentificationLine } from "../business/subscription-terms.ts";
+import { PUBLIC_BUSINESS } from "../business/public-profile.ts";
+
 /**
  * Textos mínimos de la suscripción (renovación, cancelación, cobros rechazados, devoluciones, privacidad del documento y tratamiento
- * del pago). Son un BORRADOR de producto: describen exactamente lo que el sistema hace hoy y NO son asesoramiento legal.
- * Todo lo que depende de una decisión de TeacherFlow o de su asesoría queda marcado «[A DEFINIR: …]» y listado en `LEGAL_PENDING`;
- * mientras `BILLING_LEGAL_REVIEWED` no sea «true» la página lo dice con un aviso visible. No hay razón social, CUIT ni domicilio
- * inventados. Módulo puro: sin entorno ni servidor.
+ * del pago). Describen lo que el sistema hace hoy y NO son asesoramiento legal: siguen mostrando el aviso de borrador hasta que
+ * `BILLING_LEGAL_REVIEWED` sea «true», y ese indicador sólo se enciende cuando una revisión legal efectivamente se hizo.
+ *
+ * FUENTE ÚNICA (25/11/2026): la identificación del titular y el contacto salen de `lib/business/public-profile.ts` (los mismos datos que
+ * muestran los Términos, la Privacidad y Contacto), y lo que se repite en los Términos públicos sale de `lib/business/subscription-terms.ts`.
+ * Antes este archivo traía sus propios marcadores «[A DEFINIR]» escritos el 14/10/2026, antes de que esos datos se cargaran (4/11/2026).
+ * No se inventan plazos ni condiciones comerciales: lo que sigue sin definirse figura en `LEGAL_PENDING` (para quien revisa), no como un
+ * hueco dentro del texto que lee la persona. Módulo puro: sin entorno ni servidor.
  */
 export interface LegalSection {
   readonly id: string;
@@ -11,33 +18,35 @@ export interface LegalSection {
   readonly paragraphs: readonly string[];
 }
 
+/** Lo que todavía necesita una DECISIÓN o una revisión (no se muestra a las personas; ver docs/billing/TEXTOS_PARA_REVISION_20261125.md). */
 export const LEGAL_PENDING: readonly string[] = [
-  "Razón social, CUIT y domicilio del responsable de la suscripción.",
-  "Política y plazos para solicitar una devolución.",
-  "Política de aviso previo ante un cambio de precio.",
-  "Texto definitivo de privacidad y de términos, revisado por asesoría legal.",
+  "Revisión legal de los textos de esta página y de los Términos y la Privacidad públicos (con su constancia, antes de encender BILLING_LEGAL_REVIEWED).",
+  "Política comercial de devoluciones: si habrá un plazo propio, y su alcance respecto de las comisiones del servicio de cobro (hoy sólo se remite a la legislación vigente; no se promete ninguna devolución).",
+  "Plazo en días del aviso previo ante un cambio de precio (hoy: «se informará su alcance y la fecha de entrada en vigencia»).",
+  "Confirmar que el titular que figura (persona humana, CUIT declarado ante Rebill) es quien debe figurar como responsable de la suscripción, o cargar una razón social si cambia.",
 ];
 
 export const LEGAL_SECTIONS: readonly LegalSection[] = [
   {
     id: "responsable",
     title: "Quién ofrece la suscripción",
-    paragraphs: ["TeacherFlow. [A DEFINIR: razón social, CUIT y domicilio del responsable]."],
+    paragraphs: [ownerIdentificationLine(), `Para consultas sobre tu suscripción, pagos o datos: ${PUBLIC_BUSINESS.email}.`],
   },
   {
     id: "renovacion",
     title: "Renovación automática",
     paragraphs: [
       "La suscripción se renueva sola al terminar cada período (mensual, trimestral, semestral o anual) y se cobra el precio completo del plan elegido, en pesos argentinos, con el mismo medio de pago, hasta que la canceles.",
-      "No hay período de prueba, costo de alta ni cuotas. [A DEFINIR: aviso previo ante un cambio de precio].",
-      "Si cambiás de plan, el cambio rige desde la próxima renovación, sin prorrateo ni crédito.",
+      "No hay período de prueba, costo de alta ni cuotas.",
+      SUBSCRIPTION_TERMS.priceChange,
+      "Por ahora no se ofrece cambiar de plan desde la cuenta: para hacerlo, cancelá la renovación y volvé a suscribirte al terminar el período pagado, o escribinos.",
     ],
   },
   {
     id: "cancelacion",
     title: "Cancelación",
     paragraphs: [
-      "Podés cancelar cuando quieras desde Facturación. Conservás el acceso completo hasta el final del período que ya pagaste y no se vuelve a cobrar.",
+      "Podés cancelar la renovación cuando quieras desde Facturación, o pedirlo por correo. Conservás el acceso completo hasta el final del período que ya pagaste y no se vuelve a cobrar.",
       "Cancelar nunca borra tus datos. Si eliminás tu cuenta, primero cancelamos y confirmamos la cancelación en el servicio de cobro.",
     ],
   },
@@ -46,16 +55,19 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
     title: "Si un cobro es rechazado",
     paragraphs: [
       "Tenés 5 días corridos con acceso completo y un aviso para actualizar tu medio de pago. Si no se regulariza, tu cuenta pasa a modo limitado desde las 00:00 del sexto día: podés ingresar, ver y exportar tus datos, administrar tu facturación y contactar a soporte, pero no crear, editar ni importar información.",
-      "Cuando el pago se regulariza, el acceso completo vuelve. Tus datos nunca se borran por un pago fallido.",
+      "El servicio de cobro puede reintentar el cobro por su cuenta durante esos días y después. Si un reintento se aprueba, el acceso completo vuelve.",
+      "Si el servicio de cobro deja de reintentar sin lograr el cobro, la suscripción termina: tus datos siguen intactos y podés volver a suscribirte desde Facturación para recuperar el acceso completo.",
+      "Tus datos nunca se borran por un pago fallido.",
     ],
   },
   {
     id: "devoluciones",
     title: "Devoluciones y disputas",
     paragraphs: [
-      "Una devolución total confirmada por el servicio de cobro cierra el período devuelto: no lo extiende y termina el acceso que otorgaba. Una devolución parcial o dudosa la revisamos manualmente.",
+      SUBSCRIPTION_TERMS.requests,
+      "No hay devoluciones automáticas: cada solicitud se evalúa y se responde por correo.",
+      "Cuando una devolución total se confirma en el servicio de cobro, el período devuelto se cierra: no se extiende y termina el acceso que otorgaba. Una devolución parcial o dudosa la revisamos manualmente.",
       "Si tu banco o la tarjeta informan una disputa (contracargo) y se confirma, el acceso queda en modo limitado hasta resolverla.",
-      "[A DEFINIR: plazo y condiciones para solicitar una devolución].",
     ],
   },
   {
@@ -78,9 +90,9 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
   },
 ];
 
-export const LEGAL_DRAFT_NOTICE = "Borrador pendiente de revisión legal. Describe lo que el sistema hace hoy; lo marcado «A DEFINIR» lo completa TeacherFlow.";
+export const LEGAL_DRAFT_NOTICE = "Borrador pendiente de revisión legal. Describe lo que el sistema hace hoy; la política de devoluciones y el plazo de aviso por cambios de precio todavía se están definiendo.";
 
-/** ¿Ya se revisó el texto? Sólo el valor exacto «true» lo da por revisado; cualquier otro (o la falta) deja el aviso de borrador visible. */
+/** ¿Ya se revisó el texto? Sólo el valor exacto «true» lo da por revisado; cualquier otro (o la falta) deja el aviso de borrador visible. Debe reflejar una revisión efectivamente realizada. */
 export function isLegalReviewed(env: Readonly<Record<string, string | undefined>>): boolean {
   return env.BILLING_LEGAL_REVIEWED?.trim() === "true";
 }

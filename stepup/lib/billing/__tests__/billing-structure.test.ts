@@ -41,15 +41,19 @@ const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modu
   { match: /^app\/\(public-info\)\/planes\/page\.tsx$/, modules: new Set(["public-pricing", "pilot"]) },
   // «Contratar» (pública): sólo lee el interruptor y recuerda el código del plan; no crea ningún pago.
   { match: /^app\/contratar\/route\.ts$/, modules: new Set(["flags"]) },
+  // Términos públicos: sólo leen si la contratación está abierta a todos (para decir «en preparación» o no) y no crean nada.
+  { match: /^app\/\(public-info\)\/terminos-y-condiciones\/page\.tsx$/, modules: new Set(["pilot"]) },
   { match: /^components\/landing\/plan-summary\.tsx$/, modules: new Set(["public-pricing"]) },
-  { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["pilot"]) },
+  { match: /^app\/\(app\)\/layout\.tsx$/, modules: new Set(["pilot", "enforcement-server"]) },
+  // Control de acceso por suscripción (apagado por defecto): el cliente de datos de la persona se arma en UN solo punto.
+  { match: /^lib\/db\/server-context\.ts$/, modules: new Set(["enforcement-server"]) },
   { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["pilot"]) },
   { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },
   { match: /^app\/\(app\)\/facturacion\/condiciones\/page\.tsx$/, modules: new Set(["page-data", "legal"]) },
   // Recepción de Rebill: además concilia el lote en segundo plano apenas responde (`after`), con la misma función que usa el trabajo programado.
   { match: /^app\/api\/billing\/webhooks\/rebill\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "processor", "log"]) },
   { match: /^app\/api\/billing\/.+\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "jobs", "log"]) },
-  { match: /^components\/billing\/[a-z-]+\.tsx$/, modules: new Set(["view", "redirect", "@/lib/actions/billing"]) },
+  { match: /^components\/billing\/[a-z-]+\.tsx$/, modules: new Set(["view", "redirect", "access", "@/lib/actions/billing"]) },
 ];
 
 test("M2 conecta la facturación SÓLO por los puntos aprobados (rutas de API, pantallas de facturación, acciones y los interruptores del layout); nada más importa lib/billing", () => {
@@ -70,7 +74,7 @@ test("M2 conecta la facturación SÓLO por los puntos aprobados (rutas de API, p
   // proxy.ts y la navegación NO importan facturación: reciben un booleano por propiedad.
   for (const file of ["proxy.ts", "components/nav/primary-nav.tsx", "components/nav/sign-out-button.tsx", "components/account/configuration-view.tsx", "components/account/delete-account-button.tsx"]) assert.deepEqual(importsOf(file), [], file);
   // El resto de lib/: sólo las acciones de facturación y de cuenta (eliminación) usan lib/billing.
-  const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts"]);
+  const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts", "lib/db/server-context.ts"]); // server-context: arma el cliente de datos con la guarda de acceso (enforcement-server)
   for (const file of walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`) && !f.includes("__tests__"))) {
     if (allowedLib.has(file)) continue;
     assert.doesNotMatch(read(file), /from "(\.\.?\/)+billing\/|@\/lib\/billing/, file);
@@ -101,7 +105,7 @@ test("los secretos de facturación son SÓLO de servidor: ningún NEXT_PUBLIC_ c
 });
 
 /** Módulos de composición del servidor (leen el entorno y arman almacén y adaptador): server-only por diseño. */
-const SERVER_COMPOSITION: ReadonlySet<string> = new Set(["lib/billing/runtime.ts", "lib/billing/page-data.ts"]);
+const SERVER_COMPOSITION: ReadonlySet<string> = new Set(["lib/billing/runtime.ts", "lib/billing/page-data.ts", "lib/billing/enforcement-server.ts"]);
 
 test("la clave de servicio de Supabase y las credenciales de Mobbex se leen en UN solo lugar cada una", () => {
   const withService = [...BILLING_SOURCES, ...walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`)), ...APP_SOURCES].filter((f) => /SERVICE_ROLE_KEY/.test(read(f)));

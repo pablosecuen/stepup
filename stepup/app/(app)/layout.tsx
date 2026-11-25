@@ -14,6 +14,8 @@ import { getRenderUser } from "@/lib/auth/render-user";
 import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import type { AuthUser } from "@/lib/auth/auth-adapter";
 import { isBillingOpenFor } from "@/lib/billing/pilot";
+import { resolveAccessForNotice } from "@/lib/billing/enforcement-server";
+import { AccessBanner } from "@/components/billing/access-banner";
 import { readDeviceAccess } from "@/lib/auth/device-session/server";
 import { DeviceSessionWatcher } from "@/components/nav/device-session-watcher";
 import { StudentFileCleanup } from "@/components/nav/student-file-cleanup";
@@ -70,6 +72,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (access.kind !== "authorized") redirect("/dispositivo");
   }
 
+  // Control de acceso por suscripción (apagado por defecto: `null`, sin consultas ni cambios): aviso informativo; la restricción real la aplica el servidor.
+  const billingAccess = configured && user ? await resolveAccessForNotice(user).catch(() => null) : null;
+
   return (
     <div data-tf-navigation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} className="min-h-screen nav:pl-[236px]">
       <DeviceSessionWatcher />
@@ -85,6 +90,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">
         <SignOutButton />
       </div>
+      <AccessBanner access={billingAccess} />
       <ViewTransition name="tf-route-content" default="none" update={{ default: "none", "tf-navigation": "tf-content-swap" }}>
         <main id="contenido" tabIndex={-1} className="tf-page-main focus:outline-none pb-[calc(var(--tf-m-nav)+var(--tf-safe-bottom))] nav:pb-0"><ScreenSlot />{children}</main>
       </ViewTransition>

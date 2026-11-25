@@ -107,15 +107,19 @@ export const buildGetSubscriptionRequest = (subscriptionId: string): RebillReque
 /**
  * Búsqueda paginada de pagos. Cuerpo comprobado contra la API real del sandbox (24/11/2026): la paginación va ANIDADA en
  * `pagination: { limit, offset, order }` y los filtros en `filters`; Rebill responde 400 ante `limit`, `offset`, `sortBy`, `sortOrder`
- * o `subscriptionId` sueltos en la raíz. `order: "DESC"` es aceptado; que ordene por fecha de actualización (lo que el barrido
- * global necesita para cortar en el primer pago viejo) se confirma con el primer pago real del sandbox.
+ * o `subscriptionId` sueltos en la raíz. La documentación oficial (api/reference/payments, «List payments») dice que `order` ordena por
+ * la columna de `sort` y que, SIN `sort`, esa columna es `created_at`: un pago ya existente cuyo estado cambia (devolución, contracargo,
+ * aprobación tardía) NO subiría al principio y el barrido —que corta en el primer pago más viejo que su cursor— lo perdería. Por eso el barrido
+ * pide `sort: "updated_at"` (valor comprobado contra la API real del sandbox el 25/11/2026: `pagination.sort` se acepta y `sortBy` da 400).
+ * Sólo se prueba la ACEPTACIÓN del campo; que el orden resultante sea por actualización se confirma con pagos reales del sandbox
+ * (`scripts/rebill-verify.mjs sandbox`).
  */
 export function buildSearchPaymentsRequest(input: { limit: number; offset: number; subscriptionId?: string }): RebillRequest {
   return {
     method: "POST",
     path: "/v3/payments/search",
     json: {
-      pagination: { limit: Math.min(100, Math.max(1, input.limit)), offset: Math.max(0, input.offset), order: "DESC" },
+      pagination: { limit: Math.min(100, Math.max(1, input.limit)), offset: Math.max(0, input.offset), sort: "updated_at", order: "DESC" },
       ...(input.subscriptionId ? { filters: { subscriptionId: input.subscriptionId } } : {}),
     },
   };

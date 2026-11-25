@@ -25,7 +25,7 @@ export interface BillingPageData {
   readonly demo: boolean;
   /** ¿Puede elegir un plan y pasar al pago? (alta o re-alta). */
   readonly canCheckout: boolean;
-  /** Correo de soporte configurado (`BILLING_SUPPORT_EMAIL`); `null` si falta o es inválido: no se dibuja ningún enlace. */
+  /** Correo de soporte: el del titular público (public-profile.ts) o, si es válido, el de `BILLING_SUPPORT_EMAIL`; `null` sólo si no hay ninguno confirmado: entonces no se dibuja ningún enlace. */
   readonly support: SupportContact | null;
 }
 

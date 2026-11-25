@@ -14,5 +14,5 @@ export const getRenderUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
   const { data } = await supabase.auth.getUser();
-  return data.user ? { id: data.user.id, email: data.user.email ?? null } : null;
+  return data.user ? { id: data.user.id, email: data.user.email ?? null, createdAt: data.user.created_at ?? null } : null;
 });

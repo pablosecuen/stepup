@@ -10,6 +10,8 @@
 export interface AuthUser {
   id: string;
   email: string | null;
+  /** Alta de la cuenta en Auth (ISO), si se conoce: la usa el control de acceso por suscripción para saber si es anterior al corte. */
+  createdAt?: string | null;
 }
 
 export interface AuthActionError {

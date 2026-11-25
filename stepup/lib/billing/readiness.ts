@@ -24,7 +24,7 @@ export function checkBillingReadiness(env: Readonly<Record<string, string | unde
   const missing: string[] = [];
   if (!present(env, "SUPABASE_SERVICE_ROLE_KEY")) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (!present(env, "CRON_SECRET") || env.CRON_SECRET!.trim().length < 32) missing.push("CRON_SECRET (mínimo 32 caracteres)");
-  if (!resolveSupportContact(env)) missing.push("BILLING_SUPPORT_EMAIL (correo de soporte válido; lo define TeacherFlow)");
+  if (!resolveSupportContact(env)) missing.push("Correo de soporte (lib/business/public-profile.ts confirmado, o BILLING_SUPPORT_EMAIL válido)");
   if (!isLegalReviewed(env)) missing.push("BILLING_LEGAL_REVIEWED=true (sólo después de que asesoría legal revise lib/billing/legal.ts)");
   if (options.realProvider) {
     if (options.provider === "rebill") {

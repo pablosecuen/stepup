@@ -315,5 +315,9 @@ test("la acción de comprobación no escribe: sólo select, sin RPC, insert, upd
 
 test("el reintento a nivel de fetch se retiró: ya no hay un segundo mecanismo que espere dentro del request", () => {
   const server = read("lib/supabase/server.ts");
-  assert.doesNotMatch(server, /jwt-retry|createJwtRejectionRetryFetch|global:/);
+  assert.doesNotMatch(server, /jwt-retry|createJwtRejectionRetryFetch/);
+  // `global:` sólo existe para la guarda de ESCRITURAS del control de acceso (lib/billing/enforcement.ts): la que llega de afuera, sin esperas ni reintentos.
+  assert.equal((server.match(/global:/g) ?? []).length, 1);
+  assert.match(server, /global: { fetch: options.fetch }/);
+  assert.doesNotMatch(server, /setTimeout|retry|sleep/i);
 });

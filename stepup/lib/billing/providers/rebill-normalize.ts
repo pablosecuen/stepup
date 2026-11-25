@@ -88,7 +88,7 @@ export function mapPaymentStatus(status: unknown): { readonly outcome: Operation
 /** Estado de la suscripción de Rebill → estado de dominio. `paused` con `statusDetail: "defaulted"` es mora (reintentos agotados), NO una cancelación pedida. */
 export function mapSubscriptionStatus(status: unknown, statusDetail: unknown): ProviderSubscriberStatus {
   if (status === "active" || status === "retrying" || status === "processing") return "active";
-  if (status === "paused") return statusDetail === "defaulted" ? "unknown" : "suspended";
+  if (status === "paused") return statusDetail === "defaulted" ? "defaulted" : "suspended";
   if (status === "cancelled") return "suspended";
   if (status === "finished") return "finished";
   return "unknown";

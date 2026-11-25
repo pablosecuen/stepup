@@ -114,3 +114,18 @@ Rebill habilita producción cuando termina su proceso comercial. Entonces: nueva
 * `/planes` (pública) se prerenderiza en el build y lee `BILLING_ENABLED` en ese momento: al encender o apagar la facturación hay que **volver a desplegar** para que el botón pase de «Crear cuenta» a «Contratar».
 * Los dos cron (`process` cada 5 min, `reconcile` cada 15 min) están declarados en `vercel.json` y son inertes mientras `BILLING_ENABLED` no sea `true` (404 aunque el secreto sea correcto); con la facturación encendida exigen `CRON_SECRET`.
 * El estado «Pago rechazado» de la pantalla de resultado sólo aparece cuando hay un rechazo conciliado en las últimas 24 h y la cuenta todavía no tiene suscripción; un pago pendiente se muestra como «confirmando» (sin registrar nada) y uno abandonado no deja ningún rastro.
+
+## 9. Estado de las incertidumbres (25/11/2026)
+
+| Tema | Estado | Evidencia |
+|---|---|---|
+| Cuerpo de la búsqueda de pagos | **Corregido**: `pagination: { limit, offset, sort: "updated_at", order }` | Sondeo contra el sandbox real: `pagination.sort` se acepta, `sortBy` da 400. La documentación dice que SIN `sort` ordena por `created_at`: un pago viejo devuelto/contracargado no subiría y el barrido lo perdería |
+| Orden efectivo por `updated_at` | Pendiente de confirmar con un pago real del sandbox (el simulador ya lo respeta) | `rebill_lifecycle.mjs` paso 19; ensayo del §A de `PRUEBA_REAL_Y_APERTURA.md` |
+| `paused` + `defaulted` | **Estado identificado** (`defaulted`): fin del cobro del proveedor → la cuenta expira, limitada, y puede volver a suscribirse. NO es una cancelación pedida | Rebill: reintentos 2/2/3/3 días y luego `paused/defaulted`; paso 20 del ciclo |
+| Dónde llega `tf_ref` | Documentado en el `metadata` del PAGO; copia a la suscripción: no documentado | Se confirma con el primer pago (sandbox y real); la integración ya no depende de eso |
+| Webhook (firma, formato, duplicados, tardíos, fuera de orden) | Coincide con la documentación; cubierto con simulador y Postgres real | pasos 3, 6, 12, 16, 17 del ciclo |
+| Activación sin volver del checkout | Cubierta con simulador (aviso y barrido); real: la prueba única, cerrando la pestaña | paso 9 del ciclo |
+| Pausa/reanudación y próxima fecha | `nextChargeDate` exigido al reanudar; no prorratea | pasos 7–8 del ciclo; sandbox: `resume` |
+| Renovación, fallo, devolución | Simulador y Postgres real; sandbox: `advance`, `refund` tras un primer pago | ensayo §A |
+| Contracargo | **No documentado cómo simularlo**; sólo simulador | pasos del ciclo (devolución/contracargo) |
+| Comisiones en una devolución | **No documentado** | no se asume su reintegro |

@@ -141,7 +141,7 @@ test("estados de Rebill → dominio: sólo aprobado cobra; lo no listado no se a
   for (const odd of ["", "APPROVED", "paid", undefined, 5, null]) assert.equal(mapPaymentStatus(odd).outcome, "other", String(odd));
   assert.equal(mapSubscriptionStatus("active", null), "active");
   assert.equal(mapSubscriptionStatus("retrying", null), "active");
-  assert.equal(mapSubscriptionStatus("paused", "defaulted"), "unknown");
+  assert.equal(mapSubscriptionStatus("paused", "defaulted"), "defaulted", "mora identificada por Rebill (reintentos agotados): ni desconocida ni una pausa pedida");
   assert.equal(mapSubscriptionStatus("paused", null), "suspended");
   assert.equal(mapSubscriptionStatus("cancelled", null), "suspended");
   assert.equal(mapSubscriptionStatus("finished", null), "finished");
@@ -199,8 +199,8 @@ test("cancelar = PAUSAR (no dar de baja); reanudar manda la fecha del próximo c
   assert.deepEqual(buildResumeRequest("sub_1", "2026-12-01T15:00:00.000Z").json, { status: "active", nextChargeDate: "2026-12-01T15:00:00.000Z" });
   assert.equal(buildCardUpdateLinkRequest("sub_1").path, "/v3/subscriptions/sub_1/card/update-link");
   // Cuerpo comprobado contra la API real (24/11/2026): paginación anidada y filtros dentro de `filters`; nada suelto en la raíz (Rebill responde 400).
-  assert.deepEqual(buildSearchPaymentsRequest({ limit: 500, offset: -4 }).json, { pagination: { limit: 100, offset: 0, order: "DESC" } });
-  assert.deepEqual(buildSearchPaymentsRequest({ limit: 50, offset: 100, subscriptionId: "sub_1" }).json, { pagination: { limit: 50, offset: 100, order: "DESC" }, filters: { subscriptionId: "sub_1" } });
+  assert.deepEqual(buildSearchPaymentsRequest({ limit: 500, offset: -4 }).json, { pagination: { limit: 100, offset: 0, sort: "updated_at", order: "DESC" } });
+  assert.deepEqual(buildSearchPaymentsRequest({ limit: 50, offset: 100, subscriptionId: "sub_1" }).json, { pagination: { limit: 50, offset: 100, sort: "updated_at", order: "DESC" }, filters: { subscriptionId: "sub_1" } });
   assert.equal(resumeInstantIso("2027-02-12"), "2027-02-12T15:00:00.000Z");
   assert.equal(resumeInstantIso("12/02/2027"), null);
 
@@ -275,4 +275,13 @@ test("producción: sólo cuentan operaciones reales; sandbox: todo es de prueba"
   assert.equal(expectsLiveOperations("mobbex", { MOBBEX_SANDBOX: "true" }), false);
   assert.equal(parseSubscription({ id: "sub_1", status: "active", plan: { id: "test_pln_monthly" } }, new Map([["test_pln_monthly", "tf_monthly_ars_v2" as const]]))?.planCode, "tf_monthly_ars_v2");
   assert.equal(CURRENT_PLAN_CODES.length, 4);
+});
+
+test("mora identificada: paused+defaulted deja de sondearse una vez terminada la cuenta y la eliminación de cuenta no espera un cobro que no ocurrirá", async () => {
+  const { pollDelayMs } = await import("../poll-policy.ts");
+  const base = { currentPeriodEnd: null, now: new Date("2026-11-25T12:00:00Z") } as const;
+  assert.equal(pollDelayMs({ ...base, status: "expired", providerStatus: "defaulted" }), null, "el proveedor confirmó que no cobra más");
+  assert.equal(pollDelayMs({ ...base, status: "expired", providerStatus: "unknown" }) !== null, true, "si no se puede saber, se sigue mirando");
+  const { readFileSync } = await import("node:fs");
+  assert.match(readFileSync(new URL("../account-deletion.ts", import.meta.url), "utf8"), /state.data.status === "defaulted"/);
 });

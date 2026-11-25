@@ -1,0 +1,120 @@
+import { resolveBillingAccess, type BillingAccess } from "./access.ts";
+import { readBillingFlags } from "./flags.ts";
+import { decodeLastKnown, encodeLastKnown } from "./last-known.ts";
+import type { BillingStore } from "./store.ts";
+import { LIMITED_MODE_MESSAGE, classifyRequest } from "./write-guard.ts";
+
+/**
+ * Control de acceso por suscripción en el SERVIDOR (apagado por defecto: `BILLING_ENFORCEMENT_ENABLED`). Dos piezas, ambas sin interfaz:
+ *
+ *  - `createAccessResolver`: decide el acceso de UNA cuenta con `resolveBillingAccess` (la regla de M1) leyendo su estado con el almacén de servicio
+ *    (que además crea la fila si falta: las cuentas anteriores al corte nacen `grandfathered`, las nuevas `pending`). Guarda el resultado unos segundos
+ *    para no consultar en cada pedido.
+ *  - `guardFetch`: envuelve el `fetch` del cliente de Supabase del servidor. Un pedido de ESCRITURA que una cuenta limitada no puede hacer recibe un 403
+ *    sin llegar a la base. Las lecturas, la sesión, Facturación (cliente de servicio aparte) y todo lo permitido pasan sin consultar nada.
+ *
+ * Con el interruptor apagado `maybeGuardFetch` devuelve `undefined` y NADA cambia (ni una consulta más). Con un error propio al leer el estado, la regla
+ * de M1 decide (cuenta anterior al corte → acceso; nueva sin verificar → limitada).
+ */
+export const ACCESS_CACHE_MS = 10_000;
+export const STATE_COOKIE = "tf-billing-state";
+export const STATE_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 3600;
+
+export interface CookieIo {
+  read(): Promise<string | undefined>;
+  write(value: string): Promise<void>;
+}
+
+export interface AccessResolverDeps {
+  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly ownerId: string;
+  /** Alta de la cuenta en Auth (ISO), si se conoce. */
+  readonly accountCreatedAt: string | null;
+  readonly store: BillingStore | null;
+  readonly now: () => Date;
+  readonly cookie?: CookieIo;
+}
+
+export function createAccessResolver(deps: AccessResolverDeps): () => Promise<BillingAccess> {
+  let cached: { readonly at: number; readonly access: BillingAccess } | null = null;
+  let inflight: Promise<BillingAccess> | null = null;
+  const compute = async (): Promise<BillingAccess> => {
+    const flags = readBillingFlags(deps.env);
+    const secret = deps.env.BILLING_STATE_COOKIE_SECRET;
+    let snapshot = null;
+    let read: "ok" | "failed" = "ok";
+    try {
+      if (!deps.store) throw new Error("sin almacén");
+      snapshot = await deps.store.ensureAccount(deps.ownerId);
+    } catch {
+      read = "failed";
+    }
+    let token: string | undefined;
+    try {
+      token = await deps.cookie?.read();
+    } catch {
+      token = undefined;
+    }
+    const now = deps.now();
+    const access = resolveBillingAccess({
+      flags,
+      snapshot,
+      now,
+      read,
+      lastKnown: decodeLastKnown(secret, deps.ownerId, token, now),
+      account: { createdAt: deps.accountCreatedAt },
+      grandfatherCutoff: deps.env.BILLING_GRANDFATHER_CUTOFF ?? null,
+    });
+    // Comprobante firmado de la última verificación buena (sólo cuenta con acceso pagado o grandfathered; sirve si más adelante NUESTRA base falla).
+    if (read === "ok" && snapshot && access.status && deps.cookie && access.level !== "limited") {
+      const value = encodeLastKnown(secret, deps.ownerId, { status: access.status, grandfathered: snapshot.grandfathered, verifiedAt: now.toISOString() });
+      if (value) await deps.cookie.write(value).catch(() => undefined); // sólo se puede escribir dentro de una acción del servidor; en un render se ignora
+    }
+    return access;
+  };
+  return async () => {
+    const nowMs = deps.now().getTime();
+    if (cached && nowMs - cached.at < ACCESS_CACHE_MS) return cached.access;
+    inflight ??= compute().finally(() => {
+      inflight = null;
+    });
+    const access = await inflight;
+    cached = { at: deps.now().getTime(), access };
+    return access;
+  };
+}
+
+function describe(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]): { method: string; url: string } {
+  if (typeof input === "string") return { method: init?.method ?? "GET", url: input };
+  if (input instanceof URL) return { method: init?.method ?? "GET", url: input.toString() };
+  return { method: init?.method ?? input.method ?? "GET", url: input.url };
+}
+
+export interface GuardOptions {
+  readonly supabaseOrigin: string;
+  readonly resolve: () => Promise<BillingAccess>;
+  /** Para registrar (sin datos de la persona) que se bloqueó una escritura. */
+  readonly onBlocked?: (info: { readonly reason: string; readonly status: string | null }) => void;
+}
+
+export function guardFetch(inner: typeof fetch, options: GuardOptions): typeof fetch {
+  return async (input, init) => {
+    const { method, url } = describe(input, init);
+    const verdict = classifyRequest({ method, url, supabaseOrigin: options.supabaseOrigin });
+    if (verdict.writes && !verdict.allowedInLimitedMode) {
+      const access = await options.resolve();
+      if (!access.capabilities.createOperationalData || !access.capabilities.modifyOperationalData) {
+        options.onBlocked?.({ reason: verdict.reason, status: access.status });
+        // Misma forma que un error de PostgREST: el cliente de Supabase la entrega como `error` con este mensaje.
+        return new Response(JSON.stringify({ code: "TF_BILLING_LIMITED", message: LIMITED_MODE_MESSAGE, details: null, hint: null }), { status: 403, headers: { "content-type": "application/json" } });
+      }
+    }
+    return inner(input, init);
+  };
+}
+
+/** `undefined` (sin envoltura, comportamiento de siempre) si el control de acceso está apagado. */
+export function maybeGuardFetch(deps: AccessResolverDeps & { readonly supabaseOrigin: string; readonly inner?: typeof fetch; readonly onBlocked?: GuardOptions["onBlocked"] }): typeof fetch | undefined {
+  if (!readBillingFlags(deps.env).enforcement) return undefined;
+  return guardFetch(deps.inner ?? fetch, { supabaseOrigin: deps.supabaseOrigin, resolve: createAccessResolver(deps), onBlocked: deps.onBlocked });
+}

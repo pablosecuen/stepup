@@ -90,8 +90,8 @@ export type NoticeParse =
   | { readonly ok: true; readonly notices: readonly UntrustedNotice[] }
   | { readonly ok: false; readonly reason: "malformed" | "unsupported_content_type" | "too_large" };
 
-/** Estado del suscriptor en el proveedor (cobros activos, suspendidos o terminados). `unknown` = el proveedor devolvió algo que no se interpreta. */
-export type ProviderSubscriberStatus = "active" | "suspended" | "finished" | "unknown";
+/** Estado del suscriptor en el proveedor. `suspended` = pausa pedida; `defaulted` = el proveedor AGOTÓ sus reintentos de cobro y dejó de cobrar (Rebill: `paused` + `statusDetail: defaulted`); `finished` = terminó. `unknown` = algo que no se interpreta. */
+export type ProviderSubscriberStatus = "active" | "suspended" | "defaulted" | "finished" | "unknown";
 
 export interface ProviderSubscriberState {
   readonly status: ProviderSubscriberStatus;

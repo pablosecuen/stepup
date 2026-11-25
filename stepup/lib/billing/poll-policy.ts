@@ -36,7 +36,7 @@ export function pollDelayMs(input: PollPolicyInput): number | null {
     case "canceled":
     case "expired":
       // Terminada: se deja de sondear apenas el proveedor confirma que no cobra más; si no se puede saber, una vez por semana.
-      return providerStatus === "suspended" || providerStatus === "finished" ? null : 7 * DAY;
+      return providerStatus === "suspended" || providerStatus === "defaulted" || providerStatus === "finished" ? null : 7 * DAY;
     case "active": {
       const end = input.currentPeriodEnd ? Date.parse(input.currentPeriodEnd) : Number.NaN;
       if (Number.isFinite(end) && end - input.now.getTime() <= 2 * DAY) return 6 * HOUR; // ventana de renovación
