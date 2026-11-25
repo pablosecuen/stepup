@@ -332,8 +332,8 @@ export function TourSection() {
           </h2>
           <p className="mt-4 text-[17px] leading-relaxed text-textSecondary">Cinco pantallas de TeacherFlow, con información ilustrativa. Vos decidís cuál mirar.</p>
         </Reveal>
-        {/* «Cómo funciona» lleva directo a la caja del recorrido, alineada bajo el encabezado fijo (69 px = encabezado + aire), para que se vea completa. */}
-        <Reveal id="recorrido-pantallas" delay={80} className="tf-tour-box mt-8 scroll-mt-[69px] rounded-[24px] nav:mt-10">
+        {/* «Cómo funciona» lleva directo a la caja del recorrido, alineada bajo el encabezado fijo (62 px = encabezado + 1 px), para que se vea completa. */}
+        <Reveal id="recorrido-pantallas" delay={80} className="tf-tour-box mt-8 scroll-mt-[62px] rounded-[24px] nav:mt-10">
           <Tour items={TOUR_ITEMS} screens={[
             <ScreenInicio key="inicio" />,
             <ScreenCalendarioSemana key="calendario" />,

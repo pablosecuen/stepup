@@ -1,4 +1,5 @@
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
+import { AnchorController } from "@/components/landing/anchor-controller";
 import { AnnouncementBar } from "@/components/landing/announcement-bar";
 import { PlanSummary } from "@/components/landing/plan-summary";
 import { Closing, CalendarDetail, FinanceDetail, Hero, HowItWorks, ProductIndex, SceneAgenda, SceneCollections, SceneStudents, Security, StudentsDetail, TourSection } from "@/components/landing/sections";
@@ -19,6 +20,7 @@ export default function HomePage() {
       <AnnouncementBar />
       <SiteHeader />
       <RevealController />
+      <AnchorController />
 
       <main id="contenido" tabIndex={-1} className="focus:outline-none flex-1">
         <Hero />

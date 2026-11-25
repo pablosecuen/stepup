@@ -84,7 +84,7 @@ test("recorrido: UN solo marco que cabe bajo el encabezado fijo, limitado por al
   // La animación de cambio va en el panel (el contenedor que desplaza), no en la maqueta interna: no crea un desborde pasajero.
   assert.match(TOUR, /"tf-tour-panel tf-tab-in"/);
   const sections = read("components/landing/sections.tsx");
-  assert.match(sections, /<Reveal id="recorrido-pantallas" delay=\{80\} className="tf-tour-box mt-8 scroll-mt-\[69px\] rounded-\[24px\] nav:mt-10"/, "la caja del recorrido ya no suma un relleno decorativo propio y es el destino de «Cómo funciona», alineada bajo el encabezado");
+  assert.match(sections, /<Reveal id="recorrido-pantallas" delay=\{80\} className="tf-tour-box mt-8 scroll-mt-\[62px\] rounded-\[24px\] nav:mt-10"/, "la caja del recorrido ya no suma un relleno decorativo propio y es el destino de «Cómo funciona», alineada bajo el encabezado");
   assert.match(HEADER, /href="#recorrido-pantallas"/, "«Cómo funciona» lleva a la caja del recorrido (se ve completa bajo el encabezado)");
 });
 
@@ -96,6 +96,18 @@ test("recorrido: las cinco maquetas se adaptan al alto con reglas del contenedor
   for (const marker of ["tf-mk-figs", "tf-mk-dayrows", "tf-mk-charges", "tf-mk-payments", "tf-mk-legend", "tf-mk-extra"]) assert.ok(screens.includes(marker), marker);
   assert.match(screens, /const HPX = "var\(--tf-hpx, 44px\)"/, "la hora del calendario es una variable (44 px fuera del recorrido)");
   assert.match(css, /\.tf-tour-stage \.tf-mk-tabbar \{ position: sticky; bottom: 0;/, "en teléfono la barra inferior queda al pie visible");
+});
+
+test("anclas: content-visibility estima el alto de las escenas, así que un controlador alinea el destino sin impedir lo nativo y se detiene si la persona mueve la página", () => {
+  const anchors = code("components/landing/anchor-controller.tsx");
+  assert.match(PAGE, /<AnchorController \/>/, "montado una sola vez en la portada");
+  assert.match(anchors, /behavior: "instant"/, "interrumpe el desplazamiento suave y alinea");
+  assert.match(anchors, /scrollMarginTop/, "respeta el margen bajo el encabezado fijo de cada destino");
+  assert.doesNotMatch(anchors, /preventDefault/, "no reemplaza el comportamiento nativo (hash en la dirección y punto de partida del teclado)");
+  for (const input of ['"wheel"', '"touchstart"', '"keydown"']) assert.ok(anchors.includes(input), `se detiene con ${input}`);
+  assert.match(anchors, /MAX_MS = 1500/, "no corrige para siempre");
+  assert.equal((anchors.match(/requestAnimationFrame\(/g) ?? []).length, 2, "sin temporizadores: sólo cuadros de animación");
+  assert.doesNotMatch(anchors, /setInterval|setTimeout/);
 });
 
 test("textos aprobados de la portada: «Pensado para profesores» en el héroe y nunca «Para profesoras y profesores independientes» como etiqueta", () => {
