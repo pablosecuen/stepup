@@ -52,7 +52,7 @@ export function Hero() {
       <div className={WRAP}>
         <div className="mx-auto max-w-[900px] nav:text-center">
           <p style={{ animationDelay: "0ms" }} className="motion-safe:animate-tf-rise">
-            <Badge tone="accent">Pensado para profesores</Badge>
+            <Badge tone="accent">Para profesores e instituciones</Badge>
           </p>
           <h1
             id="hero-title"
