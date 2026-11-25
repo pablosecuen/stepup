@@ -12,7 +12,7 @@ test("el bloqueo del modo limitado se traduce a un mensaje breve y propio (no al
   assert.equal(domainErrorMessage({ code: "TF006", message: "texto de la base", details: null, hint: null }), LIMITED_MODE_USER_MESSAGE);
   assert.notEqual(domainErrorMessage(fromGuard), GENERIC_ERROR_MESSAGE);
   assert.ok(LIMITED_MODE_USER_MESSAGE.length < 140, "breve");
-  assert.match(LIMITED_MODE_USER_MESSAGE, /modo limitado/);
+  assert.match(LIMITED_MODE_USER_MESSAGE, /suscripción está pendiente/);
   assert.doesNotMatch(LIMITED_MODE_USER_MESSAGE, /403|TF_|Supabase|RLS|JWT|rpc/i);
 });
 
@@ -28,7 +28,7 @@ test("los errores técnicos REALES siguen siendo técnicos: nunca se disfrazan d
   assert.equal(domainErrorMessage(new TypeError("Cannot read properties of undefined")), GENERIC_ERROR_MESSAGE);
   assert.equal(domainErrorMessage({ code: "PGRST301", message: "JWT expired" }), GENERIC_ERROR_MESSAGE);
   assert.equal(isLimitedModeMessage(GENERIC_ERROR_MESSAGE), false);
-  assert.equal(isLimitedModeMessage("Tu cuenta está en modo limitado"), false, "sólo el texto exacto activa el acceso a Facturación");
+  assert.equal(isLimitedModeMessage("Tu suscripción está pendiente"), false, "sólo el texto exacto activa el acceso al pago");
   assert.equal(isLimitedModeMessage(undefined), false);
 });
 
@@ -41,5 +41,5 @@ test("estructura: el aviso de error ofrece Facturación sólo para el mensaje de
   const action = readFileSync(new URL("../../../components/billing/limited-mode-action.tsx", import.meta.url), "utf8");
   assert.match(action, /router\.refresh\(\)/);
   assert.doesNotMatch(action, /location\.reload|window\.location/, "actualización suave: nunca recargar la página");
-  assert.match(action, /href="\/facturacion"/);
+  assert.match(action, /href="\/suscripcion-pendiente"/);
 });

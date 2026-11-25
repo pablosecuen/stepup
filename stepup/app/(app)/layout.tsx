@@ -84,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SharedNameTransition />
       <SoftKeyboardSync />
       {configured && user && <StudentFileCleanup />}
-      <PrimaryNav billingEnabled={isBillingOpenFor(user?.id ?? null, process.env)} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
+      <PrimaryNav restricted={billingAccess?.level === "blocked"} billingEnabled={billingAccess?.level === "blocked" || isBillingOpenFor(user?.id ?? null, process.env)} navigationLocation={(await cookies()).get("tf-navigation")?.value === "menu" ? "menu" : "barra"} />
       {/* «Cerrar sesión»: arriba a la derecha del área principal en TODAS las pantallas privadas (en móvil vive en el encabezado). Una
           fila propia de `--tf-shell-top` de alto: nunca se superpone con el título ni con las acciones de cada pantalla. */}
       <div data-session-bar className="hidden h-[var(--tf-shell-top)] items-center justify-end px-10 nav:flex">

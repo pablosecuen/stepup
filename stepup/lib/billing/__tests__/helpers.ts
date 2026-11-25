@@ -29,6 +29,8 @@ export function snap(overrides: Partial<BillingSnapshot> = {}): BillingSnapshot 
     chargebackAt: null,
     nextCheckAt: null,
     pendingPlanCode: null,
+    trialStartedAt: null,
+    trialEndsAt: null,
     version: 1,
     ...overrides,
   };

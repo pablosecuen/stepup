@@ -27,7 +27,8 @@ export type ScreenKey =
   | "configuracion"
   | "config-sub"
   | "facturacion"
-  | "facturacion-sub";
+  | "facturacion-sub"
+  | "suscripcion-pendiente";
 
 type ScreenWidth = "wide" | "medium" | "narrow";
 
@@ -78,6 +79,7 @@ const DEFINITIONS: readonly ScreenDefinition[] = [
   def("facturacion-sub", "Cargando los planes…", null, "medium", /^\/facturacion\/planes$/, "Facturación"),
   def("facturacion-sub", "Cargando el resultado del pago…", null, "narrow", /^\/facturacion\/resultado$/, "Facturación"),
   def("facturacion", "Cargando facturación…", "Facturación", "medium", /^\/facturacion$/),
+  def("suscripcion-pendiente", "Cargando tu suscripción…", "Suscripción pendiente", "medium", /^\/suscripcion-pendiente$/),
 ];
 
 export interface ResolvedScreen {

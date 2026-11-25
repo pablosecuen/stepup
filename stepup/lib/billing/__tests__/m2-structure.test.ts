@@ -84,7 +84,10 @@ test("la ruta de pantallas privadas incluye /facturacion (el proxy exige sesión
   const folders = readdirSync(join(ROOT, "app/(app)")).filter((entry) => statSync(join(ROOT, "app/(app)", entry)).isDirectory());
   assert.deepEqual([...PRIVATE_ROUTE_PREFIXES].map((p) => p.slice(1)).sort(), folders.sort());
   assert.ok((PRIVATE_ROUTE_PREFIXES as readonly string[]).includes("/facturacion"));
-  assert.doesNotMatch(read("proxy.ts"), /billing|facturacion/i, "el proxy no sabe nada de facturación");
+  // El proxy sólo conoce UNA función: la compuerta de páginas para cuentas bloqueadas (page-gate). No sabe de planes, precios, estados ni proveedores.
+  const proxy = read("proxy.ts");
+  assert.match(proxy, /from "@\/lib\/billing\/page-gate"/);
+  assert.doesNotMatch(proxy.replace(/@\/lib\/billing\/page-gate/g, ""), /billing|facturacion|plan|precio|provider|rebill|mobbex/i, "el proxy no sabe nada de planes ni del proveedor de cobro");
 });
 
 test("receptor de avisos: POST/GET/… delegan en una sola función; sin autenticación inventada (no hay firma ni secreto de Mobbex); límites antes de interpretar", () => {

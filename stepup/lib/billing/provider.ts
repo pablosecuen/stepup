@@ -99,6 +99,10 @@ export interface ProviderSubscriberState {
   readonly operations: readonly ProviderOperation[];
   /** `false` si el proveedor mostró ejecuciones con una forma que no se interpreta: entonces `operations` NO significa «sin cobros». */
   readonly executionsReadable: boolean;
+  /** `true` si la suscripción está DENTRO de su prueba gratuita según el proveedor (Rebill: `statusDetail: in_trial`). */
+  readonly inTrial: boolean;
+  /** Próximo cobro agendado en el proveedor (ISO), o `null` si no se informa. Para la prueba: el instante del primer cobro. */
+  readonly nextChargeAt: string | null;
 }
 
 /**
@@ -120,6 +124,8 @@ export interface CheckoutRequest {
   readonly returnUrl: string;
   /** Misma clave = mismo checkout: el adaptador no crea dos. */
   readonly idempotencyKey: string;
+  /** `true`: contratar CON la prueba gratuita (tarjeta registrada, sin cobrar el plan al empezar). El adaptador que no la tenga configurada falla CERRADO: nunca vende sin prueba lo que se mostró con prueba. */
+  readonly trial?: boolean;
 }
 
 export interface CheckoutResponse {
@@ -161,6 +167,8 @@ export interface ProviderAdapter {
    * adaptador falso) y viajan sólo de servidor a proveedor, sin guardarse.
    */
   readonly requiresCustomerIdentity?: boolean;
+  /** `true` si este proveedor tiene configurada la prueba gratuita (links de prueba): sin eso la prueba NO se ofrece en ninguna pantalla. */
+  offersTrial?(): boolean;
   createCheckout(request: CheckoutRequest): Promise<ProviderResult<CheckoutResponse>>;
   /** Consulta AUTENTICADA de una operación: es la fuente de verdad con la que se concilia cualquier aviso. */
   getOperation(providerPaymentId: string): Promise<ProviderResult<ProviderOperation>>;
@@ -170,12 +178,18 @@ export interface ProviderAdapter {
   getSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<ProviderSubscriberState>>;
   /** Dónde la persona actualiza su medio de pago (siempre un destino HTTPS del proveedor). */
   getPaymentMethodUpdateUrl(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<{ readonly redirectUrl: string }>>;
+  /**
+   * Fija el instante del próximo cobro de una suscripción en prueba (el primer cobro, a las 00:00 de Argentina). Devuelve el instante que el proveedor quedó con él, ya releído.
+   * Opcional: un proveedor que ya agenda ese instante por sí mismo no lo define.
+   */
+  scheduleFirstCharge?(input: { readonly subscriberUid: string; readonly planCode: PlanCode; readonly atIso: string }): Promise<ProviderResult<{ readonly nextChargeAt: string }>>;
   cancelSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode }): Promise<ProviderResult<{ readonly canceled: true }>>;
   /**
    * Reanuda el cobro de un suscriptor suspendido (reactivar una cancelación antes de que termine el período pagado). `resumeAt`: fecha civil (AAAA-MM-DD)
-   * del próximo cobro que corresponde (el fin del período pagado); un proveedor que la exige (Rebill) la usa y uno que no (Mobbex) la ignora.
+   * del próximo cobro que corresponde (el fin del período pagado); un proveedor que la exige (Rebill) la usa y uno que no (Mobbex) la ignora. `resumeExact`: el primer cobro de una prueba
+   * gratuita se reanuda EXACTAMENTE en `resumeAt` (00:00 de Argentina), no al mediodía de ese día.
    */
-  reactivateSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode; readonly resumeAt?: string | null }): Promise<ProviderResult<{ readonly reactivated: true }>>;
+  reactivateSubscriber(input: { readonly subscriberUid: string; readonly planCode: PlanCode; readonly resumeAt?: string | null; readonly resumeExact?: boolean }): Promise<ProviderResult<{ readonly reactivated: true }>>;
   /** Mueve al suscriptor a la suscripción de otro plan (el cambio se programa para el próximo período). */
   changePlan(input: { readonly subscriberUid: string; readonly fromPlanCode: PlanCode; readonly toPlanCode: PlanCode }): Promise<ProviderResult<{ readonly changed: true }>>;
   /** Reduce un aviso a su pista mínima. NO decide nada con su contenido. */

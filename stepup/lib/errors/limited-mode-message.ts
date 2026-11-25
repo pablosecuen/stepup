@@ -10,7 +10,7 @@ export const BILLING_LIMITED_CODE = "TF_BILLING_LIMITED";
 export const BILLING_LIMITED_DB_CODE = "TF006";
 
 /** Texto breve que ve la persona. El acceso a Facturación lo agrega la interfaz (enlace), no el texto. */
-export const LIMITED_MODE_USER_MESSAGE = "Tu cuenta está en modo limitado: no podés crear ni modificar datos hasta regularizar tu suscripción.";
+export const LIMITED_MODE_USER_MESSAGE = "Tu suscripción está pendiente: no podés usar TeacherFlow hasta que se apruebe el pago.";
 
 export function isLimitedModeMessage(value: unknown): boolean {
   return typeof value === "string" && value.trim() === LIMITED_MODE_USER_MESSAGE;

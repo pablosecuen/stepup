@@ -6,6 +6,7 @@ import { resolvePrivateAreaAccess } from "@/lib/auth/route-protection";
 import { isPrivatePath } from "@/lib/auth/safe-redirect";
 import { DEVICE_COOKIE, isDeviceSessionEnforced } from "@/lib/auth/device-session/decision";
 import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/supabase/cookie-options";
+import { resolveBlockedRedirect } from "@/lib/billing/page-gate";
 
 // Next.js 16: `proxy.ts` reemplaza a `middleware.ts`. Su único trabajo acá
 // — igual que documenta el patrón oficial de Supabase SSR — es refrescar
@@ -77,6 +78,19 @@ export async function proxy(request: NextRequest) {
     url.pathname = "/dispositivo";
     url.search = `?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
     return NextResponse.redirect(url);
+  }
+
+  // Suscripción pendiente: una cuenta bloqueada (terminó la prueba o el período pagado sin un pago aprobado) sólo puede abrir lo necesario para regularizar. Corre en CADA navegación
+  // (también las del cliente) y sólo cuando el control de acceso está encendido; con el estado ilegible no bloquea (lo deciden las capas de datos).
+  const userId = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
+  if (decision.kind === "allow" && userId) {
+    const destination = await resolveBlockedRedirect({ userId, pathname }).catch(() => null);
+    if (destination) {
+      const url = request.nextUrl.clone();
+      url.pathname = destination;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

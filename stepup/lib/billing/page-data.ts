@@ -8,6 +8,7 @@ import type { ProviderCapabilities } from "./provider";
 import { resolveSupportContact, type SupportContact } from "./support";
 import { isLegalReviewed } from "./legal";
 import { isBillingOpenFor, readPilotOwnerIds } from "./pilot";
+import type { TrialOffer } from "./trial";
 
 /**
  * Datos de las pantallas de facturación. Con la facturación apagada devuelve `null` y la pantalla responde 404 (como si no existiera).
@@ -27,6 +28,8 @@ export interface BillingPageData {
   readonly canCheckout: boolean;
   /** Correo de soporte: el del titular público (public-profile.ts) o, si es válido, el de `BILLING_SUPPORT_EMAIL`; `null` sólo si no hay ninguno confirmado: entonces no se dibuja ningún enlace. */
   readonly support: SupportContact | null;
+  /** ¿Se ofrece la prueba gratuita a ESTA cuenta en su próxima contratación? (configurada en el proveedor, una vez por cuenta, nunca a cuentas actuales). */
+  readonly trialOffer: TrialOffer | null;
 }
 
 /**
@@ -49,15 +52,15 @@ export async function requestPriorityPoll(): Promise<void> {
 export async function loadBillingPageData(searchParams?: { escenario?: string | string[] }): Promise<BillingPageData | null> {
   const runtime = getBillingRuntime();
   if (!runtime.flags.enabled) return null;
-  const options = buildPlanOptions();
+  const trialAvailable = runtime.provider.offersTrial?.() === true;
   const capabilities = runtime.provider.capabilities;
   const askIdentity = runtime.provider.requiresCustomerIdentity !== false;
 
   const requested = Array.isArray(searchParams?.escenario) ? searchParams?.escenario[0] : searchParams?.escenario;
   const scenario = demoScenariosAllowed(process.env) ? demoScenario(requested) : null;
   if (scenario) {
-    const view = buildBillingView({ snapshot: scenario.snapshot, history: scenario.history, now: DEMO_NOW, capabilities, available: scenario.available });
-    return { view, options, capabilities, askIdentity, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
+    const view = buildBillingView({ snapshot: scenario.snapshot, history: scenario.history, now: DEMO_NOW, capabilities, available: scenario.available, trialAvailable });
+    return { view, options: buildPlanOptions(view.trialOffer), capabilities, askIdentity, demo: true, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env), trialOffer: view.trialOffer };
   }
 
   // Piloto: con `BILLING_PILOT_OWNER_IDS` definida, las pantallas de facturación sólo existen para las cuentas listadas (para el resto, como apagada).
@@ -70,14 +73,14 @@ export async function loadBillingPageData(searchParams?: { escenario?: string | 
     }
   }
 
-  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options, capabilities, askIdentity, demo: false, canCheckout: false, support: resolveSupportContact(process.env) });
+  const unavailable = (): BillingPageData => ({ view: buildBillingView({ snapshot: null, history: null, now: runtime.now(), capabilities, available: false }), options: buildPlanOptions(null), capabilities, askIdentity, demo: false, canCheckout: false, support: resolveSupportContact(process.env), trialOffer: null });
   if (!runtime.store) return unavailable();
   try {
     const { ownerId } = await requireAuthenticatedDbContext();
     const snapshot = await runtime.store.ensureAccount(ownerId);
     const history = await runtime.store.getHistory(ownerId, 24);
-    const view = buildBillingView({ snapshot, history, now: runtime.now(), capabilities, available: true });
-    return { view, options, capabilities, askIdentity, demo: false, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env) };
+    const view = buildBillingView({ snapshot, history, now: runtime.now(), capabilities, available: true, trialAvailable });
+    return { view, options: buildPlanOptions(view.trialOffer), capabilities, askIdentity, demo: false, canCheckout: view.actions.subscribe, support: resolveSupportContact(process.env), trialOffer: view.trialOffer };
   } catch {
     return unavailable();
   }

@@ -29,7 +29,7 @@ test("cancelar: active → cancel_at_period_end; desde limited o pending → can
   assert.equal(limited.ok && limited.kind === "apply" ? limited.next.status : null, "canceled");
   assert.deepEqual(decideCancel(snap({ status: "grandfathered", grandfathered: true }), NOW), { ok: false, failure: "not_allowed" });
   const inGrace = decideCancel(snap({ status: "grace_period", ...PAID, currentPeriodEnd: ar("2026-10-01"), graceEndsAt: ar("2026-10-17"), renewalRejectedDueAt: ar("2026-10-11") }), NOW);
-  assert.equal(inGrace.ok && inGrace.kind === "apply" ? inGrace.next.status : null, "cancel_at_period_end");
+  assert.equal(inGrace.ok && inGrace.kind === "apply" ? inGrace.next.status : null, "canceled", "sin gracia: cancelar con el período ya vencido cierra la cuenta");
 });
 
 test("cancelación REPETIDA: no hace nada (ni escribe ni vuelve a llamar al proveedor)", async () => {

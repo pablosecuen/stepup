@@ -1,5 +1,6 @@
 import { buildCoverage, finalOutcomes, nextCheckAt, reduceSnapshot, type BillingSnapshot, type ExecutionFact } from "./ledger.ts";
 import { logBilling } from "./log.ts";
+import { trialEndsAtFor } from "./periods.ts";
 import { CURRENT_PLAN_CODES, getPlan, isPlanCode, type PlanCode } from "./plans.ts";
 import { pollDelayMs, withJitter } from "./poll-policy.ts";
 import type { NoticeHint, ProviderAdapter, ProviderOperation, ProviderResult, ProviderSubscriberState } from "./provider.ts";
@@ -87,10 +88,12 @@ interface Accumulator {
   readonly bindings: Map<string, SubscriberBinding>;
   /** Suscriptores de más que el MISMO lote reveló para una misma cuenta (dos pagos, dos pestañas): se pausan en el proveedor para que no sigan cobrando. */
   readonly duplicates: SubscriberBinding[];
+  /** Pagos aprobados de 0 (inicio de una prueba gratuita) conciliados en este lote, uno por cuenta. Se validan y activan en `applyTrials`. */
+  readonly trials: Map<string, Extract<Reconciliation, { kind: "trial" }>>;
 }
 
 function newAccumulator(): Accumulator {
-  return { facts: new Map(), reconciliations: [], dedupe: new Set(), changes: [], patches: new Map(), bindings: new Map(), duplicates: [] };
+  return { facts: new Map(), reconciliations: [], dedupe: new Set(), changes: [], patches: new Map(), bindings: new Map(), duplicates: [], trials: new Map() };
 }
 
 /**
@@ -121,6 +124,49 @@ async function adoptSubscriber(deps: Pick<ProcessorDeps, "store" | "provider">, 
   const planReference = state.data.operations.map((operation) => operation.planReference).find((value): value is string => !!value && isPlanCode(value));
   if (planReference && isPlanCode(planReference)) acc.bindings.set(record.ownerId, { ownerId: record.ownerId, subscriberUid, planCode: planReference });
   return { ...record, subscriberUid };
+}
+
+/**
+ * Prueba gratuita: valida y activa los inicios de prueba del lote. SÓLO se activa si (1) la cuenta no usó ya su prueba, (2) Rebill confirma la suscripción en prueba y activa y
+ * (3) el primer cobro quedó fijado a las 00:00 de Argentina del día inicio + 15 (se lo fija y se vuelve a leer). Cualquier falla deja la cuenta SIN prueba (nada se activa a medias)
+ * y una revisión abierta: el sondeo por suscriptor repite el intento. Nunca se activa por una URL de éxito ni por un aviso.
+ */
+async function applyTrials(deps: Pick<ProcessorDeps, "store" | "provider">, acc: Accumulator, toPrioritize?: Set<string>): Promise<void> {
+  if (acc.trials.size === 0) return;
+  const snapshots = await deps.store.loadSubscriptions([...acc.trials.keys()]);
+  for (const [ownerId, trial] of acc.trials) {
+    const snapshot = snapshots.get(ownerId);
+    if (!snapshot) continue;
+    if (snapshot.trialStartedAt) {
+      if (snapshot.providerSubscriberUid === trial.subscriberUid) continue; // la misma prueba vista otra vez (aviso repetido, sondeo)
+      // Otra suscripción pide una SEGUNDA prueba (volvió a contratar con un enlace viejo, cambió de plan): no se activa nada y esa suscripción deja de cobrar.
+      addAnomaly(acc, "trial_reused", ownerId, `trial_reused:${trial.subscriberUid}`, { provider: deps.provider.name });
+      await deps.provider.cancelSubscriber({ subscriberUid: trial.subscriberUid, planCode: trial.planCode }).catch(() => undefined);
+      continue;
+    }
+    const state = await deps.provider.getSubscriber({ subscriberUid: trial.subscriberUid, planCode: trial.planCode });
+    if (!state.ok || state.data.status !== "active" || !state.data.inTrial) {
+      addAnomaly(acc, state.ok ? "provider_state_mismatch" : "provider_unreachable", ownerId, `trial_check:${trial.subscriberUid}`, { provider: deps.provider.name });
+      toPrioritize?.add(ownerId);
+      continue;
+    }
+    const target = trialEndsAtFor(trial.startedAt);
+    const current = state.data.nextChargeAt ? Date.parse(state.data.nextChargeAt) : Number.NaN;
+    if (!Number.isFinite(current) || Math.abs(current - Date.parse(target)) >= 1000) {
+      const scheduled = deps.provider.scheduleFirstCharge ? await deps.provider.scheduleFirstCharge({ subscriberUid: trial.subscriberUid, planCode: trial.planCode, atIso: target }) : null;
+      if (!scheduled?.ok) {
+        addAnomaly(acc, "trial_schedule", ownerId, `trial_schedule:${trial.subscriberUid}`, { provider: deps.provider.name });
+        toPrioritize?.add(ownerId);
+        continue;
+      }
+    }
+    if (deps.provider.bindsSubscriberOnPayment === true && snapshot.providerSubscriberUid !== trial.subscriberUid) {
+      const existing = acc.bindings.get(ownerId);
+      if (existing && existing.subscriberUid !== trial.subscriberUid) acc.duplicates.push(existing);
+      acc.bindings.set(ownerId, { ownerId, subscriberUid: trial.subscriberUid, planCode: trial.planCode });
+    }
+    acc.patches.set(ownerId, { ...acc.patches.get(ownerId), planCode: trial.planCode, providerPlanCode: trial.planCode, trialStartedAt: trial.startedAt, trialEndsAt: target });
+  }
 }
 
 /**
@@ -163,6 +209,9 @@ function applyReconciliation(acc: Accumulator, result: Reconciliation, provider:
       if (result.audit) addAnomaly(acc, result.audit, result.ownerId, `${result.audit}:${result.providerPaymentId}`, { providerPaymentId: result.providerPaymentId, provider });
       return "fact";
     }
+    case "trial":
+      acc.trials.set(result.ownerId, result);
+      return "trial";
     case "ignore":
       return `ignored:${result.reason}`;
     case "anomaly":
@@ -348,11 +397,13 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
     const reconciled = reconcileOperation(result.data, { hintedReference: record.subscriberReference, hintedExecutionUid: event.hint.executionUid, records: byRef, expectLive: deps.expectLive, allowRebind: deps.provider.bindsSubscriberOnPayment === true });
     collectBinding(acc, deps.provider, result.data, reconciled, byRef.get(record.subscriberReference));
     const text = applyReconciliation(acc, reconciled, deps.provider.name, paymentId);
-    outcomes.push({ event, status: reconciled.kind === "fact" ? "processed" : "ignored", result: text, ownerId: reconciled.kind === "fact" ? reconciled.ownerId : "ownerId" in reconciled ? reconciled.ownerId : record.ownerId, delay: 0 });
+    const settled = reconciled.kind === "fact" || reconciled.kind === "trial";
+    outcomes.push({ event, status: settled ? "processed" : "ignored", result: text, ownerId: settled ? reconciled.ownerId : "ownerId" in reconciled ? reconciled.ownerId : record.ownerId, delay: 0 });
   }
 
   // 4) Recalcular las cuentas con cobros nuevos y escribir todo junto.
-  const plans = await planOwners(deps, acc, [...acc.facts.keys()], now);
+  await applyTrials(deps, acc, toPrioritize);
+  const plans = await planOwners(deps, acc, [...new Set([...acc.facts.keys(), ...acc.patches.keys()])], now);
   const eventOutcomes: EventOutcome[] = outcomes.map((item) => ({ id: item.event.id, ownerId: item.ownerId, status: item.status, result: item.result, retryDelaySeconds: item.delay }));
   const commit = await deps.store.commitBatch(toCommit(plans, acc, eventOutcomes));
   await applyBindings(deps, acc);
@@ -361,7 +412,7 @@ export async function processEventBatch(deps: ProcessorDeps): Promise<BatchStats
   for (const item of outcomes) {
     if (item.status === "failed") stats.retried += 1;
     else if (item.status === "dead") stats.dead += 1;
-    else if (item.result === "fact") stats.facts += 1;
+    else if (item.result === "fact" || item.result === "trial") stats.facts += 1;
     else if (item.result.startsWith("anomaly:")) stats.anomalies += 1;
     else if (item.result !== "poll_requested") stats.ignored += 1;
   }
@@ -494,7 +545,7 @@ export async function runSubscriberPoll(deps: ProcessorDeps, options: { limit?: 
         for (const operation of state.operations) {
           stats.operations += 1;
           const text = applyReconciliation(acc, reconcileOperation(operation, { hintedReference: record.subscriberReference, hintedExecutionUid: null, records, expectLive: deps.expectLive }), deps.provider.name, operation.providerPaymentId);
-          if (text === "fact") stats.facts += 1;
+          if (text === "fact" || text === "trial") stats.facts += 1;
           else if (text.startsWith("anomaly:")) stats.anomalies += 1;
         }
       }
@@ -516,6 +567,7 @@ export async function runSubscriberPoll(deps: ProcessorDeps, options: { limit?: 
       if (result.ok) stats.resuspended += 1;
     });
 
+    await applyTrials(deps, acc);
     const plans = await planOwners(deps, acc, [...new Set([...acc.facts.keys(), ...acc.patches.keys(), ...targets])], now);
     const commit = await deps.store.commitBatch(toCommit(plans, acc, []));
     stats.subscriptionsWritten += commit.subscriptionsWritten;
@@ -616,10 +668,11 @@ export async function runProviderSweep(deps: ProcessorDeps, options: { maxPages?
     const reconciled = reconcileOperation(operation, { hintedReference: record?.subscriberReference ?? null, hintedExecutionUid: null, records: byRef, expectLive: deps.expectLive, allowRebind: deps.provider.bindsSubscriberOnPayment === true });
     collectBinding(acc, deps.provider, operation, reconciled, record);
     const text = applyReconciliation(acc, reconciled, deps.provider.name, operation.providerPaymentId);
-    if (text === "fact") stats.facts += 1;
+    if (text === "fact" || text === "trial") stats.facts += 1;
     else if (text.startsWith("anomaly:")) stats.anomalies += 1;
   }
-  const plans = await planOwners(deps, acc, [...acc.facts.keys()], deps.now());
+  await applyTrials(deps, acc);
+  const plans = await planOwners(deps, acc, [...new Set([...acc.facts.keys(), ...acc.patches.keys()])], deps.now());
   await deps.store.commitBatch(toCommit(plans, acc, []));
   await applyBindings(deps, acc);
   // El cursor sólo avanza si se recorrieron TODAS las páginas (si el tope de páginas cortó el barrido, lo que falta se retoma desde el mismo punto).

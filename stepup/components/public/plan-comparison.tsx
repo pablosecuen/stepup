@@ -38,7 +38,8 @@ export function PlanComparison({ plans, contractingOpen = false }: { plans: read
       })}
       </ListCascade>
     </div>
-    <p className="mt-4 text-sm leading-relaxed text-textSecondary">Precios en pesos argentinos. El precio por mes permite comparar los planes; el cobro se realiza por el período completo indicado. Los porcentajes de ahorro están redondeados y se comparan con el plan mensual vigente.</p>
+    <p className="mt-4 text-sm font-semibold leading-relaxed text-textPrimary">15 días gratis en tu primera contratación: la tarjeta es obligatoria y no se cobra el plan al empezar. Antes de confirmar ves la fecha exacta del primer cobro (a las 00:00, hora de Argentina) y su importe total.</p>
+    <p className="mt-2 text-sm leading-relaxed text-textSecondary">Precios en pesos argentinos. El precio por mes permite comparar los planes; el cobro se realiza por el período completo indicado. Los porcentajes de ahorro están redondeados y se comparan con el plan mensual vigente.</p>
     <section aria-labelledby="included-features" className="mt-9 rounded-2xl border border-border bg-surface p-5 sm:p-7">
       <h2 id="included-features" className="font-display text-2xl">Todo TeacherFlow, en todos los planes.</h2>
       <ul className="mt-5 grid gap-x-8 gap-y-3 text-textSecondary sm:grid-cols-2 lg:grid-cols-3">

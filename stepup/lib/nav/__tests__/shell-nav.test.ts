@@ -33,6 +33,7 @@ const EXPECTED_BY_FIRST_SEGMENT: Record<string, string | null> = {
   registro: "/registro",
   configuracion: null, // acceso directo abajo a la izquierda de la barra lateral (en móvil, en el encabezado)
   facturacion: null, // acceso directo en la barra lateral (sólo con la facturación encendida)
+  "suscripcion-pendiente": null, // pantalla de la cuenta bloqueada por falta de un pago aprobado: sin destino principal activo
   recordatorios: null, // se llega desde Inicio
   "resumen-financiero": "/cobros", // pertenece a Cobros: mantiene activa la sección (entrada secundaria, no un sexto destino)
 };

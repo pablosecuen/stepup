@@ -126,9 +126,12 @@ test("CUENTA EXISTENTE (anterior al corte, grandfathered): acceso completo siemp
   assert.equal(h.blocked.length, 0);
 });
 
-test("CUENTA NUEVA sin pago (pending): puede LEER, ingresar, exportar y pagar, pero la escritura se bloquea EN EL SERVIDOR (403) sin llegar a la base", async () => {
+test("CUENTA NUEVA sin pago (pending): BLOQUEADA — no lee ni escribe datos operativos EN EL SERVIDOR (403) sin llegar a la base; sí ingresa, ve su facturación y puede eliminar la cuenta", async () => {
   const h = harness({ snapshot: snap({ status: "pending" }), now: at("2026-11-20"), createdAt: "2026-11-19T10:00:00Z" });
-  assert.equal((await read(h.fetchGuarded)).status, 200);
+  assert.equal((await read(h.fetchGuarded)).status, 403, "ni siquiera lee alumnos: no es modo de sólo lectura");
+  assert.equal((await read(h.fetchGuarded, "/rest/v1/billing_subscriptions?select=*")).status, 200, "su propia facturación");
+  assert.equal((await read(h.fetchGuarded, "/rest/v1/teacher_profiles?select=*")).status, 200, "perfil (Configuración)");
+  assert.equal((await write(h.fetchGuarded, "/rest/v1/rpc/calendar_agenda_stamp")).status, 403, "ni las lecturas operativas por función");
   assert.equal((await h.fetchGuarded!(`${ORIGIN}/auth/v1/token`, { method: "POST" })).status, 200, "sesión");
   assert.equal((await write(h.fetchGuarded, "/rest/v1/rpc/touch_web_device")).status, 200, "dispositivo");
   assert.equal((await write(h.fetchGuarded, "/rest/v1/rpc/delete_own_account")).status, 200, "eliminar la cuenta");
@@ -140,23 +143,24 @@ test("CUENTA NUEVA sin pago (pending): puede LEER, ingresar, exportar y pagar, p
   assert.equal((await write(h.fetchGuarded, "/rest/v1/students")).status, 403);
   assert.equal((await write(h.fetchGuarded, "/storage/v1/object/lesson-files/x.png")).status, 403);
   assert.ok(!h.calls.urls.some((url) => /create_student_with_operation|\/rest\/v1\/students$|object\/lesson-files\/x/.test(url) && url.startsWith("POST")), "los bloqueados nunca llegaron a Supabase");
-  assert.ok(h.blocked.length >= 3 && h.blocked.every((reason) => /_blocked|storage_blocked/.test(reason)));
+  assert.ok(h.blocked.length >= 3 && h.blocked.every((reason) => /_blocked|storage_blocked|read_blocked/.test(reason)));
 });
 
-test("CICLO COMPLETO de una cuenta que pagó: activa → vence → gracia (con aviso, escribe) → limitada (no escribe) → paga → vuelve a escribir", async () => {
+test("CICLO COMPLETO de una cuenta que pagó: activa → vence → SIN gracia (bloqueada, ni lee ni escribe) → paga → vuelve todo", async () => {
   // active
   let h = harness({ snapshot: snap({ status: "active", ...PAID }), now: at("2026-10-20") });
   assert.equal((await write(h.fetchGuarded)).status, 200, "período pagado");
-  // vencido sin resultado (past_due): sigue completo
+  // vencido sin resultado confirmado: BLOQUEADA (no hay gracia); apenas se confirme el pago vuelve sola
   h = harness({ snapshot: snap({ status: "active", ...PAID }), now: at("2026-11-02") });
-  assert.equal((await write(h.fetchGuarded)).status, 200, "renovación en proceso");
-  // gracia: cobro rechazado → 5 días completos con aviso
+  assert.equal((await write(h.fetchGuarded)).status, 403, "renovación sin confirmar: sin acceso");
+  assert.equal((await read(h.fetchGuarded)).status, 403);
+  // cobro rechazado: tampoco hay gracia, ningún día
   const graceSnap = snap({ status: "grace_period", ...PAID, renewalRejectedDueAt: ar("2026-11-01") });
-  for (const day of ["2026-11-02", "2026-11-06"]) assert.equal((await write(harness({ snapshot: graceSnap, now: at(day) }).fetchGuarded)).status, 200, `gracia ${day}`);
-  // limitada: pasada la gracia
-  const limited = harness({ snapshot: graceSnap, now: at("2026-11-07", 0, 1) });
-  assert.equal((await write(limited.fetchGuarded)).status, 403, "modo limitado");
-  assert.equal((await read(limited.fetchGuarded)).status, 200, "pero puede ver sus datos");
+  for (const day of ["2026-11-02", "2026-11-06", "2026-11-07"]) {
+    const rejected = harness({ snapshot: graceSnap, now: at(day) });
+    assert.equal((await write(rejected.fetchGuarded)).status, 403, `sin gracia ${day}`);
+    assert.equal((await read(rejected.fetchGuarded)).status, 403, `ni lectura ${day}`);
+  }
   // paga de nuevo: nuevo período confirmado → vuelve el acceso completo
   const paid = harness({ snapshot: snap({ status: "active", ...PAID, currentPeriodStart: ar("2026-11-08"), currentPeriodEnd: ar("2026-12-08"), graceEndsAt: ar("2026-12-14"), renewalRejectedDueAt: null }), now: at("2026-11-08", 12) });
   assert.equal((await write(paid.fetchGuarded)).status, 200, "pagó: recupera el acceso completo");
@@ -205,17 +209,19 @@ test("el comprobante firmado se emite sólo con una verificación buena y acceso
   // Una cuenta limitada no emite comprobante.
   const limitedWritten: string[] = [];
   const limitedResolve = createAccessResolver({ env: ENV_ON, ownerId: OWNER, accountCreatedAt: null, store: storeOf(snap({ status: "pending" })), now: () => now, cookie: { read: async () => undefined, write: async (value) => { limitedWritten.push(value); } } });
-  assert.equal((await limitedResolve()).level, "limited");
+  assert.equal((await limitedResolve()).level, "blocked");
   assert.equal(limitedWritten.length, 0);
 });
 
 test("la guarda decide en el SERVIDOR por pedido: no confía en la interfaz ni en el navegador (una acción invocada sin pantalla igual se bloquea)", async () => {
   const resolved: string[] = [];
   const inner = (async () => new Response("{}", { status: 200 })) as typeof fetch;
-  const guarded = guardFetch(inner, { supabaseOrigin: ORIGIN, resolve: async () => { resolved.push("x"); return (await harness({ snapshot: snap({ status: "pending" }), now: at("2026-11-20") }).fetchGuarded ? ({ level: "limited", capabilities: { createOperationalData: false, modifyOperationalData: false } } as never) : (undefined as never)); } });
+  const guarded = guardFetch(inner, { supabaseOrigin: ORIGIN, resolve: async () => { resolved.push("x"); return { level: "blocked", capabilities: { createOperationalData: false, modifyOperationalData: false, viewOperationalData: false }, status: "pending" } as never; } });
   assert.equal((await guarded(new Request(`${ORIGIN}/rest/v1/rpc/register_payment`, { method: "POST", body: "{}" }))).status, 403, "también con un Request");
   assert.equal((await guarded(new URL(`${ORIGIN}/rest/v1/students`), { method: "DELETE" })).status, 403, "también con una URL");
   assert.equal(resolved.length, 2);
-  assert.equal((await guarded(`${ORIGIN}/rest/v1/students`)).status, 200, "las lecturas no consultan el estado");
-  assert.equal(resolved.length, 2);
+  assert.equal((await guarded(`${ORIGIN}/rest/v1/students`)).status, 403, "una cuenta bloqueada tampoco LEE datos operativos");
+  assert.equal((await guarded(`${ORIGIN}/auth/v1/user`)).status, 200, "la sesión nunca consulta el estado");
+  assert.equal((await guarded(`${ORIGIN}/rest/v1/billing_subscriptions`)).status, 200, "su propia facturación");
+  assert.equal(resolved.length, 4);
 });

@@ -45,7 +45,7 @@ test("falla cerrado: variable definida pero vacía o mal escrita no habilita a n
 
 test("cableado: el piloto manda en la barra, Configuración, Facturación y las acciones; la página pública de planes no ofrece contratar; webhook y crons NO lo consultan", () => {
   const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
-  assert.match(read("app/(app)/layout.tsx"), /billingEnabled=\{isBillingOpenFor\(user\?\.id \?\? null, process\.env\)\}/);
+  assert.match(read("app/(app)/layout.tsx"), /billingEnabled=\{billingAccess\?\.level === "blocked" \|\| isBillingOpenFor\(user\?\.id \?\? null, process\.env\)\}/, "una cuenta bloqueada siempre ve su facturación; el resto sigue el piloto");
   assert.match(read("app/(app)/configuracion/page.tsx"), /billingEnabled=\{isBillingOpenFor\(ctx\.ownerId, process\.env\)\}/);
   assert.match(read("app/(public-info)/planes/page.tsx"), /contractingOpen=\{isBillingPublic\(process\.env\)\}/);
   const data = read("lib/billing/page-data.ts");

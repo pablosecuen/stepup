@@ -154,7 +154,7 @@ try {
   const liveDeps = () => deps({ provider: live, expectLive: true });
   // RELOJ CONTROLADO: el reloj de la aplicación (`clock`) es simulado, pero `now()` de la base es el real. El intento de pago vence según el reloj
   // simulado; para que la prueba no dependa del día en que se corra, el intento dura décadas (así `expires_at > now()` vale siempre).
-  const cmd = (provider = sandbox) => ({ store, provider, flags: FLAGS, now, attemptTtlMinutes: 60 * 24 * 365 * 40 });
+  const cmd = (provider = sandbox) => ({ store, provider, flags: FLAGS, now, attemptTtlMinutes: 60 * 24 * 365 * 40, offerTrial: false }); // esta suite prueba los flujos de pago NORMAL; la prueba gratuita tiene la suya (rebill_trial.mjs)
   const at = (date, h = 12, m = 0) => {
     clock = new Date(ar(date, h, m));
   };
@@ -224,7 +224,7 @@ try {
     assert.ok(rb.requests.some((r) => r.path === "/v3/payments/search"), "se consultó a Rebill por los pagos recientes");
     assert.equal((await sub(A)).status, "pending");
     assert.equal(await periods(A), 0);
-    assert.equal((await access(A, "2026-11-12", 9)).level, "limited");
+    assert.equal((await access(A, "2026-11-12", 9)).level, "blocked");
   });
 
   await step("3. firma inválida o ausente: 401 y NO se guarda nada; con firma válida pero cuerpo que miente el estado no decide nada", async () => {
@@ -541,16 +541,16 @@ try {
     await drain();
     assert.equal((await sub(L)).status, "active");
     assert.equal(iso((await sub(L)).current_period_end), ar("2028-04-01"));
-    // La renovación falla: Rebill reintenta (sandbox: horas; producción: 2, 2, 3 y 3 días) y mientras tanto TeacherFlow da sus 5 días de gracia.
+    // La renovación falla: Rebill reintenta (sandbox: horas; producción: 2, 2, 3 y 3 días) y mientras tanto TeacherFlow NO da acceso (sin días de gracia).
     at("2028-04-01", 12);
     rb.addPayment({ id: "test_pay_L2", status: "rejected", amount: 25900, subscriptionId: "test_sub_L" });
     await send(sandbox, SANDBOX_SECRET, updated("test_pay_L2", "rejected", { subscriptionId: "test_sub_L" }));
     await drain();
     const inGrace = await access(L, "2028-04-03");
-    assert.equal(inGrace.level, "full_with_notice");
-    assert.equal(inGrace.reason, "payment_failed_grace");
-    assert.equal((await access(L, "2028-04-06", 12)).level, "full_with_notice", "día 5 de gracia: sigue con acceso");
-    assert.equal((await access(L, "2028-04-07", 0, 1)).level, "limited", "pasada la gracia: modo limitado");
+    assert.equal(inGrace.level, "blocked");
+    assert.equal(inGrace.reason, "payment_failed");
+    assert.equal((await access(L, "2028-04-06", 12)).level, "blocked", "un cobro rechazado no habilita el uso ningún día");
+    assert.equal((await access(L, "2028-04-07", 0, 1)).level, "blocked", "los reintentos del proveedor siguen y no conceden acceso");
     // Rebill agota los reintentos: la suscripción queda `paused` con `statusDetail: defaulted` (no es una pausa pedida por la persona).
     at("2028-04-11", 12);
     const rbSub = rb.subscriptions.get("test_sub_L");
@@ -562,7 +562,7 @@ try {
     assert.ok(row.provider_ended_at, "el fin de cobro del proveedor quedó registrado");
     assert.equal(row.cancel_requested_at, null, "NO se toma como una cancelación pedida por la persona");
     const after = await access(L, "2028-04-11", 12);
-    assert.equal(after.level, "limited");
+    assert.equal(after.level, "blocked");
     assert.equal(after.reason, "subscription_expired");
     assert.equal(after.nextAction, "resubscribe");
     assert.equal(await count("select count(*)::int n from public.billing_reconciliations where owner_id = $1 and kind = 'provider_state_mismatch'", [L]), 0, "ninguna anomalía: es un estado conocido");

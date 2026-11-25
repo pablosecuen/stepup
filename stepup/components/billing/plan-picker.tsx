@@ -97,6 +97,7 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
                     )
                   )}
                 </span>
+                {option.trial && <span className="text-[13.5px] font-[650] text-ok">{option.trial.headline}</span>}
                 <span className="font-display text-[30px] font-medium leading-none tracking-[-0.02em] text-textPrimary">{option.price}</span>
                 <span className="text-[14px] text-textSecondary">{option.cadence}</span>
                 {option.perMonth && <span className="text-[13.5px] text-textMuted">Equivale a {option.perMonth}</span>}
@@ -109,7 +110,7 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
 
       {mode === "subscribe" && grandfathered && (
         <Notice tone="info" title="Tu cuenta tiene acceso sin cargo">
-          Si te suscribís ahora, tu cuenta pasa a las reglas normales de una suscripción: se renueva sola, tiene 5 días de gracia si un cobro es rechazado y modo limitado si no se regulariza.
+          Si te suscribís ahora, tu cuenta pasa a las reglas normales de una suscripción: se renueva sola y, si un cobro no se aprueba, el acceso queda en pausa hasta que se apruebe el pago. No incluye prueba gratuita.
         </Notice>
       )}
 
@@ -125,7 +126,7 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
             </div>
             <div>
               <dt className="text-[13px] font-medium text-textMuted">Total a pagar ahora</dt>
-              <dd className="mt-0.5 text-[15px] font-[650] text-textPrimary">{chosen.price}</dd>
+              <dd className="mt-0.5 text-[15px] font-[650] text-textPrimary">{chosen.trial ? "$ 0 (prueba gratuita)" : chosen.price}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-medium text-textMuted">Renovación automática</dt>
@@ -134,6 +135,11 @@ export function PlanPicker({ options, mode, currentPlanCode, grandfathered, demo
               </dd>
             </div>
           </dl>
+          {chosen.trial && (
+            <p className="mt-3 rounded-md border-[1.5px] border-okLine bg-okSoft px-3 py-2.5 text-[14.5px] font-[650] text-textPrimary">
+              {chosen.trial.headline} {chosen.trial.firstCharge} La tarjeta es obligatoria para empezar.
+            </p>
+          )}
           <p className="mt-3 flex gap-2 text-[13.5px] leading-relaxed text-textMuted">
             <LockClosedIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>La tarjeta, tu nombre y tu documento los cargás en el sitio seguro del servicio de cobro (Rebill). TeacherFlow no los ve ni los guarda. Volver de ese sitio no activa nada por sí solo: tu suscripción se activa cuando el pago queda confirmado.</span>

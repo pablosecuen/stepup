@@ -27,7 +27,7 @@ import { BILLING_STATUSES, type BillingStatus } from "./state-machine.ts";
  * El modo limitado nunca borra ni oculta datos: se puede ingresar, ver los propios datos, exportarlos, ver la facturación,
  * actualizar el medio de pago, cancelar y contactar a soporte; no se crea, edita ni importa información operativa.
  */
-export type AccessLevel = "full" | "full_with_notice" | "limited";
+export type AccessLevel = "full" | "full_with_notice" | "blocked";
 
 export type AccessReason =
   | "enforcement_off"
@@ -39,7 +39,7 @@ export type AccessReason =
   | "grandfathered"
   | "subscription_active"
   | "renewal_processing"
-  | "payment_failed_grace"
+  | "payment_failed"
   | "subscription_ending"
   | "subscription_pending"
   | "subscription_unpaid"
@@ -111,8 +111,12 @@ const FULL_CAPABILITIES: AccessCapabilities = Object.freeze({
   contactSupport: true,
 });
 
-const LIMITED_CAPABILITIES: AccessCapabilities = Object.freeze({
-  viewOperationalData: true,
+/**
+ * Cuenta BLOQUEADA (condición comercial del 25/11/2026): terminó la prueba o el período pagado sin un pago aprobado. NO es modo de sólo lectura: no se ve ni se crea ni se
+ * modifica nada operativo. Sólo queda lo necesario para regularizar y salir: facturación, cancelar, medio de pago, soporte, privacidad y eliminar la cuenta. Los datos se conservan intactos.
+ */
+const BLOCKED_CAPABILITIES: AccessCapabilities = Object.freeze({
+  viewOperationalData: false,
   createOperationalData: false,
   modifyOperationalData: false,
   viewBilling: true,
@@ -135,14 +139,14 @@ function access(level: AccessLevel, reason: AccessReason, nextAction: NextAction
     nextAction,
     endsAt,
     status,
-    capabilities: level === "limited" ? LIMITED_CAPABILITIES : FULL_CAPABILITIES,
+    capabilities: level === "blocked" ? BLOCKED_CAPABILITIES : FULL_CAPABILITIES,
     internalNotice: extras.internalNotice ?? false,
     reconcilePriority: extras.reconcilePriority ?? false,
   };
 }
 
 /** Estados con los que la cuenta tenía acceso pagado al verificarse por última vez. */
-const PAID_ACCESS_STATUSES: ReadonlySet<BillingStatus> = new Set<BillingStatus>(["active", "past_due", "grace_period", "cancel_at_period_end"]);
+const PAID_ACCESS_STATUSES: ReadonlySet<BillingStatus> = new Set<BillingStatus>(["active", "cancel_at_period_end"]);
 
 function isExistingAccount(input: AccessInput): boolean {
   const cutoff = input.grandfatherCutoff ? Date.parse(input.grandfatherCutoff) : Number.NaN;
@@ -166,10 +170,10 @@ function resolveUnknown(input: AccessInput, readFailed: boolean): BillingAccess 
     // Un reloj o una verificación ilegibles son una falla propia: se otorga la tolerancia (a favor de quien pagó).
     const within = !Number.isFinite(now.getTime()) || !Number.isFinite(verified) ? true : now.getTime() < until;
     if (within) return access("full_with_notice", "state_unavailable_tolerance", "wait", null, Number.isFinite(until) ? new Date(until).toISOString() : null, extras);
-    return access("limited", "state_unavailable_tolerance_expired", "wait", null, null, extras);
+    return access("blocked", "state_unavailable_tolerance_expired", "wait", null, null, extras);
   }
   if (isExistingAccount(input)) return access("full", "state_unavailable_existing_account", "none", null, null, extras);
-  return access("limited", "state_unavailable_unverified", readFailed ? "wait" : "subscribe", null, null, extras);
+  return access("blocked", "state_unavailable_unverified", readFailed ? "wait" : "subscribe", null, null, extras);
 }
 
 export function resolveBillingAccess(input: AccessInput): BillingAccess {
@@ -188,19 +192,20 @@ export function resolveBillingAccess(input: AccessInput): BillingAccess {
       return access("full", "grandfathered", "none", status, null);
     case "active":
       return access("full", "subscription_active", "none", status, periodEnd);
+    // Sin gracia: un cobro pendiente o rechazado NO habilita el uso (los reintentos del proveedor siguen y, al aprobarse, el acceso vuelve solo).
     case "past_due":
-      return access("full", "renewal_processing", "wait", status, graceEnd);
+      return access("blocked", "renewal_processing", "wait", status, null);
     case "grace_period":
-      return access("full_with_notice", "payment_failed_grace", "update_payment_method", status, graceEnd);
+      return access("blocked", "payment_failed", "update_payment_method", status, null);
     case "cancel_at_period_end":
       return access("full_with_notice", "subscription_ending", "reactivate", status, cancelAccessEnd(snapshot));
     case "pending":
-      return access("limited", "subscription_pending", "subscribe", status, null);
+      return access("blocked", "subscription_pending", "subscribe", status, null);
     case "limited":
-      return access("limited", "subscription_unpaid", "update_payment_method", status, null);
+      return access("blocked", "subscription_unpaid", "update_payment_method", status, null);
     case "canceled":
-      return access("limited", "subscription_canceled", "resubscribe", status, null);
+      return access("blocked", "subscription_canceled", "resubscribe", status, null);
     case "expired":
-      return access("limited", "subscription_expired", "resubscribe", status, null);
+      return access("blocked", "subscription_expired", "resubscribe", status, null);
   }
 }

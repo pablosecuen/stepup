@@ -53,36 +53,41 @@ test("active: acceso completo hasta el fin del período; el fin se informa", () 
   assert.ok(Object.values(result.capabilities).every(Boolean));
 });
 
-test("pasó el vencimiento sin resultado confirmado (past_due): acceso completo; el aviso de gracia sólo aparece con un rechazo confirmado", () => {
+test("pasó el vencimiento sin resultado confirmado (past_due): SIN gracia — acceso bloqueado hasta que se apruebe el pago, y se espera la confirmación", () => {
   const result = resolveBillingAccess({ flags: ON, snapshot: snap({ status: "active", ...PAID }), now: at("2026-11-03") });
   assert.equal(result.status, "past_due");
-  assert.equal(result.level, "full");
+  assert.equal(result.level, "blocked");
   assert.equal(result.reason, "renewal_processing");
   assert.equal(result.nextAction, "wait");
-  assert.equal(result.endsAt, ar("2026-11-07"));
+  assert.equal(result.endsAt, null);
+  assert.equal(result.capabilities.viewOperationalData, false);
+  // El instante exacto del vencimiento ya no da acceso (el período es [inicio, fin)).
+  assert.equal(resolveBillingAccess({ flags: ON, snapshot: snap({ status: "active", ...PAID }), now: at("2026-11-01") }).level, "blocked");
+  assert.equal(resolveBillingAccess({ flags: ON, snapshot: snap({ status: "active", ...PAID }), now: at("2026-10-31", 23, 59, 59) }).level, "full");
 });
 
-test("cobro rechazado: CINCO días de gracia con acceso completo, aviso y la acción de actualizar el medio de pago", () => {
+test("cobro rechazado: NO hay gracia — acceso bloqueado, y la acción es actualizar el medio de pago; los reintentos del proveedor siguen sin conceder acceso", () => {
   const snapshot = snap({ status: "grace_period", ...PAID, renewalRejectedDueAt: ar("2026-11-01", 10) });
   for (const now of [at("2026-11-01", 10), at("2026-11-02"), at("2026-11-06", 23, 59, 59)]) {
     const result = resolveBillingAccess({ flags: ON, snapshot, now });
-    assert.equal(result.level, "full_with_notice");
-    assert.equal(result.reason, "payment_failed_grace");
+    assert.equal(result.level, "blocked");
+    assert.equal(result.reason, "payment_failed");
     assert.equal(result.nextAction, "update_payment_method");
-    assert.equal(result.endsAt, ar("2026-11-07"));
-    assert.ok(Object.values(result.capabilities).every(Boolean), "durante la gracia se conserva TODO el acceso");
+    assert.equal(result.endsAt, null);
+    assert.equal(result.capabilities.viewOperationalData, false, "un pago rechazado no habilita el uso");
+    assert.equal(result.capabilities.updatePaymentMethod, true);
   }
 });
 
-test("terminada la gracia: modo LIMITADO. Puede ingresar, ver sus datos y la facturación, cancelar, actualizar el medio de pago, exportar y eliminar; no crea ni modifica datos operativos", () => {
+test("sin pago aprobado: BLOQUEADA (no sólo lectura). Puede ingresar, ver su facturación, cancelar, actualizar el medio de pago, contactar a soporte y eliminar la cuenta; no ve, crea ni modifica datos operativos", () => {
   const snapshot = snap({ status: "grace_period", ...PAID, renewalRejectedDueAt: ar("2026-11-01", 10) });
   const result = resolveBillingAccess({ flags: ON, snapshot, now: at("2026-11-07") });
   assert.equal(result.status, "limited");
-  assert.equal(result.level, "limited");
+  assert.equal(result.level, "blocked");
   assert.equal(result.reason, "subscription_unpaid");
   assert.equal(result.nextAction, "update_payment_method");
   assert.deepEqual(result.capabilities, {
-    viewOperationalData: true,
+    viewOperationalData: false,
     createOperationalData: false,
     modifyOperationalData: false,
     viewBilling: true,
@@ -94,7 +99,7 @@ test("terminada la gracia: modo LIMITADO. Puede ingresar, ver sus datos y la fac
   });
 });
 
-test("la exportación de datos y la baja de cuenta están disponibles en CADA estado limitado", () => {
+test("la privacidad (exportar) y la baja de cuenta están disponibles en CADA estado bloqueado, y ninguno ve datos operativos", () => {
   const limited: BillingAccess[] = [
     resolveBillingAccess({ flags: ON, snapshot: snap({ status: "pending" }), now: at("2026-10-15") }),
     resolveBillingAccess({ flags: ON, snapshot: snap({ status: "limited", ...PAID }), now: at("2026-12-01") }),
@@ -103,11 +108,11 @@ test("la exportación de datos y la baja de cuenta están disponibles en CADA es
   ];
   assert.deepEqual(limited.map((item) => item.status), ["pending", "limited", "canceled", "expired"]);
   for (const item of limited) {
-    assert.equal(item.level, "limited");
+    assert.equal(item.level, "blocked");
     assert.equal(item.capabilities.exportData, true);
     assert.equal(item.capabilities.deleteAccount, true);
     assert.equal(item.capabilities.viewBilling, true);
-    assert.equal(item.capabilities.viewOperationalData, true);
+    assert.equal(item.capabilities.viewOperationalData, false);
     assert.equal(item.capabilities.createOperationalData, false);
     assert.equal(item.capabilities.modifyOperationalData, false);
   }
@@ -123,12 +128,12 @@ test("cancelada con acceso hasta el fin del período: acceso completo con aviso 
   assert.equal(during.endsAt, ar("2026-11-01"));
   const after = resolveBillingAccess({ flags: ON, snapshot, now: at("2026-11-01") });
   assert.equal(after.status, "canceled");
-  assert.equal(after.level, "limited");
+  assert.equal(after.level, "blocked");
 });
 
 test("la resolución usa el reloj: no confía en el estado guardado (una cuenta «active» vencida hace meses está limitada)", () => {
   const stale = snap({ status: "active", ...PAID });
-  assert.equal(resolveBillingAccess({ flags: ON, snapshot: stale, now: at("2027-03-01") }).level, "limited");
+  assert.equal(resolveBillingAccess({ flags: ON, snapshot: stale, now: at("2027-03-01") }).level, "blocked");
   // Y al revés: los datos del período mandan sobre la etiqueta guardada (dentro de lo pagado hay acceso completo aunque diga limited).
   assert.equal(resolveBillingAccess({ flags: ON, snapshot: snap({ status: "limited", ...PAID }), now: at("2026-10-15") }).level, "full");
 });

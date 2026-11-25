@@ -189,7 +189,7 @@ export function parseSubscriberState(json: unknown): { state: ProviderSubscriber
       controlUrl = null;
     }
   }
-  return { state: { status: SUBSCRIBER_STATUSES[rawStatus] ?? "unknown", operations: [], executionsReadable: readable }, controlUrl };
+  return { state: { status: SUBSCRIBER_STATUSES[rawStatus] ?? "unknown", operations: [], executionsReadable: readable, inTrial: false, nextChargeAt: null }, controlUrl };
 }
 
 export function parseStatusQuery(json: unknown, fallbackOccurredAt: string): ProviderOperation | null {

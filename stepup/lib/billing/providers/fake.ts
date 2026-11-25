@@ -9,16 +9,20 @@ import { parseNoticeBody, sha256Hex } from "./mobbex-normalize.ts";
  * Reduce los avisos con el MISMO código que el adaptador de Mobbex (`parseNoticeBody`): un aviso nunca lleva autoridad.
  * El destino de «redirect» es un dominio `.invalid` (nunca resuelve), de modo que ningún flujo falso puede abrir un sitio real.
  */
-type FakeMethod = "createCheckout" | "getOperation" | "listOperations" | "getSubscriber" | "getPaymentMethodUpdateUrl" | "cancelSubscriber" | "reactivateSubscriber" | "changePlan";
+type FakeMethod = "createCheckout" | "getOperation" | "listOperations" | "getSubscriber" | "getPaymentMethodUpdateUrl" | "cancelSubscriber" | "reactivateSubscriber" | "changePlan" | "scheduleFirstCharge";
 
 export class FakeProviderAdapter implements ProviderAdapter {
   readonly name = "fake" as const;
   readonly requiresCustomerIdentity = true as const;
   readonly capabilities = { changePlan: true, paymentMethodUpdate: true } as const;
-  readonly calls: Record<FakeMethod, number> = { createCheckout: 0, getOperation: 0, listOperations: 0, getSubscriber: 0, getPaymentMethodUpdateUrl: 0, cancelSubscriber: 0, reactivateSubscriber: 0, changePlan: 0 };
+  readonly calls: Record<FakeMethod, number> = { createCheckout: 0, getOperation: 0, listOperations: 0, getSubscriber: 0, getPaymentMethodUpdateUrl: 0, cancelSubscriber: 0, reactivateSubscriber: 0, changePlan: 0, scheduleFirstCharge: 0 };
   readonly operations = new Map<string, ProviderOperation>();
   readonly checkouts = new Map<string, { checkoutUid: string; subscriberUid: string | null; redirectUrl: string }>();
-  readonly subscribers = new Map<string, { status: ProviderSubscriberStatus; executionsReadable: boolean }>();
+  readonly subscribers = new Map<string, { status: ProviderSubscriberStatus; executionsReadable: boolean; inTrial: boolean; nextChargeAt: string | null }>();
+  /** Checkouts pedidos CON prueba gratuita (las pruebas comprueban que la oferta mostrada y el checkout coinciden). */
+  readonly trialCheckouts: string[] = [];
+  /** Instantes que se le pidió fijar como primer cobro (las pruebas comprueban la hora y la repetición). */
+  readonly scheduledCharges: Array<{ subscriberUid: string; atIso: string }> = [];
   readonly canceled = new Set<string>();
   /** Con qué plan se pidió cada cancelación / reactivación / consulta (las pruebas comprueban que siempre sea el de la suscripción del proveedor). */
   readonly planCalls: Array<{ method: "cancelSubscriber" | "reactivateSubscriber" | "getSubscriber" | "getPaymentMethodUpdateUrl"; subscriberUid: string; planCode: PlanCode }> = [];
@@ -36,8 +40,8 @@ export class FakeProviderAdapter implements ProviderAdapter {
     this.operations.set(operation.providerPaymentId, operation);
   }
 
-  seedSubscriber(subscriberUid: string, state: { status: ProviderSubscriberStatus; executionsReadable?: boolean } = { status: "active" }): void {
-    this.subscribers.set(subscriberUid, { status: state.status, executionsReadable: state.executionsReadable ?? true });
+  seedSubscriber(subscriberUid: string, state: { status: ProviderSubscriberStatus; executionsReadable?: boolean; inTrial?: boolean; nextChargeAt?: string | null } = { status: "active" }): void {
+    this.subscribers.set(subscriberUid, { status: state.status, executionsReadable: state.executionsReadable ?? true, inTrial: state.inTrial ?? false, nextChargeAt: state.nextChargeAt ?? null });
   }
 
   private takeFailure(method: FakeMethod): ProviderErrorKind | null {
@@ -46,6 +50,10 @@ export class FakeProviderAdapter implements ProviderAdapter {
     if (!failure) return null;
     failure.remaining -= 1;
     return failure.kind;
+  }
+
+  offersTrial(): boolean {
+    return true;
   }
 
   async createCheckout(request: Parameters<ProviderAdapter["createCheckout"]>[0]): Promise<ProviderResult<{ checkoutUid: string; subscriberUid: string | null; redirectUrl: string }>> {
@@ -57,7 +65,8 @@ export class FakeProviderAdapter implements ProviderAdapter {
     const id = sha256Hex(request.idempotencyKey).slice(0, 12);
     const created = { checkoutUid: `fake_chk_${id}`, subscriberUid: `fake_sub_${id}`, redirectUrl: `https://fake-provider.invalid/subscribe/${id}` };
     this.checkouts.set(request.idempotencyKey, created);
-    this.subscribers.set(created.subscriberUid, { status: "active", executionsReadable: true });
+    this.subscribers.set(created.subscriberUid, { status: "active", executionsReadable: true, inTrial: request.trial === true, nextChargeAt: null });
+    if (request.trial === true) this.trialCheckouts.push(request.idempotencyKey);
     return providerOk(created);
   }
 
@@ -86,7 +95,17 @@ export class FakeProviderAdapter implements ProviderAdapter {
     const subscriber = this.subscribers.get(input.subscriberUid);
     if (!subscriber) return providerFail("rejected");
     const operations = [...this.operations.values()].filter((operation) => operation.subscriberUid === input.subscriberUid);
-    return providerOk({ status: this.canceled.has(input.subscriberUid) && subscriber.status === "active" ? "suspended" : subscriber.status, operations: subscriber.executionsReadable ? operations : [], executionsReadable: subscriber.executionsReadable });
+    return providerOk({ status: this.canceled.has(input.subscriberUid) && subscriber.status === "active" ? "suspended" : subscriber.status, operations: subscriber.executionsReadable ? operations : [], executionsReadable: subscriber.executionsReadable, inTrial: subscriber.inTrial, nextChargeAt: subscriber.nextChargeAt });
+  }
+
+  async scheduleFirstCharge(input: { subscriberUid: string; planCode: PlanCode; atIso: string }): Promise<ProviderResult<{ nextChargeAt: string }>> {
+    const failure = this.takeFailure("scheduleFirstCharge");
+    if (failure) return providerFail(failure);
+    const subscriber = this.subscribers.get(input.subscriberUid);
+    if (!subscriber) return providerFail("rejected");
+    this.scheduledCharges.push({ subscriberUid: input.subscriberUid, atIso: input.atIso });
+    subscriber.nextChargeAt = input.atIso;
+    return providerOk({ nextChargeAt: input.atIso });
   }
 
   async getPaymentMethodUpdateUrl(input: { subscriberUid: string; planCode: PlanCode }): Promise<ProviderResult<{ redirectUrl: string }>> {

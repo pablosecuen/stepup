@@ -55,7 +55,7 @@ try {
   let clock = new Date(ar("2026-10-14", 9));
   const now = () => clock;
   const deps = (overrides = {}) => ({ store, provider, now, expectLive: true, worker: "m3-worker", ...overrides });
-  const cmd = () => ({ store, provider, flags: FLAGS, now });
+  const cmd = () => ({ store, provider, flags: FLAGS, now, offerTrial: false }); // flujos de pago normal; la prueba gratuita tiene su propia suite (rebill_trial.mjs)
   const at = (date, h = 12, m = 0) => {
     clock = new Date(ar(date, h, m));
   };
@@ -115,7 +115,7 @@ try {
     const snap = await store.ensureAccount(A);
     assert.equal(snap.status, "pending");
     const view = await access(A, "2026-10-14", 9);
-    assert.equal(view.level, "limited");
+    assert.equal(view.level, "blocked");
     assert.equal(view.nextAction, "subscribe");
   });
 
@@ -139,7 +139,7 @@ try {
     const poll = await runSubscriberPoll(deps());
     assert.equal(poll.subscriptionsWritten, 0);
     assert.equal((await sub(A)).status, "pending");
-    assert.equal((await access(A, "2026-10-14", 9)).level, "limited");
+    assert.equal((await access(A, "2026-10-14", 9)).level, "blocked");
   });
 
   let periodEnd1;
@@ -203,7 +203,7 @@ try {
     assert.ok(sweep.evaluated >= 1);
     assert.equal((await sub(A)).status, "past_due");
     const processing = await access(A, "2026-12-15");
-    assert.deepEqual([processing.level, processing.reason], ["full", "renewal_processing"], "mientras no se sepa el resultado el acceso sigue completo (renovación en proceso)");
+    assert.deepEqual([processing.level, processing.reason], ["blocked", "renewal_processing"], "sin gracia: mientras no se sepa el resultado NO hay acceso (se restablece solo al confirmarse el pago)");
     await store.prioritizePolls([A]);
     const poll = await runSubscriberPoll(deps());
     assert.ok(poll.facts >= 1, JSON.stringify(poll));
@@ -217,7 +217,7 @@ try {
   });
 
   let rejected;
-  await step("8. COBRO RECHAZADO: gracia D+1..D+5 con acceso completo y aviso; limitado desde las 00:00 de D+6 (el resolutor y el barrido coinciden)", async () => {
+  await step("8. COBRO RECHAZADO: SIN gracia — bloqueada desde el vencimiento, ningún día tiene acceso (el resolutor y el barrido coinciden)", async () => {
     at("2027-01-14", 10, 30);
     rejected = op(a, 4, "2027-01-14", { outcome: "rejected", statusCode: "410" });
     provider.seedOperation(rejected);
@@ -226,9 +226,9 @@ try {
     await drain();
     assert.equal((await sub(A)).status, "grace_period");
     for (const [date, h, m] of [["2027-01-15", 0, 0], ["2027-01-17", 12, 0], ["2027-01-19", 23, 59]]) {
-      assert.equal((await access(A, date, h, m)).level, "full_with_notice", `${date} ${h}:${m} sigue en gracia`);
+      assert.equal((await access(A, date, h, m)).level, "blocked", `${date} ${h}:${m} sin gracia`);
     }
-    assert.equal((await access(A, "2027-01-20", 0, 0)).level, "limited", "limitado desde las 00:00 de D+6");
+    assert.equal((await access(A, "2027-01-20", 0, 0)).level, "blocked", "sigue bloqueada");
     // El barrido del reloj lo persiste en esa misma frontera y no antes.
     at("2027-01-19", 23, 59);
     await runClockSweep(deps());
@@ -238,7 +238,7 @@ try {
     assert.equal((await sub(A)).status, "limited");
     assert.equal(await count("select count(*)::int n from public.billing_periods where owner_id = $1", [A]), 3, "el rechazo no crea período");
     const view = await access(A, "2027-01-20", 12);
-    assert.equal(view.level, "limited");
+    assert.equal(view.level, "blocked");
     assert.equal(view.capabilities.exportData, true);
     assert.equal(view.capabilities.updatePaymentMethod, true);
     assert.equal(view.capabilities.cancelSubscription, true);
@@ -302,7 +302,7 @@ try {
     at("2026-11-21", 12);
     await runClockSweep(deps());
     assert.ok(["expired", "canceled"].includes((await sub(C)).status), (await sub(C)).status);
-    assert.equal((await access(C, "2026-11-21", 12)).level, "limited");
+    assert.equal((await access(C, "2026-11-21", 12)).level, "blocked");
     const late = op(c, 2, "2026-11-20");
     provider.seedOperation(late);
     await deliver(late);

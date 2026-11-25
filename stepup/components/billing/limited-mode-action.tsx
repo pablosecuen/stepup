@@ -20,8 +20,8 @@ export function LimitedModeAction() {
     router.refresh();
   }, [router]);
   return (
-    <PrivateLink href="/facturacion" className={`${linkClass()} mt-1 block w-fit`}>
-      Ir a Facturación
+    <PrivateLink href="/suscripcion-pendiente" className={`${linkClass()} mt-1 block w-fit`}>
+      Resolver el pago
     </PrivateLink>
   );
 }
@@ -47,6 +47,18 @@ export function AccessRecoveryWatcher() {
       document.removeEventListener("visibilitychange", recheck);
       window.removeEventListener("focus", recheck);
     };
+  }, [router]);
+  return null;
+}
+
+/**
+ * El pago se confirmó mientras la persona estaba en «Suscripción pendiente»: la actualización suave del estado ya trae la cuenta sin bloqueo, y esto la lleva de vuelta a Inicio SIN
+ * cerrar sesión ni recargar (un `redirect` del servidor no navega durante una actualización suave del cliente).
+ */
+export function AccessRestoredRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/inicio");
   }, [router]);
   return null;
 }

@@ -151,7 +151,7 @@ export async function provision(request, { site = DEFAULT_SITE, apply = false, l
 
   for (const code of CURRENT_PLAN_CODES) {
     const plan = getPlan(code);
-    const matches = plans.filter((record) => record.metadata?.tfCode === code && record.status !== "archived");
+    const matches = plans.filter((record) => record.metadata?.tfCode === code && !record.metadata?.tfTrial && record.status !== "archived");
     if (matches.length > 1) throw new ProvisionError(`Hay ${matches.length} planes de Rebill con tfCode=${code}: se resuelve a mano (no se elige uno al azar).`);
     let planRecord = matches[0];
     if (planRecord) {
@@ -168,7 +168,7 @@ export async function provision(request, { site = DEFAULT_SITE, apply = false, l
     }
     result.env[`REBILL_PLAN_ID_${code.toUpperCase()}`] = planRecord.id;
 
-    const linkMatches = links.filter((record) => record.metadata?.tfCode === code && record.status !== "archived");
+    const linkMatches = links.filter((record) => record.metadata?.tfCode === code && !record.metadata?.tfTrial && record.status !== "archived");
     if (linkMatches.length > 1) throw new ProvisionError(`Hay ${linkMatches.length} payment links con tfCode=${code}: se resuelve a mano.`);
     let linkRecord = linkMatches[0];
     if (linkRecord) {
@@ -214,8 +214,72 @@ export async function provision(request, { site = DEFAULT_SITE, apply = false, l
   return result;
 }
 
+/** Días de prueba gratuita (condición comercial aprobada el 25/11/2026). Debe coincidir con `TRIAL_DAYS` de lib/billing/periods.ts (una prueba estructural lo comprueba). */
+export const TRIAL_PERIOD_DAYS = 15;
+
+/**
+ * Planes y payment links CON prueba gratuita: el MISMO precio y período que cada plan vigente y `trialPeriodDays: 15` (Rebill: no cobra durante la prueba, registra un pago aprobado
+ * de 0 con la tarjeta y hace el primer cobro real en inicio + 15 días). Se distinguen de los normales con `metadata.tfTrial`; nunca se editan los planes normales ni sus links.
+ */
+export async function provisionTrial(request, { site = DEFAULT_SITE, apply = false, log = console.log } = {}) {
+  const result = { env: {} };
+  const existingPlans = await firstOk(request, [["POST", "/v3/plans/search", PAGE_100]]);
+  if (!existingPlans.result) throw new ProvisionError(`No se pudo listar los planes de Rebill (${existingPlans.tried.join(" | ")}): no se crea nada para no duplicar.`);
+  const plans = recordsOf(existingPlans.result.body) ?? [];
+  const existingLinks = await firstOk(request, [["POST", "/v3/payment-links/search", PAGE_100]]);
+  if (!existingLinks.result) throw new ProvisionError(`No se pudo listar los payment links (${existingLinks.tried.join(" | ")}): no se crea nada para no duplicar.`);
+  const links = recordsOf(existingLinks.result.body) ?? [];
+  for (const code of CURRENT_PLAN_CODES) {
+    const plan = getPlan(code);
+    const matches = plans.filter((record) => record.metadata?.tfCode === code && record.metadata?.tfTrial === String(TRIAL_PERIOD_DAYS) && record.status !== "archived");
+    if (matches.length > 1) throw new ProvisionError(`Hay ${matches.length} planes con prueba para ${code}: se resuelve a mano.`);
+    let planRecord = matches[0];
+    if (planRecord) {
+      const prices = Array.isArray(planRecord.prices) ? planRecord.prices : [];
+      const price = prices.find((item) => item.isDefault) ?? prices[0];
+      if (!price || Number(price.amount) !== plan.amountMinor / 100 || Number(planRecord.trialPeriodDays) !== TRIAL_PERIOD_DAYS) throw new ProvisionError(`El plan con prueba ${planRecord.id} (${code}) NO coincide con el catálogo y ${TRIAL_PERIOD_DAYS} días de prueba: no se edita (se corrige a mano).`);
+      log(`= Plan con prueba ${code}: ya existe (${planRecord.id}).`);
+    } else if (!apply) {
+      log(`+ Plan con prueba ${code}: se crearía (${plan.amountMinor / 100} ${plan.currency} cada ${plan.interval.count} mes/es, ${TRIAL_PERIOD_DAYS} días gratis).`);
+      continue;
+    } else {
+      const created = await request("POST", "/v3/plans", { ...planBody(plan), name: spanishName(`TeacherFlow ${plan.name} (${TRIAL_PERIOD_DAYS} días gratis)`), trialPeriodDays: TRIAL_PERIOD_DAYS, metadata: { tfCode: code, tfTrial: String(TRIAL_PERIOD_DAYS) } });
+      if (!created.ok || !created.body?.id) throw new ProvisionError(`No se pudo crear el plan con prueba ${code}: ${short(created)}`);
+      planRecord = created.body;
+      log(`+ Plan con prueba ${code}: creado (${planRecord.id}).`);
+    }
+    result.env[`REBILL_TRIAL_PLAN_ID_${code.toUpperCase()}`] = planRecord.id;
+    const linkMatches = links.filter((record) => record.metadata?.tfCode === code && record.metadata?.tfTrial === String(TRIAL_PERIOD_DAYS) && record.status !== "archived");
+    if (linkMatches.length > 1) throw new ProvisionError(`Hay ${linkMatches.length} payment links con prueba para ${code}: se resuelve a mano.`);
+    let linkRecord = linkMatches[0];
+    if (linkRecord) {
+      const planOfLink = linkRecord.plan?.id ?? linkRecord.planId;
+      if (planOfLink && planOfLink !== planRecord.id) throw new ProvisionError(`El payment link con prueba ${linkRecord.id} (${code}) apunta a otro plan (${planOfLink}).`);
+      log(`= Link con prueba ${code}: ya existe (${linkRecord.id}).`);
+    } else if (!apply) {
+      log(`+ Link con prueba ${code}: se crearía para ${planRecord.id}.`);
+      continue;
+    } else {
+      const created = await request("POST", "/v3/payment-links", {
+        title: spanishName(`TeacherFlow ${plan.name} (${TRIAL_PERIOD_DAYS} días gratis)`),
+        plan: { id: planRecord.id },
+        paymentMethods: [{ methods: ["card"], currency: plan.currency }],
+        redirectUrls: { approved: `${site}/facturacion/resultado`, rejected: `${site}/facturacion/resultado` },
+        status: "active",
+        metadata: { tfCode: code, tfTrial: String(TRIAL_PERIOD_DAYS) },
+      });
+      if (!created.ok || !created.body?.id) throw new ProvisionError(`No se pudo crear el payment link con prueba de ${code}: ${short(created)}`);
+      linkRecord = created.body;
+      log(`+ Link con prueba ${code}: creado (${linkRecord.id}).`);
+    }
+    if (typeof linkRecord.url !== "string" || !linkRecord.url.startsWith("https://pay.rebill.com/")) throw new ProvisionError(`El payment link con prueba ${linkRecord.id} no devolvió una dirección https://pay.rebill.com/.`);
+    result.env[`REBILL_TRIAL_CHECKOUT_URL_${code.toUpperCase()}`] = linkRecord.url;
+  }
+  return result;
+}
+
 function parseArgs(argv) {
-  const args = { command: argv[0], apply: argv.includes("--apply"), yesProduction: argv.includes("--yes-production"), site: DEFAULT_SITE, envFile: join(ROOT, ".env.rebill.local") };
+  const args = { command: argv[0], apply: argv.includes("--apply"), trial: argv.includes("--trial"), yesProduction: argv.includes("--yes-production"), site: DEFAULT_SITE, envFile: join(ROOT, ".env.rebill.local") };
   const siteIndex = argv.indexOf("--site");
   if (siteIndex >= 0) args.site = argv[siteIndex + 1];
   const fileIndex = argv.indexOf("--env-file");
@@ -226,7 +290,7 @@ function parseArgs(argv) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.command !== "check" && args.command !== "provision") {
-    console.log("Uso: node scripts/rebill-provision.mjs check | provision [--apply] [--yes-production] [--site https://…]");
+    console.log("Uso: node scripts/rebill-provision.mjs check | provision [--trial] [--apply] [--yes-production] [--site https://…]");
     process.exit(2);
   }
   const fromFile = readEnvFile(args.envFile, ["REBILL_API_KEY"]);
@@ -235,7 +299,7 @@ async function main() {
   if (args.command === "check") process.exit(report.ok ? 0 : 1);
   if (report.environment === "productive" && args.apply && !args.yesProduction) throw new ProvisionError("Es la organización de PRODUCCIÓN: para crear planes, links y webhook agregá --yes-production.");
   if (!report.environment) throw new ProvisionError("No se pudo confirmar en qué organización (sandbox o producción) está esa clave: no se escribe nada.");
-  const result = await provision(request, { site: args.site, apply: args.apply });
+  const result = args.trial ? await provisionTrial(request, { site: args.site, apply: args.apply }) : await provision(request, { site: args.site, apply: args.apply });
   const environment = report.environment === "productive" ? "production" : "sandbox";
   console.log(`\nVariables NO secretas para Vercel (ambiente ${environment}):`);
   console.log(`REBILL_ENVIRONMENT=${environment}`);

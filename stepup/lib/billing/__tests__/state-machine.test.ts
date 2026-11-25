@@ -26,6 +26,7 @@ const EXPECTED: ReadonlyArray<[BillingStatus, BillingTrigger, BillingStatus]> = 
   ["past_due", "payment_rejected", "grace_period"],
   ["past_due", "grace_elapsed", "limited"],
   ["past_due", "cancel_requested", "cancel_at_period_end"],
+  ["past_due", "cancel_requested", "canceled"], // sin gracia: con el período ya vencido, cancelar cierra la cuenta
   ["past_due", "provider_ended", "expired"],
   ["past_due", "chargeback_confirmed", "limited"],
   ["past_due", "payment_voided", "pending"],
@@ -33,6 +34,7 @@ const EXPECTED: ReadonlyArray<[BillingStatus, BillingTrigger, BillingStatus]> = 
   ["grace_period", "payment_rejected", "grace_period"],
   ["grace_period", "grace_elapsed", "limited"],
   ["grace_period", "cancel_requested", "cancel_at_period_end"],
+  ["grace_period", "cancel_requested", "canceled"],
   ["grace_period", "provider_ended", "expired"],
   ["grace_period", "chargeback_confirmed", "limited"],
   ["grace_period", "payment_voided", "pending"],

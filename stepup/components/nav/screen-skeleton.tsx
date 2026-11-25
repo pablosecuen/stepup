@@ -820,6 +820,7 @@ function Body({ path, title, sharedName }: { path: string; title: string | null;
     case "facturacion-sub":
       return <DetailBody title={title} back={screen.back ?? undefined} />;
     case "facturacion":
+    case "suscripcion-pendiente":
       return <DetailBody title={title} />;
     default:
       return <DetailBody title={title} />;

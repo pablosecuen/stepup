@@ -2,7 +2,8 @@ import { addDaysToDateKey } from "../calendar/timezone.ts";
 import { formatCivilDate, formatInstantDate } from "../format/date-format.ts";
 import { formatMoney } from "../format/number-format.ts";
 import { cancelAccessEnd, projectStatus, type BillingSnapshot } from "./ledger.ts";
-import { civilDayOf, GRACE_DAYS } from "./periods.ts";
+import { civilDayOf } from "./periods.ts";
+import { buildTrialOffer, isInTrial, type TrialOffer } from "./trial.ts";
 import { getPlan, listActivePlans, MINOR_UNITS_PER_PESO, type BillingPlan, type PlanCode } from "./plans.ts";
 import type { ProviderCapabilities } from "./provider.ts";
 import type { BillingHistory } from "./store.ts";
@@ -22,9 +23,10 @@ export type BillingViewState =
   | "processing"
   | "payment_rejected"
   | "active"
+  | "trial"
   | "renewing"
-  | "grace"
-  | "limited"
+  | "payment_failed"
+  | "unpaid"
   | "ending"
   | "canceled"
   | "expired";
@@ -72,6 +74,10 @@ export interface BillingView {
   /** Hasta cuándo conserva el acceso completo si cancela ahora (texto de la confirmación), o `null` si no corresponde. */
   readonly cancelAccessUntil: string | null;
   readonly history: readonly HistoryRowView[];
+  /** Prueba gratuita en curso: hasta cuándo es gratis y cuándo es el primer cobro (día/mes/año, a las 00:00 de Argentina). `null` si no está en prueba. */
+  readonly trial: { readonly freeUntil: string; readonly firstChargeOn: string; readonly amount: string; readonly cadence: string } | null;
+  /** Oferta de la prueba para la próxima contratación de esta cuenta (si corresponde): se muestra antes de confirmar. */
+  readonly trialOffer: TrialOffer | null;
 }
 
 const NO_ACTIONS: ViewActions = { subscribe: false, cancel: false, reactivate: false, changePlan: false, updatePaymentMethod: false };
@@ -113,6 +119,8 @@ export interface ViewInput {
   readonly capabilities: ProviderCapabilities;
   /** `false` si la pantalla ya sabe que no pudo leer el estado (base caída). */
   readonly available: boolean;
+  /** `true` si el proveedor tiene configurada la prueba gratuita (sin eso no se ofrece: nunca se promete lo que no se puede cobrar así). */
+  readonly trialAvailable?: boolean;
 }
 
 const UNAVAILABLE: BillingView = {
@@ -127,6 +135,8 @@ const UNAVAILABLE: BillingView = {
   actions: NO_ACTIONS,
   cancelAccessUntil: null,
   history: [],
+  trial: null,
+  trialOffer: null,
 };
 
 export function buildBillingView(input: ViewInput): BillingView {
@@ -140,11 +150,15 @@ export function buildBillingView(input: ViewInput): BillingView {
   const pendingChange = pending && snapshot.currentPeriodEnd ? { planName: pending.name, price: pesos(pending.amountMinor), effective: firstDayOf(snapshot.currentPeriodEnd) } : null;
   const paymentAction = capabilities.paymentMethodUpdate && hasSubscriber;
   const chargeback = snapshot.chargebackAt !== null && now.toISOString() >= snapshot.chargebackAt;
-  const accessUntil = status === "active" ? lastDay(snapshot.currentPeriodEnd) : status === "past_due" || status === "grace_period" ? lastDay(snapshot.graceEndsAt) : null;
-  const base = { history, pendingChange, plan, cancelAccessUntil: accessUntil };
+  const accessUntil = status === "active" ? lastDay(snapshot.currentPeriodEnd) : null;
+  const inTrial = status === "active" && isInTrial(snapshot, now);
+  const trialOffer = input.trialAvailable === true && snapshot.trialStartedAt === null && !snapshot.grandfathered && ["pending", "canceled", "expired"].includes(status) ? buildTrialOffer(now) : null;
+  const trialPlan = planSummary(snapshot.planCode ?? snapshot.providerPlanCode);
+  const trial = inTrial && snapshot.trialEndsAt && trialPlan ? { freeUntil: lastDay(snapshot.trialEndsAt), firstChargeOn: firstDayOf(snapshot.trialEndsAt), amount: trialPlan.price, cadence: trialPlan.cadence } : null;
+  const base = { history, pendingChange, plan, cancelAccessUntil: accessUntil, trial, trialOffer };
 
   const chargebackNotice: ViewNotice | null = chargeback
-    ? { tone: "bad", title: "Detectamos una disputa de pago", text: "Tu banco o la tarjeta informó una disputa por un cobro. Mientras la revisamos tu acceso está limitado; escribinos para resolverla. Tus datos siguen intactos." }
+    ? { tone: "bad", title: "Detectamos una disputa de pago", text: "Tu banco o la tarjeta informó una disputa por un cobro. Mientras la revisamos tu acceso está en pausa; escribinos para resolverla. Tus datos siguen intactos." }
     : null;
 
   switch (status) {
@@ -190,12 +204,29 @@ export function buildBillingView(input: ViewInput): BillingView {
         state: "none",
         badge: { tone: "neutral", label: "Sin suscripción" },
         headline: "Todavía no tenés una suscripción",
-        body: "Elegí un plan para usar TeacherFlow sin límites. Se renueva solo y la cancelás cuando quieras, conservando el acceso hasta el final del período pagado.",
+        body: trialOffer
+          ? "Elegí un plan para usar TeacherFlow. Empezás con 15 días gratis: cargás la tarjeta, no se cobra nada al empezar y el primer cobro es en la fecha que ves antes de confirmar. Se renueva solo y la cancelás cuando quieras."
+          : "Elegí un plan para usar TeacherFlow. Se renueva solo y la cancelás cuando quieras, conservando el acceso hasta el final del período pagado.",
         facts: [],
         notices: chargebackNotice ? [chargebackNotice] : [],
         actions: { ...NO_ACTIONS, subscribe: true },
       };
     case "active": {
+      if (trial) {
+        return {
+          ...base,
+          state: "trial",
+          badge: { tone: "info", label: "Prueba gratuita" },
+          headline: "Estás en tu prueba gratuita",
+          body: `15 días gratis: usás TeacherFlow sin cargo hasta el ${trial.freeUntil} inclusive. El primer cobro de ${trial.amount} ${trial.cadence} será el ${trial.firstChargeOn} a las 00:00 (hora de Argentina). Si cancelás antes, no se te cobra y conservás el acceso hasta esa fecha.`,
+          facts: [
+            { label: "Prueba gratuita hasta", value: trial.freeUntil },
+            { label: "Primer cobro", value: `${trial.firstChargeOn} a las 00:00 · ${trial.amount}` },
+          ],
+          notices: [],
+          actions: { ...NO_ACTIONS, cancel: true, changePlan: false, updatePaymentMethod: paymentAction },
+        };
+      }
       return {
         ...base,
         state: "active",
@@ -215,8 +246,8 @@ export function buildBillingView(input: ViewInput): BillingView {
         ...base,
         state: "renewing",
         badge: { tone: "info", label: "Renovando" },
-        headline: "Estamos procesando tu renovación",
-        body: `Tu período venció el ${lastDay(snapshot.currentPeriodEnd)} y estamos esperando la confirmación del cobro. No tenés que hacer nada: si el cobro no se confirma, te lo vamos a avisar acá.`,
+        headline: "Estamos confirmando tu pago",
+        body: `Tu ${snapshot.trialEndsAt && snapshot.currentPeriodEnd === snapshot.trialEndsAt ? "prueba gratuita" : "período"} terminó el ${lastDay(snapshot.currentPeriodEnd)} y todavía no tenemos un pago aprobado, así que tu acceso está en pausa. Apenas se confirme el cobro volvés a entrar solo, sin cerrar sesión. Tus datos están intactos.`,
         facts: [{ label: "Período vencido", value: `${firstDayOf(snapshot.currentPeriodStart)} al ${lastDay(snapshot.currentPeriodEnd)}` }],
         notices: [],
         actions: { ...NO_ACTIONS, cancel: true, updatePaymentMethod: paymentAction },
@@ -224,24 +255,21 @@ export function buildBillingView(input: ViewInput): BillingView {
     case "grace_period":
       return {
         ...base,
-        state: "grace",
+        state: "payment_failed",
         badge: { tone: "warn", label: "Pago rechazado" },
-        headline: "No pudimos cobrar tu renovación",
-        body: `Tenés ${GRACE_DAYS} días para actualizar tu medio de pago, hasta el ${lastDay(snapshot.graceEndsAt)} inclusive. Hasta entonces seguís con acceso completo y tus datos no se tocan.`,
-        facts: [
-          { label: "Período vencido", value: `${firstDayOf(snapshot.currentPeriodStart)} al ${lastDay(snapshot.currentPeriodEnd)}` },
-          { label: "Acceso completo hasta", value: lastDay(snapshot.graceEndsAt) },
-        ],
+        headline: "No se aprobó tu pago",
+        body: "El cobro de tu suscripción no se aprobó, así que tu acceso está en pausa. Actualizá tu medio de pago: el servicio de cobro vuelve a intentar y, apenas se apruebe, volvés a entrar solo, sin cerrar sesión. No se borra ningún dato.",
+        facts: [{ label: "Período vencido", value: `${firstDayOf(snapshot.currentPeriodStart)} al ${lastDay(snapshot.currentPeriodEnd)}` }],
         notices: paymentAction ? [] : [{ tone: "info", title: "Medio de pago", text: "Estamos terminando de habilitar el cambio de medio de pago desde acá. Mientras tanto, el servicio de cobro vuelve a intentar el cobro por su cuenta." }],
         actions: { ...NO_ACTIONS, cancel: true, updatePaymentMethod: paymentAction },
       };
     case "limited":
       return {
         ...base,
-        state: "limited",
-        badge: { tone: "bad", label: "Acceso limitado" },
-        headline: "Tu acceso está limitado",
-        body: "Podés ingresar, ver y exportar todos tus datos, ver tu facturación y actualizar tu medio de pago, pero no crear ni modificar información hasta regularizar el pago. No borramos nada.",
+        state: "unpaid",
+        badge: { tone: "bad", label: "Acceso en pausa" },
+        headline: "Tu acceso está en pausa",
+        body: "Terminó tu período sin un pago aprobado. Mientras tanto no podés usar TeacherFlow, pero podés ver tu facturación, actualizar tu medio de pago o pagar. Tus alumnos, clases, registros y pagos se conservan intactos y vuelven apenas se apruebe el pago.",
         facts: snapshot.currentPeriodEnd ? [{ label: "Último período pagado", value: `${firstDayOf(snapshot.currentPeriodStart)} al ${lastDay(snapshot.currentPeriodEnd)}` }] : [],
         notices: chargebackNotice ? [chargebackNotice] : [],
         actions: { ...NO_ACTIONS, cancel: true, subscribe: false, updatePaymentMethod: paymentAction },
@@ -253,7 +281,7 @@ export function buildBillingView(input: ViewInput): BillingView {
         state: "ending",
         badge: { tone: "warn", label: "Se cancela al final del período" },
         headline: `Tu suscripción termina el ${lastDay(endsAt)}`,
-        body: "Seguís con acceso completo hasta esa fecha y no se te vuelve a cobrar. Podés reactivarla antes de que termine.",
+        body: snapshot.trialEndsAt && snapshot.currentPeriodEnd === snapshot.trialEndsAt ? "Cancelaste durante la prueba gratuita: no se te va a cobrar. Seguís con acceso completo hasta esa fecha. Podés reactivarla antes de que termine." : "Seguís con acceso completo hasta esa fecha y no se te vuelve a cobrar. Podés reactivarla antes de que termine.",
         facts: [{ label: "Acceso completo hasta", value: lastDay(endsAt) }],
         notices: [],
         actions: { ...NO_ACTIONS, reactivate: true, updatePaymentMethod: false },
@@ -265,7 +293,7 @@ export function buildBillingView(input: ViewInput): BillingView {
         state: "canceled",
         badge: { tone: "neutral", label: "Cancelada" },
         headline: "Tu suscripción está cancelada",
-        body: "No se te va a cobrar más. Tus datos están a salvo: podés ingresar, verlos y exportarlos. Si querés volver, elegí un plan.",
+        body: "No se te va a cobrar más. Tus datos se conservan intactos. Para volver a usar TeacherFlow, elegí un plan.",
         facts: snapshot.currentPeriodEnd ? [{ label: "Último período pagado", value: `${firstDayOf(snapshot.currentPeriodStart)} al ${lastDay(snapshot.currentPeriodEnd)}` }] : [],
         notices: [],
         actions: { ...NO_ACTIONS, subscribe: true },
@@ -276,7 +304,7 @@ export function buildBillingView(input: ViewInput): BillingView {
         state: "expired",
         badge: { tone: "warn", label: "Finalizada" },
         headline: "Tu suscripción finalizó",
-        body: "El servicio de cobro dio por terminada la suscripción. Tus datos están a salvo y podés volver a suscribirte cuando quieras.",
+        body: "El servicio de cobro dio por terminada la suscripción. Tus datos se conservan intactos; para volver a usar TeacherFlow, elegí un plan.",
         facts: [],
         notices: [],
         actions: { ...NO_ACTIONS, subscribe: true },
@@ -340,6 +368,8 @@ export interface PlanOptionView {
   /** Ahorro frente a pagar el plan mensual durante el mismo tiempo, sólo si hay ahorro. */
   readonly saving: string | null;
   readonly months: number;
+  /** Con prueba gratuita (sólo si corresponde a esta cuenta): lo que se muestra ANTES de confirmar. `null` si no hay prueba. */
+  readonly trial: { readonly headline: string; readonly firstCharge: string } | null;
 }
 
 /** «$ 23.300 por mes» si es exacto; «unos $ 22.317 por mes» (redondeado al peso) si no. */
@@ -349,8 +379,17 @@ export function perMonthLabel(plan: Pick<BillingPlan, "amountMinor" | "monthsOfA
   return `${exact ? "" : "unos "}${pesos(wholePesos)} por mes`;
 }
 
+/** «15 días gratis. Luego $ 25.900 por mes.» y la fecha exacta del primer cobro (a las 00:00 de Argentina). No se promete una cantidad de horas. */
+export function trialLines(plan: Pick<BillingPlan, "amountMinor" | "monthsOfAccess">, offer: TrialOffer): { readonly headline: string; readonly firstCharge: string } {
+  const price = pesos(plan.amountMinor);
+  return {
+    headline: `${offer.days} días gratis. Luego ${price} ${cadenceLabel(plan)}.`,
+    firstCharge: `Si confirmás hoy, el primer cobro de ${price} será el ${offer.firstChargeDate} a las 00:00 (hora de Argentina). Antes de esa fecha no se cobra nada y podés cancelar.`,
+  };
+}
+
 /** Los cuatro planes del catálogo con su ahorro frente al mensual, calculado en centavos enteros (nunca con decimales flotantes). */
-export function buildPlanOptions(): PlanOptionView[] {
+export function buildPlanOptions(offer: TrialOffer | null = null): PlanOptionView[] {
   const plans = listActivePlans();
   const monthly = plans.find((plan) => plan.monthsOfAccess === 1);
   return plans.map((plan) => {
@@ -363,6 +402,7 @@ export function buildPlanOptions(): PlanOptionView[] {
       perMonth: plan.monthsOfAccess > 1 ? perMonthLabel(plan) : null,
       saving: savingMinor > 0 ? `Ahorrás ${pesos(savingMinor)} frente al plan mensual` : null,
       months: plan.monthsOfAccess,
+      trial: offer ? trialLines(plan, offer) : null,
     };
   });
 }

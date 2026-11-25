@@ -116,6 +116,8 @@ export function snapshotFromRow(row: Row): BillingSnapshot {
     chargebackAt: toIso(row.chargeback_at),
     nextCheckAt: toIso(row.next_check_at),
     pendingPlanCode: asPlan(row.pending_plan_code),
+    trialStartedAt: toIso(row.trial_started_at),
+    trialEndsAt: toIso(row.trial_ends_at),
     version: Number(row.version),
   };
 }
@@ -151,6 +153,8 @@ export function commitBatchToJson(batch: CommitBatch): Record<string, unknown> {
       provider_ended_at: s.providerEndedAt,
       restarted_at: s.restartedAt,
       chargeback_at: s.chargebackAt,
+      trial_started_at: s.trialStartedAt,
+      trial_ends_at: s.trialEndsAt,
       provider_plan_code: s.providerPlanCode,
       next_check_at: nextCheckAt,
     })),

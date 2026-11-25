@@ -3,7 +3,7 @@
  * Rebill — ensayo en el SANDBOX (docs/billing/PRUEBA_REAL_Y_APERTURA.md §A). Nunca toca la organización productiva: rechaza cualquier clave cuya
  * organización no sea `sandbox`. Las acciones que escriben exigen `--yes`. No imprime claves ni datos personales.
  *
- *   node scripts/rebill-sandbox-rehearsal.mjs link    --env-file <sandbox> [--plan monthly]     dirección de pago del sandbox con una referencia nueva (tf_ref)
+ *   node scripts/rebill-sandbox-rehearsal.mjs link    --env-file <sandbox> [--plan monthly] [--trial]     dirección de pago del sandbox con una referencia nueva (tf_ref)
  *   node scripts/rebill-sandbox-rehearsal.mjs status  --env-file <sandbox>                       pagos y suscripciones del sandbox (ya lo hace rebill-verify.mjs; acá, resumen corto)
  *   node scripts/rebill-sandbox-rehearsal.mjs advance <sub_…> --env-file <sandbox> --yes         ejecuta YA la próxima renovación (POST /v3/subscriptions/:id/sandbox/advance; sólo sandbox)
  *   node scripts/rebill-sandbox-rehearsal.mjs pause   <sub_…> --env-file <sandbox> --yes         pausa (PATCH status: paused), como «Cancelar renovación»
@@ -55,8 +55,9 @@ async function main() {
 
   if (command === "link") {
     const code = `tf_${flag("--plan") ?? "monthly"}_ars_v2`;
+    const withTrial = argv.includes("--trial"); // link CON los 15 días gratis (metadata.tfTrial); sin la bandera, el link normal
     const links = await call("POST", "/v3/payment-links/search", { pagination: { limit: 100, offset: 0, order: "DESC" } });
-    const link = (links.body?.records ?? []).find((item) => item.metadata?.tfCode === code && item.status !== "archived");
+    const link = (links.body?.records ?? []).find((item) => item.metadata?.tfCode === code && Boolean(item.metadata?.tfTrial) === withTrial && item.status !== "archived");
     if (!link?.url) throw new Error(`No hay un payment link del sandbox para ${code}.`);
     const url = new URL(link.url);
     const reference = newReference();

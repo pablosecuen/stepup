@@ -4,6 +4,7 @@ import { nextCheckAt, projectStatus, type BillingSnapshot } from "./ledger.ts";
 import { getPlan, isOfferedPlan } from "./plans.ts";
 import type { ProviderAdapter } from "./provider.ts";
 import { billingErrorMessage, type BillingFailure } from "./safe-errors.ts";
+import { isInTrial, isTrialEligible } from "./trial.ts";
 import { applyTrigger, canApplyTrigger, type BillingStatus } from "./state-machine.ts";
 import type { BillingStore, ChangeRow, CheckoutAttempt } from "./store.ts";
 import type { ProviderCustomer } from "./provider.ts";
@@ -57,6 +58,8 @@ export function decidePlanChange(snapshot: BillingSnapshot, toPlanCode: unknown,
   if (!isOfferedPlan(target.code) && target.code !== snapshot.planCode && target.code !== snapshot.pendingPlanCode) return REJECT("plan_invalid");
   const current = projectStatus(snapshot, now);
   if (!canApplyTrigger(current, "plan_change_requested")) return REJECT("not_allowed");
+  // Durante la prueba gratuita no se cambia de plan: el plan elegido es el de su primer cobro. Se puede cambiar desde ese cobro (nunca reinicia ni repite la prueba).
+  if (isInTrial(snapshot, now)) return REJECT("not_allowed");
   if (target.code === snapshot.pendingPlanCode) return { ok: true, kind: "noop" };
   if (target.code === snapshot.planCode) {
     if (snapshot.pendingPlanCode === null) return { ok: true, kind: "noop" };
@@ -80,6 +83,10 @@ export interface CommandDeps {
    * no está vinculado. La eliminación de cuenta lo usa para no dejar una suscripción cobrando sin dueña.
    */
   readonly reconcileOwner?: (ownerId: string) => Promise<"done" | "skipped" | "failed">;
+  /**
+   * `false` desactiva la prueba gratuita en `startCheckout` (sólo para pruebas de flujos anteriores a ella). Por defecto SE OFRECE a toda cuenta elegible: producción nunca lo pasa.
+   */
+  readonly offerTrial?: boolean;
 }
 
 export type CommandResult = { readonly ok: true; readonly changed: boolean } | { readonly ok: false; readonly failure: BillingFailure; readonly message: string };
@@ -143,7 +150,7 @@ export async function reactivateSubscription(deps: CommandDeps, ownerId: string)
     const planCode = providerPlanOf(snapshot);
     if (!snapshot.providerSubscriberUid || !planCode) return null;
     // `resumeAt`: el próximo cobro corresponde al fin del período ya pagado (Rebill lo exige al reanudar; Mobbex lo ignora).
-    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode, resumeAt: snapshot.currentPeriodEnd });
+    const result = await deps.provider.reactivateSubscriber({ subscriberUid: snapshot.providerSubscriberUid, planCode, resumeAt: snapshot.currentPeriodEnd, resumeExact: isInTrial(snapshot, deps.now()) });
     return result.ok ? null : result.error.retryable ? "provider_unavailable" : "provider_rejected";
   });
 }
@@ -210,6 +217,15 @@ export async function startCheckout(
   if (!deps.flags.enabled) return failure("billing_disabled");
   const plan = getPlan(input.planCode);
   if (!plan || !isOfferedPlan(plan.code)) return failure("plan_invalid");
+  // La prueba se decide en el SERVIDOR con el estado guardado (nunca con un parámetro del navegador). Sin estado legible no se abre el checkout (falla cerrado).
+  let trial = false;
+  try {
+    const snapshot = (await deps.store.loadSubscriptions([input.ownerId])).get(input.ownerId) ?? (await deps.store.ensureAccount(input.ownerId));
+    trial = snapshot ? deps.offerTrial !== false && isTrialEligible(snapshot) : false;
+    if (!snapshot) return failure("billing_unavailable");
+  } catch {
+    return failure("billing_unavailable");
+  }
   let opened;
   try {
     const expiresAt = new Date(deps.now().getTime() + (deps.attemptTtlMinutes ?? 1_440) * 60_000).toISOString();
@@ -229,7 +245,7 @@ export async function startCheckout(
       return failure(cancelled.error.retryable ? "provider_unavailable" : "provider_rejected");
     }
   }
-  const response = await deps.provider.createCheckout({ subscriberReference: opened.attempt.subscriberReference, plan, customer: input.customer, returnUrl: input.returnUrl, idempotencyKey: opened.attempt.idempotencyKey });
+  const response = await deps.provider.createCheckout({ subscriberReference: opened.attempt.subscriberReference, plan, customer: input.customer, returnUrl: input.returnUrl, idempotencyKey: opened.attempt.idempotencyKey, trial });
   if (!response.ok) {
     await deps.store.failCheckoutAttempt(opened.attempt.id).catch(() => undefined);
     return failure(response.error.retryable ? "provider_unavailable" : "provider_rejected");

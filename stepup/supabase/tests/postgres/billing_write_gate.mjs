@@ -184,7 +184,7 @@ try {
         );
         const sql = (await admin.query("select public.tf_write_access($1, $2::timestamptz) as ok", [owner, now.toISOString()])).rows[0].ok;
         const status = projectStatus({ grandfathered, currentPeriodEnd: end, renewalRejectedDueAt: null, graceEndsAt: grace, cancelRequestedAt: cancel, providerEndedAt: providerEnded, restartedAt: restart, chargebackAt: chargeback }, now);
-        const ts = ["grandfathered", "active", "past_due", "grace_period", "cancel_at_period_end"].includes(status);
+        const ts = ["grandfathered", "active", "cancel_at_period_end"].includes(status); // sin gracia: en mora (past_due) o con cobro rechazado (grace_period) NO hay acceso
         assert.equal(sql, ts, `caso ${JSON.stringify({ grandfathered, end, grace, cancel, providerEnded, restart, chargeback })}: SQL=${sql} TS=${status}`);
         n += 1;
       }

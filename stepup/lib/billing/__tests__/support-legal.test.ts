@@ -56,7 +56,10 @@ test("los datos del titular de las condiciones de Facturación son los mismos de
 test("los textos legales cubren lo pedido, están marcados como borrador y no inventan condiciones comerciales ni prometen devoluciones", () => {
   const text = LEGAL_SECTIONS.flatMap((section) => [section.title, ...section.paragraphs]).join("\n");
   for (const topic of ["renueva", "Cancelación", "rechazado", "Devoluciones", "datos personales y de pago", "procesa el pago"]) assert.match(text, new RegExp(topic), topic);
-  assert.ok(text.includes("5 días corridos") && text.includes("00:00 del sexto día"), "la gracia coincide con la decisión 8");
+  assert.ok(text.includes("15 días gratis") && text.includes("00:00 (hora de Argentina)") && text.includes("tarjeta es obligatoria"), "la prueba gratuita coincide con la condición aprobada");
+  assert.doesNotMatch(text, /5 días corridos|sexto día|gracia|modo limitado/i, "ya no hay días de gracia ni modo de sólo lectura");
+  assert.match(text, /no se pueden ver ni modificar/, "sin un pago aprobado el acceso queda en pausa (no es de sólo lectura)");
+  assert.doesNotMatch(text, /360 horas/, "no se promete una cantidad de horas");
   assert.ok(text.includes("10 años") && text.includes("seudonimizado"), "la retención fiscal coincide con la decisión 5");
   assert.match(LEGAL_DRAFT_NOTICE, /Borrador pendiente de revisión legal/);
   assert.match(text, /No hay devoluciones automáticas/);

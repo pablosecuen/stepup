@@ -9,7 +9,7 @@
  *  - el espejo SQL (`billing_plans`, migración `20261014100000_m1_billing_core.sql`) debe coincidir con este archivo: una prueba
  *    estructural compara código, importes, intervalos y versión de ambos lados.
  *
- * Sin período de prueba, sin costo de alta y sin cuotas internas: cada plan cobra el precio completo de su período.
+ * Sin costo de alta y sin cuotas internas: cada plan cobra el precio completo de su período. La prueba gratuita de 15 días (`trial.ts`) difiere el PRIMER cobro; nunca cambia el precio.
  */
 
 export const BILLING_CURRENCY = "ARS" as const;

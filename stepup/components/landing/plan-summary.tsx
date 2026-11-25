@@ -34,7 +34,8 @@ export function PlanSummary() {
             );
           })}
         </div>
-        <p className="mt-5 text-sm text-textSecondary">Precios en pesos argentinos. El importe mensual permite comparar; se cobra el total del período indicado. Ahorros redondeados frente al plan mensual.</p>
+        <p className="mt-5 text-sm font-semibold text-textPrimary">15 días gratis en tu primera contratación (tarjeta obligatoria; el primer cobro es en la fecha que ves antes de confirmar).</p>
+        <p className="mt-2 text-sm text-textSecondary">Precios en pesos argentinos. El importe mensual permite comparar; se cobra el total del período indicado. Ahorros redondeados frente al plan mensual.</p>
       </div>
     </section>
   );

@@ -1,3 +1,5 @@
+> **Actualización 25/11/2026:** el modo limitado de sólo lectura y los 5 días de gracia que describe este documento fueron **reemplazados** por el bloqueo total sin gracia y la prueba gratuita de 15 días: ver `PRUEBA_GRATUITA_Y_BLOQUEO.md` (vigente). Lo que sigue queda como historia del diseño.
+
 # Control de acceso por suscripción — qué hace, cómo se prueba, cómo se activa y cómo se revierte
 
 Estado al 25/11/2026: **APAGADO** (`BILLING_ENFORCEMENT_ENABLED` no existe en Production). Con el interruptor apagado el sistema se comporta exactamente como antes: no se envuelve ningún cliente, no se hace ninguna consulta de más y ningún usuario ve un aviso.

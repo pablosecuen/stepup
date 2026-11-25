@@ -1,6 +1,6 @@
 import { addDaysToDateKey } from "../../calendar/timezone.ts";
 import { civilDayOf } from "../periods.ts";
-import { PLAN_CODES, getPlan, isPlanCode, type PlanCode } from "../plans.ts";
+import { CURRENT_PLAN_CODES, PLAN_CODES, getPlan, isPlanCode, type PlanCode } from "../plans.ts";
 import { providerFail, providerOk, type CheckoutRequest, type CheckoutResponse, type NoticeParse, type ProviderAdapter, type ProviderCapabilities, type ProviderOperation, type ProviderResult, type ProviderSubscriberState } from "../provider.ts";
 import { REFERENCE_PARAM, SUBSCRIBER_REFERENCE_PATTERN, mapSubscriptionStatus, operationFromPayment, parseRebillNotice, unwrap, verifyNoticeSignature } from "./rebill-normalize.ts";
 
@@ -30,6 +30,9 @@ export interface RebillConfig {
   readonly planIds: Readonly<Partial<Record<PlanCode, string>>>;
   /** Dirección del payment link de cada plan en `pay.rebill.com`. */
   readonly checkoutUrls: Readonly<Partial<Record<PlanCode, string>>>;
+  /** Planes (`pln_…`) y payment links CON prueba gratuita de 15 días (`trialPeriodDays`): el mismo precio y período que el plan normal, sólo cambia que el primer cobro se difiere. */
+  readonly trialPlanIds: Readonly<Partial<Record<PlanCode, string>>>;
+  readonly trialCheckoutUrls: Readonly<Partial<Record<PlanCode, string>>>;
   readonly webhookSecret: string | null;
   readonly validatedCapabilities: ReadonlySet<keyof ProviderCapabilities>;
   readonly fetchImpl: typeof fetch;
@@ -65,6 +68,8 @@ export function readRebillConfig(env: Readonly<Record<string, string | undefined
   if (!apiKey || !apiKey.startsWith("sk_") || (environment !== "sandbox" && environment !== "production")) return null;
   const planIds: Partial<Record<PlanCode, string>> = {};
   const checkoutUrls: Partial<Record<PlanCode, string>> = {};
+  const trialPlanIds: Partial<Record<PlanCode, string>> = {};
+  const trialCheckoutUrls: Partial<Record<PlanCode, string>> = {};
   for (const code of PLAN_CODES) {
     const planId = env[planEnvName("REBILL_PLAN_ID", code)]?.trim();
     if (planId) {
@@ -76,6 +81,16 @@ export function readRebillConfig(env: Readonly<Record<string, string | undefined
       if (!isRebillCheckoutUrl(checkoutUrl)) return null;
       checkoutUrls[code] = checkoutUrl;
     }
+    const trialPlanId = env[planEnvName("REBILL_TRIAL_PLAN_ID", code)]?.trim();
+    if (trialPlanId) {
+      if (!PLAN_ID_PATTERN.test(trialPlanId) || trialPlanId.startsWith("test_") !== (environment === "sandbox")) return null;
+      trialPlanIds[code] = trialPlanId;
+    }
+    const trialCheckoutUrl = env[planEnvName("REBILL_TRIAL_CHECKOUT_URL", code)]?.trim();
+    if (trialCheckoutUrl) {
+      if (!isRebillCheckoutUrl(trialCheckoutUrl)) return null;
+      trialCheckoutUrls[code] = trialCheckoutUrl;
+    }
   }
   return {
     apiKey,
@@ -84,6 +99,8 @@ export function readRebillConfig(env: Readonly<Record<string, string | undefined
     timeoutMs: DEFAULT_TIMEOUT_MS,
     planIds,
     checkoutUrls,
+    trialPlanIds,
+    trialCheckoutUrls,
     webhookSecret: env.REBILL_WEBHOOK_SECRET?.trim() || null,
     validatedCapabilities: new Set((env.REBILL_VALIDATED_CAPABILITIES ?? "").split(",").map((item) => item.trim()).filter((item): item is keyof ProviderCapabilities => item === "changePlan" || item === "paymentMethodUpdate")),
     fetchImpl: overrides.fetchImpl ?? fetch,
@@ -129,6 +146,8 @@ export function buildSearchPaymentsRequest(input: { limit: number; offset: numbe
 export const buildPauseRequest = (subscriptionId: string): RebillRequest => ({ method: "PATCH", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}`, json: { status: "paused" } });
 /** Reanudar exige la fecha del próximo cobro (hoy o posterior): el fin del período ya pagado. */
 export const buildResumeRequest = (subscriptionId: string, nextChargeDateIso: string): RebillRequest => ({ method: "PATCH", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}`, json: { status: "active", nextChargeDate: nextChargeDateIso } });
+/** Fija el próximo cobro (docs: «Update subscription», `nextChargeDate`: hoy o posterior). Sirve para llevar el primer cobro de la prueba a las 00:00 de Argentina. */
+export const buildScheduleFirstChargeRequest = (subscriptionId: string, nextChargeDateIso: string): RebillRequest => ({ method: "PATCH", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}`, json: { nextChargeDate: nextChargeDateIso } });
 export const buildChangePlanRequest = (subscriptionId: string, planId: string): RebillRequest => ({ method: "PATCH", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}/plan`, json: { planId } });
 export const buildCardUpdateLinkRequest = (subscriptionId: string): RebillRequest => ({ method: "POST", path: `/v3/subscriptions/${encodeURIComponent(subscriptionId)}/card/update-link` });
 
@@ -144,6 +163,8 @@ interface SubscriptionInfo {
   readonly status: string;
   readonly statusDetail: string | null;
   readonly planCode: PlanCode | null;
+  /** Próximo cobro agendado (ISO) tal como lo informa Rebill, o `null`. */
+  readonly nextChargeDate: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -164,7 +185,8 @@ export class RebillAdapter implements ProviderAdapter {
   constructor(config: RebillConfig | null) {
     this.config = config;
     this.capabilities = { changePlan: config?.validatedCapabilities.has("changePlan") ?? false, paymentMethodUpdate: config?.validatedCapabilities.has("paymentMethodUpdate") ?? false };
-    this.planCodeById = new Map(Object.entries(config?.planIds ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string" && isPlanCode(entry[0])).map(([code, planId]) => [planId, code as PlanCode] as const));
+    // Los planes con prueba son OTROS `pln_…` con el mismo precio y período: cada uno se resuelve al mismo código del catálogo.
+    this.planCodeById = new Map([...Object.entries(config?.planIds ?? {}), ...Object.entries(config?.trialPlanIds ?? {})].filter((entry): entry is [string, string] => typeof entry[1] === "string" && isPlanCode(entry[0])).map(([code, planId]) => [planId, code as PlanCode] as const));
   }
 
   get environment(): RebillEnvironment | null {
@@ -225,11 +247,18 @@ export class RebillAdapter implements ProviderAdapter {
     return providerOk(operationFromPayment(payment, planReference, (this.config?.now() ?? new Date()).toISOString()));
   }
 
+  /** La prueba se ofrece sólo si están configurados los cuatro planes y links con prueba: nunca se promete 15 días gratis sin poder cobrarlos así. */
+  offersTrial(): boolean {
+    const config = this.config;
+    return !!config && CURRENT_PLAN_CODES.every((code) => !!config.trialCheckoutUrls[code] && !!config.trialPlanIds[code]);
+  }
+
   async createCheckout(request: CheckoutRequest): Promise<ProviderResult<CheckoutResponse>> {
     const config = this.config;
     if (!config) return providerFail("not_configured");
     const plan = getPlan(request.plan.code);
-    const link = plan ? config.checkoutUrls[plan.code] : undefined;
+    // Con prueba: SÓLO el link de prueba. Si no está configurado se falla cerrado: nunca se abre un checkout que cobre al empezar lo que se mostró como «15 días gratis».
+    const link = plan ? (request.trial === true ? config.trialCheckoutUrls[plan.code] : config.checkoutUrls[plan.code]) : undefined;
     if (!plan || !plan.active || !link) return providerFail("not_configured");
     if (!SUBSCRIBER_REFERENCE_PATTERN.test(request.subscriberReference)) return providerFail("rejected");
     const url = new URL(link);
@@ -303,7 +332,24 @@ export class RebillAdapter implements ProviderAdapter {
         }
       }
     }
-    return providerOk({ status: mapSubscriptionStatus(info.data.status, info.data.statusDetail), operations, executionsReadable: readable });
+    return providerOk({ status: mapSubscriptionStatus(info.data.status, info.data.statusDetail), operations, executionsReadable: readable, inTrial: info.data.statusDetail === "in_trial", nextChargeAt: info.data.nextChargeDate });
+  }
+
+  /**
+   * Lleva el primer cobro de la prueba a un instante exacto (00:00 de Argentina del día inicio + 15). Rebill calcula «inicio + trialPeriodDays» con la hora de la contratación; el
+   * instante exacto se fija con `nextChargeDate` (docs: «Update subscription»). Se vuelve a leer la suscripción y sólo se informa éxito si Rebill quedó con ESE instante.
+   */
+  async scheduleFirstCharge(input: { subscriberUid: string; planCode: PlanCode; atIso: string }): Promise<ProviderResult<{ nextChargeAt: string }>> {
+    if (!this.config) return providerFail("not_configured");
+    const target = Date.parse(input.atIso);
+    if (!Number.isFinite(target)) return providerFail("rejected");
+    const result = await this.send(buildScheduleFirstChargeRequest(input.subscriberUid, new Date(target).toISOString()));
+    this.cache.delete(input.subscriberUid);
+    if (!result.ok) return result;
+    const info = await this.subscription(input.subscriberUid);
+    if (!info.ok) return info;
+    const effective = info.data.nextChargeDate ? Date.parse(info.data.nextChargeDate) : Number.NaN;
+    return Number.isFinite(effective) && Math.abs(effective - target) < 1000 ? providerOk({ nextChargeAt: new Date(effective).toISOString() }) : providerFail("invalid_response");
   }
 
   async getPaymentMethodUpdateUrl(input: { subscriberUid: string; planCode: PlanCode }): Promise<ProviderResult<{ redirectUrl: string }>> {
@@ -332,8 +378,17 @@ export class RebillAdapter implements ProviderAdapter {
     return result;
   }
 
-  async reactivateSubscriber(input: { subscriberUid: string; planCode: PlanCode; resumeAt?: string | null }): Promise<ProviderResult<{ reactivated: true }>> {
+  async reactivateSubscriber(input: { subscriberUid: string; planCode: PlanCode; resumeAt?: string | null; resumeExact?: boolean }): Promise<ProviderResult<{ reactivated: true }>> {
     if (!this.config) return providerFail("not_configured");
+    // Prueba gratuita: el primer cobro es a las 00:00 de Argentina del día inicio + 15; si todavía está por delante se reanuda en ESE instante exacto.
+    const exact = input.resumeExact === true && input.resumeAt ? Date.parse(input.resumeAt) : Number.NaN;
+    if (Number.isFinite(exact) && exact > this.config.now().getTime() + 60_000) {
+      const resumed = await this.send(buildResumeRequest(input.subscriberUid, new Date(exact).toISOString()));
+      this.cache.delete(input.subscriberUid);
+      if (resumed.ok) return providerOk({ reactivated: true as const });
+      if (resumed.error.kind === "rejected" && (await this.alreadyIn(input.subscriberUid, ["active", "retrying"]))) return providerOk({ reactivated: true as const });
+      return resumed;
+    }
     // El próximo cobro corresponde al fin del período ya pagado (un instante del dominio → su día civil de Argentina). Si ese día ya pasó o es hoy, el primer día posterior: Rebill
     // exige una fecha de próximo cobro futura al reanudar.
     const today = civilDayOf(this.config.now().toISOString());
@@ -378,6 +433,7 @@ export function parseSubscription(json: unknown, planCodeById: ReadonlyMap<strin
     status: subscription.status,
     statusDetail: typeof subscription.statusDetail === "string" ? subscription.statusDetail : null,
     planCode: planId ? (planCodeById.get(planId) ?? null) : null,
+    nextChargeDate: typeof subscription.nextChargeDate === "string" && Number.isFinite(Date.parse(subscription.nextChargeDate)) ? new Date(Date.parse(subscription.nextChargeDate)).toISOString() : null,
   };
 }
 

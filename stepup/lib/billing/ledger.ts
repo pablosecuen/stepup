@@ -58,6 +58,9 @@ export interface BillingSnapshot {
   /** Próxima revisión por reloj guardada (`next_check_at`): el barrido la corrige si ya no coincide con lo que corresponde. */
   readonly nextCheckAt: string | null;
   readonly pendingPlanCode: PlanCode | null;
+  /** Prueba gratuita: cuándo empezó (Rebill registró la tarjeta con un pago aprobado de 0) y cuándo termina (primer cobro, 00:00 de Argentina). Nunca se reinician: son la marca de «prueba ya usada». */
+  readonly trialStartedAt: string | null;
+  readonly trialEndsAt: string | null;
   readonly version: number;
 }
 
@@ -110,11 +113,14 @@ export function buildCoverage(approved: readonly ExecutionFact[]): Array<{ execu
   return chain;
 }
 
-export function deriveFields(facts: readonly ExecutionFact[]): DerivedFields {
+export function deriveFields(facts: readonly ExecutionFact[], trial: { readonly startedAt: string | null; readonly endsAt: string | null } | null = null): DerivedFields {
   const finals = finalOutcomes(facts);
   const chain = buildCoverage(finals.filter((fact) => fact.outcome === "approved"));
   const last = chain[chain.length - 1] ?? null;
-  const currentPeriodEnd = last?.endIso ?? null;
+  // La prueba es una ventana de acceso ANTERIOR al primer cobro: sin ningún cobro aprobado es el «período» vigente; con cobros, manda el que termina después.
+  const trialEnd = trial?.startedAt && trial.endsAt ? trial.endsAt : null;
+  const useTrial = trialEnd !== null && (last === null || trialEnd > last.endIso);
+  const currentPeriodEnd = useTrial ? trialEnd : (last?.endIso ?? null);
   let renewalRejectedDueAt: string | null = null;
   let revocationAt: string | null = null;
   if (currentPeriodEnd) {
@@ -140,7 +146,7 @@ export function deriveFields(facts: readonly ExecutionFact[]): DerivedFields {
   const graceEndsAt = normalGraceEnd && currentPeriodEnd && revocationAt ? [normalGraceEnd, revocationAt > currentPeriodEnd ? revocationAt : currentPeriodEnd].sort()[0] : normalGraceEnd;
   return {
     planCode: last?.planCode ?? null,
-    currentPeriodStart: last?.startIso ?? null,
+    currentPeriodStart: useTrial ? (trial?.startedAt ?? null) : (last?.startIso ?? null),
     currentPeriodEnd,
     renewalRejectedDueAt,
     graceEndsAt,
@@ -156,7 +162,8 @@ export function deriveFields(facts: readonly ExecutionFact[]): DerivedFields {
 export function cancelAccessEnd(fields: { readonly currentPeriodEnd: string | null; readonly graceEndsAt: string | null; readonly cancelRequestedAt: string | null }): string | null {
   const end = fields.currentPeriodEnd;
   if (!end || !fields.cancelRequestedAt) return null;
-  return fields.cancelRequestedAt < end ? end : (fields.graceEndsAt ?? graceEndsAtFor(end));
+  // Sin gracia (condición comercial del 25/11/2026): quien canceló conserva el acceso hasta el fin de lo ya pagado (o de la prueba) y ni un día más.
+  return end;
 }
 
 interface Projectable {
@@ -209,7 +216,7 @@ export interface ReduceResult {
  * por transiciones permitidas, el snapshot NO cambia y se informa la anomalía.
  */
 export function reduceSnapshot(snapshot: BillingSnapshot, facts: readonly ExecutionFact[], now: Date): ReduceResult {
-  const fields = deriveFields(facts);
+  const fields = deriveFields(facts, { startedAt: snapshot.trialStartedAt, endsAt: snapshot.trialEndsAt });
   const anomalies: Anomaly[] = [];
   if (snapshot.cancelRequestedAt) {
     for (const fact of finalOutcomes(facts)) {

@@ -19,16 +19,16 @@ const E1 = approved("e1", "2026-10-01");
 const E2 = approved("e2", "2026-11-01");
 const ACTIVE_OCT = snap({ status: "active", planCode: "tf_monthly_ars_v1", currentPeriodStart: ar("2026-10-01"), currentPeriodEnd: ar("2026-11-01"), graceEndsAt: ar("2026-11-07") });
 
-test("devolución TOTAL del único período pagado: no extiende nada y la cuenta queda sin período (pending), con acceso limitado", () => {
+test("devolución TOTAL del único período pagado: no extiende nada y la cuenta queda sin período (pending), con la cuenta bloqueada", () => {
   const result = reduceSnapshot(ACTIVE_OCT, [E1, later(E1, "refunded", "2026-10-10")], at("2026-10-12"));
   assert.equal(result.anomalies.length, 0);
   assert.equal(result.next.status, "pending");
   assert.equal(result.next.currentPeriodEnd, null);
   assert.equal(result.changed, true);
   const access = resolveBillingAccess({ flags: ON, snapshot: result.next, now: at("2026-10-12") });
-  assert.equal(access.level, "limited");
+  assert.equal(access.level, "blocked");
   assert.equal(access.capabilities.createOperationalData, false);
-  assert.equal(access.capabilities.exportData, true, "nunca se borran ni se ocultan los datos");
+  assert.equal(access.capabilities.exportData, true, "nunca se borran los datos: la privacidad (exportar) sigue disponible");
 });
 
 test("devolución total de una renovación: el período devuelto no cuenta y el acceso termina al confirmarse la devolución (sin gracia)", () => {

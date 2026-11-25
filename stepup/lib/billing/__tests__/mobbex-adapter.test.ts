@@ -264,7 +264,7 @@ test("sondeo de un suscriptor (GET …/subscriber/{sid}): sólo se interpretan l
   const { parseSubscriberState, buildGetSubscriberRequest } = await import("../providers/mobbex.ts");
   assert.deepEqual(buildGetSubscriberRequest("uid_m", "S1"), { method: "GET", path: "/p/subscriptions/uid_m/subscriber/S1" });
   const shown = parseSubscriberState({ result: true, data: { subscriber: { uid: "S1", status: "active", executions: [] }, url: "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1" } });
-  assert.deepEqual(shown?.state, { status: "active", operations: [], executionsReadable: true });
+  assert.deepEqual(shown?.state, { status: "active", operations: [], executionsReadable: true, inTrial: false, nextChargeAt: null });
   assert.equal(shown?.controlUrl, "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1");
   assert.equal(parseSubscriberState({ result: true, data: { subscriber: { status: "finished", executions: [] } } })?.state.status, "finished");
   // El valor de un suscriptor suspendido NO está documentado: no se adivina.
@@ -283,7 +283,7 @@ test("getSubscriber y el cambio de medio de pago contra el adaptador: con capaci
   const good = { result: true, data: { subscriber: { uid: "S1", status: "active", executions: [] }, url: "https://mobbex.com/p/subscriptions/uid_m/subscriber/S1" } };
   const closed = configured(() => json(good));
   const state = await closed.adapter.getSubscriber({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" });
-  assert.deepEqual(state, { ok: true, data: { status: "active", operations: [], executionsReadable: true } });
+  assert.deepEqual(state, { ok: true, data: { status: "active", operations: [], executionsReadable: true, inTrial: false, nextChargeAt: null } });
   assert.deepEqual(await closed.adapter.getPaymentMethodUpdateUrl({ subscriberUid: "S1", planCode: "tf_monthly_ars_v1" }), { ok: false, error: { kind: "unsupported", retryable: false } });
   assert.equal(closed.calls.length, 1, "sólo la consulta del estado: el cambio de medio de pago sin validar no sale a la red");
   const open = configured(() => json(good), VALIDATED_ENV);

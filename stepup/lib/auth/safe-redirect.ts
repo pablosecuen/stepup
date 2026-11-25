@@ -11,6 +11,7 @@
  */
 export const PRIVATE_ROUTE_PREFIXES = [
   "/inicio",
+  "/suscripcion-pendiente",
   "/alumnos",
   "/calendario",
   "/cobros",

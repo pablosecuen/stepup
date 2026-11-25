@@ -5,10 +5,11 @@ import { Card } from "@/components/ui/card";
 
 const RULES: ReadonlyArray<{ title: string; text: string }> = [
   { title: "Se renueva sola", text: "Al terminar cada período se cobra el siguiente con el mismo medio de pago, hasta que canceles." },
-  { title: "Precio y duración", text: "Elegís mensual, trimestral, semestral o anual y pagás el precio completo del período. Sin período de prueba, sin costo de alta y sin cuotas." },
+  { title: "15 días gratis", text: "Tu primera contratación empieza con 15 días gratis: la tarjeta es obligatoria y no se cobra nada al empezar. El primer cobro es a las 00:00 (hora de Argentina) de la fecha que ves antes de confirmar, y si cancelás antes no se cobra." },
+  { title: "Precio y duración", text: "Elegís mensual, trimestral, semestral o anual y pagás el precio completo del período. Sin costo de alta y sin cuotas." },
   { title: "Los planes largos cuestan menos por mes", text: "El ahorro frente al plan mensual se muestra en cada plan." },
   { title: "Cancelás cuando quieras", text: "Desde Facturación. Conservás el acceso completo hasta el final del período que ya pagaste y no se te vuelve a cobrar." },
-  { title: "Si un cobro es rechazado", text: "Tenés 5 días corridos con acceso completo y un aviso para actualizar tu medio de pago. Si no se regulariza, tu cuenta pasa a modo limitado: podés ingresar, ver y exportar tus datos, pero no crear ni modificar información." },
+  { title: "Si un cobro no se aprueba", text: "Sin un pago aprobado, el acceso queda en pausa y ves la pantalla «Suscripción pendiente» para pagar o actualizar el medio de pago. Apenas se aprueba, volvés a entrar solo. No se borra ningún dato." },
   { title: "Tus datos están a salvo", text: "Un pago fallido o una cancelación nunca borran tus datos. El pago se hace en el sitio del servicio de cobro: TeacherFlow no ve ni guarda los datos de tu tarjeta." },
 ];
 

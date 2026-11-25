@@ -41,7 +41,7 @@ test("estado desconocido — GRANDFATHERED (por la última verificación o por u
 });
 
 test("estado desconocido — ANTERIORMENTE ACTIVA ante una falla propia: tolerancia acotada de 72 h desde la última verificación; después, modo limitado", () => {
-  for (const status of ["active", "past_due", "grace_period", "cancel_at_period_end"] as const) {
+  for (const status of ["active", "cancel_at_period_end"] as const) {
     const within = resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", lastKnown: { status, grandfathered: false, verifiedAt: hoursAgo(71) }, account: NEW_ACCOUNT, grandfatherCutoff: CUTOFF });
     assert.equal(within.level, "full_with_notice", status);
     assert.equal(within.reason, "state_unavailable_tolerance");
@@ -52,33 +52,33 @@ test("estado desconocido — ANTERIORMENTE ACTIVA ante una falla propia: toleran
     assert.ok(Object.values(within.capabilities).every(Boolean));
   }
   const edge = (hours: number) => resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", lastKnown: { status: "active", grandfathered: false, verifiedAt: hoursAgo(hours) }, account: NEW_ACCOUNT, grandfatherCutoff: CUTOFF });
-  assert.equal(edge(72).level, "limited", "a las 72 h exactas la tolerancia ya terminó");
+  assert.equal(edge(72).level, "blocked", "a las 72 h exactas la tolerancia ya terminó");
   assert.equal(edge(72).reason, "state_unavailable_tolerance_expired");
   assert.equal(edge(200).capabilities.createOperationalData, false);
   assert.equal(edge(200).capabilities.exportData, true);
   assert.equal(OWN_FAILURE_TOLERANCE_MS, 72 * 3_600_000);
 });
 
-test("estado desconocido — la tolerancia sólo la da haber estado ACTIVA: pendiente, cancelada, vencida o limitada no la reciben", () => {
-  for (const status of ["pending", "limited", "canceled", "expired"] as const) {
+test("estado desconocido — la tolerancia sólo la da haber estado ACTIVA (o cancelada con lo pagado): pendiente, en mora, rechazada, vencida o bloqueada no la reciben", () => {
+  for (const status of ["pending", "past_due", "grace_period", "limited", "canceled", "expired"] as const) {
     const result = resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", lastKnown: { status, grandfathered: false, verifiedAt: hoursAgo(1) }, account: NEW_ACCOUNT, grandfatherCutoff: CUTOFF });
-    assert.equal(result.level, "limited", status);
+    assert.equal(result.level, "blocked", status);
     assert.equal(result.reason, "state_unavailable_unverified");
   }
 });
 
 test("estado desconocido — cuenta NUEVA sin pago verificado: modo limitado (nunca acceso completo); sin fila se ofrece suscribirse, con falla propia se espera", () => {
   const failed = resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", account: NEW_ACCOUNT, grandfatherCutoff: CUTOFF });
-  assert.equal(failed.level, "limited");
+  assert.equal(failed.level, "blocked");
   assert.equal(failed.reason, "state_unavailable_unverified");
   assert.equal(failed.nextAction, "wait");
   assert.equal(failed.reconcilePriority, true);
   const noRow = resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, account: NEW_ACCOUNT, grandfatherCutoff: CUTOFF });
-  assert.equal(noRow.level, "limited");
+  assert.equal(noRow.level, "blocked");
   assert.equal(noRow.nextAction, "subscribe");
   // Con corte configurado y sin fecha de alta fiable, no se asume antigüedad.
-  assert.equal(resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", account: { createdAt: null }, grandfatherCutoff: CUTOFF }).level, "limited");
-  assert.equal(resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", account: null, grandfatherCutoff: CUTOFF }).level, "limited");
+  assert.equal(resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", account: { createdAt: null }, grandfatherCutoff: CUTOFF }).level, "blocked");
+  assert.equal(resolveBillingAccess({ flags: ON, snapshot: null, now: NOW, read: "failed", account: null, grandfatherCutoff: CUTOFF }).level, "blocked");
 });
 
 test("estado desconocido — ningún dato del cliente puede activar: entradas ajenas al contrato no cambian el resultado", () => {
@@ -86,7 +86,7 @@ test("estado desconocido — ningún dato del cliente puede activar: entradas aj
   const tampered = { ...base, paid: true, returnedFromCheckout: true, status: "active", redirectParams: { status: "approved" }, webhook: { outcome: "approved" } } as never;
   const clean = resolveBillingAccess(base);
   assert.deepEqual(resolveBillingAccess(tampered), clean);
-  assert.equal(clean.level, "limited");
+  assert.equal(clean.level, "blocked");
   assert.equal(clean.reason, "subscription_pending");
 });
 
@@ -101,7 +101,7 @@ test("un reloj ilegible o una verificación ilegible son fallas propias: se otor
 test("el estado conocido manda sobre la tolerancia: con la base respondiendo no se usa la última verificación", () => {
   const now = new Date(Date.parse(ar("2026-12-01")));
   const result = resolveBillingAccess({ flags: ON, snapshot: snap({ status: "limited", ...PAID }), now, lastKnown: { status: "active", grandfathered: false, verifiedAt: now.toISOString() } });
-  assert.equal(result.level, "limited");
+  assert.equal(result.level, "blocked");
   assert.equal(result.reason, "subscription_unpaid");
   assert.equal(result.internalNotice, false);
   assert.equal(result.reconcilePriority, false);

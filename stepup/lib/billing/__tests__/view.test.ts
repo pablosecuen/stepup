@@ -56,7 +56,7 @@ test("cada estado tiene etiqueta con TEXTO (nunca sólo color), titular y explic
     const visible = [v.badge.label, v.headline, v.body, v.plan?.name, v.plan?.price, v.plan?.cadence, ...v.facts.flatMap((f) => [f.label, f.value]), ...v.notices.flatMap((n) => [n.title, n.text]), ...v.history.flatMap((r) => [r.title, r.detail, r.amount, r.tag?.label])].filter((x): x is string => typeof x === "string").join("\n");
     for (const forbidden of [/tf_[a-z]+_ars/i, /tfs_[0-9a-f]{8}/, /billing_/i, /demo_subscriber/, /\b(null|undefined|NaN)\b/, /[0-9a-f]{8}-[0-9a-f]{4}-/i]) assert.doesNotMatch(visible, forbidden, `${name}: ${visible.slice(0, 120)}`);
   }
-  for (const state of ["unavailable", "grandfathered", "none", "processing", "active", "renewing", "grace", "limited", "ending", "canceled", "expired"]) assert.ok(seen.has(state), `escenario faltante: ${state}`);
+  for (const state of ["unavailable", "grandfathered", "none", "processing", "trial", "active", "renewing", "payment_failed", "unpaid", "ending", "canceled", "expired"]) assert.ok(seen.has(state), `escenario faltante: ${state}`);
 });
 
 test("activa: período, próxima renovación, renovación automática y acciones (cancelar, y cambiar plan/medio de pago sólo si el proveedor las tiene validadas)", () => {
@@ -72,27 +72,62 @@ test("activa: período, próxima renovación, renovación automática y acciones
   assert.equal(noSubscriber.actions.updatePaymentMethod, false);
 });
 
-test("pago rechazado: CINCO días corridos de gracia, hasta el D+5 inclusive, con acceso completo y la acción de actualizar el medio de pago", () => {
+test("pago rechazado: SIN días de gracia — el acceso está en pausa, se explica en texto y la acción es actualizar el medio de pago", () => {
   const v = view({ status: "grace_period", ...PAID, currentPeriodEnd: ar("2026-10-18"), currentPeriodStart: ar("2026-09-18"), renewalRejectedDueAt: ar("2026-10-18", 10), graceEndsAt: ar("2026-10-24") }, CAPS, NOW);
-  assert.equal(v.state, "grace");
-  assert.match(v.body, /5 días/);
-  assert.match(v.body, /hasta el 23\/10\/2026 inclusive/);
-  assert.equal(v.facts.find((f) => f.label === "Acceso completo hasta")?.value, "23/10/2026");
+  assert.equal(v.state, "payment_failed");
+  assert.match(v.body, /acceso está en pausa/);
+  assert.match(v.body, /volvés a entrar solo/);
+  assert.doesNotMatch(v.body, /\d+ días|gracia/i, "no promete días de gracia");
+  assert.equal(v.facts.find((f) => f.label === "Acceso completo hasta"), undefined);
   assert.equal(v.actions.updatePaymentMethod, true);
   assert.equal(v.actions.cancel, true);
   assert.equal(v.badge.tone, "warn");
-  assert.equal(v.cancelAccessUntil, "23/10/2026");
+  assert.equal(v.cancelAccessUntil, null);
   const noPayment = view({ status: "grace_period", ...PAID, currentPeriodEnd: ar("2026-10-18"), renewalRejectedDueAt: ar("2026-10-18", 10), graceEndsAt: ar("2026-10-24") }, NO_CAPS);
   assert.equal(noPayment.actions.updatePaymentMethod, false);
   assert.equal(noPayment.notices.length, 1, "se avisa por texto que el cambio de medio de pago todavía no está");
 });
 
-test("modo limitado: dice qué SÍ se puede (ingresar, ver, exportar, facturación, medio de pago) y qué no, y que nada se borra", () => {
+test("acceso en pausa por falta de pago: dice que NO se usa TeacherFlow, qué sí se puede (facturación, medio de pago, pagar) y que los datos se conservan", () => {
   const v = view({ status: "limited", ...PAID, currentPeriodEnd: ar("2026-10-01"), graceEndsAt: ar("2026-10-07") });
-  assert.equal(v.state, "limited");
-  for (const phrase of [/ver y exportar/, /no crear ni modificar/, /No borramos nada/]) assert.match(v.body, phrase);
+  assert.equal(v.state, "unpaid");
+  for (const phrase of [/no podés usar TeacherFlow/, /facturación/, /medio de pago/, /conservan intactos/]) assert.match(v.body, phrase);
+  assert.doesNotMatch(v.body, /ver y exportar|sólo lectura|solo lectura/i, "ya no es modo de sólo lectura");
   assert.equal(v.badge.tone, "bad");
   assert.equal(v.actions.updatePaymentMethod, true);
+});
+
+test("prueba gratuita en curso: se dice hasta cuándo es gratis y la fecha exacta del primer cobro (a las 00:00) con su importe; no se puede cambiar de plan durante la prueba", () => {
+  const v = view({ status: "active", planCode: "tf_monthly_ars_v2", providerPlanCode: "tf_monthly_ars_v2", providerSubscriberUid: "SUB1", currentPeriodStart: ar("2026-10-20"), currentPeriodEnd: ar("2026-11-04"), trialStartedAt: ar("2026-10-20", 9), trialEndsAt: ar("2026-11-04") });
+  assert.equal(v.state, "trial");
+  assert.equal(v.badge.label, "Prueba gratuita");
+  assert.match(plain(v.body), /15 días gratis/);
+  assert.match(plain(v.body), /hasta el 03\/11\/2026 inclusive/);
+  assert.match(plain(v.body), /primer cobro de \$ 25\.900 por mes será el 04\/11\/2026 a las 00:00 \(hora de Argentina\)/);
+  assert.deepEqual(plainDeep(v.facts), [{ label: "Prueba gratuita hasta", value: "03/11/2026" }, { label: "Primer cobro", value: "04/11/2026 a las 00:00 · $ 25.900" }]);
+  assert.deepEqual(v.actions, { subscribe: false, cancel: true, reactivate: false, changePlan: false, updatePaymentMethod: true });
+  assert.doesNotMatch(v.body, /360|horas/);
+  // Después del primer cobro (hay un período pagado que termina después de la prueba) ya no es prueba.
+  const afterFirstCharge = view({ status: "active", planCode: "tf_monthly_ars_v2", providerPlanCode: "tf_monthly_ars_v2", providerSubscriberUid: "SUB1", currentPeriodStart: ar("2026-11-04"), currentPeriodEnd: ar("2026-12-04"), trialStartedAt: ar("2026-10-20", 9), trialEndsAt: ar("2026-11-04") }, CAPS, new Date(Date.parse(ar("2026-11-10", 12))));
+  assert.equal(afterFirstCharge.state, "active");
+  assert.equal(afterFirstCharge.trial, null);
+});
+
+test("oferta de la prueba: se muestra ANTES de confirmar con la fecha exacta del primer cobro y el importe total de cada plan; no se ofrece a cuentas actuales ni a quien ya la usó ni sin links de prueba", () => {
+  const offered = buildBillingView({ snapshot: snap({ status: "pending" }), history: null, now: NOW, capabilities: CAPS, available: true, trialAvailable: true });
+  assert.equal(offered.trialOffer?.days, 15);
+  assert.equal(offered.trialOffer?.firstChargeDate, "04/11/2026", "20/10 + 15 días calendario = 04/11, a las 00:00 de Argentina");
+  assert.equal(offered.trialOffer?.firstChargeAtIso, ar("2026-11-04"));
+  const options = buildPlanOptions(offered.trialOffer);
+  assert.deepEqual(plainDeep(options.map((o) => o.trial?.headline)), ["15 días gratis. Luego $ 25.900 por mes.", "15 días gratis. Luego $ 69.900 cada 3 meses.", "15 días gratis. Luego $ 131.400 cada 6 meses.", "15 días gratis. Luego $ 238.800 por año."]);
+  assert.match(plain(options[0].trial?.firstCharge), /el primer cobro de \$ 25\.900 será el 04\/11\/2026 a las 00:00 \(hora de Argentina\)/);
+  assert.doesNotMatch(JSON.stringify(options), /360|horas/);
+  assert.deepEqual(buildPlanOptions(null).map((o) => o.trial), [null, null, null, null], "sin oferta no se muestra ninguna prueba");
+  const base = { history: null, now: NOW, capabilities: CAPS, available: true } as const;
+  assert.equal(buildBillingView({ ...base, snapshot: snap({ status: "pending" }), trialAvailable: false }).trialOffer, null, "sin links de prueba configurados no se promete");
+  assert.equal(buildBillingView({ ...base, snapshot: snap({ status: "pending", trialStartedAt: ar("2026-09-01"), trialEndsAt: ar("2026-09-16") }), trialAvailable: true }).trialOffer, null, "una sola vez por cuenta");
+  assert.equal(buildBillingView({ ...base, snapshot: snap({ status: "grandfathered", grandfathered: true }), trialAvailable: true }).trialOffer, null, "nunca automáticamente a las cuentas actuales");
+  assert.equal(buildBillingView({ ...base, snapshot: snap({ status: "canceled", planCode: "tf_monthly_ars_v2", currentPeriodStart: ar("2026-09-01"), currentPeriodEnd: ar("2026-10-01"), cancelRequestedAt: ar("2026-09-10") }), trialAvailable: true }).trialOffer?.days, 15, "quien canceló sin haber usado la prueba conserva el derecho (una vez por cuenta)");
 });
 
 test("cancelada al final del período: conserva el acceso hasta esa fecha, no se vuelve a cobrar y se puede REACTIVAR", () => {

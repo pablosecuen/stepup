@@ -56,7 +56,11 @@ function Logo({ className = "" }: { className?: string }) {
  *    más la barra inferior con los mismos cinco destinos. Objetivos táctiles de 44 px como mínimo; respeta las safe areas.
  * Activo por segmento completo (destino o subruta). Ningún enlace precarga (`PrivateLink`).
  */
-export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra" }: { billingEnabled?: boolean; navigationLocation?: "barra" | "menu" }) {
+/**
+ * `restricted`: cuenta BLOQUEADA por falta de un pago aprobado (ver `lib/billing/blocked-paths.ts`). No muestra los destinos operativos (Inicio, Alumnos, Calendario…): sólo la
+ * suscripción, Configuración y «Cerrar sesión». Es sólo la cara de la restricción; la que impide ver y cambiar datos es la guarda del servidor.
+ */
+export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra", restricted = false }: { billingEnabled?: boolean; navigationLocation?: "barra" | "menu"; restricted?: boolean }) {
   // La pestaña pulsada figura seleccionada desde el clic (junto al esqueleto de su pantalla), no recién cuando llega la respuesta.
   const pathname = useEffectivePathname(usePathname());
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,10 +87,11 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
       </header>
       {menuOpen && navigationLocation === "menu" && <Dialog title="Navegación" size="sm" onClose={() => setMenuOpen(false)}>
         <nav aria-label="Menú del logo"><ul className="flex flex-col gap-2">
-          {PRIMARY_NAV_ITEMS.map(item => { const Icon = ICONS[item.icon].outline; return <li key={item.href}><PrivateLink href={item.href} onClick={() => setMenuOpen(false)} aria-current={isPrimaryNavActive(pathname, item.href) ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-4 py-3 font-semibold"><Icon className="h-6 w-6" aria-hidden />{item.label}{item.icon === "registry" && <RegistrationNavBadge />}</PrivateLink></li>; })}
+          {!restricted && PRIMARY_NAV_ITEMS.map(item => { const Icon = ICONS[item.icon].outline; return <li key={item.href}><PrivateLink href={item.href} onClick={() => setMenuOpen(false)} aria-current={isPrimaryNavActive(pathname, item.href) ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-4 py-3 font-semibold"><Icon className="h-6 w-6" aria-hidden />{item.label}{item.icon === "registry" && <RegistrationNavBadge />}</PrivateLink></li>; })}
         </ul></nav>
       </Dialog>}
 
+      {!restricted && (
       <nav
         aria-label="Navegación principal"
         data-tf-bottom-nav
@@ -119,6 +124,7 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
           })}
         </ul>
       </nav>
+      )}
 
       <div data-surface="dark" className="fixed inset-y-0 left-0 z-20 hidden w-[236px] flex-col bg-side px-3 pb-3 pt-[18px] nav:flex">
         <div className="px-2 pb-[18px]">
@@ -126,7 +132,7 @@ export function PrimaryNav({ billingEnabled = false, navigationLocation = "barra
         </div>
         <nav aria-label="Navegación principal" className="-mx-3 flex-1 overflow-y-auto overflow-x-hidden px-3">
           <ul className="flex flex-col gap-[3px]">
-            {PRIMARY_NAV_ITEMS.map((item) => {
+            {!restricted && PRIMARY_NAV_ITEMS.map((item) => {
               const isActive = isPrimarySectionActive(pathname, item);
               const Icon = isActive ? ICONS[item.icon].solid : ICONS[item.icon].outline;
               return (

@@ -169,11 +169,11 @@ test("cancelar conserva el acceso hasta el fin del período pagado, sin gracia n
   assert.equal(cancelAccessEnd({ currentPeriodEnd: ar("2026-11-01"), graceEndsAt: ar("2026-11-07"), cancelRequestedAt }), ar("2026-11-01"));
 });
 
-test("cancelar cuando ya estaba vencida conserva el acceso sólo hasta el fin de esa gracia", () => {
-  const cancelRequestedAt = ar("2026-11-03", 12); // después del fin del período (01/11), dentro de la gracia
+test("cancelar cuando el período ya había terminado: sin gracia no se extiende el acceso (queda cancelada)", () => {
+  const cancelRequestedAt = ar("2026-11-03", 12); // después del fin del período (01/11)
   const base = snap({ status: "cancel_at_period_end", cancelRequestedAt });
   const facts = [approved("e1", "2026-10-01"), rejected("e2", "2026-11-01")];
-  assert.equal(reduceSnapshot(base, facts, at("2026-11-05")).next.status, "cancel_at_period_end");
+  assert.equal(reduceSnapshot(base, facts, at("2026-11-05")).next.status, "canceled");
   assert.equal(reduceSnapshot(base, facts, at("2026-11-07")).next.status, "canceled");
 });
 

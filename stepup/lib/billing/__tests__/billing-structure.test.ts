@@ -50,6 +50,10 @@ const ALLOWED_CONNECTIONS: ReadonlyArray<{ readonly match: RegExp; readonly modu
   { match: /^app\/\(app\)\/configuracion\/page\.tsx$/, modules: new Set(["pilot"]) },
   { match: /^app\/\(app\)\/facturacion\/(planes\/|resultado\/)?page\.tsx$/, modules: new Set(["page-data"]) },
   { match: /^app\/\(app\)\/facturacion\/condiciones\/page\.tsx$/, modules: new Set(["page-data", "legal"]) },
+  // «Suscripción pendiente» (cuenta bloqueada por falta de un pago aprobado): lee el estado de facturación y el acceso de la persona.
+  { match: /^app\/\(app\)\/suscripcion-pendiente\/page\.tsx$/, modules: new Set(["page-data", "enforcement-server"]) },
+  // El proxy sólo conoce la compuerta de páginas (redirige a una cuenta bloqueada); nada de planes, precios ni estados.
+  { match: /^proxy\.ts$/, modules: new Set(["page-gate"]) },
   // Recepción de Rebill: además concilia el lote en segundo plano apenas responde (`after`), con la misma función que usa el trabajo programado.
   { match: /^app\/api\/billing\/webhooks\/rebill\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "processor", "log"]) },
   { match: /^app\/api\/billing\/.+\/route\.ts$/, modules: new Set(["runtime", "http", "webhook-ingest", "jobs", "log"]) },
@@ -71,8 +75,9 @@ test("M2 conecta la facturación SÓLO por los puntos aprobados (rutas de API, p
     connected.add(file);
   }
   assert.ok(connected.size >= 8, `puntos conectados: ${[...connected].join(", ")}`);
-  // proxy.ts y la navegación NO importan facturación: reciben un booleano por propiedad.
-  for (const file of ["proxy.ts", "components/nav/primary-nav.tsx", "components/nav/sign-out-button.tsx", "components/account/configuration-view.tsx", "components/account/delete-account-button.tsx"]) assert.deepEqual(importsOf(file), [], file);
+  // La navegación NO importa facturación: recibe un booleano por propiedad. El proxy sólo importa la compuerta de páginas.
+  assert.deepEqual(importsOf("proxy.ts").map(moduleOf), ["page-gate"]);
+  for (const file of ["components/nav/primary-nav.tsx", "components/nav/sign-out-button.tsx", "components/account/configuration-view.tsx", "components/account/delete-account-button.tsx"]) assert.deepEqual(importsOf(file), [], file);
   // El resto de lib/: sólo las acciones de facturación y de cuenta (eliminación) usan lib/billing.
   const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts", "lib/db/server-context.ts", "lib/supabase/server.ts"]); // server-context: arma el cliente de datos con la guarda de acceso (enforcement-server)
   for (const file of walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`) && !f.includes("__tests__"))) {

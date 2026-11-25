@@ -147,12 +147,15 @@ try {
   });
 
   // ============================================================================================== cuenta NUEVA sin pago (limitada)
-  await step("2. cuenta NUEVA sin pago (limitada): PUEDE leer y exportar sus datos (RLS aislado), pero NO escribir", async () => {
+  await step("2. cuenta NUEVA sin pago (BLOQUEADA, no sólo lectura): NO lee datos operativos (tabla ni función) — el servidor responde 403 sin llegar a la base —, pero sí su perfil y sus preferencias", async () => {
+    const from = mark();
     const read = await userN.from("students").select("*");
-    assert.equal(read.error, null);
-    assert.deepEqual(read.data.map((row) => row.name), ["Alumno de N"]);
+    assert.ok(read.error, "ni siquiera lee sus alumnos");
+    assert.equal(read.error.message, LIMITED_MODE_MESSAGE);
     const rpcRead = await userN.rpc("list_open_charge_balances", {});
-    assert.equal(rpcRead.error, null, "una función de LECTURA expuesta como POST pasa");
+    assert.equal(rpcRead.error?.message, LIMITED_MODE_MESSAGE, "tampoco una función de lectura expuesta como POST");
+    assert.equal(since(from).filter((h) => /\/rest\/v1\/(students|rpc\/list_open_charge_balances)/.test(h)).length, 0, "ningún pedido operativo llegó a la pasarela");
+    assert.equal((await userN.from("teacher_profiles").select("*")).error, null, "perfil (pantalla de Configuración)");
   });
 
   await step("3. cuenta limitada: toda ESCRITURA de datos operativos se bloquea EN EL SERVIDOR (403 con el mensaje de modo limitado) y NO llega a la pasarela ni a la base", async () => {
@@ -181,9 +184,9 @@ try {
     const from = mark();
     const prefs = await userN.from("teacher_interaction_preferences").insert({ owner_id: N, live_tracking: true });
     assert.equal(prefs.error, null, JSON.stringify(prefs.error));
-    assert.equal((await userN.storage.from("lesson-files").createSignedUrl("x/y.png", 60)).error?.message ?? null, null);
-    assert.equal((await userN.storage.from("lesson-files").remove(["x/y.png"])).error?.message ?? null, null);
-    assert.ok(gatewayWrites(from).length >= 3, "esas escrituras SÍ llegaron");
+    assert.equal((await userN.storage.from("lesson-files").createSignedUrl("x/y.png", 60)).error?.message, LIMITED_MODE_MESSAGE, "descargar archivos es leer datos operativos: bloqueado");
+    assert.equal((await userN.storage.from("lesson-files").remove(["x/y.png"])).error?.message ?? null, null, "borrar archivos sigue permitido (eliminar la cuenta los limpia)");
+    assert.ok(gatewayWrites(from).length >= 2, "esas escrituras SÍ llegaron");
     // Facturación (cliente de servicio, otro camino): iniciar un cobro funciona para una cuenta limitada.
     const checkout = await store.openCheckoutAttempt({ ownerId: N, plan: { code: "tf_monthly_ars_v2" }, provider: "rebill", idempotencyKey: "acceso-key-0001", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
     assert.equal(checkout.ok, true, JSON.stringify(checkout));

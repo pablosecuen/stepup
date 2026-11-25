@@ -81,3 +81,14 @@ export function coverageOf(dueAtIso: string, months: number): { startIso: string
 export function graceEndsAtFor(dueAtIso: string): string {
   return civilDayStartIso(addDaysToDateKey(civilDayOf(dueAtIso), GRACE_DAYS + 1));
 }
+
+/** Días gratuitos de la prueba (condición comercial aprobada el 25/11/2026): se cuentan en DÍAS CALENDARIO de Argentina, no en 360 horas. */
+export const TRIAL_DAYS = 15;
+
+/**
+ * Instante del primer cobro de una prueba que empezó en `startedAtIso`: las 00:00 (America/Argentina/Buenos_Aires) del día calendario `inicio + TRIAL_DAYS`. Es el
+ * fin EXCLUSIVO de la prueba: hasta ese instante hay acceso; si a partir de ahí no existe un pago aprobado, no hay acceso.
+ */
+export function trialEndsAtFor(startedAtIso: string): string {
+  return civilDayStartIso(addDaysToDateKey(civilDayOf(startedAtIso), TRIAL_DAYS));
+}

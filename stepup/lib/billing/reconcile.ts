@@ -27,7 +27,9 @@ export type AnomalyKind =
   | "provider_state_mismatch" // el proveedor y la base no coinciden en el estado del suscriptor
   | "paid_after_cancel"
   | "impossible_transition"
-  | "provider_unreachable";
+  | "provider_unreachable"
+  | "trial_schedule" // no se pudo fijar el primer cobro de la prueba a las 00:00 de Argentina: la prueba NO se activa hasta lograrlo
+  | "trial_reused"; // otro intento de prueba gratuita en una cuenta que ya la usó: no se activa y se pausa esa suscripción
 
 export type IgnoreReason = "non_final_status" | "test_operation" | "unsupported_status" | "unsupported_event_type";
 
@@ -44,6 +46,8 @@ export interface SubscriberRecord {
 
 export type Reconciliation =
   | { kind: "fact"; ownerId: string; fact: ExecutionFact; providerPaymentId: string; audit: "refund_applied" | "chargeback_review" | null }
+  /** Rebill registró la tarjeta con un pago aprobado de 0: empieza la prueba gratuita (no es un cobro ni compra período). Se activa recién después de confirmar la suscripción y fijar el primer cobro. */
+  | { kind: "trial"; ownerId: string; planCode: PlanCode; startedAt: string; providerPaymentId: string; subscriberUid: string; subscriberReference: string }
   | { kind: "ignore"; reason: IgnoreReason }
   | { kind: "anomaly"; anomaly: AnomalyKind; ownerId: string | null; dedupeKey: string };
 
@@ -89,6 +93,18 @@ export function reconcileOperation(operation: ProviderOperation, context: Reconc
   // Devolución: sólo la TOTAL se aplica sola; una parcial o ambigua queda para revisión manual y no toca el estado.
   if (operation.outcome === "refunded" && operation.refundScope !== "full") return anomaly("refund_review", ownerId);
   if (operation.outcome === "other") return { kind: "ignore", reason: "unsupported_status" };
+
+  // Prueba gratuita: el pago aprobado de 0 que Rebill registra al guardar la tarjeta. NUNCA se trata como un cobro: ni período, ni importe, ni ejecución del libro.
+  if (operation.outcome === "approved" && operation.amountMinor === 0) {
+    const candidate = operation.planReference ?? (record.acceptablePlans.length === 1 ? record.acceptablePlans[0] : null);
+    const trialPlan = getPlan(candidate);
+    if (!trialPlan || !trialPlan.active) return anomaly("unknown_plan", ownerId);
+    if (!record.acceptablePlans.includes(trialPlan.code)) return anomaly("plan_not_expected", ownerId);
+    if (!operation.dueAt) return anomaly("missing_due_date", ownerId);
+    // Sin suscripción identificable todavía no hay a quién fijarle el primer cobro: se espera (el sondeo por suscriptor lo vuelve a ver).
+    if (!operation.subscriberUid) return { kind: "ignore", reason: "non_final_status" };
+    return { kind: "trial", ownerId, planCode: trialPlan.code, startedAt: operation.dueAt, providerPaymentId: operation.providerPaymentId, subscriberUid: operation.subscriberUid, subscriberReference: record.subscriberReference };
+  }
 
   // Un cobro SIN suscripción todavía (el primer intento de pago con Rebill, aprobado antes de que exista la suscripción, o rechazado) no dice a qué plan corresponde: se infiere SÓLO
   // cuando trae NUESTRA referencia y el importe coincide con exactamente uno de los planes que esa cuenta puede cobrar hoy. Luego la validación contra el catálogo es la de siempre.

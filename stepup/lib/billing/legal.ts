@@ -37,7 +37,8 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
     title: "Renovación automática",
     paragraphs: [
       "La suscripción se renueva sola al terminar cada período (mensual, trimestral, semestral o anual) y se cobra el precio completo del plan elegido, en pesos argentinos, con el mismo medio de pago, hasta que la canceles.",
-      "No hay período de prueba, costo de alta ni cuotas.",
+      "No hay costo de alta ni cuotas.",
+      SUBSCRIPTION_TERMS.trial,
       SUBSCRIPTION_TERMS.priceChange,
       "Por ahora no se ofrece cambiar de plan desde la cuenta: para hacerlo, cancelá la renovación y volvé a suscribirte al terminar el período pagado, o escribinos.",
     ],
@@ -46,7 +47,7 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
     id: "cancelacion",
     title: "Cancelación",
     paragraphs: [
-      "Podés cancelar la renovación cuando quieras desde Facturación, o pedirlo por correo. Conservás el acceso completo hasta el final del período que ya pagaste y no se vuelve a cobrar.",
+      "Podés cancelar la renovación cuando quieras desde Facturación, o pedirlo por correo. Conservás el acceso completo hasta el final del período que ya pagaste (o de la prueba gratuita, si cancelás durante la prueba: no se cobra) y no se vuelve a cobrar.",
       "Cancelar nunca borra tus datos. Si eliminás tu cuenta, primero cancelamos y confirmamos la cancelación en el servicio de cobro.",
     ],
   },
@@ -54,8 +55,8 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
     id: "rechazo",
     title: "Si un cobro es rechazado",
     paragraphs: [
-      "Tenés 5 días corridos con acceso completo y un aviso para actualizar tu medio de pago. Si no se regulariza, tu cuenta pasa a modo limitado desde las 00:00 del sexto día: podés ingresar, ver y exportar tus datos, administrar tu facturación y contactar a soporte, pero no crear, editar ni importar información.",
-      "El servicio de cobro puede reintentar el cobro por su cuenta durante esos días y después. Si un reintento se aprueba, el acceso completo vuelve.",
+      SUBSCRIPTION_TERMS.withoutPayment,
+      "El servicio de cobro puede reintentar el cobro por su cuenta. Un cobro pendiente o rechazado no habilita el uso; si un reintento se aprueba, el acceso vuelve solo, sin cerrar sesión.",
       "Si el servicio de cobro deja de reintentar sin lograr el cobro, la suscripción termina: tus datos siguen intactos y podés volver a suscribirte desde Facturación para recuperar el acceso completo.",
       "Tus datos nunca se borran por un pago fallido.",
     ],
@@ -67,7 +68,7 @@ export const LEGAL_SECTIONS: readonly LegalSection[] = [
       SUBSCRIPTION_TERMS.requests,
       "No hay devoluciones automáticas: cada solicitud se evalúa y se responde por correo.",
       "Cuando una devolución total se confirma en el servicio de cobro, el período devuelto se cierra: no se extiende y termina el acceso que otorgaba. Una devolución parcial o dudosa la revisamos manualmente.",
-      "Si tu banco o la tarjeta informan una disputa (contracargo) y se confirma, el acceso queda en modo limitado hasta resolverla.",
+      "Si tu banco o la tarjeta informan una disputa (contracargo) y se confirma, el acceso queda en pausa hasta resolverla.",
     ],
   },
   {

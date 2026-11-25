@@ -3,7 +3,7 @@ import { readBillingFlags } from "./flags.ts";
 import { decodeLastKnown, encodeLastKnown } from "./last-known.ts";
 import type { BillingStore } from "./store.ts";
 import { BILLING_LIMITED_CODE } from "../errors/limited-mode-message.ts";
-import { LIMITED_MODE_MESSAGE, classifyRequest } from "./write-guard.ts";
+import { LIMITED_MODE_MESSAGE, allowedWhenBlocked, classifyRequest } from "./write-guard.ts";
 
 /**
  * Control de acceso por suscripción en el SERVIDOR (apagado por defecto: `BILLING_ENFORCEMENT_ENABLED`). Dos piezas, ambas sin interfaz:
@@ -67,7 +67,7 @@ export function createAccessResolver(deps: AccessResolverDeps): () => Promise<Bi
       grandfatherCutoff: deps.env.BILLING_GRANDFATHER_CUTOFF ?? null,
     });
     // Comprobante firmado de la última verificación buena (sólo cuenta con acceso pagado o grandfathered; sirve si más adelante NUESTRA base falla).
-    if (read === "ok" && snapshot && access.status && deps.cookie && access.level !== "limited") {
+    if (read === "ok" && snapshot && access.status && deps.cookie && access.level !== "blocked") {
       const value = encodeLastKnown(secret, deps.ownerId, { status: access.status, grandfathered: snapshot.grandfathered, verifiedAt: now.toISOString() });
       if (value) await deps.cookie.write(value).catch(() => undefined); // sólo se puede escribir dentro de una acción del servidor; en un render se ignora
     }
@@ -102,10 +102,11 @@ export function guardFetch(inner: typeof fetch, options: GuardOptions): typeof f
   return async (input, init) => {
     const { method, url } = describe(input, init);
     const verdict = classifyRequest({ method, url, supabaseOrigin: options.supabaseOrigin });
-    if (verdict.writes && !verdict.allowedInLimitedMode) {
+    // La sesión y lo ajeno a Supabase no consultan nada. Todo lo demás (lecturas y escrituras de datos) depende del acceso: una cuenta BLOQUEADA no lee ni escribe datos operativos.
+    if (verdict.reason !== "pass" && verdict.reason !== "auth") {
       const access = await options.resolve();
-      if (!access.capabilities.createOperationalData || !access.capabilities.modifyOperationalData) {
-        options.onBlocked?.({ reason: verdict.reason, status: access.status });
+      if (access.level === "blocked" && !allowedWhenBlocked({ method, url, supabaseOrigin: options.supabaseOrigin })) {
+        options.onBlocked?.({ reason: verdict.writes ? verdict.reason : `read_blocked:${verdict.reason}`, status: access.status });
         // Misma forma que un error de PostgREST: el cliente de Supabase la entrega como `error` con este mensaje.
         return new Response(JSON.stringify({ code: BILLING_LIMITED_CODE, message: LIMITED_MODE_MESSAGE, details: null, hint: null }), { status: 403, headers: { "content-type": "application/json" } });
       }

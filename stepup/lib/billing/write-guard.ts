@@ -20,6 +20,8 @@
 
 import { LIMITED_MODE_USER_MESSAGE } from "../errors/limited-mode-message.ts";
 
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 /** Lecturas que PostgREST expone como POST, sesión del dispositivo, cuota de acciones y eliminación de la propia cuenta. */
 export const LIMITED_MODE_RPC: ReadonlySet<string> = new Set([
   // lecturas / vistas previas (no escriben)
@@ -71,6 +73,37 @@ export const WRITE_RPC: ReadonlySet<string> = new Set([
 export const NOT_USER_CLIENT_RPC_PREFIXES: readonly string[] = ["billing_"];
 export const NOT_USER_CLIENT_RPC: ReadonlySet<string> = new Set(["_import_check_payload", "calendar_lesson_occupies_slot", "lesson_billed_amount", "lesson_hourly_amount"]);
 
+/**
+ * CUENTA BLOQUEADA (terminó la prueba o el período pagado sin un pago aprobado): NO es sólo lectura. Con la cuenta bloqueada el servidor tampoco LEE datos operativos: sólo pasan la
+ * sesión, lo imprescindible para entrar y salir (dispositivo, cuota de acciones, eliminar la propia cuenta), el perfil y las preferencias de uso (la pantalla de Configuración),
+ * la propia facturación y el listado/borrado de archivos (eliminar la cuenta los limpia). Todo lo demás —incluida una tabla o función nueva que nadie clasificó— se bloquea.
+ */
+export const BLOCKED_MODE_RPC: ReadonlySet<string> = new Set(["claim_web_device", "touch_web_device", "end_web_device", "end_active_session", "consume_action_quota", "delete_own_account"]);
+export const BLOCKED_MODE_READ_TABLES: ReadonlySet<string> = new Set(["teacher_profiles", "teacher_interaction_preferences", "web_device_sessions", "billing_subscriptions", "billing_periods", "billing_plans"]);
+export const BLOCKED_MODE_WRITE_TABLES: ReadonlySet<string> = new Set(["teacher_interaction_preferences"]);
+
+/** ¿Un pedido a Supabase puede hacerlo una cuenta BLOQUEADA? Falla cerrado. Lo que no es de Supabase o es de la sesión (`/auth/v1/`) siempre pasa. */
+export function allowedWhenBlocked(input: { readonly method: string; readonly url: string; readonly supabaseOrigin: string }): boolean {
+  let url: URL;
+  let origin: URL;
+  try {
+    url = new URL(input.url);
+    origin = new URL(input.supabaseOrigin);
+  } catch {
+    return true;
+  }
+  if (url.origin !== origin.origin) return true;
+  const method = input.method.toUpperCase();
+  const path = url.pathname;
+  if (path.startsWith("/auth/v1/")) return true;
+  const rpc = /^\/rest\/v1\/rpc\/([A-Za-z0-9_]+)\/?$/.exec(path);
+  if (rpc) return BLOCKED_MODE_RPC.has(rpc[1]);
+  const table = /^\/rest\/v1\/([A-Za-z0-9_]+)\/?$/.exec(path);
+  if (table) return READ_METHODS.has(method) ? BLOCKED_MODE_READ_TABLES.has(table[1]) : BLOCKED_MODE_WRITE_TABLES.has(table[1]);
+  if (path.startsWith("/storage/v1/")) return method === "DELETE" || /^\/storage\/v1\/object\/list\//.test(path) || path === "/storage/v1/object/list";
+  return false;
+}
+
 export interface RequestVerdict {
   /** ¿Cambia datos (o no se puede asegurar que no los cambie)? */
   readonly writes: boolean;
@@ -79,7 +112,6 @@ export interface RequestVerdict {
   readonly reason: string;
 }
 
-const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const PASS: RequestVerdict = { writes: false, allowedInLimitedMode: true, reason: "pass" };
 
 export function classifyRequest(input: { readonly method: string; readonly url: string; readonly supabaseOrigin: string }): RequestVerdict {

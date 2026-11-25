@@ -6,9 +6,9 @@
  *   grandfathered         cuenta existente antes de la facturación: acceso completo, sin cobro
  *   pending               cuenta nueva (o que vuelve) que todavía no tiene un cobro confirmado
  *   active                período pagado vigente
- *   past_due              venció el período y todavía no hay resultado confirmado del cobro (demora del proveedor/avisos)
- *   grace_period          el cobro de renovación fue RECHAZADO: 5 días corridos de gracia con acceso y aviso
- *   limited               terminó la gracia sin pago: modo limitado (la cuenta nunca pierde datos)
+ *   past_due              venció el período (o la prueba gratuita) y todavía no hay resultado confirmado del cobro: SIN acceso hasta que se apruebe el pago
+ *   grace_period          el cobro de renovación fue RECHAZADO: SIN acceso (no hay días de gracia desde el 25/11/2026; el estado se conserva para mostrar «pago rechazado»)
+ *   limited               pasó el tiempo sin pago aprobado: cuenta bloqueada (la cuenta nunca pierde datos)
  *   cancel_at_period_end  la persona canceló: conserva el acceso hasta terminar lo ya pagado
  *   canceled              cancelación efectiva (terminó el período pagado) o cancelación de una cuenta sin período vigente
  *   expired               el proveedor dio por terminada la suscripción sin que la persona la cancelara
@@ -78,7 +78,7 @@ export const TRANSITIONS: Table = deepFreeze({
     payment_confirmed: ["active"],
     payment_rejected: ["grace_period"],
     grace_elapsed: ["limited"],
-    cancel_requested: ["cancel_at_period_end"],
+    cancel_requested: ["cancel_at_period_end", "canceled"], // sin gracia: si el período ya terminó, cancelar cierra la cuenta (no hay acceso que conservar)
     provider_ended: ["expired"],
     chargeback_confirmed: ["limited"],
     payment_voided: ["pending"],
@@ -87,7 +87,7 @@ export const TRANSITIONS: Table = deepFreeze({
     payment_confirmed: ["active"],
     payment_rejected: ["grace_period"], // otro intento rechazado del mismo vencimiento
     grace_elapsed: ["limited"],
-    cancel_requested: ["cancel_at_period_end"],
+    cancel_requested: ["cancel_at_period_end", "canceled"],
     provider_ended: ["expired"],
     chargeback_confirmed: ["limited"],
     payment_voided: ["pending"],
