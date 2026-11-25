@@ -18,6 +18,8 @@
  * Las funciones `billing_*` usan el cliente de servicio del almacén de facturación (otro cliente): no pasan por acá.
  */
 
+import { LIMITED_MODE_USER_MESSAGE } from "../errors/limited-mode-message.ts";
+
 /** Lecturas que PostgREST expone como POST, sesión del dispositivo, cuota de acciones y eliminación de la propia cuenta. */
 export const LIMITED_MODE_RPC: ReadonlySet<string> = new Set([
   // lecturas / vistas previas (no escriben)
@@ -112,5 +114,5 @@ export function classifyRequest(input: { readonly method: string; readonly url: 
   return { writes: true, allowedInLimitedMode: false, reason: "unknown_write" }; // falla cerrado
 }
 
-/** Mensaje que ve la persona (y que viaja en la respuesta 403 simulada). Lenguaje simple, sin términos técnicos. */
-export const LIMITED_MODE_MESSAGE = "Tu cuenta está en modo limitado: podés ver y exportar tus datos, pero no crear ni modificar información hasta regularizar tu suscripción. Entrá a Facturación para resolverlo.";
+/** Mensaje que ve la persona (y que viaja en la respuesta 403 simulada). Lenguaje simple, sin términos técnicos; fuente única en `lib/errors/limited-mode-message.ts`. */
+export const LIMITED_MODE_MESSAGE = LIMITED_MODE_USER_MESSAGE;

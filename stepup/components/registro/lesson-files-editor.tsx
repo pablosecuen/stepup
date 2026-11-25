@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { LimitedModeFollowUp } from "@/components/billing/limited-mode-action";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { domainErrorMessage } from "@/lib/errors/domain-error-message";
 import { addMaterialAction, prepareAttachmentUploadAction, prepareMaterialUploadAction, registerAttachmentAction, removeAttachmentAction, setAttachmentCaptionAction } from "@/lib/actions/lesson-files";
@@ -142,6 +143,7 @@ function AttachmentRow({ attachment, ownerLabel, onChange, onRemoved }: { attach
       {error && (
         <p role="alert" className="text-[13px] text-bad">
           {error}
+          <LimitedModeFollowUp message={error} />
         </p>
       )}
     </li>

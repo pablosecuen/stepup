@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { startRegistrationAction } from "@/lib/actions/lesson-registrations";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { Button, type ButtonVariant } from "@/components/ui/button";
+import { LimitedModeFollowUp } from "@/components/billing/limited-mode-action";
 import { captureSharedName, startSharedName } from "@/lib/ui/shared-name";
 
 export function StartRegistrationButton({
@@ -49,6 +50,7 @@ export function StartRegistrationButton({
       {error && (
         <p role="alert" className="text-[13px] font-semibold text-bad">
           {error}
+          <LimitedModeFollowUp message={error} />
         </p>
       )}
     </div>

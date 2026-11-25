@@ -33,4 +33,9 @@ Desde el worktree limpio, en `stepup/`: `vercel deploy --prod --yes`.
 
 ## Reversión
 
-Re-desplegar el despliegue anterior (`vercel rollback` o promover `dpl_2usPmoD91zW76UEUzrhqiqvQG8nM`). No hay migraciones ni cambios de datos en esta publicación.
+Re-desplegar el despliegue anterior (`vercel rollback` o promover `dpl_2usPmoD91zW76UEUzrhqiqvQG8nM`). La publicación no ejecuta migraciones ni cambia datos.
+
+## Agregado el 25/11/2026 (después de preparar esta publicación)
+
+- **Interfaz (efecto sólo con el control de acceso encendido):** el bloqueo muestra un mensaje breve con acceso a Facturación y el aviso del encabezado se actualiza solo al volver a la pestaña; **y, con o sin control de acceso**, tras un error devuelto por el servidor (validación, conflicto…) los formularios conservan lo escrito (antes se vaciaban los campos de texto: React 19 los resetea tras cualquier error devuelto). Cambio general en `lib/actions/network-guard.ts`; las claves nunca se reponen.
+- **Migración `20261125130000_billing_write_gate.sql`: NO se aplica con la publicación** (Vercel no ejecuta migraciones; se aplicaría aparte, con aviso, y queda apagada). Detalle y activación: `COMPUERTA_EN_LA_BASE.md`.

@@ -2,6 +2,7 @@ import { resolveBillingAccess, type BillingAccess } from "./access.ts";
 import { readBillingFlags } from "./flags.ts";
 import { decodeLastKnown, encodeLastKnown } from "./last-known.ts";
 import type { BillingStore } from "./store.ts";
+import { BILLING_LIMITED_CODE } from "../errors/limited-mode-message.ts";
 import { LIMITED_MODE_MESSAGE, classifyRequest } from "./write-guard.ts";
 
 /**
@@ -106,7 +107,7 @@ export function guardFetch(inner: typeof fetch, options: GuardOptions): typeof f
       if (!access.capabilities.createOperationalData || !access.capabilities.modifyOperationalData) {
         options.onBlocked?.({ reason: verdict.reason, status: access.status });
         // Misma forma que un error de PostgREST: el cliente de Supabase la entrega como `error` con este mensaje.
-        return new Response(JSON.stringify({ code: "TF_BILLING_LIMITED", message: LIMITED_MODE_MESSAGE, details: null, hint: null }), { status: 403, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify({ code: BILLING_LIMITED_CODE, message: LIMITED_MODE_MESSAGE, details: null, hint: null }), { status: 403, headers: { "content-type": "application/json" } });
       }
     }
     return inner(input, init);

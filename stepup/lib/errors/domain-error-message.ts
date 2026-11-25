@@ -1,5 +1,6 @@
 import { NETWORK_ERROR_MESSAGE, isNetworkFailure } from "../actions/network-guard.ts";
 import { quotaErrorMessage } from "./quota-message.ts";
+import { BILLING_LIMITED_CODE, BILLING_LIMITED_DB_CODE, LIMITED_MODE_USER_MESSAGE } from "./limited-mode-message.ts";
 
 // Normalizador SEGURO de errores desconocidos para mostrarlos a la usuaria.
 //
@@ -74,6 +75,10 @@ export function domainErrorMessage(error: unknown): string {
   if (message !== null && !code && /failed to fetch|fetch failed|networkerror|load failed/i.test(message)) {
     return NETWORK_ERROR_MESSAGE;
   }
+
+  // Modo limitado: la guarda del servidor bloqueó la escritura. Mensaje breve y propio (la interfaz agrega el acceso a Facturación); un error técnico
+  // real jamás lleva este código, así que sigue cayendo en el mensaje genérico.
+  if (code === BILLING_LIMITED_CODE || code === BILLING_LIMITED_DB_CODE) return LIMITED_MODE_USER_MESSAGE;
 
   // R3: límites de cuota de la base (SQLSTATE 53400): texto claro por rubro, sin tablas, SQL ni cifras internas.
   const quota = quotaErrorMessage(error);

@@ -1,6 +1,7 @@
 import PrivateLink from "@/components/nav/private-link";
 import { Notice } from "@/components/ui/notice";
 import { linkClass } from "@/components/ui/button";
+import { AccessRecoveryWatcher } from "@/components/billing/limited-mode-action";
 import type { BillingAccess } from "@/lib/billing/access";
 
 /**
@@ -18,6 +19,7 @@ export function AccessBanner({ access }: { access: BillingAccess | null }) {
       : "No pudimos cobrar tu suscripción. Seguís con acceso completo unos días: actualizá tu medio de pago para no pasar a modo limitado.";
   return (
     <div className="px-4 pt-3 nav:px-10">
+      {limited && <AccessRecoveryWatcher />}
       <Notice tone="warn" title={title}>
         <p>{body}</p>
         <PrivateLink href="/facturacion" className={`${linkClass()} mt-1`}>

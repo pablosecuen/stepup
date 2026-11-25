@@ -5,6 +5,7 @@ import { ChevronDownIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { createLevelInlineAction } from "@/lib/actions/students";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { Button } from "@/components/ui/button";
+import { LimitedModeFollowUp } from "@/components/billing/limited-mode-action";
 import { TextInput } from "@/components/ui/field";
 import { STANDARD_LEVELS } from "@/lib/students/constants";
 import { normalizeCustomLevelName, validateLevelName, type CustomLevelRecord } from "@/lib/repositories/custom-levels-mapping";
@@ -137,6 +138,7 @@ export function LevelPicker({ customLevels: initialCustomLevels, defaultSelected
           {error && (
             <p id="new-level-error" role="alert" className="text-[13.5px] font-semibold text-bad">
               {error}
+              <LimitedModeFollowUp message={error} />
             </p>
           )}
           <p className="text-[13px] text-textMuted">Se suma a A1–C2, queda guardado en tu cuenta y se elige para este alumno.</p>

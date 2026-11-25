@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
+import { LimitedModeFollowUp } from "@/components/billing/limited-mode-action";
 import { guardNetwork } from "@/lib/actions/network-guard";
 import { resolveRegistrationBillingAction } from "@/lib/actions/lesson-registrations";
 import { rowsNeedingDecision, type BillingRow } from "@/lib/registro/billing-rows";
@@ -70,6 +71,7 @@ export function RegistrationBillingPanel({ registrationId, rows }: { registratio
               {errors[row.studentId] ? (
                 <p role="alert" className="mt-1 text-[14px] text-bad">
                   {errors[row.studentId]}
+                  <LimitedModeFollowUp message={errors[row.studentId]} />
                 </p>
               ) : null}
             </li>

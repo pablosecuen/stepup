@@ -61,6 +61,11 @@ const payFor = async (ownerId, tag) => {
 };
 // Acciones de apoyo SÓLO locales: /__admin/pay?email= (cobro aprobado + período), /__admin/expire?email= (vence el período y la gracia), /__admin/state?email= (estado y alumnos).
 const adminActions = async (url) => {
+  // /__admin/gate?on=1|0: enciende o apaga la compuerta de escritura de la BASE (migración 20261125130000; apagada por defecto).
+  if (url.pathname === "/__admin/gate") {
+    await admin.query("update public.billing_settings set write_gate_enabled = $1", [url.searchParams.get("on") === "1"]);
+    return { write_gate_enabled: url.searchParams.get("on") === "1" };
+  }
   const user = users.get(url.searchParams.get("email") ?? "");
   if (!user) throw new Error("cuenta desconocida");
   if (url.pathname === "/__admin/pay") await payFor(user.id, `dyn${Date.now()}`);

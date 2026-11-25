@@ -191,3 +191,34 @@ test("restoreFormValues: es idempotente y un campo ausente del snapshot no se pi
   assert.equal(name.value, "Ana");
   assert.equal(email.value, "ya@escrito.com");
 });
+
+// --- reposición tras un rechazo DEVUELTO por el servidor (modo limitado, validación…) ----------------------------------
+
+test("isServerRejection: sólo un `error` con texto es un rechazo; éxito, null y objetos sin error no", async () => {
+  const { isServerRejection } = await import("../network-guard.ts");
+  assert.equal(isServerRejection({ error: "Tu cuenta está en modo limitado" }), true);
+  assert.equal(isServerRejection({ error: "" }), false);
+  assert.equal(isServerRejection({ createdStudentId: "x" }), false);
+  assert.equal(isServerRejection({ success: true }), false);
+  assert.equal(isServerRejection(null), false);
+  assert.equal(isServerRejection(undefined), false);
+  assert.equal(isServerRejection("error"), false);
+});
+
+test("restoreFormValues con skipSecrets: repone lo escrito pero NUNCA una clave (sin la opción, el comportamiento de la caída de red no cambia)", () => {
+  const name = field({ tagName: "INPUT", name: "name", type: "text", value: "" });
+  const pass = field({ tagName: "INPUT", name: "password", type: "password", value: "" });
+  const snapshot = snapshotOf([["name", "Ana"], ["password", "secreta-1"]]);
+  restoreFormValues({ elements: [name, pass] }, snapshot, { skipSecrets: true });
+  assert.equal(name.value, "Ana");
+  assert.equal(pass.value, "", "tras un rechazo del servidor la clave no se vuelve a escribir sola");
+  restoreFormValues({ elements: [name, pass] }, snapshot);
+  assert.equal(pass.value, "secreta-1", "la caída de red sigue reponiendo todo, como antes");
+});
+
+test("estructura: guardNetwork y guardFormAction reponen lo escrito también cuando el servidor devuelve un rechazo (causa del reintento vacío tras pagar)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const source = readFileSync(new URL("../network-guard.ts", import.meta.url), "utf8");
+  assert.match(source, /const result = await run\(\);\s*restoreAfterServerError\(claim, result\);/);
+  assert.match(source, /const next = await action\(prev, payload\);\s*restoreAfterServerError\(claim, next\);/);
+});

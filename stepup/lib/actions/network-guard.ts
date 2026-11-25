@@ -68,13 +68,15 @@ const SKIPPED_INPUT_TYPES = new Set(["hidden", "submit", "button", "reset", "ima
  * Idempotente: repetirla no cambia nada. Los `hidden`/botones/archivos no se
  * tocan (los controla React o el servidor).
  */
-export function restoreFormValues(form: RestorableForm, snapshot: Pick<FormData, "get" | "getAll">): void {
+export function restoreFormValues(form: RestorableForm, snapshot: Pick<FormData, "get" | "getAll">, options: { skipSecrets?: boolean } = {}): void {
   for (const raw of Array.from(form.elements)) {
     const field = raw as RestorableField;
     if (!field || !field.name || field.disabled) continue;
     const tag = field.tagName?.toUpperCase();
     if (tag === "INPUT") {
       if (SKIPPED_INPUT_TYPES.has(field.type)) continue;
+      // Tras un rechazo del servidor (no una caída de red) una clave o un código no se vuelven a escribir solos: la persona los ingresa de nuevo.
+      if (options.skipSecrets && field.type === "password") continue;
       if (field.type === "checkbox" || field.type === "radio") {
         field.checked = snapshot.getAll(field.name).some((v) => v === field.value);
       } else {
@@ -140,11 +142,11 @@ function claimFreshSubmit(): SubmitClaim | null {
   return claim;
 }
 
-function scheduleRestore(claim: SubmitClaim | null): void {
+function scheduleRestore(claim: SubmitClaim | null, options: { skipSecrets?: boolean } = {}): void {
   if (!claim) return;
   const { form, snapshot } = claim;
   const run = () => {
-    if (form.isConnected) restoreFormValues(form, snapshot);
+    if (form.isConnected) restoreFormValues(form, snapshot, options);
   };
   // 1) Formularios cuyo `action` ya terminó (y ya se reseteó) antes de que
   //    fallara la red — p. ej. `action={submit}` con `startTransition` adentro.
@@ -159,6 +161,22 @@ function scheduleRestore(claim: SubmitClaim | null): void {
 }
 
 /**
+ * El servidor RECHAZÓ el envío y devolvió `{ error }` (modo limitado, validación, conflicto…): React 19 igual resetea los campos no controlados al terminar la
+ * acción, así que sin esto la persona pierde lo escrito y un reintento sale vacío (causa comprobada del reintento fallido tras pagar). Se repone igual que en una
+ * falla de red, salvo las claves. Un éxito (sin `error`) no se toca: el formulario se vacía o se navega como siempre.
+ */
+function restoreAfterServerError(claim: SubmitClaim | null, result: unknown): void {
+  if (claim && isServerRejection(result)) scheduleRestore(claim, { skipSecrets: true });
+}
+
+/** ¿El servidor devolvió un rechazo (`{ error: "texto" }`)? Un éxito, `null` o un valor sin `error` no lo son. */
+export function isServerRejection(result: unknown): boolean {
+  if (result === null || typeof result !== "object") return false;
+  const error = (result as { error?: unknown }).error;
+  return typeof error === "string" && error.length > 0;
+}
+
+/**
  * Ejecuta una llamada a un Server Action. Si falla por red devuelve
  * `{ error }` (el mismo contrato de error que ya devuelve el servidor) y
  * repone lo escrito en el formulario; cualquier otro error se relanza tal
@@ -167,7 +185,9 @@ function scheduleRestore(claim: SubmitClaim | null): void {
 export async function guardNetwork<R extends { error?: string }>(run: () => Promise<R>): Promise<R> {
   const claim = claimFreshSubmit();
   try {
-    return await run();
+    const result = await run();
+    restoreAfterServerError(claim, result);
+    return result;
   } catch (error) {
     if (!isNetworkFailure(error)) throw error;
     scheduleRestore(claim);
@@ -183,7 +203,9 @@ export async function guardFormAction<S extends { error?: string }, P>(
 ): Promise<S> {
   const claim = claimFreshSubmit();
   try {
-    return await action(prev, payload);
+    const next = await action(prev, payload);
+    restoreAfterServerError(claim, next);
+    return next;
   } catch (error) {
     if (!isNetworkFailure(error)) throw error;
     scheduleRestore(claim);
