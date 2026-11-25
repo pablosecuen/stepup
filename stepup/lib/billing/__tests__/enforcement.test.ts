@@ -80,7 +80,8 @@ test("la guarda se arma en UN solo punto (requireAuthenticatedDbContext) y el na
   assert.match(context, /enforcementFetchFor\(user, config\.url\)/);
   assert.match(context, /createSupabaseServerClient\(\{ fetch: enforcementFetchFor/);
   const server = readFileSync(join(ROOT, "lib/supabase/server.ts"), "utf8");
-  assert.match(server, /global: \{ fetch: options\.fetch \}/);
+  assert.match(server, /options\.fetch \?\? defaultEnforcementFetch\(config\.url\)/, "sin guarda propia, la guarda por defecto (cuenta del JWT)");
+  assert.match(server, /global: \{ fetch: guardedFetch \}/);
   const clientFiles = ["app", "components", "lib"].flatMap((dir) => walk(join(ROOT, dir))).filter((file) => /createBrowserClient|@supabase\/ssr/.test(readFileSync(file, "utf8")) && !/lib[\\/]supabase[\\/]server\.ts$|proxy\.ts$|lib[\\/]auth[\\/]/.test(file));
   assert.deepEqual(clientFiles.map((file) => file.slice(ROOT.length)), [], "ningún componente de datos usa un cliente de Supabase en el navegador");
 });

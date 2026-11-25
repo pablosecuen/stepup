@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseRuntimeConfig } from "@/lib/auth/config";
 import { getSupabaseCookieOptions, withSessionCookieAttributes } from "@/lib/supabase/cookie-options";
+import { defaultEnforcementFetch } from "@/lib/billing/enforcement-server";
 
 /**
  * Cliente de Supabase para Server Components/Actions/Route Handlers.
@@ -20,10 +21,12 @@ export async function createSupabaseServerClient(options: { fetch?: typeof fetch
   if (!config) return null;
 
   const cookieStore = await cookies();
+  const guardedFetch = options.fetch ?? defaultEnforcementFetch(config.url);
 
   return createServerClient(config.url, config.publishableKey, {
     // Control de acceso por suscripción (lib/billing/enforcement.ts): sólo viene con el interruptor encendido; sin él, el `fetch` de siempre.
-    ...(options.fetch ? { global: { fetch: options.fetch } } : {}),
+    // Si el llamador no trae la suya, la guarda por defecto toma la cuenta del JWT de cada pedido (red de seguridad para llamadores sin contexto).
+    ...(guardedFetch ? { global: { fetch: guardedFetch } } : {}),
     auth: {
       flowType: "pkce",
     },

@@ -66,3 +66,41 @@ Prerrequisitos: la prueba real de pago verificada (`PRUEBA_REAL_Y_APERTURA.md`),
 3. Cargar `BILLING_ENFORCEMENT_ENABLED=true` y **volver a desplegar** (las variables rigen desde el próximo despliegue).
 4. Verificar con la cuenta QA (existente → acceso completo, sin aviso) y con UNA cuenta nueva de prueba (limitada: ver datos, no crear; pagar desde Facturación recupera el acceso). Mirar los registros: sólo `write_blocked` de la cuenta de prueba.
 5. **Reversión inmediata:** quitar `BILLING_ENFORCEMENT_ENABLED` (o ponerla en `false`) y volver a desplegar. No hay datos que deshacer: el estado de las suscripciones no cambia, sólo deja de aplicarse la restricción.
+
+## 8. Prueba aislada conectada a una base real (25/11/2026) y rutas que podrían eludir la guarda
+
+**Entorno:** `supabase/tests/postgres/access_enforcement.mjs` (10 pasos): cliente de supabase-js real → guarda real → pasarela local con la semántica de PostgREST → Postgres 17 real con todas las migraciones, RLS y roles. **No es el Supabase alojado**: no hay Docker ni un proyecto de prueba separado, y no se usó Production. No se prueba el despliegue de Next/Vercel ni la verificación de firma del JWT de GoTrue; sí el cliente, la guarda, el estado de facturación y la base.
+
+| Comprobado | Resultado |
+|---|---|
+| Cuenta existente (grandfathered): lee y escribe (tabla y función) con la guarda encendida | pasa |
+| Cuenta nueva sin pago: lee y exporta sus datos con RLS aislado | pasa |
+| Cuenta limitada: `update`, `insert`, `delete`, una función de escritura, una función nueva sin clasificar y subir un archivo → **403 con el mensaje de modo limitado; ninguna llegó a la pasarela y la base quedó intacta** | pasa |
+| Cuenta limitada: preferencias de uso, descarga firmada, borrar archivos y abrir un intento de pago (cliente de servicio) | pasa |
+| Aislamiento: una cuenta limitada no afecta a otra | pasa |
+| Pagar (cobro aprobado + período + estado) devuelve la escritura; vencido el período y la gracia, vuelve a limitarse | pasa |
+| Interruptor apagado = ninguna guarda | pasa |
+
+**Clientes privilegiados y otros caminos (auditados en el código y en la base):**
+
+- **Cliente de servicio** (`SUPABASE_SERVICE_ROLE_KEY`): un solo archivo (`supabase-store.ts`) y sólo funciones `billing_*` (prueba estructural). Un usuario autenticado **no puede ejecutarlas** por la API (permission denied, verificado en la base). No puede escribir datos operativos de una persona.
+- **Otros clientes de servidor** (`createSupabaseServerClient` sin el contexto de la persona: sesión, dispositivo, recuperación de sesión): hoy sólo hacen autenticación o las funciones permitidas del dispositivo. Como **red de seguridad**, ese constructor trae una guarda por defecto que toma la cuenta del JWT de cada pedido (probada: bloquea a la limitada y deja pasar a la existente).
+- `lib/transfer` (traslado desde la app móvil) recibe un cliente inyectado y no se llama desde ninguna ruta de la web.
+- `proxy.ts` y `reauth-supabase.ts`: sólo autenticación.
+
+**Límite real, NO resuelto por esta guarda:** **un cliente que no pasa por el servidor web escribe igual** aunque la cuenta esté limitada. Es el caso de la **app móvil** (comparte la base y habla directo con la API con el JWT de la persona) o de cualquiera que use ese JWT. La prueba lo muestra (paso 9). Para cerrarlo hace falta una **compuerta en la base** (por ejemplo un disparador que consulte el acceso de la cuenta en las tablas operativas, con el estado de acceso mantenido en la base): es una migración mayor que afecta también a la app móvil, y no se preparó porque cambia su comportamiento y requiere una decisión explícita. Mientras tanto el modo limitado es una restricción **de la web**.
+
+## 9. La excepción de las cuentas existentes (`grandfathered`): duración y alcance
+
+**Qué es hoy:** una cuenta creada hasta el corte guardado en `billing_settings` (`2026-10-14T14:20:36.871448+00:00`) quedó marcada `grandfathered` en `billing_subscriptions`. Esa marca da **acceso completo y gratis sin vencimiento**: no hay fecha de fin, ni cuenta regresiva, ni ningún proceso automático que la saque de ahí. En el código existe el disparador `grandfather_ended` (pasa a `pending`) **sin ningún comando, pantalla ni función de base que lo ejecute**: terminar la excepción exige desarrollo nuevo y una decisión explícita.
+
+**Alcance:** las 5 cuentas actuales (todas anteriores al corte; ninguna posterior). La marca es **por cuenta**, no por fecha de alta: la variable `BILLING_GRANDFATHER_CUTOFF` **no crea ni quita** la excepción. Sólo se usa cuando el estado de una cuenta no se puede leer (falla propia) para saber si es anterior al corte. **No está configurada y no se configuró**.
+
+**Cómo se pierde la excepción hoy:** sólo si la cuenta se suscribe (su primer período pagado la saca de `grandfathered` y pasa a las reglas normales: si después cancela o deja de pagar, queda limitada).
+
+**Opciones para decidir (cada una exige una definición de Joaquín):**
+1. **Permanente** (como está): las 5 cuentas nunca pagan salvo que quieran.
+2. **Con fecha de fin**: elegir una fecha y un aviso previo; hay que construir el comando que termine la excepción en esa fecha (o a pedido, cuenta por cuenta) y avisar a las personas.
+3. **Gratuidad acotada** (por ejemplo un período fijo desde la activación) y luego conversión.
+4. **Cuenta por cuenta**: algunas permanentes (cuentas propias o de prueba) y otras con fecha.
+

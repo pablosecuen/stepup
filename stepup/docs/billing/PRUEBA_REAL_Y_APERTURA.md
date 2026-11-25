@@ -52,3 +52,15 @@ Después (Claude, sólo lectura):
 ## D. Activar el control de acceso (después de C o antes, según se decida)
 
 Ver `CONTROL_DE_ACCESO.md` §7. Con las 5 cuentas existentes `grandfathered`, activarlo sólo afecta a cuentas nuevas.
+
+## E. Limitaciones reales del sandbox (confirmadas con la documentación oficial y con la API, 25/11/2026)
+
+- **No hay forma de crear un cobro con tarjeta sólo por API**, ni siquiera en sandbox: `POST /v3/checkout` con `card` da 403 (`raw_card_data_not_enabled`), con `cardId` exige una tarjeta ya guardada, y con `cardTokenId` exige el SDK en un navegador con una clave **pública** `pk_` del sandbox (la organización de sandbox no expone ninguna por API). Tampoco está documentado `POST /v3/subscriptions` ni un endpoint para crear un `manual_first_subscription_payment`.
+- **Camino sin tarjeta:** PIX/Boleto (moneda BRL, con datos de facturación) se aprueban solos en sandbox, pero los planes de TeacherFlow son en ARS, no hay un ejemplo documentado de una suscripción por PIX y **los pagos que no son con tarjeta no se devuelven por API**. No sirve para ensayar TeacherFlow.
+- **Por eso el primer cobro del sandbox lo hace una persona** con una tarjeta de prueba en el sitio de pago del sandbox (no cobra dinero real). Todo lo demás sale de `scripts/rebill-sandbox-rehearsal.mjs`.
+- **Cambio de tarjeta:** `POST /v3/subscriptions/:id/card/update-link` (sin cuerpo) devuelve `{ url, shortUrl, token }` con `url` en `pay.rebill.com` (vence a los 7 días); también existe `POST /v3/subscriptions/:id/request-card-change` (lo manda por correo). Que funcione en sandbox **no está documentado**. Al completarse llega `subscription.updated` con `cardUpdated: true` y sin cambio de estado (la integración lo trata sólo como señal: paso 22 del ciclo). `PATCH` con `cardId` no es fiable (la documentación se contradice). La función está **apagada** hasta validarla.
+- **Devolución:** `POST /v3/refunds/:id`, sólo pagos con tarjeta en `approved` o `partially_refunded`; si el sandbox la acepta no está documentado. El evento puede aparecer como `payment.updated` con estado `refunded` (la documentación nombra también `payment.updated.refunded`: confirmar qué llega).
+- **Webhook:** el sandbox no puede entregar a una dirección local. La entrega, la firma y el formato se confirman con la **única prueba real** (el webhook de producción recibe el aviso). El procesamiento de avisos duplicados, tardíos y fuera de orden sí está probado con Postgres real.
+- **Contracargo:** no documentado cómo simularlo.
+- Con un pago de sandbox hecho por una persona se pueden ejecutar, en orden: `status` → `rebill-verify.mjs` (dónde llega `tf_ref`, orden y paginación) → `advance` (renovación rechazada → reintentos en horas → `defaulted`) → `pause` → `resume <sub> AAAA-MM-DD` → `refund`.
+

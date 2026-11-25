@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import type { AuthUser } from "@/lib/auth/auth-adapter";
 import { getBillingRuntime } from "./runtime";
-import { STATE_COOKIE, STATE_COOKIE_MAX_AGE_SECONDS, createAccessResolver, maybeGuardFetch, type CookieIo } from "./enforcement";
+import { STATE_COOKIE, STATE_COOKIE_MAX_AGE_SECONDS, createAccessResolver, maybeGuardFetch, maybeGuardFetchByJwt, type CookieIo } from "./enforcement";
 import { logBilling } from "./log";
 
 /** Comprobante firmado de la última verificación (cookie HttpOnly): sólo se puede escribir dentro de una acción del servidor; en un render `set` lanza y se ignora. */
@@ -38,4 +38,17 @@ export async function resolveAccessForNotice(user: AuthUser): Promise<import("./
   const runtime = getBillingRuntime();
   if (!runtime.flags.enforcement) return null;
   return createAccessResolver({ env: process.env, ownerId: user.id, accountCreatedAt: user.createdAt ?? null, store: runtime.store, now: runtime.now, cookie: cookieIo })();
+}
+
+/** Guarda por defecto de `createSupabaseServerClient` cuando el llamador no trae la suya: la cuenta sale del JWT del pedido. `undefined` con el control apagado. */
+export function defaultEnforcementFetch(supabaseUrl: string): typeof fetch | undefined {
+  const runtime = getBillingRuntime();
+  return maybeGuardFetchByJwt({
+    env: process.env,
+    store: runtime.store,
+    now: runtime.now,
+    cookie: cookieIo,
+    supabaseOrigin: supabaseUrl,
+    onBlocked: ({ reason, status }) => logBilling("access", "write_blocked", { reason, status: status ?? "unknown" }, "warn"),
+  });
 }

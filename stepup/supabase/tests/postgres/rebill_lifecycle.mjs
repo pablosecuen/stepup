@@ -592,7 +592,22 @@ try {
     assert.equal((await access(M, "2028-05-15")).level, "full_with_notice", "conserva el acceso hasta el fin del período pagado");
   });
 
-  await step("22. NINGUNA clave ni secreto quedó en la base: ni en las tablas de facturación ni en los avisos guardados; los avisos no contienen correos", async () => {
+  await step("22. CAMBIO DE TARJETA: subscription.updated con cardUpdated (sin cambio de estado) es sólo una señal: no altera período, estado ni cobros; repetido, no duplica nada; el enlace de cambio de tarjeta sólo existe con la capacidad validada", async () => {
+    const M = uuidFor(1300);
+    const before = await sub(M);
+    const executionsBefore = await executions(M);
+    const evt = hook("subscription.updated", { id: "test_sub_M", status: "paused", cardUpdated: true, card: { id: "crd_1", brand: "visa", lastFourDigits: "4242" } });
+    assert.equal((await send(sandbox, SANDBOX_SECRET, evt)).status, 200);
+    assert.equal((await send(sandbox, SANDBOX_SECRET, evt)).status, 200, "el mismo aviso otra vez");
+    await drain();
+    const after = await sub(M);
+    assert.equal(after.current_period_end.toISOString(), before.current_period_end.toISOString(), "el período no cambió");
+    assert.equal(await executions(M), executionsBefore, "ningún cobro nuevo");
+    assert.equal(await count("select count(*)::int n from public.billing_reconciliations where owner_id = $1 and status = 'open'", [M]), 0);
+    assert.equal((await sandbox.getPaymentMethodUpdateUrl({ subscriberUid: "test_sub_M", planCode: "tf_monthly_ars_v2" })).ok, false, "sin la capacidad validada no se ofrece");
+  });
+
+  await step("23. NINGUNA clave ni secreto quedó en la base: ni en las tablas de facturación ni en los avisos guardados; los avisos no contienen correos", async () => {
     const tables = (await admin.query("select tablename from pg_tables where schemaname = 'public' and tablename like 'billing\\_%'")).rows.map((r) => r.tablename);
     for (const table of tables) {
       for (const needle of [SANDBOX_KEY, LIVE_KEY, SANDBOX_SECRET, LIVE_SECRET, "sk_test", "sk_live", "whsec_", "@example.test"]) {

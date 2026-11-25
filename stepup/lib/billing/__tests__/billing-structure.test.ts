@@ -74,7 +74,7 @@ test("M2 conecta la facturación SÓLO por los puntos aprobados (rutas de API, p
   // proxy.ts y la navegación NO importan facturación: reciben un booleano por propiedad.
   for (const file of ["proxy.ts", "components/nav/primary-nav.tsx", "components/nav/sign-out-button.tsx", "components/account/configuration-view.tsx", "components/account/delete-account-button.tsx"]) assert.deepEqual(importsOf(file), [], file);
   // El resto de lib/: sólo las acciones de facturación y de cuenta (eliminación) usan lib/billing.
-  const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts", "lib/db/server-context.ts"]); // server-context: arma el cliente de datos con la guarda de acceso (enforcement-server)
+  const allowedLib = new Set(["lib/actions/billing.ts", "lib/actions/account.ts", "lib/db/server-context.ts", "lib/supabase/server.ts"]); // server-context: arma el cliente de datos con la guarda de acceso (enforcement-server)
   for (const file of walk("lib", (f) => f.endsWith(".ts") && !f.includes(`${sep}billing${sep}`) && !f.includes("__tests__"))) {
     if (allowedLib.has(file)) continue;
     assert.doesNotMatch(read(file), /from "(\.\.?\/)+billing\/|@\/lib\/billing/, file);

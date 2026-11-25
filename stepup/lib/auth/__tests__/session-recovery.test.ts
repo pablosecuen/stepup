@@ -318,6 +318,6 @@ test("el reintento a nivel de fetch se retiró: ya no hay un segundo mecanismo q
   assert.doesNotMatch(server, /jwt-retry|createJwtRejectionRetryFetch/);
   // `global:` sólo existe para la guarda de ESCRITURAS del control de acceso (lib/billing/enforcement.ts): la que llega de afuera, sin esperas ni reintentos.
   assert.equal((server.match(/global:/g) ?? []).length, 1);
-  assert.match(server, /global: { fetch: options.fetch }/);
+  assert.match(server, /global: { fetch: guardedFetch }/);
   assert.doesNotMatch(server, /setTimeout|retry|sleep/i);
 });

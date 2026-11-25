@@ -118,3 +118,56 @@ export function maybeGuardFetch(deps: AccessResolverDeps & { readonly supabaseOr
   if (!readBillingFlags(deps.env).enforcement) return undefined;
   return guardFetch(deps.inner ?? fetch, { supabaseOrigin: deps.supabaseOrigin, resolve: createAccessResolver(deps), onBlocked: deps.onBlocked });
 }
+
+// ───────────────────────────────────────────── red de seguridad: clientes de servidor que NO pasan por `requireAuthenticatedDbContext`
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Cuenta a la que pertenece el pedido, leída del `Authorization: Bearer <jwt>` que ya viaja (no se verifica acá: Supabase lo verifica; un valor falso sólo haría que se rechace el pedido). `null` si es anónimo. */
+export function ownerFromAuthorization(header: string | null | undefined): string | null {
+  const token = /^Bearer\s+([A-Za-z0-9._-]+)$/i.exec(header ?? "")?.[1];
+  const payload = token?.split(".")[1];
+  if (!payload) return null;
+  try {
+    const sub = (JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: unknown; role?: unknown }).sub;
+    return typeof sub === "string" && UUID.test(sub) ? sub.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+function authorizationOf(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]): string | null {
+  const fromInit = init?.headers ? new Headers(init.headers).get("authorization") : null;
+  if (fromInit) return fromInit;
+  return typeof input === "object" && "headers" in input ? input.headers.get("authorization") : null;
+}
+
+/**
+ * Misma guarda, pero para un cliente que se crea SIN el contexto de la persona (cualquier otro llamador de `createSupabaseServerClient`): la cuenta sale
+ * del JWT de cada pedido. Hoy ningún otro llamador escribe datos (una prueba lo fija); esto cubre al que se agregue mañana.
+ */
+export function guardFetchByJwt(deps: Omit<AccessResolverDeps, "ownerId" | "accountCreatedAt"> & { readonly supabaseOrigin: string; readonly inner?: typeof fetch; readonly onBlocked?: GuardOptions["onBlocked"] }): typeof fetch {
+  const resolvers = new Map<string, () => Promise<BillingAccess>>();
+  const inner = deps.inner ?? fetch;
+  return async (input, init) => {
+    const { method, url } = describe(input, init);
+    const verdict = classifyRequest({ method, url, supabaseOrigin: deps.supabaseOrigin });
+    if (verdict.writes && !verdict.allowedInLimitedMode) {
+      const ownerId = ownerFromAuthorization(authorizationOf(input, init));
+      if (ownerId) {
+        if (resolvers.size > 500) resolvers.clear();
+        let resolve = resolvers.get(ownerId);
+        if (!resolve) {
+          resolve = createAccessResolver({ ...deps, ownerId, accountCreatedAt: null });
+          resolvers.set(ownerId, resolve);
+        }
+        return guardFetch(inner, { supabaseOrigin: deps.supabaseOrigin, resolve, onBlocked: deps.onBlocked })(input, init);
+      }
+    }
+    return inner(input, init);
+  };
+}
+
+export function maybeGuardFetchByJwt(deps: Parameters<typeof guardFetchByJwt>[0]): typeof fetch | undefined {
+  return readBillingFlags(deps.env).enforcement ? guardFetchByJwt(deps) : undefined;
+}
