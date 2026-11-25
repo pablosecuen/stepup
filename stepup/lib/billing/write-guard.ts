@@ -40,7 +40,7 @@ export const LIMITED_MODE_RPC: ReadonlySet<string> = new Set([
   "delete_own_account",
 ]);
 
-/** Funciones que la web llama pero que se definen FUERA de las migraciones de este repositorio (proyecto compartido con la app móvil). */
+/** Funciones que la web llama pero que se definen FUERA de las migraciones de este repositorio (el proyecto de Supabase conserva funciones de una etapa anterior, la app Expo del repositorio original). */
 export const RPC_DEFINED_OUTSIDE_THIS_REPO: ReadonlySet<string> = new Set(["end_active_session", "delete_own_account"]);
 
 /** Tablas donde una cuenta limitada puede seguir escribiendo: preferencias de uso (no es información operativa). */

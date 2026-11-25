@@ -241,9 +241,9 @@ try {
     assert.equal((await anon.from("students").select("*")).error, null);
   });
 
-  await step("9. LÍMITE REAL (documentado, no resuelto por la guarda): un cliente que NO pasa por la web (p. ej. la app móvil con el mismo JWT) escribe aunque la cuenta esté limitada — sólo la base podría impedirlo", async () => {
-    const mobileLike = clientFor(N); // sin guarda: habla directo con la API
-    const result = await mobileLike.from("students").update({ name: "escrito sin pasar por la web" }).eq("id", SN);
+  await step("9. LÍMITE REAL (documentado, no resuelto por la guarda): una llamada directa a la API de datos con la PROPIA sesión de la cuenta limitada (sin pasar por el servidor web; requiere sus credenciales y la clave pública, que viaja en la web) escribe en sus propias filas — sólo la base podría impedirlo", async () => {
+    const directCall = clientFor(N); // sin guarda: habla directo con la API
+    const result = await directCall.from("students").update({ name: "escrito sin pasar por la web" }).eq("id", SN);
     assert.equal(result.error, null, "la base no distingue: el control vive en el servidor web");
     assert.equal((await admin.query("select name from public.students where id = $1", [SN])).rows[0].name, "escrito sin pasar por la web");
     console.log("        (esto es lo esperado HOY: el control de acceso protege la web; no hay una compuerta en la base)");
