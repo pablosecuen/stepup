@@ -141,7 +141,7 @@ const PRODUCT_INDEX = [
   { n: "03", title: "Clases y series", text: "Clases sueltas, grupales y series que se repiten.", href: "#agenda" },
   { n: "04", title: "Registro de clases", text: "Dejá asentado qué se dictó y qué quedó pendiente.", href: "#como-funciona" },
   { n: "05", title: "Cobros y vencimientos", text: "Mensualidades, pagos y vencimientos siempre a la vista.", href: "#cobros-resumen" },
-  { n: "06", title: "Recordatorios", text: "Las clases que quedaron sin alumnos, en un solo aviso.", href: "#recorrido" },
+  { n: "06", title: "Recordatorios", text: "Las clases que quedaron sin alumnos, en un solo aviso.", href: "#recorrido-pantallas" },
   { n: "07", title: "Resumen financiero", text: "Evolución de lo cobrado y una distribución sugerida.", href: "#cobros" },
 ] as const;
 
@@ -332,7 +332,8 @@ export function TourSection() {
           </h2>
           <p className="mt-4 text-[17px] leading-relaxed text-textSecondary">Cinco pantallas de TeacherFlow, con información ilustrativa. Vos decidís cuál mirar.</p>
         </Reveal>
-        <Reveal delay={80} className="tf-tour-box mt-8 rounded-[24px] nav:mt-10">
+        {/* «Cómo funciona» lleva directo a la caja del recorrido, alineada bajo el encabezado fijo (69 px = encabezado + aire), para que se vea completa. */}
+        <Reveal id="recorrido-pantallas" delay={80} className="tf-tour-box mt-8 scroll-mt-[69px] rounded-[24px] nav:mt-10">
           <Tour items={TOUR_ITEMS} screens={[
             <ScreenInicio key="inicio" />,
             <ScreenCalendarioSemana key="calendario" />,

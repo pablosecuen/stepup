@@ -28,7 +28,7 @@ test("las escenas aparecen en el orden de la narrativa y cada ancla del encabeza
   const order = ["<Hero />", "<ProductIndex />", "<SceneAgenda />", "<SceneStudents />", "<SceneCollections />", "<TourSection />", "<CalendarDetail />", "<StudentsDetail />", "<FinanceDetail />", "<HowItWorks />", "<Security />", "<Closing />"].map((tag) => PAGE.indexOf(tag));
   assert.ok(order.every((index) => index > 0), String(order));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
-  const ids = new Set([...SECTIONS.matchAll(/<section id="([a-z-]+)"/g)].map((match) => match[1]));
+  const ids = new Set([...SECTIONS.matchAll(/<section id="([a-z-]+)"/g), ...SECTIONS.matchAll(/<Reveal id="([a-z-]+)"/g)].map((match) => match[1]));
   for (const anchor of [...HEADER.matchAll(/href: "#([a-z-]+)"/g), ...SECTIONS.matchAll(/href="#([a-z-]+)"/g), ...SECTIONS.matchAll(/href: "#([a-z-]+)"/g)]) assert.ok(ids.has(anchor[1]) || anchor[1] === "top", `ancla sin destino: #${anchor[1]}`);
   for (const id of ["producto", "agenda", "recorrido", "calendario", "alumnos", "cobros", "como-funciona", "seguridad", "empezar"]) assert.ok(ids.has(id), id);
 });
@@ -84,7 +84,8 @@ test("recorrido: UN solo marco que cabe bajo el encabezado fijo, limitado por al
   // La animación de cambio va en el panel (el contenedor que desplaza), no en la maqueta interna: no crea un desborde pasajero.
   assert.match(TOUR, /"tf-tour-panel tf-tab-in"/);
   const sections = read("components/landing/sections.tsx");
-  assert.match(sections, /className="tf-tour-box mt-8 rounded-\[24px\] nav:mt-10"/, "la caja del recorrido ya no suma un relleno decorativo propio");
+  assert.match(sections, /<Reveal id="recorrido-pantallas" delay=\{80\} className="tf-tour-box mt-8 scroll-mt-\[69px\] rounded-\[24px\] nav:mt-10"/, "la caja del recorrido ya no suma un relleno decorativo propio y es el destino de «Cómo funciona», alineada bajo el encabezado");
+  assert.match(HEADER, /href="#recorrido-pantallas"/, "«Cómo funciona» lleva a la caja del recorrido (se ve completa bajo el encabezado)");
 });
 
 test("recorrido: las cinco maquetas se adaptan al alto con reglas del contenedor (sin reducir la interfaz) y conservan su contenido", () => {

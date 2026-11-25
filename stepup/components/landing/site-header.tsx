@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/auth/public-links";
 
 const LINKS = [
   { href: "#producto", label: "Producto" },
-  { href: "#recorrido", label: "Recorrido" },
+  { href: "#recorrido-pantallas", label: "Recorrido" },
   { href: "#calendario", label: "Calendario" },
   { href: "#alumnos", label: "Alumnos" },
   { href: "#cobros", label: "Cobros" },
@@ -28,14 +28,14 @@ export function SiteHeader() {
               Producto <span aria-hidden>⌄</span>
             </summary>
             <div className="tf-product-menu absolute left-0 top-full z-50 grid min-w-[220px] gap-1 rounded-2xl border border-border bg-surface p-2">
-              {LINKS.filter((link) => link.href !== "/planes" && link.href !== "#recorrido").map((link) => (
+              {LINKS.filter((link) => link.href !== "/planes" && link.href !== "#recorrido-pantallas").map((link) => (
                 <a key={link.href} href={link.href} className="flex min-h-11 items-center rounded-lg px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                   {link.href === "#producto" ? "Todo TeacherFlow" : link.label}
                 </a>
               ))}
             </div>
           </details>
-          <a href="#recorrido" className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Cómo funciona</a>
+          <a href="#recorrido-pantallas" className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Cómo funciona</a>
           <a href="/planes" className="inline-flex min-h-11 items-center rounded-md px-3 text-[14.5px] font-[650] text-textSecondary transition-colors duration-200 hover:bg-paperDeep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Planes</a>
         </nav>
         <div className="flex items-center gap-1.5 nav:gap-2">
