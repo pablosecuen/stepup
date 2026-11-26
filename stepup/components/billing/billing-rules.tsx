@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 
 const RULES: ReadonlyArray<{ title: string; text: string }> = [
   { title: "Se renueva sola", text: "Al terminar cada período se cobra el siguiente con el mismo medio de pago, hasta que canceles." },
-  { title: "15 días gratis", text: "Tu primera contratación empieza con 15 días gratis: la tarjeta es obligatoria y no se cobra nada al empezar. El primer cobro es a las 00:00 (hora de Argentina) de la fecha que ves antes de confirmar, y si cancelás antes no se cobra." },
+  { title: "15 días gratis", text: "Tu primera contratación empieza con 15 días gratis: la tarjeta es obligatoria y no se cobra nada al empezar. El primer cobro queda programado para las 00:00 (hora de Argentina) de la fecha que ves antes de confirmar (se procesa desde ese momento y puede demorar unos minutos), y si cancelás antes no se cobra." },
   { title: "Precio y duración", text: "Elegís mensual, trimestral, semestral o anual y pagás el precio completo del período. Sin costo de alta y sin cuotas." },
   { title: "Los planes largos cuestan menos por mes", text: "El ahorro frente al plan mensual se muestra en cada plan." },
   { title: "Cancelás cuando quieras", text: "Desde Facturación. Conservás el acceso completo hasta el final del período que ya pagaste y no se te vuelve a cobrar." },

@@ -218,10 +218,10 @@ export function buildBillingView(input: ViewInput): BillingView {
           state: "trial",
           badge: { tone: "info", label: "Prueba gratuita" },
           headline: "Estás en tu prueba gratuita",
-          body: `15 días gratis: usás TeacherFlow sin cargo hasta el ${trial.freeUntil} inclusive. El primer cobro de ${trial.amount} ${trial.cadence} será el ${trial.firstChargeOn} a las 00:00 (hora de Argentina). Si cancelás antes, no se te cobra y conservás el acceso hasta esa fecha.`,
+          body: `15 días gratis: usás TeacherFlow sin cargo hasta el ${trial.freeUntil} inclusive. El primer cobro de ${trial.amount} ${trial.cadence} está programado para el ${trial.firstChargeOn} a las 00:00 (hora de Argentina); el servicio de cobro lo procesa a partir de ese momento y puede demorar unos minutos. Si cancelás antes, no se te cobra y conservás el acceso hasta esa fecha.`,
           facts: [
             { label: "Prueba gratuita hasta", value: trial.freeUntil },
-            { label: "Primer cobro", value: `${trial.firstChargeOn} a las 00:00 · ${trial.amount}` },
+            { label: "Primer cobro programado", value: `${trial.firstChargeOn} a las 00:00 · ${trial.amount}` },
           ],
           notices: [],
           actions: { ...NO_ACTIONS, cancel: true, changePlan: false, updatePaymentMethod: paymentAction },
@@ -384,7 +384,7 @@ export function trialLines(plan: Pick<BillingPlan, "amountMinor" | "monthsOfAcce
   const price = pesos(plan.amountMinor);
   return {
     headline: `${offer.days} días gratis. Luego ${price} ${cadenceLabel(plan)}.`,
-    firstCharge: `Si confirmás hoy, el primer cobro de ${price} será el ${offer.firstChargeDate} a las 00:00 (hora de Argentina). Antes de esa fecha no se cobra nada y podés cancelar.`,
+    firstCharge: `Si confirmás hoy, el primer cobro de ${price} queda programado para el ${offer.firstChargeDate} a las 00:00 (hora de Argentina); el servicio de cobro lo procesa a partir de ese momento y puede demorar unos minutos. Antes de esa fecha no se cobra nada y podés cancelar.`,
   };
 }
 

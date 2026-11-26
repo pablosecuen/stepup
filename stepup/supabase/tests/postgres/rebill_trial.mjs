@@ -229,7 +229,7 @@ try {
     const snapshot = await store.ensureAccount(T);
     const view = buildBillingView({ snapshot, history: await store.getHistory(T, 24), now: clock, capabilities: { changePlan: true, paymentMethodUpdate: true }, available: true });
     assert.equal(view.state, "trial");
-    assert.match(view.body.replace(/ /g, " "), /primer cobro de \$ 25\.900 por mes será el 27\/11\/2026 a las 00:00 \(hora de Argentina\)/);
+    assert.match(view.body.replace(/ /g, " "), /primer cobro de \$ 25\.900 por mes está programado para el 27\/11\/2026 a las 00:00 \(hora de Argentina\)/);
     assert.equal(view.actions.changePlan, false);
     assert.equal(view.actions.cancel, true);
     assert.equal(view.trial?.firstChargeOn, "27/11/2026");

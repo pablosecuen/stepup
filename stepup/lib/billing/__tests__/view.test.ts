@@ -103,8 +103,8 @@ test("prueba gratuita en curso: se dice hasta cuándo es gratis y la fecha exact
   assert.equal(v.badge.label, "Prueba gratuita");
   assert.match(plain(v.body), /15 días gratis/);
   assert.match(plain(v.body), /hasta el 03\/11\/2026 inclusive/);
-  assert.match(plain(v.body), /primer cobro de \$ 25\.900 por mes será el 04\/11\/2026 a las 00:00 \(hora de Argentina\)/);
-  assert.deepEqual(plainDeep(v.facts), [{ label: "Prueba gratuita hasta", value: "03/11/2026" }, { label: "Primer cobro", value: "04/11/2026 a las 00:00 · $ 25.900" }]);
+  assert.match(plain(v.body), /primer cobro de \$ 25\.900 por mes está programado para el 04\/11\/2026 a las 00:00 \(hora de Argentina\); el servicio de cobro lo procesa a partir de ese momento y puede demorar unos minutos/);
+  assert.deepEqual(plainDeep(v.facts), [{ label: "Prueba gratuita hasta", value: "03/11/2026" }, { label: "Primer cobro programado", value: "04/11/2026 a las 00:00 · $ 25.900" }]);
   assert.deepEqual(v.actions, { subscribe: false, cancel: true, reactivate: false, changePlan: false, updatePaymentMethod: true });
   assert.doesNotMatch(v.body, /360|horas/);
   // Después del primer cobro (hay un período pagado que termina después de la prueba) ya no es prueba.
@@ -120,7 +120,7 @@ test("oferta de la prueba: se muestra ANTES de confirmar con la fecha exacta del
   assert.equal(offered.trialOffer?.firstChargeAtIso, ar("2026-11-04"));
   const options = buildPlanOptions(offered.trialOffer);
   assert.deepEqual(plainDeep(options.map((o) => o.trial?.headline)), ["15 días gratis. Luego $ 25.900 por mes.", "15 días gratis. Luego $ 69.900 cada 3 meses.", "15 días gratis. Luego $ 131.400 cada 6 meses.", "15 días gratis. Luego $ 238.800 por año."]);
-  assert.match(plain(options[0].trial?.firstCharge), /el primer cobro de \$ 25\.900 será el 04\/11\/2026 a las 00:00 \(hora de Argentina\)/);
+  assert.match(plain(options[0].trial?.firstCharge), /el primer cobro de \$ 25\.900 queda programado para el 04\/11\/2026 a las 00:00 \(hora de Argentina\); el servicio de cobro lo procesa a partir de ese momento y puede demorar unos minutos/);
   assert.doesNotMatch(JSON.stringify(options), /360|horas/);
   assert.deepEqual(buildPlanOptions(null).map((o) => o.trial), [null, null, null, null], "sin oferta no se muestra ninguna prueba");
   const base = { history: null, now: NOW, capabilities: CAPS, available: true } as const;
