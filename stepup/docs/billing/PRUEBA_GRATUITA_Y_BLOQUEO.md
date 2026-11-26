@@ -40,3 +40,12 @@
 ## Qué NO se puede comprobar sin Rebill
 
 Que el sandbox/producción de Rebill acepte el `PATCH nextChargeDate` sobre una suscripción `in_trial` y mantenga el instante hasta el cobro, y que el primer cobro se ejecute a esa hora, sólo se confirma con una suscripción real creada por una persona en el checkout (sandbox: un pago de prueba; producción: la primera contratación real). El procesamiento ya se prueba con un Rebill simulado que respeta lo documentado.
+
+## Fecha programada vs. hora efectiva de procesamiento
+
+TeacherFlow garantiza (y muestra) la fecha y hora **programadas** del primer cobro: `nextChargeDate` a las 00:00 de Argentina, releído de Rebill. Rebill no documenta cuánto después de esa hora ejecuta el cobro (su planificador lo procesa «a partir de» ese instante, y los reintentos de un cobro rechazado siguen su propia escalera), por eso los textos dicen «programado para» y «puede demorar unos minutos». No se promete una precisión de segundos. Entre el fin de la prueba y la aprobación del cobro la cuenta está bloqueada (sin gracia) y vuelve sola apenas se aprueba.
+
+## Cómo se comprueba contra el sandbox real (sin dinero)
+
+1. Una persona paga el enlace de prueba del sandbox (`node scripts/rebill-sandbox-rehearsal.mjs link --trial --plan monthly --env-file <sandbox>`) con la tarjeta de prueba oficial.
+2. `node supabase/tests/postgres/rebill_sandbox_trial.mjs --env-file <sandbox> --ref <tfs_…>` lee el pago de 0 y la suscripción tal como los agendó Rebill, corre el procesamiento real de TeacherFlow en una base local, fija y relee `nextChargeDate`, informa la diferencia exacta, cancela durante la prueba y fuerza el próximo cobro (`sandbox/advance`) para comprobar que no se genera ninguno.
